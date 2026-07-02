@@ -38,7 +38,8 @@
   - 2026-07-02 完成：presentation/shared/quick_capture/，MaterialApp.builder 全局注入。交互假设（待终审）：长按任一按钮=左右互换。教训存档：速记层在 Overlay 之上不能用 Tooltip；HapticFeedback 需放在状态变更之后
 - ✅ 2. 文字输入弹层：输入 → 存入全局灵感池
   - 2026-07-02 完成：text_capture_sheet.dart，空内容不入库；widget 测试 4 例全绿（含互换持久化、入池 section_id=NULL 断言）
-- ☐ 3. 语音识别接入 speech_to_text：识别文本 → 确认 → 入池
+- ✅ 3. 语音识别接入 speech_to_text：识别文本 → 确认 → 入池
+  - 2026-07-02 完成：speech_service.dart 薄封装（测试可注入替身）+ voice_capture_sheet.dart 实时识别弹层；双端权限已声明（RECORD_AUDIO+RecognitionService 可见性 / NSMicrophone+NSSpeechRecognition）。教训：Riverpod 3 禁止 dispose 中用 ref，服务存 State 字段。待真机验证系统引擎实际识别
 
 ## 阶段三：首页创作宇宙（5 步）
 

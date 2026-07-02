@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-02 16:49:03　对应提交：107284e 之后的工作区状态
+> 生成时间：2026-07-02 16:53:26　对应提交：8a4d036 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,26 +12,26 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     32
-  Nodes:     501
-  Edges:     937
-  DB Size:   1.25 MB
+  Files:     35
+  Nodes:     543
+  Edges:     1,022
+  DB Size:   1.37 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          223
-  constant        62
-  function        62
-  import          54
-  class           52
-  file            28
+  method          236
+  import          72
+  function        65
+  constant        63
+  class           56
+  file            31
   type_alias      12
   variable        7
   namespace       1
 
 Files by Language:
-  dart            13
+  dart            16
   kotlin          4
   javascript      3
   swift           3
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (32 files):
+Project Structure (35 files):
 
 |-- .claude
 |   `-- skills
@@ -105,14 +105,17 @@ Project Structure (32 files):
 |   |   `-- shared
 |   |       `-- quick_capture
 |   |           |-- capture_button_prefs.dart (dart, 9 symbols)
-|   |           |-- quick_capture_layer.dart (dart, 13 symbols)
-|   |           `-- text_capture_sheet.dart (dart, 11 symbols)
+|   |           |-- quick_capture_layer.dart (dart, 14 symbols)
+|   |           |-- speech_service.dart (dart, 9 symbols)
+|   |           |-- text_capture_sheet.dart (dart, 11 symbols)
+|   |           `-- voice_capture_sheet.dart (dart, 14 symbols)
 |   `-- main.dart (dart, 12 symbols)
 |-- test
 |   |-- data
 |   |   `-- repositories_test.dart (dart, 9 symbols)
 |   `-- presentation
-|       `-- quick_capture_test.dart (dart, 13 symbols)
+|       |-- quick_capture_test.dart (dart, 13 symbols)
+|       `-- voice_capture_test.dart (dart, 19 symbols)
 |-- analysis_options.yaml (yaml, 0 symbols)
 `-- pubspec.yaml (yaml, 0 symbols)
 

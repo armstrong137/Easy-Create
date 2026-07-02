@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/app_keys.dart';
 import 'capture_button_prefs.dart';
 import 'text_capture_sheet.dart';
+import 'voice_capture_sheet.dart';
 
 /// 全局灵感速记层：左下 + 右下双悬浮按钮，覆盖在任何页面之上
 ///
@@ -30,12 +31,7 @@ class QuickCaptureLayer extends ConsumerWidget {
       key: const Key('语音速记按钮'),
       icon: Icons.mic,
       tooltip: '语音速记',
-      onTap: () {
-        // TODO(阶段二·3)：接入 speech_to_text 系统本地引擎
-        rootScaffoldMessengerKey.currentState?.showSnackBar(
-          const SnackBar(content: Text('语音识别即将到来（阶段二·3）')),
-        );
-      },
+      onTap: () => showVoiceCaptureSheet(rootNavigatorKey.currentContext!),
       onLongPress: swap,
     );
 
