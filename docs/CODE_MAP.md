@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-02 13:42:06　对应提交：67cf5e3 之后的工作区状态
+> 生成时间：2026-07-02 13:45:16　对应提交：ae3bb60 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,29 +12,30 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     21
-  Nodes:     136
-  Edges:     268
-  DB Size:   0.54 MB
+  Files:     24
+  Nodes:     407
+  Edges:     700
+  DB Size:   0.95 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
+  method          194
   function        57
-  constant        31
-  file            17
-  import          14
+  constant        54
+  class           44
+  file            20
+  import          18
+  type_alias      12
   variable        7
-  class           5
-  method          4
   namespace       1
 
 Files by Language:
+  dart            5
   kotlin          4
   javascript      3
   swift           3
   xml             3
-  dart            2
   properties      2
   yaml            2
   c               1
@@ -48,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (21 files):
+Project Structure (24 files):
 
 |-- .claude
 |   `-- skills
@@ -89,6 +90,11 @@ Project Structure (21 files):
 |   `-- RunnerTests
 |       `-- RunnerTests.swift (swift, 6 symbols)
 |-- lib
+|   |-- data
+|   |   `-- database
+|   |       |-- app_database.dart (dart, 9 symbols)
+|   |       |-- app_database.g.dart (dart, 237 symbols)
+|   |       `-- tables.dart (dart, 25 symbols)
 |   `-- main.dart (dart, 5 symbols)
 |-- test
 |   `-- widget_test.dart (dart, 5 symbols)
