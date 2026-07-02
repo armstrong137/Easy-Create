@@ -72,6 +72,21 @@ void main() {
   });
 
   group('文字输入弹层', () {
+    testWidgets('弹层打开期间隐藏双按钮，关闭后恢复', (tester) async {
+      await pumpApp(tester);
+
+      await tester.tap(textBtn);
+      await tester.pumpAndSettle();
+      expect(voiceBtn, findsNothing, reason: '弹层打开时按钮应隐藏，避免遮挡');
+      expect(textBtn, findsNothing);
+
+      // 点弹层外区域关闭
+      await tester.tapAt(const Offset(400, 50));
+      await tester.pumpAndSettle();
+      expect(voiceBtn, findsOneWidget, reason: '弹层关闭后按钮应恢复');
+      expect(textBtn, findsOneWidget);
+    });
+
     testWidgets('点文字按钮弹层出现，输入保存后灵感入池、弹层关闭', (tester) async {
       await pumpApp(tester);
 

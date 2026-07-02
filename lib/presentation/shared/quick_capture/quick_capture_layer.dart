@@ -7,6 +7,27 @@ import 'capture_button_prefs.dart';
 import 'text_capture_sheet.dart';
 import 'voice_capture_sheet.dart';
 
+/// 速记弹层是否打开：打开期间隐藏双按钮（按钮浮在 Navigator 之上，
+/// 否则会遮挡弹层内容）
+class CaptureSheetOpenNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  /// 包裹弹层生命周期：弹出前隐藏按钮，关闭后恢复
+  Future<void> during(Future<void> Function() showSheet) async {
+    state = true;
+    try {
+      await showSheet();
+    } finally {
+      state = false;
+    }
+  }
+}
+
+final captureSheetOpenProvider =
+    NotifierProvider<CaptureSheetOpenNotifier, bool>(
+        CaptureSheetOpenNotifier.new);
+
 /// 全局灵感速记层：左下 + 右下双悬浮按钮，覆盖在任何页面之上
 ///
 /// - 默认左 = 语音、右 = 文字；长按任一按钮左右互换（偏好持久化）
@@ -20,6 +41,7 @@ class QuickCaptureLayer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final voiceOnLeft = ref.watch(voiceOnLeftProvider);
+    final sheetOpen = ref.watch(captureSheetOpenProvider);
 
     // 长按互换左右位置（假设的交互方式，待终审），带触觉反馈
     Future<void> swap() async {
@@ -31,7 +53,8 @@ class QuickCaptureLayer extends ConsumerWidget {
       key: const Key('语音速记按钮'),
       icon: Icons.mic,
       tooltip: '语音速记',
-      onTap: () => showVoiceCaptureSheet(rootNavigatorKey.currentContext!),
+      onTap: () => ref.read(captureSheetOpenProvider.notifier).during(
+          () => showVoiceCaptureSheet(rootNavigatorKey.currentContext!)),
       onLongPress: swap,
     );
 
@@ -40,25 +63,29 @@ class QuickCaptureLayer extends ConsumerWidget {
       icon: Icons.edit,
       tooltip: '文字速记',
       // 速记层在 Navigator 之上，必须用根 Navigator 的 context 弹出输入层
-      onTap: () => showTextCaptureSheet(rootNavigatorKey.currentContext!),
+      onTap: () => ref.read(captureSheetOpenProvider.notifier).during(
+          () => showTextCaptureSheet(rootNavigatorKey.currentContext!)),
       onLongPress: swap,
     );
 
     return Stack(
       children: [
         child,
-        // 左下角
-        Positioned(
-          left: 24,
-          bottom: 24,
-          child: voiceOnLeft ? voiceButton : textButton,
-        ),
-        // 右下角
-        Positioned(
-          right: 24,
-          bottom: 24,
-          child: voiceOnLeft ? textButton : voiceButton,
-        ),
+        // 弹层打开期间隐藏按钮，避免遮挡弹层内容
+        if (!sheetOpen) ...[
+          // 左下角
+          Positioned(
+            left: 24,
+            bottom: 24,
+            child: voiceOnLeft ? voiceButton : textButton,
+          ),
+          // 右下角
+          Positioned(
+            right: 24,
+            bottom: 24,
+            child: voiceOnLeft ? textButton : voiceButton,
+          ),
+        ],
       ],
     );
   }
