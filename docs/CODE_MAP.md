@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-02 13:45:16　对应提交：ae3bb60 之后的工作区状态
+> 生成时间：2026-07-02 16:35:49　对应提交：75fe5a3 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,26 +12,26 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     24
-  Nodes:     407
-  Edges:     700
-  DB Size:   0.95 MB
+  Files:     27
+  Nodes:     444
+  Edges:     831
+  DB Size:   1.10 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          194
-  function        57
+  method          214
+  function        59
   constant        54
-  class           44
-  file            20
-  import          18
+  class           46
+  import          28
+  file            23
   type_alias      12
   variable        7
   namespace       1
 
 Files by Language:
-  dart            5
+  dart            8
   kotlin          4
   javascript      3
   swift           3
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (24 files):
+Project Structure (27 files):
 
 |-- .claude
 |   `-- skills
@@ -91,12 +91,17 @@ Project Structure (24 files):
 |       `-- RunnerTests.swift (swift, 6 symbols)
 |-- lib
 |   |-- data
-|   |   `-- database
-|   |       |-- app_database.dart (dart, 9 symbols)
-|   |       |-- app_database.g.dart (dart, 237 symbols)
-|   |       `-- tables.dart (dart, 25 symbols)
+|   |   |-- database
+|   |   |   |-- app_database.dart (dart, 9 symbols)
+|   |   |   |-- app_database.g.dart (dart, 237 symbols)
+|   |   |   `-- tables.dart (dart, 25 symbols)
+|   |   `-- repositories
+|   |       |-- inspiration_repository.dart (dart, 11 symbols)
+|   |       `-- novel_repository.dart (dart, 17 symbols)
 |   `-- main.dart (dart, 5 symbols)
 |-- test
+|   |-- data
+|   |   `-- repositories_test.dart (dart, 10 symbols)
 |   `-- widget_test.dart (dart, 5 symbols)
 |-- analysis_options.yaml (yaml, 0 symbols)
 `-- pubspec.yaml (yaml, 0 symbols)
