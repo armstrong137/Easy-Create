@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-02 18:24:51　对应提交：fc9754a 之后的工作区状态
+> 生成时间：2026-07-02 13:42:06　对应提交：67cf5e3 之后的工作区状态
 
 ## 一、索引状态
 
@@ -9,25 +9,35 @@
 
 CodeGraph Status
 
-Project: /home/claude/project
+Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     4
-  Nodes:     98
-  Edges:     236
-  DB Size:   0.49 MB
+  Files:     21
+  Nodes:     136
+  Edges:     268
+  DB Size:   0.54 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  function        55
-  constant        30
+  function        57
+  constant        31
+  file            17
+  import          14
   variable        7
-  file            4
-  import          2
+  class           5
+  method          4
+  namespace       1
 
 Files by Language:
+  kotlin          4
   javascript      3
+  swift           3
+  xml             3
+  dart            2
+  properties      2
+  yaml            2
+  c               1
   typescript      1
 
 [OK] Index is up to date
@@ -38,18 +48,52 @@ Files by Language:
 
 ```
 
-Project Structure (4 files):
+Project Structure (21 files):
 
-`-- .claude
-    `-- skills
-        |-- brainstorming
-        |   `-- scripts
-        |       |-- helper.js (javascript, 9 symbols)
-        |       `-- server.cjs (javascript, 75 symbols)
-        |-- systematic-debugging
-        |   `-- condition-based-waiting-example.ts (typescript, 6 symbols)
-        `-- writing-skills
-            `-- render-graphs.js (javascript, 8 symbols)
+|-- .claude
+|   `-- skills
+|       |-- brainstorming
+|       |   `-- scripts
+|       |       |-- helper.js (javascript, 9 symbols)
+|       |       `-- server.cjs (javascript, 75 symbols)
+|       |-- systematic-debugging
+|       |   `-- condition-based-waiting-example.ts (typescript, 6 symbols)
+|       `-- writing-skills
+|           `-- render-graphs.js (javascript, 8 symbols)
+|-- android
+|   |-- app
+|   |   |-- src
+|   |   |   |-- debug
+|   |   |   |   `-- AndroidManifest.xml (xml, 1 symbols)
+|   |   |   |-- main
+|   |   |   |   |-- kotlin
+|   |   |   |   |   `-- com
+|   |   |   |   |       `-- easycreate
+|   |   |   |   |           `-- novel_app
+|   |   |   |   |               `-- MainActivity.kt (kotlin, 4 symbols)
+|   |   |   |   `-- AndroidManifest.xml (xml, 1 symbols)
+|   |   |   `-- profile
+|   |   |       `-- AndroidManifest.xml (xml, 1 symbols)
+|   |   `-- build.gradle.kts (kotlin, 1 symbols)
+|   |-- gradle
+|   |   `-- wrapper
+|   |       `-- gradle-wrapper.properties (properties, 0 symbols)
+|   |-- build.gradle.kts (kotlin, 2 symbols)
+|   |-- gradle.properties (properties, 0 symbols)
+|   `-- settings.gradle.kts (kotlin, 1 symbols)
+|-- ios
+|   |-- Runner
+|   |   |-- AppDelegate.swift (swift, 6 symbols)
+|   |   |-- Runner-Bridging-Header.h (c, 1 symbols)
+|   |   `-- SceneDelegate.swift (swift, 4 symbols)
+|   `-- RunnerTests
+|       `-- RunnerTests.swift (swift, 6 symbols)
+|-- lib
+|   `-- main.dart (dart, 5 symbols)
+|-- test
+|   `-- widget_test.dart (dart, 5 symbols)
+|-- analysis_options.yaml (yaml, 0 symbols)
+`-- pubspec.yaml (yaml, 0 symbols)
 
 ```
 

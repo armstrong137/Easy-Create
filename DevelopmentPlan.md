@@ -3,7 +3,7 @@
 > 维护规则（用户规定）：每完成一步立即更新本文件，方便其他智能体接力开发。
 > 进度标记：☐ 未开始　🔄 进行中　✅ 已完成
 
-**当前进度：阶段一 · 第 1 步（未开始）**
+**当前进度：阶段一 · 第 2 步（进行中）**
 
 ---
 
@@ -11,7 +11,7 @@
 
 | 阶段 | 名称 | 状态 |
 |------|------|------|
-| 一 | 项目骨架与数据层 | ☐ |
+| 一 | 项目骨架与数据层 | 🔄 |
 | 二 | 全局灵感速记 | ☐ |
 | 三 | 首页创作宇宙 | ☐ |
 | 四 | 大纲页铅笔树 | ☐ |
@@ -23,7 +23,8 @@
 
 ## 阶段一：项目骨架与数据层（4 步）
 
-- ☐ 1. 初始化 Flutter 工程，建立 core/data/domain/presentation 分层目录与依赖（riverpod、drift、speech_to_text 等）
+- ✅ 1. 初始化 Flutter 工程，建立 core/data/domain/presentation 分层目录与依赖（riverpod、drift、speech_to_text 等）
+  - 2026-07-02 完成：Flutter 3.44.4 stable（C:\src\flutter），novel_app 工程（android/ios/web 三平台），依赖 flutter_riverpod/drift/drift_flutter/speech_to_text + dev:drift_dev/build_runner，pub get 通过
 - ☐ 2. 用 drift 定义 4 张表（novels/chapters/sections/inspirations）与数据库类
 - ☐ 3. 实现仓库层：小说/章/节的增删改查 + 灵感生命周期流转（入池、拖入小节、放回、真删）
 - ☐ 4. 编写数据层单元测试，验证灵感生命周期规则（含"放回后按创建时间排序"）
