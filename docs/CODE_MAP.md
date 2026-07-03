@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-02 19:25:51　对应提交：f25d18c 之后的工作区状态
+> 生成时间：2026-07-02 20:43:33　对应提交：974625b 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,26 +12,26 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     41
-  Nodes:     619
-  Edges:     1,182
-  DB Size:   1.58 MB
+  Files:     43
+  Nodes:     642
+  Edges:     1,237
+  DB Size:   1.65 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          252
-  import          101
-  constant        74
-  function        71
-  class           64
-  file            37
+  method          256
+  import          109
+  constant        77
+  function        74
+  class           67
+  file            39
   type_alias      12
   variable        7
   namespace       1
 
 Files by Language:
-  dart            22
+  dart            24
   kotlin          4
   javascript      3
   swift           3
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (41 files):
+Project Structure (43 files):
 
 |-- .claude
 |   `-- skills
@@ -104,7 +104,8 @@ Project Structure (41 files):
 |   |   `-- providers.dart (dart, 8 symbols)
 |   |-- presentation
 |   |   |-- home
-|   |   |   |-- home_page.dart (dart, 12 symbols)
+|   |   |   |-- home_page.dart (dart, 13 symbols)
+|   |   |   |-- orbiting_inspirations.dart (dart, 14 symbols)
 |   |   |   |-- planet_view.dart (dart, 19 symbols)
 |   |   |   `-- starfield.dart (dart, 13 symbols)
 |   |   `-- shared
@@ -122,6 +123,7 @@ Project Structure (41 files):
 |   |   `-- repositories_test.dart (dart, 9 symbols)
 |   `-- presentation
 |       |-- home_page_test.dart (dart, 17 symbols)
+|       |-- orbiting_inspirations_test.dart (dart, 10 symbols)
 |       |-- quick_capture_test.dart (dart, 13 symbols)
 |       `-- voice_capture_test.dart (dart, 19 symbols)
 |-- analysis_options.yaml (yaml, 0 symbols)
