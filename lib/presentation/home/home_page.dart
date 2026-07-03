@@ -190,16 +190,51 @@ class _PlanetPage extends ConsumerWidget {
             ),
           ),
         const SizedBox(height: 28),
-        // 书名（楷体，与环绕文字同族但白色示于星空）
-        Text(
-          novel.title,
-          style: const TextStyle(
-            fontFamily: 'LXGWWenKai',
-            fontSize: 18,
-            color: Colors.white,
+        // 书名（楷体白字）：单击可重命名（2026-07-03 用户需求）
+        GestureDetector(
+          key: Key('书名_${novel.id}'),
+          onTap: () => _renameNovel(context, ref),
+          child: Text(
+            novel.title,
+            style: const TextStyle(
+              fontFamily: 'LXGWWenKai',
+              fontSize: 18,
+              color: Colors.white,
+            ),
           ),
         ),
       ],
     );
+  }
+
+  /// 单击书名 → 重命名对话框 → 落库
+  Future<void> _renameNovel(BuildContext context, WidgetRef ref) async {
+    final controller = TextEditingController(text: novel.title);
+    final newTitle = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('重命名这颗星球'),
+        content: TextField(
+          key: const Key('书名重命名输入框'),
+          controller: controller,
+          autofocus: true,
+          onSubmitted: (v) => Navigator.of(context).pop(v),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            key: const Key('书名重命名确认按钮'),
+            onPressed: () => Navigator.of(context).pop(controller.text),
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+    final title = newTitle?.trim() ?? '';
+    if (title.isEmpty || title == novel.title) return;
+    await ref.read(novelRepositoryProvider).renameNovel(novel.id, title);
   }
 }

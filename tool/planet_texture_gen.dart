@@ -11,6 +11,9 @@
 ///   --width=2048          输出宽度（高=宽/2）
 ///   --circle-ratio=x,y,r  手动球体圆（相对图宽高的比例，用于带光环等素材）
 ///   --mirror-south        南半球用北半球镜像（球体下部被遮挡的素材）
+///   --centers=a,b,...     各图真实中心经度（度）。素材若为同一星球的
+///                         不同真实视角（如地球），按真实经度放置可拼出
+///                         大陆连续不重复的球面；缺省时均匀分布
 library;
 
 import 'dart:io';
@@ -23,6 +26,7 @@ void main(List<String> args) {
   var outW = 2048;
   (double, double, double)? circleRatio;
   var mirrorSouth = false;
+  List<double>? centersDeg;
   final inputPaths = <String>[];
 
   for (final a in args) {
@@ -35,6 +39,8 @@ void main(List<String> args) {
       circleRatio = (p[0], p[1], p[2]);
     } else if (a == '--mirror-south') {
       mirrorSouth = true;
+    } else if (a.startsWith('--centers=')) {
+      centersDeg = a.substring(10).split(',').map(double.parse).toList();
     } else {
       inputPaths.add(a);
     }
@@ -123,40 +129,61 @@ void main(List<String> args) {
     );
   }
 
-  // 扇区合成：图 i 的中心经度 = i * (2π/n)，混合带为扇区宽的 30%
-  final sector = 2 * math.pi / n;
-  final blendHalf = sector * 0.30;
   double wrap(double a) {
     while (a > math.pi) a -= 2 * math.pi;
     while (a < -math.pi) a += 2 * math.pi;
     return a;
   }
 
+  // 各图中心经度：--centers 指定（真实视角拼接）或均匀分布
+  final centers = centersDeg != null
+      ? centersDeg.map((d) => d * math.pi / 180).toList()
+      : [for (var i = 0; i < n; i++) wrap(i * 2 * math.pi / n)];
+  if (centers.length != n) {
+    stderr.writeln('错误: --centers 数量(${centers.length})须与图数($n)一致');
+    exit(1);
+  }
+  // 按经度排序（记录原图下标），扇区边界=相邻中心的中点
+  final order = List.generate(n, (i) => i)
+    ..sort((a, b) => centers[a].compareTo(centers[b]));
+  final sorted = [for (final i in order) (center: centers[i], idx: i)];
+  const blendHalf = 0.14; // 混合带半宽（固定约 8°）
+
   final out = img.Image(width: outW, height: outH);
   for (var v = 0; v < outH; v++) {
     final lat = math.pi / 2 - (v + 0.5) / outH * math.pi;
     for (var u = 0; u < outW; u++) {
       final lon = (u + 0.5) / outW * 2 * math.pi - math.pi;
-      // 最近扇区与相对经度
-      final fi = lon / sector;
-      final idx = fi.round();
-      final lonRel = wrap(lon - idx * sector); // ∈ [-sector/2, sector/2]
-      final i0 = ((idx % n) + n) % n;
+      // 找 lon 所属扇区：与哪个中心的 wrap 距离最小
+      var best = 0;
+      var bestD = double.infinity;
+      for (var k = 0; k < n; k++) {
+        final d = wrap(lon - sorted[k].center).abs();
+        if (d < bestD) {
+          bestD = d;
+          best = k;
+        }
+      }
+      final cur = sorted[best];
+      final lonRel = wrap(lon - cur.center);
+      // 与相邻扇区的分界（相邻中心的中点，考虑 wrap）
+      final nextK = (best + 1) % n;
+      final prevK = (best - 1 + n) % n;
+      final gapNext = wrap(sorted[nextK].center - cur.center).abs() / 2;
+      final gapPrev = wrap(cur.center - sorted[prevK].center).abs() / 2;
+      final edge = lonRel > 0 ? gapNext - lonRel : gapPrev + lonRel;
 
-      final edge = sector / 2 - lonRel.abs(); // 距扇区边界的距离
       if (edge >= blendHalf) {
-        // 扇区腹地：纯当前图
-        final (r0, g0, b0) = samplePlanet(i0, lonRel, lat);
+        final (r0, g0, b0) = samplePlanet(cur.idx, lonRel, lat);
         out.setPixelRgb(u, v, r0, g0, b0);
       } else {
-        // 混合带：与相邻扇区 smoothstep 渐变
-        final neighbor = lonRel > 0 ? (i0 + 1) % n : (i0 - 1 + n) % n;
-        final lonRelN =
-            lonRel > 0 ? lonRel - sector : lonRel + sector; // 邻图相对经度
-        final t0 = (edge / blendHalf + 1) / 2; // 边界处 0.5，带内缘 1
-        final w = t0 * t0 * (3 - 2 * t0);
-        final (ra, ga, ba) = samplePlanet(i0, lonRel, lat);
-        final (rb, gb, bb) = samplePlanet(neighbor, lonRelN, lat);
+        // 混合带：与近侧邻图 smoothstep 渐变
+        final nb = lonRel > 0 ? sorted[nextK] : sorted[prevK];
+        final lonRelN = wrap(lon - nb.center);
+        final t0 = ((edge / blendHalf) + 1) / 2;
+        final w = (t0 * t0 * (3 - 2 * t0)).clamp(0.0, 1.0);
+        final (ra, ga, ba) = samplePlanet(cur.idx, lonRel, lat);
+        final (rb, gb, bb) = samplePlanet(nb.idx, lonRelN, lat);
         out.setPixelRgb(
           u,
           v,

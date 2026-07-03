@@ -97,6 +97,25 @@ void main() {
     expect(saved.single.planet, 'earth', reason: '第 1 颗星球分配 earth 纹理');
   });
 
+  testWidgets('单击书名 → 重命名对话框 → 保存落库', (tester) async {
+    // 真库造一本书（rename 走真库）
+    await db.into(db.novels).insert(NovelsCompanion.insert(
+        title: '旧书名', planet: 'earth', sortOrder: 0,
+        createdAt: DateTime.now()));
+    await pumpApp(tester, novels: [fakeNovel(1, '旧书名')]);
+
+    await tester.tap(find.byKey(const Key('书名_1')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+        find.byKey(const Key('书名重命名输入框')), '群星的新回声');
+    await tester.tap(find.byKey(const Key('书名重命名确认按钮')));
+    await tester.pumpAndSettle();
+
+    final saved = await db.select(db.novels).get();
+    expect(saved.single.title, '群星的新回声');
+  });
+
   testWidgets('取消创建或空书名不落库', (tester) async {
     await pumpApp(tester);
 

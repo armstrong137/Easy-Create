@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-03 07:29:28　对应提交：b0d2772 之后的工作区状态
+> 生成时间：2026-07-03 08:15:32　对应提交：58e5e28 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,14 +13,14 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     64
-  Nodes:     880
-  Edges:     1,929
-  DB Size:   2.79 MB
+  Nodes:     881
+  Edges:     1,943
+  DB Size:   2.82 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          302
+  method          303
   import          211
   function        104
   constant        93
@@ -109,7 +109,7 @@ Project Structure (64 files):
 |   |       `-- outline_chapter.dart (dart, 3 symbols)
 |   |-- presentation
 |   |   |-- home
-|   |   |   |-- home_page.dart (dart, 23 symbols)
+|   |   |   |-- home_page.dart (dart, 24 symbols)
 |   |   |   |-- orbiting_inspirations.dart (dart, 14 symbols)
 |   |   |   |-- planet_view.dart (dart, 19 symbols)
 |   |   |   |-- saturn_rings_painter.dart (dart, 12 symbols)
