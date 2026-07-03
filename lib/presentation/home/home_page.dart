@@ -7,6 +7,7 @@ import '../../data/providers.dart';
 import '../outline/outline_page.dart';
 import 'orbiting_inspirations.dart';
 import 'planet_view.dart';
+import 'saturn_rings_painter.dart';
 import 'starfield.dart';
 
 /// 魔毯灵感池流（全局共享，环绕文字数据源）
@@ -32,7 +33,7 @@ final planetAssetsProvider =
 );
 
 /// 可选行星纹理（新建星球按当前数量轮换分配）
-const kPlanetTextures = ['earth', 'mars', 'jupiter', 'mercury'];
+const kPlanetTextures = ['earth', 'mars', 'jupiter', 'venus', 'saturn'];
 
 /// 首页｜创作宇宙：一颗星球 = 一部小说，左右滑切换
 class HomePage extends ConsumerStatefulWidget {
@@ -174,11 +175,18 @@ class _PlanetPage extends ConsumerWidget {
             child: OrbitingInspirations(
               items: pool,
               orbitWidth: diameter * 1.5,
-              child: PlanetView(
-                assets: assets,
-                spin: planetSpin(count),
-                diameter: diameter,
-              ),
+              // 土星带静态光环贴层，其余星球为纯球体
+              child: novel.planet == 'saturn'
+                  ? SaturnView(
+                      assets: assets,
+                      spin: planetSpin(count),
+                      diameter: diameter,
+                    )
+                  : PlanetView(
+                      assets: assets,
+                      spin: planetSpin(count),
+                      diameter: diameter,
+                    ),
             ),
           ),
         const SizedBox(height: 28),

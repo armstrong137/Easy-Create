@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-02 22:52:00　对应提交：eb5ef95 之后的工作区状态
+> 生成时间：2026-07-03 06:54:07　对应提交：5dca03f 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,26 +12,26 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     61
-  Nodes:     859
-  Edges:     1,870
-  DB Size:   2.71 MB
+  Files:     64
+  Nodes:     880
+  Edges:     1,932
+  DB Size:   2.79 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          301
-  import          203
-  function        97
-  constant        91
+  method          302
+  import          211
+  function        105
+  constant        92
   class           90
-  file            57
+  file            60
   type_alias      12
   variable        7
   namespace       1
 
 Files by Language:
-  dart            42
+  dart            45
   kotlin          4
   javascript      3
   swift           3
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (61 files):
+Project Structure (64 files):
 
 |-- .claude
 |   `-- skills
@@ -109,10 +109,11 @@ Project Structure (61 files):
 |   |       `-- outline_chapter.dart (dart, 3 symbols)
 |   |-- presentation
 |   |   |-- home
-|   |   |   |-- home_page.dart (dart, 22 symbols)
+|   |   |   |-- home_page.dart (dart, 23 symbols)
 |   |   |   |-- orbiting_inspirations.dart (dart, 14 symbols)
 |   |   |   |-- planet_view.dart (dart, 19 symbols)
-|   |   |   `-- starfield.dart (dart, 13 symbols)
+|   |   |   |-- saturn_rings_painter.dart (dart, 12 symbols)
+|   |   |   `-- starfield.dart (dart, 6 symbols)
 |   |   |-- outline
 |   |   |   |-- glass_plus_button.dart (dart, 8 symbols)
 |   |   |   |-- label_layout.dart (dart, 8 symbols)
@@ -148,6 +149,9 @@ Project Structure (61 files):
 |       |-- section_page_test.dart (dart, 17 symbols)
 |       |-- tree_model_test.dart (dart, 10 symbols)
 |       `-- voice_capture_test.dart (dart, 22 symbols)
+|-- tool
+|   |-- planet_texture_gen.dart (dart, 15 symbols)
+|   `-- probe_alpha.dart (dart, 4 symbols)
 |-- analysis_options.yaml (yaml, 0 symbols)
 `-- pubspec.yaml (yaml, 0 symbols)
 
