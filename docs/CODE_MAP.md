@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-02 20:53:46　对应提交：5756ecc 之后的工作区状态
+> 生成时间：2026-07-02 21:35:57　对应提交：ab9d8cd 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,26 +12,26 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     43
-  Nodes:     654
-  Edges:     1,276
-  DB Size:   1.77 MB
+  Files:     49
+  Nodes:     707
+  Edges:     1,406
+  DB Size:   1.90 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          260
-  import          112
-  constant        80
-  function        74
-  class           69
-  file            39
+  method          267
+  import          139
+  constant        81
+  function        80
+  class           75
+  file            45
   type_alias      12
   variable        7
   namespace       1
 
 Files by Language:
-  dart            24
+  dart            30
   kotlin          4
   javascript      3
   swift           3
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (43 files):
+Project Structure (49 files):
 
 |-- .claude
 |   `-- skills
@@ -100,14 +100,21 @@ Project Structure (43 files):
 |   |   |   `-- tables.dart (dart, 25 symbols)
 |   |   |-- repositories
 |   |   |   |-- inspiration_repository.dart (dart, 11 symbols)
-|   |   |   `-- novel_repository.dart (dart, 18 symbols)
+|   |   |   `-- novel_repository.dart (dart, 20 symbols)
 |   |   `-- providers.dart (dart, 8 symbols)
+|   |-- domain
+|   |   `-- entities
+|   |       `-- outline_chapter.dart (dart, 3 symbols)
 |   |-- presentation
 |   |   |-- home
-|   |   |   |-- home_page.dart (dart, 21 symbols)
+|   |   |   |-- home_page.dart (dart, 22 symbols)
 |   |   |   |-- orbiting_inspirations.dart (dart, 14 symbols)
 |   |   |   |-- planet_view.dart (dart, 19 symbols)
 |   |   |   `-- starfield.dart (dart, 13 symbols)
+|   |   |-- outline
+|   |   |   |-- outline_page.dart (dart, 10 symbols)
+|   |   |   |-- pencil_tree_painter.dart (dart, 10 symbols)
+|   |   |   `-- tree_model.dart (dart, 9 symbols)
 |   |   `-- shared
 |   |       `-- quick_capture
 |   |           |-- capture_button_prefs.dart (dart, 9 symbols)
@@ -124,7 +131,9 @@ Project Structure (43 files):
 |   `-- presentation
 |       |-- home_page_test.dart (dart, 20 symbols)
 |       |-- orbiting_inspirations_test.dart (dart, 10 symbols)
+|       |-- outline_page_test.dart (dart, 11 symbols)
 |       |-- quick_capture_test.dart (dart, 13 symbols)
+|       |-- tree_model_test.dart (dart, 9 symbols)
 |       `-- voice_capture_test.dart (dart, 19 symbols)
 |-- analysis_options.yaml (yaml, 0 symbols)
 `-- pubspec.yaml (yaml, 0 symbols)

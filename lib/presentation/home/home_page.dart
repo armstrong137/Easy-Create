@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/creative_energy.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
+import '../outline/outline_page.dart';
 import 'orbiting_inspirations.dart';
 import 'planet_view.dart';
 import 'starfield.dart';
@@ -165,8 +166,11 @@ class _PlanetPage extends ConsumerWidget {
         if (assets != null)
           GestureDetector(
             key: Key('星球_${novel.id}'),
-            // TODO(阶段四)：跳转该小说的大纲页（铅笔树）
-            onTap: () {},
+            // 点星球 → 进入该小说的大纲页（铅笔树）
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) =>
+                  OutlinePage(novelId: novel.id, title: novel.title),
+            )),
             child: OrbitingInspirations(
               items: pool,
               orbitWidth: diameter * 1.5,

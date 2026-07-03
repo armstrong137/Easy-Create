@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../domain/entities/outline_chapter.dart';
 import '../database/app_database.dart';
 
 /// 大纲结构仓库：小说（星球）→ 章 → 节 三层的增删改查
@@ -109,6 +110,37 @@ class NovelRepository {
   /// 删除节（其下灵感由外键置回魔毯，不陪葬）
   Future<void> deleteSection(int id) =>
       (_db.delete(_db.sections)..where((t) => t.id.equals(id))).go();
+
+  // ---------- 大纲树 ----------
+
+  /// 监听某小说的完整大纲（章 + 各章的节，均按 sort_order），铅笔树数据源
+  Stream<List<OutlineChapter>> watchOutline(int novelId) {
+    final query = _db.select(_db.chapters).join([
+      leftOuterJoin(
+          _db.sections, _db.sections.chapterId.equalsExp(_db.chapters.id)),
+    ])
+      ..where(_db.chapters.novelId.equals(novelId))
+      ..orderBy([
+        OrderingTerm.asc(_db.chapters.sortOrder),
+        OrderingTerm.asc(_db.sections.sortOrder),
+      ]);
+
+    return query.watch().map((rows) {
+      // 按章分组（保持章的排序），聚合各章的节
+      final grouped = <int, (Chapter, List<Section>)>{};
+      for (final row in rows) {
+        final chapter = row.readTable(_db.chapters);
+        final section = row.readTableOrNull(_db.sections);
+        final entry =
+            grouped.putIfAbsent(chapter.id, () => (chapter, <Section>[]));
+        if (section != null) entry.$2.add(section);
+      }
+      return [
+        for (final (chapter, sections) in grouped.values)
+          OutlineChapter(chapter: chapter, sections: sections),
+      ];
+    });
+  }
 
   // ---------- 创作能量 ----------
 
