@@ -37,8 +37,8 @@ void main() {
         ],
       );
 
-  Future<void> pumpOutline(
-      WidgetTester tester, List<OutlineChapter> outline) async {
+  Future<void> pumpOutline(WidgetTester tester, List<OutlineChapter> outline,
+      {List<Inspiration> pool = const []}) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -46,7 +46,7 @@ void main() {
           outlineProvider.overrideWith((ref, novelId) => Stream.value(outline)),
           // 魔毯也在大纲页上，灵感池流必须 override（防 drift 流挂死）
           inspirationPoolProvider
-              .overrideWith((ref) => Stream.value(const [])),
+              .overrideWith((ref) => Stream.value(pool)),
         ],
         child: const MaterialApp(
           home: OutlinePage(novelId: 1, title: '测试小说'),
@@ -181,6 +181,69 @@ void main() {
     await tester.enterText(titleField, '月下独白');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pump(const Duration(milliseconds: 300));
+  });
+
+  testWidgets('拖拽：魔毯灵感拖到节标签 → 挂靠落库 → 魔毯缩球', (tester) async {
+    // 真库链路：小说→章→节 + 一条魔毯灵感
+    await db.into(db.novels).insert(NovelsCompanion.insert(
+        title: '书', planet: 'earth', sortOrder: 0, createdAt: DateTime.now()));
+    await db.into(db.chapters).insert(ChaptersCompanion.insert(
+        novelId: 1, title: '引子', sortOrder: 0));
+    await db.into(db.sections).insert(SectionsCompanion.insert(
+        chapterId: 1, title: '第一节', sortOrder: 0));
+    final now = DateTime.now();
+    final inspId = await db.into(db.inspirations).insert(
+        InspirationsCompanion.insert(
+            content: '拖我上树', createdAt: now, updatedAt: now, cardOrder: 0));
+
+    final insp = Inspiration(
+        id: inspId,
+        content: '拖我上树',
+        createdAt: now,
+        updatedAt: now,
+        cardOrder: 0);
+    // outline 的节 id 必须与真库一致（=1），assignToSection 有外键约束
+    await pumpOutline(
+      tester,
+      [
+        const OutlineChapter(
+          chapter: Chapter(id: 1, novelId: 1, title: '引子', sortOrder: 0),
+          sections: [
+            Section(id: 1, chapterId: 1, title: '第一节', sortOrder: 0),
+          ],
+        ),
+      ],
+      pool: [insp],
+    );
+
+    // 展开魔毯并充分稳定（展开补间+水波动画未结束时长按拖拽会被干扰）
+    await tester.tap(find.byKey(const Key('魔毯小球')));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+
+    // 长按拖起 → 移到节热区 → 松手
+    final from = tester.getCenter(find.byKey(Key('魔毯灵感_$inspId')));
+    final to = tester.getCenter(find.byKey(const Key('节热区_1')));
+    final gesture = await tester.startGesture(from);
+    // ListView 中延迟拖拽：长按到点(500)+按压判定(100)后需一次移动才拖起
+    await tester.pump(const Duration(milliseconds: 650));
+    await gesture.moveBy(const Offset(0, 2));
+    await tester.pump();
+    expect(find.text('拖我上树'), findsNWidgets(2),
+        reason: '拖起后应有原条目+浮影两份文本');
+    await gesture.moveTo(Offset.lerp(from, to, 0.5)!); // 分步移动
+    await tester.pump();
+    await gesture.moveTo(to);
+    await tester.pump();
+    await gesture.up();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final saved = await (db.select(db.inspirations)
+          ..where((t) => t.id.equals(inspId)))
+        .getSingle();
+    expect(saved.sectionId, 1, reason: '灵感应挂到节 1');
+    expect(find.byKey(const Key('魔毯小球')), findsOneWidget,
+        reason: '拖入后魔毯自动缩球');
   });
 
   testWidgets('点右＋：节挂到最新一章、按章内序号命名', (tester) async {

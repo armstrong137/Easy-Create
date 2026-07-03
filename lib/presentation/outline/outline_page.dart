@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/chinese_numbers.dart';
+import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import '../../domain/entities/outline_chapter.dart';
 import '../section/section_page.dart';
@@ -38,6 +39,9 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     vsync: this,
     duration: const Duration(milliseconds: 700),
   );
+
+  /// 魔毯句柄：拖拽落点后调 collapse() 自动缩球（定稿）
+  final _carpetKey = GlobalKey<MagicCarpetState>();
 
   /// 正在生长的枝（章/节 id，动画结束后清空）
   int? _growingChapterId;
@@ -159,6 +163,32 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     }
   }
 
+  /// 拖拽落点：灵感挂到节；落在章上则挂到该章最新一节（假设待终审）
+  Future<void> _dropInspiration(
+      Inspiration inspiration, PlacedLabel label,
+      List<OutlineChapter> outline) async {
+    int? sectionId = label.sectionId;
+    if (sectionId == null && label.chapterId != null) {
+      final chapter = outline
+          .where((c) => c.chapter.id == label.chapterId)
+          .firstOrNull;
+      if (chapter == null || chapter.sections.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('这一章还没有小节，先点右边的＋长一根节枝')),
+        );
+        return;
+      }
+      sectionId = chapter.sections.last.id;
+    }
+    if (sectionId == null) return;
+
+    await ref
+        .read(inspirationRepositoryProvider)
+        .assignToSection(inspiration.id, sectionId);
+    // 拖入后魔毯自动缩回小球（定稿）
+    _carpetKey.currentState?.collapse();
+  }
+
   /// 长按：弹出 编辑/删除 选项
   Future<void> _showBranchMenu(PlacedLabel label) async {
     final action = await showModalBottomSheet<String>(
@@ -241,17 +271,31 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                   ),
                 ),
               ),
-              // 枝端文字的透明交互热区（外扩 8px 便于手指命中）
+              // 枝端文字的透明交互热区（外扩 8px 便于手指命中），
+              // 同时是灵感拖拽的落点（DragTarget）
               for (final label in labels)
                 Positioned.fromRect(
                   rect: label.rect.inflate(8),
-                  child: GestureDetector(
-                    key: Key(label.chapterId != null
-                        ? '章热区_${label.chapterId}'
-                        : '节热区_${label.sectionId}'),
-                    behavior: HitTestBehavior.translucent,
-                    onLongPress: () => _showBranchMenu(label),
-                    onDoubleTap: () => _onDoubleTap(label),
+                  child: DragTarget<Inspiration>(
+                    onAcceptWithDetails: (details) =>
+                        _dropInspiration(details.data, label, outline),
+                    builder: (context, candidates, _) => DecoratedBox(
+                      // 拖拽悬停时枝端泛金光提示可放下
+                      decoration: BoxDecoration(
+                        color: candidates.isNotEmpty
+                            ? const Color(0x33E9B84C)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: GestureDetector(
+                        key: Key(label.chapterId != null
+                            ? '章热区_${label.chapterId}'
+                            : '节热区_${label.sectionId}'),
+                        behavior: HitTestBehavior.translucent,
+                        onLongPress: () => _showBranchMenu(label),
+                        onDoubleTap: () => _onDoubleTap(label),
+                      ),
+                    ),
                   ),
                 ),
               // 左＋：长章（偏上放置，避开中部枝端标题）
@@ -273,10 +317,10 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                 ),
               ),
               // 灵感魔毯：右上角，永远最顶层（Stack 末位）
-              const Positioned(
+              Positioned(
                 top: 8,
                 right: 12,
-                child: MagicCarpet(),
+                child: MagicCarpet(key: _carpetKey),
               ),
             ],
           );

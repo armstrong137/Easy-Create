@@ -143,7 +143,7 @@ class MagicCarpetState extends ConsumerState<MagicCarpet> {
   }
 }
 
-/// 魔毯上的一条灵感（阶段五·3 将包上 Draggable）
+/// 魔毯上的一条灵感：长按拖起，可放到树上章/节标签（DragTarget 在大纲页）
 class CarpetItem extends StatelessWidget {
   const CarpetItem({super.key, required this.inspiration});
 
@@ -151,8 +151,48 @@ class CarpetItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final tile = _tile();
+    // 长按拖拽（列表内普通 Draggable 会与滚动手势冲突）
+    return LongPressDraggable<Inspiration>(
       key: Key('魔毯灵感_${inspiration.id}'),
+      data: inspiration,
+      dragAnchorStrategy: pointerDragAnchorStrategy,
+      // 拖起时的浮影：一张发光的小灵感卡
+      feedback: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: 200,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: kCarpetDeepRed,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: kCarpetGold, width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: kCarpetGold.withValues(alpha: 0.4),
+                blurRadius: 12,
+              ),
+            ],
+          ),
+          child: Text(
+            inspiration.content,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontFamily: 'LXGWWenKai',
+              color: Colors.white,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ),
+      childWhenDragging: Opacity(opacity: 0.3, child: tile),
+      child: tile,
+    );
+  }
+
+  Widget _tile() {
+    return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
