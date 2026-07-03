@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-02 22:29:10　对应提交：db0ee9b 之后的工作区状态
+> 生成时间：2026-07-02 22:52:00　对应提交：eb5ef95 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,26 +12,26 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     60
-  Nodes:     834
-  Edges:     1,790
-  DB Size:   2.55 MB
+  Files:     61
+  Nodes:     859
+  Edges:     1,870
+  DB Size:   2.71 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          296
-  import          187
-  function        96
+  method          301
+  import          203
+  function        97
   constant        91
-  class           88
-  file            56
+  class           90
+  file            57
   type_alias      12
   variable        7
   namespace       1
 
 Files by Language:
-  dart            41
+  dart            42
   kotlin          4
   javascript      3
   swift           3
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (60 files):
+Project Structure (61 files):
 
 |-- .claude
 |   `-- skills
@@ -121,9 +121,10 @@ Project Structure (60 files):
 |   |   |   |-- pencil_tree_painter.dart (dart, 10 symbols)
 |   |   |   `-- tree_model.dart (dart, 9 symbols)
 |   |   |-- section
-|   |   |   |-- card_deck_sheet.dart (dart, 11 symbols)
+|   |   |   |-- card_deck_sheet.dart (dart, 12 symbols)
+|   |   |   |-- card_editor_page.dart (dart, 12 symbols)
 |   |   |   |-- inspiration_card.dart (dart, 4 symbols)
-|   |   |   `-- section_page.dart (dart, 16 symbols)
+|   |   |   `-- section_page.dart (dart, 17 symbols)
 |   |   `-- shared
 |   |       `-- quick_capture
 |   |           |-- capture_button_prefs.dart (dart, 9 symbols)
@@ -142,11 +143,11 @@ Project Structure (60 files):
 |       |-- home_page_test.dart (dart, 20 symbols)
 |       |-- magic_carpet_test.dart (dart, 13 symbols)
 |       |-- orbiting_inspirations_test.dart (dart, 10 symbols)
-|       |-- outline_page_test.dart (dart, 16 symbols)
-|       |-- quick_capture_test.dart (dart, 13 symbols)
-|       |-- section_page_test.dart (dart, 12 symbols)
+|       |-- outline_page_test.dart (dart, 17 symbols)
+|       |-- quick_capture_test.dart (dart, 16 symbols)
+|       |-- section_page_test.dart (dart, 17 symbols)
 |       |-- tree_model_test.dart (dart, 10 symbols)
-|       `-- voice_capture_test.dart (dart, 19 symbols)
+|       `-- voice_capture_test.dart (dart, 22 symbols)
 |-- analysis_options.yaml (yaml, 0 symbols)
 `-- pubspec.yaml (yaml, 0 symbols)
 

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import 'card_deck_sheet.dart';
+import 'card_editor_page.dart';
 import 'inspiration_card.dart';
 
 /// 某小节的卡堆流（按 card_order 升序，最后一张=最新拖入）
@@ -89,8 +90,13 @@ class _SectionPageState extends ConsumerState<SectionPage> {
                   child: InspirationCard(
                     key: Key('主区卡_${latest.id}'),
                     content: latest.content,
-                    // TODO(阶段六·4)：点开单卡进入全文编辑器
-                    onTap: () {},
+                    // 点开单卡 → 全文编辑器（无字数上限）
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            CardEditorPage(inspiration: latest),
+                      ),
+                    ),
                   ),
                 ),
               ),

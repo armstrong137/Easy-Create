@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:novel_app/data/database/app_database.dart';
 import 'package:novel_app/data/providers.dart';
 import 'package:novel_app/main.dart';
+import 'package:novel_app/presentation/home/home_page.dart';
+import 'package:novel_app/presentation/home/planet_view.dart';
 import 'package:novel_app/presentation/shared/quick_capture/capture_button_prefs.dart';
 
 /// 阶段二 widget 测试：全局双速记按钮 + 文字输入弹层
@@ -28,6 +32,13 @@ void main() {
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
           appDatabaseProvider.overrideWithValue(db),
+          // 首页的三路数据一律 override：真 drift 流会挂死，
+          // shader/纹理是真实 IO 也会挂（2026-07-02 教训）
+          novelsProvider.overrideWith((ref) => Stream.value(const [])),
+          inspirationPoolProvider
+              .overrideWith((ref) => Stream.value(const [])),
+          planetAssetsProvider.overrideWith(
+              (ref, planet) => Completer<PlanetShaderAssets>().future),
         ],
         child: const NovelApp(),
       ),

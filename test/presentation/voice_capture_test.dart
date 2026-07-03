@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:novel_app/data/database/app_database.dart';
 import 'package:novel_app/data/providers.dart';
 import 'package:novel_app/main.dart';
+import 'package:novel_app/presentation/home/home_page.dart';
+import 'package:novel_app/presentation/home/planet_view.dart';
 import 'package:novel_app/presentation/shared/quick_capture/capture_button_prefs.dart';
 import 'package:novel_app/presentation/shared/quick_capture/speech_service.dart';
 
@@ -56,6 +60,12 @@ void main() {
           sharedPreferencesProvider.overrideWithValue(prefs),
           appDatabaseProvider.overrideWithValue(db),
           speechServiceProvider.overrideWithValue(speech),
+          // 首页三路数据一律 override（真 drift 流/真 IO 会挂死）
+          novelsProvider.overrideWith((ref) => Stream.value(const [])),
+          inspirationPoolProvider
+              .overrideWith((ref) => Stream.value(const [])),
+          planetAssetsProvider.overrideWith(
+              (ref, planet) => Completer<PlanetShaderAssets>().future),
         ],
         child: const NovelApp(),
       ),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
+import 'card_editor_page.dart';
 import 'section_page.dart' show sectionCardsProvider;
 
 /// 弹出卡片包：全部卡片展开浏览（Dock 式滑出），长按拖动重排序
@@ -82,8 +83,13 @@ class _DeckTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
       key: Key('包内卡_${card.id}'),
+      // 点缩略卡 → 全文编辑器
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => CardEditorPage(inspiration: card)),
+      ),
+      child: Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -104,6 +110,7 @@ class _DeckTile extends StatelessWidget {
           height: 1.5,
           color: Colors.black87,
         ),
+      ),
       ),
     );
   }

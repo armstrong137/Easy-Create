@@ -10,6 +10,8 @@ import 'package:novel_app/presentation/home/home_page.dart'
     show inspirationPoolProvider;
 import 'package:novel_app/presentation/outline/outline_page.dart';
 import 'package:novel_app/presentation/outline/pencil_tree_painter.dart';
+import 'package:novel_app/presentation/section/section_page.dart'
+    show sectionCardsProvider;
 
 /// 阶段四：大纲页（铅笔树 + 玻璃＋号）
 ///
@@ -47,6 +49,9 @@ void main() {
           // 魔毯也在大纲页上，灵感池流必须 override（防 drift 流挂死）
           inspirationPoolProvider
               .overrideWith((ref) => Stream.value(pool)),
+          // 双击节会进小节页（watch 卡堆流），同样必须 override
+          sectionCardsProvider
+              .overrideWith((ref, sectionId) => Stream.value(const [])),
         ],
         child: const MaterialApp(
           home: OutlinePage(novelId: 1, title: '测试小说'),
