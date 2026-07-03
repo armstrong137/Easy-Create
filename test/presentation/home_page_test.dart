@@ -1,48 +1,59 @@
 import 'dart:async';
 
+import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:novel_app/core/creative_energy.dart';
 import 'package:novel_app/data/database/app_database.dart';
+import 'package:novel_app/data/providers.dart';
 import 'package:novel_app/main.dart';
 import 'package:novel_app/presentation/home/home_page.dart';
 import 'package:novel_app/presentation/home/planet_view.dart';
 import 'package:novel_app/presentation/home/starfield.dart';
 import 'package:novel_app/presentation/shared/quick_capture/capture_button_prefs.dart';
 
-/// 阶段三·1：首页星空与创作能量联动
+/// 阶段三：首页创作宇宙（多星球 + 能量联动）
 ///
-/// 注意：这里 override 灵感池 provider 注入固定数据，绝不让真 drift 流
-/// 进入 widget 测试——drift 查询流在 FakeAsync 拆卸时的 pending timer
-/// 会挂死整个测试进程（2026-07-02 教训，详见项目记忆）。
-/// drift 流本身的正确性由 test/data/repositories_test.dart 覆盖。
+/// 注意：所有 drift 流一律 overrideWith 固定 Stream——真 drift 流进
+/// widget 测试会 pending timer 挂死（2026-07-02 教训，见项目记忆）；
+/// shader/纹理加载是真实 IO，注入永不完成的 Future 跳过星球渲染。
 void main() {
+  late AppDatabase db;
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    db = AppDatabase.forTesting(NativeDatabase.memory());
   });
 
-  /// 造一条测试灵感（只有数量影响亮度，内容无关紧要）
-  Inspiration fakeInspiration(int id) => Inspiration(
+  tearDown(() async => db.close());
+
+  Novel fakeNovel(int id, String title, {String planet = 'earth'}) => Novel(
         id: id,
-        content: '灵感$id',
+        title: title,
+        planet: planet,
+        sortOrder: id,
         createdAt: DateTime(2026, 7, 1),
-        updatedAt: DateTime(2026, 7, 1),
-        cardOrder: 0,
       );
 
-  Future<void> pumpApp(WidgetTester tester,
-      {required List<Inspiration> pool}) async {
+  Future<void> pumpApp(
+    WidgetTester tester, {
+    List<Novel> novels = const [],
+    int creativeCount = 0,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
-          // 固定数据流：立即发出并结束，无 pending timer
-          inspirationPoolProvider.overrideWith((ref) => Stream.value(pool)),
-          // shader/纹理是真实 IO，FakeAsync 中会挂死——注入永不完成的
-          // Future 让星球分支不渲染；shader 渲染由模拟器冒烟验证
+          appDatabaseProvider.overrideWithValue(db),
+          novelsProvider.overrideWith((ref) => Stream.value(novels)),
+          inspirationPoolProvider
+              .overrideWith((ref) => Stream.value(const [])),
+          creativeCountProvider.overrideWith(
+              (ref, novelId) => Stream.value(creativeCount)),
           planetAssetsProvider.overrideWith(
               (ref, planet) => Completer<PlanetShaderAssets>().future),
         ],
@@ -52,19 +63,49 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('首页显示星空，零灵感时亮度为下限（最暗）', (tester) async {
-    await pumpApp(tester, pool: const []);
+  testWidgets('空宇宙：星空最暗 + 邀请创建文案', (tester) async {
+    await pumpApp(tester);
 
     final starfield = tester.widget<Starfield>(find.byType(Starfield));
     expect(starfield.brightness, kStarBrightnessMin);
+    expect(find.textContaining('点亮第一颗星球'), findsOneWidget);
   });
 
-  testWidgets('灵感入池后星空变亮且不超上限', (tester) async {
-    await pumpApp(tester, pool: [fakeInspiration(1), fakeInspiration(2)]);
+  testWidgets('有小说且有创作量：星空亮于下限，显示书名', (tester) async {
+    await pumpApp(tester,
+        novels: [fakeNovel(1, '群星的回声')], creativeCount: 8);
 
     final starfield = tester.widget<Starfield>(find.byType(Starfield));
-    expect(starfield.brightness, greaterThan(kStarBrightnessMin),
-        reason: '有创作量后星光应高于下限');
+    expect(starfield.brightness, greaterThan(kStarBrightnessMin));
     expect(starfield.brightness, lessThanOrEqualTo(kStarBrightnessMax));
+    expect(find.text('群星的回声'), findsOneWidget);
+  });
+
+  testWidgets('点标题弹创建对话框，输入书名确认后落库、纹理自动分配', (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.byKey(const Key('创建新星球标题')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+        find.byKey(const Key('新星球书名输入框')), '第二颗行星');
+    await tester.tap(find.byKey(const Key('新星球确认按钮')));
+    await tester.pumpAndSettle();
+
+    final saved = await db.select(db.novels).get();
+    expect(saved.single.title, '第二颗行星');
+    expect(saved.single.planet, 'earth', reason: '第 1 颗星球分配 earth 纹理');
+  });
+
+  testWidgets('取消创建或空书名不落库', (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.byKey(const Key('创建新星球标题')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('新星球确认按钮'))); // 空书名直接确认
+    await tester.pumpAndSettle();
+
+    final saved = await db.select(db.novels).get();
+    expect(saved, isEmpty);
   });
 }

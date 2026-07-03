@@ -110,6 +110,29 @@ class NovelRepository {
   Future<void> deleteSection(int id) =>
       (_db.delete(_db.sections)..where((t) => t.id.equals(id))).go();
 
+  // ---------- 创作能量 ----------
+
+  /// 监听某小说的创作量 = 章数 + 节数 + 挂在其小节下的灵感数
+  /// （首页星球转速与星空亮度的数据源；魔毯中未归属的灵感不计入）
+  Stream<int> watchCreativeCount(int novelId) {
+    final query = _db.customSelect(
+      '''
+      SELECT
+        (SELECT COUNT(*) FROM chapters WHERE novel_id = ?1)
+        + (SELECT COUNT(*) FROM sections s
+             JOIN chapters c ON s.chapter_id = c.id
+             WHERE c.novel_id = ?1)
+        + (SELECT COUNT(*) FROM inspirations i
+             JOIN sections s ON i.section_id = s.id
+             JOIN chapters c ON s.chapter_id = c.id
+             WHERE c.novel_id = ?1) AS total
+      ''',
+      variables: [Variable.withInt(novelId)],
+      readsFrom: {_db.chapters, _db.sections, _db.inspirations},
+    );
+    return query.watchSingle().map((row) => row.read<int>('total'));
+  }
+
   // ---------- 内部工具 ----------
 
   /// 查某表（可加条件）当前最大 sort_order，空表返回 -1

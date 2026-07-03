@@ -69,6 +69,28 @@ void main() {
     });
   });
 
+  group('创作能量计数（首页转速/亮度数据源）', () {
+    test('新小说创作量为 0；章节与挂靠灵感累加；魔毯灵感不计入', () async {
+      final novel = await novelRepo.createNovel(title: '书', planet: 'earth');
+      expect(await novelRepo.watchCreativeCount(novel.id).first, 0);
+
+      final chapter =
+          await novelRepo.createChapter(novelId: novel.id, title: '一章');
+      final section =
+          await novelRepo.createSection(chapterId: chapter.id, title: '一节');
+      expect(await novelRepo.watchCreativeCount(novel.id).first, 2,
+          reason: '1 章 + 1 节');
+
+      final insp = await inspirationRepo.addInspiration('灵感');
+      expect(await novelRepo.watchCreativeCount(novel.id).first, 2,
+          reason: '魔毯灵感不归属任何小说');
+
+      await inspirationRepo.assignToSection(insp.id, section.id);
+      expect(await novelRepo.watchCreativeCount(novel.id).first, 3,
+          reason: '挂入小节后计入该小说');
+    });
+  });
+
   group('灵感生命周期（用户定稿四规则）', () {
     test('规则一：新灵感入池，section_id 为 NULL', () async {
       final insp = await inspirationRepo.addInspiration('一个灵感');

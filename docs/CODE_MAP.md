@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-02 20:43:33　对应提交：974625b 之后的工作区状态
+> 生成时间：2026-07-02 20:53:46　对应提交：5756ecc 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,18 +13,18 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     43
-  Nodes:     642
-  Edges:     1,237
-  DB Size:   1.65 MB
+  Nodes:     654
+  Edges:     1,276
+  DB Size:   1.77 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          256
-  import          109
-  constant        77
+  method          260
+  import          112
+  constant        80
   function        74
-  class           67
+  class           69
   file            39
   type_alias      12
   variable        7
@@ -100,11 +100,11 @@ Project Structure (43 files):
 |   |   |   `-- tables.dart (dart, 25 symbols)
 |   |   |-- repositories
 |   |   |   |-- inspiration_repository.dart (dart, 11 symbols)
-|   |   |   `-- novel_repository.dart (dart, 17 symbols)
+|   |   |   `-- novel_repository.dart (dart, 18 symbols)
 |   |   `-- providers.dart (dart, 8 symbols)
 |   |-- presentation
 |   |   |-- home
-|   |   |   |-- home_page.dart (dart, 13 symbols)
+|   |   |   |-- home_page.dart (dart, 21 symbols)
 |   |   |   |-- orbiting_inspirations.dart (dart, 14 symbols)
 |   |   |   |-- planet_view.dart (dart, 19 symbols)
 |   |   |   `-- starfield.dart (dart, 13 symbols)
@@ -122,7 +122,7 @@ Project Structure (43 files):
 |   |-- data
 |   |   `-- repositories_test.dart (dart, 9 symbols)
 |   `-- presentation
-|       |-- home_page_test.dart (dart, 17 symbols)
+|       |-- home_page_test.dart (dart, 20 symbols)
 |       |-- orbiting_inspirations_test.dart (dart, 10 symbols)
 |       |-- quick_capture_test.dart (dart, 13 symbols)
 |       `-- voice_capture_test.dart (dart, 19 symbols)
