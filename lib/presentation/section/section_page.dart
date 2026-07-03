@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
+import 'inspiration_card.dart';
 
-/// 小节页（阶段四·3 雏形：顶部可编辑标题；卡堆与编辑器在阶段六实现）
+/// 某小节的卡堆流（按 card_order 升序，最后一张=最新拖入）
+final sectionCardsProvider =
+    StreamProvider.family<List<Inspiration>, int>(
+  (ref, sectionId) =>
+      ref.watch(inspirationRepositoryProvider).watchSectionCards(sectionId),
+);
+
+/// 小节页｜信用卡卡堆（阶段六·1：标题 + 主区最新一张灵感卡）
 class SectionPage extends ConsumerStatefulWidget {
   const SectionPage({
     super.key,
@@ -55,11 +64,35 @@ class _SectionPageState extends ConsumerState<SectionPage> {
           onTapOutside: (_) => _saveTitle(),
         ),
       ),
-      body: const Center(
-        child: Text(
-          '灵感卡堆（阶段六实现）',
-          style: TextStyle(color: Colors.black38),
-        ),
+      body: Consumer(
+        builder: (context, ref, _) {
+          final cards =
+              ref.watch(sectionCardsProvider(widget.sectionId)).value ??
+                  const [];
+          if (cards.isEmpty) {
+            return const Center(
+              child: Text(
+                '还没有灵感卡\n去魔毯上拖一条过来，或随手速记',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.black38, height: 1.8),
+              ),
+            );
+          }
+          // 主区默认只显示最新一张（卡堆顺序最后 = 最新拖入，假设待终审）
+          final latest = cards.last;
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: InspirationCard(
+                key: Key('主区卡_${latest.id}'),
+                content: latest.content,
+                // TODO(阶段六·4)：点开单卡进入全文编辑器
+                onTap: () {},
+              ),
+            ),
+          );
+          // TODO(阶段六·2)：底部卡片包 Dock 式展开全部卡片
+        },
       ),
     );
   }

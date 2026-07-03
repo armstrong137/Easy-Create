@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-02 22:21:54　对应提交：f53cc44 之后的工作区状态
+> 生成时间：2026-07-02 22:26:35　对应提交：672e6b0 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,26 +12,26 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     57
-  Nodes:     802
-  Edges:     1,708
-  DB Size:   2.38 MB
+  Files:     59
+  Nodes:     819
+  Edges:     1,751
+  DB Size:   2.44 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          291
-  import          172
-  function        92
-  constant        90
-  class           84
-  file            53
+  method          292
+  import          181
+  function        95
+  constant        91
+  class           85
+  file            55
   type_alias      12
   variable        7
   namespace       1
 
 Files by Language:
-  dart            38
+  dart            40
   kotlin          4
   javascript      3
   swift           3
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (57 files):
+Project Structure (59 files):
 
 |-- .claude
 |   `-- skills
@@ -121,7 +121,8 @@ Project Structure (57 files):
 |   |   |   |-- pencil_tree_painter.dart (dart, 10 symbols)
 |   |   |   `-- tree_model.dart (dart, 9 symbols)
 |   |   |-- section
-|   |   |   `-- section_page.dart (dart, 10 symbols)
+|   |   |   |-- inspiration_card.dart (dart, 4 symbols)
+|   |   |   `-- section_page.dart (dart, 13 symbols)
 |   |   `-- shared
 |   |       `-- quick_capture
 |   |           |-- capture_button_prefs.dart (dart, 9 symbols)
@@ -142,6 +143,7 @@ Project Structure (57 files):
 |       |-- orbiting_inspirations_test.dart (dart, 10 symbols)
 |       |-- outline_page_test.dart (dart, 16 symbols)
 |       |-- quick_capture_test.dart (dart, 13 symbols)
+|       |-- section_page_test.dart (dart, 12 symbols)
 |       |-- tree_model_test.dart (dart, 10 symbols)
 |       `-- voice_capture_test.dart (dart, 19 symbols)
 |-- analysis_options.yaml (yaml, 0 symbols)
