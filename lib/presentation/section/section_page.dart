@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
+import 'card_deck_sheet.dart';
 import 'inspiration_card.dart';
 
 /// 某小节的卡堆流（按 card_order 升序，最后一张=最新拖入）
@@ -80,19 +81,69 @@ class _SectionPageState extends ConsumerState<SectionPage> {
           }
           // 主区默认只显示最新一张（卡堆顺序最后 = 最新拖入，假设待终审）
           final latest = cards.last;
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(28),
-              child: InspirationCard(
-                key: Key('主区卡_${latest.id}'),
-                content: latest.content,
-                // TODO(阶段六·4)：点开单卡进入全文编辑器
-                onTap: () {},
+          return Stack(
+            children: [
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(28),
+                  child: InspirationCard(
+                    key: Key('主区卡_${latest.id}'),
+                    content: latest.content,
+                    // TODO(阶段六·4)：点开单卡进入全文编辑器
+                    onTap: () {},
+                  ),
+                ),
               ),
-            ),
+              // 底部中央：卡片包入口（点开 Dock 式展开全部卡片）
+              Align(
+                alignment: const Alignment(0, 0.96),
+                child: _DeckButton(
+                  count: cards.length,
+                  onTap: () =>
+                      showCardDeckSheet(context, widget.sectionId),
+                ),
+              ),
+            ],
           );
-          // TODO(阶段六·2)：底部卡片包 Dock 式展开全部卡片
         },
+      ),
+    );
+  }
+}
+
+/// 卡片包入口按钮：叠层卡片图标 + 张数
+class _DeckButton extends StatelessWidget {
+  const _DeckButton({required this.count, required this.onTap});
+
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: Colors.black, width: 1.2),
+      ),
+      child: InkWell(
+        key: const Key('卡片包按钮'),
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Padding(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.style_outlined, size: 18),
+              const SizedBox(width: 6),
+              Text('卡片包 $count',
+                  style: const TextStyle(
+                      fontFamily: 'LXGWWenKai', fontSize: 13)),
+            ],
+          ),
+        ),
       ),
     );
   }

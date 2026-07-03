@@ -75,6 +75,18 @@ class InspirationRepository {
       (_db.delete(_db.inspirations)..where((t) => t.id.equals(inspirationId)))
           .go();
 
+  /// 卡堆重排序：按 [orderedIds] 的新顺序重写 card_order（0..n-1），
+  /// 事务保证原子性（长按拖动重排的持久化）
+  Future<void> reorderCards(List<int> orderedIds) {
+    return _db.transaction(() async {
+      for (var i = 0; i < orderedIds.length; i++) {
+        await (_db.update(_db.inspirations)
+              ..where((t) => t.id.equals(orderedIds[i])))
+            .write(InspirationsCompanion(cardOrder: Value(i)));
+      }
+    });
+  }
+
   /// 编辑灵感正文（卡片全文编辑器保存时调用），刷新修改时间
   Future<void> updateContent(int inspirationId, String content) =>
       (_db.update(_db.inspirations)..where((t) => t.id.equals(inspirationId)))

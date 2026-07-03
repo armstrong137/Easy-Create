@@ -49,6 +49,20 @@ void main() {
     expect(find.text('第一张卡'), findsNothing, reason: '主区默认只显示最新一张');
   });
 
+  testWidgets('点卡片包按钮展开全部卡片', (tester) async {
+    await pumpSection(tester, [
+      fake(1, '第一张卡', 0),
+      fake(2, '最新的卡', 1),
+    ]);
+
+    await tester.tap(find.byKey(const Key('卡片包按钮')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('包内卡_1')), findsOneWidget);
+    expect(find.byKey(const Key('包内卡_2')), findsOneWidget);
+    expect(find.textContaining('卡片包 · 2 张'), findsOneWidget);
+  });
+
   testWidgets('超长内容省略显示（不撑爆屏幕）', (tester) async {
     final long = '灵感' * 3000; // 6000 字
     await pumpSection(tester, [fake(1, long, 0)]);

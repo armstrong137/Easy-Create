@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-02 22:26:35　对应提交：672e6b0 之后的工作区状态
+> 生成时间：2026-07-02 22:29:10　对应提交：db0ee9b 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,26 +12,26 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     59
-  Nodes:     819
-  Edges:     1,751
-  DB Size:   2.44 MB
+  Files:     60
+  Nodes:     834
+  Edges:     1,790
+  DB Size:   2.55 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          292
-  import          181
-  function        95
+  method          296
+  import          187
+  function        96
   constant        91
-  class           85
-  file            55
+  class           88
+  file            56
   type_alias      12
   variable        7
   namespace       1
 
 Files by Language:
-  dart            40
+  dart            41
   kotlin          4
   javascript      3
   swift           3
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (59 files):
+Project Structure (60 files):
 
 |-- .claude
 |   `-- skills
@@ -101,7 +101,7 @@ Project Structure (59 files):
 |   |   |   |-- app_database.g.dart (dart, 237 symbols)
 |   |   |   `-- tables.dart (dart, 25 symbols)
 |   |   |-- repositories
-|   |   |   |-- inspiration_repository.dart (dart, 11 symbols)
+|   |   |   |-- inspiration_repository.dart (dart, 12 symbols)
 |   |   |   `-- novel_repository.dart (dart, 20 symbols)
 |   |   `-- providers.dart (dart, 8 symbols)
 |   |-- domain
@@ -121,8 +121,9 @@ Project Structure (59 files):
 |   |   |   |-- pencil_tree_painter.dart (dart, 10 symbols)
 |   |   |   `-- tree_model.dart (dart, 9 symbols)
 |   |   |-- section
+|   |   |   |-- card_deck_sheet.dart (dart, 11 symbols)
 |   |   |   |-- inspiration_card.dart (dart, 4 symbols)
-|   |   |   `-- section_page.dart (dart, 13 symbols)
+|   |   |   `-- section_page.dart (dart, 16 symbols)
 |   |   `-- shared
 |   |       `-- quick_capture
 |   |           |-- capture_button_prefs.dart (dart, 9 symbols)

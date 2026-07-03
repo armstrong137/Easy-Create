@@ -91,6 +91,25 @@ void main() {
     });
   });
 
+  group('卡堆重排序（阶段六·3）', () {
+    test('reorderCards 按新顺序重写 card_order', () async {
+      final sectionId = await createSectionChain();
+      final a = await inspirationRepo.addInspiration('A');
+      final b = await inspirationRepo.addInspiration('B');
+      final c = await inspirationRepo.addInspiration('C');
+      await inspirationRepo.assignToSection(a.id, sectionId);
+      await inspirationRepo.assignToSection(b.id, sectionId);
+      await inspirationRepo.assignToSection(c.id, sectionId);
+
+      // 原顺序 A,B,C → 重排为 C,A,B
+      await inspirationRepo.reorderCards([c.id, a.id, b.id]);
+
+      final cards = await inspirationRepo.watchSectionCards(sectionId).first;
+      expect(cards.map((e) => e.content).toList(), ['C', 'A', 'B']);
+      expect(cards.map((e) => e.cardOrder).toList(), [0, 1, 2]);
+    });
+  });
+
   group('灵感生命周期（用户定稿四规则）', () {
     test('规则一：新灵感入池，section_id 为 NULL', () async {
       final insp = await inspirationRepo.addInspiration('一个灵感');
