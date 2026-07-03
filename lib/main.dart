@@ -20,14 +20,23 @@ Future<void> main() async {
 }
 
 /// App 根组件：全局速记层覆盖在所有页面之上
-class NovelApp extends StatelessWidget {
+class NovelApp extends ConsumerStatefulWidget {
   const NovelApp({super.key});
+
+  @override
+  ConsumerState<NovelApp> createState() => _NovelAppState();
+}
+
+class _NovelAppState extends ConsumerState<NovelApp> {
+  /// 弹出层感知：对话框/菜单弹出时速记按钮自动让位
+  late final ModalAwareObserver _modalObserver = ModalAwareObserver(ref);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Create Something',
       navigatorKey: rootNavigatorKey,
+      navigatorObservers: [_modalObserver],
       scaffoldMessengerKey: rootScaffoldMessengerKey,
       theme: ThemeData(
         // 黑白素净基调（铅笔树风格），后续 core/ 主题细化

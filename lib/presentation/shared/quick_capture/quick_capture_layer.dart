@@ -7,19 +7,33 @@ import 'capture_button_prefs.dart';
 import 'text_capture_sheet.dart';
 import 'voice_capture_sheet.dart';
 
-/// 速记弹层是否打开：打开期间隐藏双按钮（按钮浮在 Navigator 之上，
-/// 否则会遮挡弹层内容）
+/// 当前是否有弹出层（对话框/菜单/底部弹层）：有则隐藏双按钮
+/// （按钮浮在 Navigator 之上，否则会遮挡弹层内容）
 class CaptureSheetOpenNotifier extends Notifier<bool> {
+  /// 当前打开的 PopupRoute 计数（由 [ModalAwareObserver] 维护）
+  int _popupCount = 0;
+
   @override
   bool build() => false;
 
+  void _onPopupPushed() {
+    _popupCount++;
+    state = _popupCount > 0;
+  }
+
+  void _onPopupRemoved() {
+    _popupCount = (_popupCount - 1).clamp(0, 1 << 30);
+    state = _popupCount > 0;
+  }
+
   /// 包裹弹层生命周期：弹出前隐藏按钮，关闭后恢复
+  /// （速记自家弹层用；其它页面的弹层由 [ModalAwareObserver] 自动感知）
   Future<void> during(Future<void> Function() showSheet) async {
     state = true;
     try {
       await showSheet();
     } finally {
-      state = false;
+      state = _popupCount > 0;
     }
   }
 }
@@ -27,6 +41,33 @@ class CaptureSheetOpenNotifier extends Notifier<bool> {
 final captureSheetOpenProvider =
     NotifierProvider<CaptureSheetOpenNotifier, bool>(
         CaptureSheetOpenNotifier.new);
+
+/// 全局路由观察者：任何 PopupRoute（对话框/菜单/底部弹层）出现时
+/// 通知速记按钮让位；普通翻页（PageRoute）不影响
+class ModalAwareObserver extends NavigatorObserver {
+  ModalAwareObserver(this._ref);
+
+  final WidgetRef _ref;
+
+  void _sync(Route<dynamic>? route, bool pushed) {
+    if (route is PopupRoute) {
+      final notifier = _ref.read(captureSheetOpenProvider.notifier);
+      pushed ? notifier._onPopupPushed() : notifier._onPopupRemoved();
+    }
+  }
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      _sync(route, true);
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      _sync(route, false);
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      _sync(route, false);
+}
 
 /// 全局灵感速记层：左下 + 右下双悬浮按钮，覆盖在任何页面之上
 ///
