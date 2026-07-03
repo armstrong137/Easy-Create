@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-02 21:45:43　对应提交：c0cb9eb 之后的工作区状态
+> 生成时间：2026-07-02 21:55:25　对应提交：090716e 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,26 +12,26 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     52
-  Nodes:     735
-  Edges:     1,503
-  DB Size:   2.05 MB
+  Files:     54
+  Nodes:     759
+  Edges:     1,593
+  DB Size:   2.21 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          275
-  import          147
-  function        85
+  method          282
+  import          156
+  function        88
   constant        82
-  class           78
-  file            48
+  class           81
+  file            50
   type_alias      12
   variable        7
   namespace       1
 
 Files by Language:
-  dart            33
+  dart            35
   kotlin          4
   javascript      3
   swift           3
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (52 files):
+Project Structure (54 files):
 
 |-- .claude
 |   `-- skills
@@ -114,9 +114,12 @@ Project Structure (52 files):
 |   |   |   `-- starfield.dart (dart, 13 symbols)
 |   |   |-- outline
 |   |   |   |-- glass_plus_button.dart (dart, 8 symbols)
-|   |   |   |-- outline_page.dart (dart, 18 symbols)
+|   |   |   |-- label_layout.dart (dart, 8 symbols)
+|   |   |   |-- outline_page.dart (dart, 24 symbols)
 |   |   |   |-- pencil_tree_painter.dart (dart, 10 symbols)
 |   |   |   `-- tree_model.dart (dart, 9 symbols)
+|   |   |-- section
+|   |   |   `-- section_page.dart (dart, 10 symbols)
 |   |   `-- shared
 |   |       `-- quick_capture
 |   |           |-- capture_button_prefs.dart (dart, 9 symbols)
@@ -136,7 +139,7 @@ Project Structure (52 files):
 |       |-- orbiting_inspirations_test.dart (dart, 10 symbols)
 |       |-- outline_page_test.dart (dart, 15 symbols)
 |       |-- quick_capture_test.dart (dart, 13 symbols)
-|       |-- tree_model_test.dart (dart, 9 symbols)
+|       |-- tree_model_test.dart (dart, 10 symbols)
 |       `-- voice_capture_test.dart (dart, 19 symbols)
 |-- analysis_options.yaml (yaml, 0 symbols)
 `-- pubspec.yaml (yaml, 0 symbols)

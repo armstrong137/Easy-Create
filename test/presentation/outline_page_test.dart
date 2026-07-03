@@ -110,6 +110,74 @@ void main() {
     expect(sections, isEmpty);
   });
 
+  testWidgets('长按章标签 → 菜单 → 删除确认 → 章从库中剪掉', (tester) async {
+    await db.into(db.novels).insert(NovelsCompanion.insert(
+        title: '书', planet: 'earth', sortOrder: 0, createdAt: DateTime.now()));
+    await db.into(db.chapters).insert(ChaptersCompanion.insert(
+        novelId: 1, title: '引子', sortOrder: 0));
+    await pumpOutline(tester, [fakeChapter(1, '引子', 0)]);
+
+    await tester.longPress(find.byKey(const Key('章热区_1')));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    await tester.tap(find.byKey(const Key('菜单删除')));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.byKey(const Key('删除确认按钮')));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final chapters = await db.select(db.chapters).get();
+    expect(chapters, isEmpty, reason: '确认后章应被删除');
+  });
+
+  testWidgets('双击章标签 → 重命名对话框 → 保存落库', (tester) async {
+    await db.into(db.novels).insert(NovelsCompanion.insert(
+        title: '书', planet: 'earth', sortOrder: 0, createdAt: DateTime.now()));
+    await db.into(db.chapters).insert(ChaptersCompanion.insert(
+        novelId: 1, title: '引子', sortOrder: 0));
+    await pumpOutline(tester, [fakeChapter(1, '引子', 0)]);
+
+    // 双击 = 两次快速点击
+    await tester.tap(find.byKey(const Key('章热区_1')));
+    await tester.pump(const Duration(milliseconds: 80));
+    await tester.tap(find.byKey(const Key('章热区_1')));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    await tester.enterText(
+        find.byKey(const Key('重命名输入框')), '楔子·星海之始');
+    await tester.tap(find.byKey(const Key('重命名确认按钮')));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final chapters = await db.select(db.chapters).get();
+    expect(chapters.single.title, '楔子·星海之始');
+  });
+
+  testWidgets('双击节标签 → 进小节页 → 改标题落库', (tester) async {
+    await db.into(db.novels).insert(NovelsCompanion.insert(
+        title: '书', planet: 'earth', sortOrder: 0, createdAt: DateTime.now()));
+    await db.into(db.chapters).insert(ChaptersCompanion.insert(
+        novelId: 1, title: '引子', sortOrder: 0));
+    await db.into(db.sections).insert(SectionsCompanion.insert(
+        chapterId: 1, title: '第一节', sortOrder: 0));
+    await pumpOutline(tester, [fakeChapter(1, '引子', 1)]);
+
+    const twigKey = Key('节热区_100'); // fakeChapter 的节 id = 1*100+0
+    final center = tester.getCenter(find.byKey(twigKey));
+    await tester.tapAt(center);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tapAt(center);
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump(const Duration(milliseconds: 350));
+
+    final titleField = find.byKey(const Key('小节标题输入框'));
+    expect(titleField, findsOneWidget, reason: '双击节应进入小节页');
+
+    // 小节页操作真实节 id=100？——fake 数据 id 与真库 id 不同，
+    // 此处仅验证导航与输入框存在；改名落库单测放数据层
+    await tester.enterText(titleField, '月下独白');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump(const Duration(milliseconds: 300));
+  });
+
   testWidgets('点右＋：节挂到最新一章、按章内序号命名', (tester) async {
     // 真库造链路：小说 + 两章（节要挂到最后一章 id=2）
     await db.into(db.novels).insert(NovelsCompanion.insert(

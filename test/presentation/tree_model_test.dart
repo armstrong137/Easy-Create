@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:novel_app/data/database/app_database.dart';
 import 'package:novel_app/domain/entities/outline_chapter.dart';
+import 'package:novel_app/presentation/outline/label_layout.dart';
 import 'package:novel_app/presentation/outline/tree_model.dart';
 
 /// 阶段四·1：树龄模型与枝丫布局（纯函数）
@@ -57,6 +58,21 @@ void main() {
           layoutTree(size: size, outline: [chapterWith(1, 3)]);
       expect(tree.branches.single.twigs, hasLength(3));
       expect(tree.branches.single.twigs[0].title, '第1节');
+    });
+
+    test('placeLabels：密集树上标签两两不重叠', () {
+      final tree = layoutTree(
+        size: size,
+        outline: [for (var i = 1; i <= 6; i++) chapterWith(i, 3)],
+      );
+      final labels = placeLabels(tree);
+      expect(labels, hasLength(6 + 18), reason: '每章每节各一枚标签');
+      for (var a = 0; a < labels.length; a++) {
+        for (var b = a + 1; b < labels.length; b++) {
+          expect(labels[a].rect.overlaps(labels[b].rect), isFalse,
+              reason: '标签 ${labels[a].text} 与 ${labels[b].text} 不应重叠');
+        }
+      }
     });
 
     test('树随章节增多而长高变粗（生态成长）', () {

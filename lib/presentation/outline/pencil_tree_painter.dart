@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'label_layout.dart';
 import 'tree_model.dart';
 
 /// 黑白铅笔手绘树 painter
@@ -12,12 +13,16 @@ import 'tree_model.dart';
 class PencilTreePainter extends CustomPainter {
   PencilTreePainter({
     required this.tree,
+    required this.labels,
     this.growingChapterId,
     this.growingSectionId,
     this.growProgress = 1.0,
   });
 
   final TreeGeometry tree;
+
+  /// 已放置的标签（placeLabels 产出，与交互热区共享同一几何）
+  final List<PlacedLabel> labels;
 
   /// 正在生长的章枝/节枝 id（新建时从根到端画出）
   final int? growingChapterId;
@@ -40,8 +45,6 @@ class PencilTreePainter extends CustomPainter {
     final rng = math.Random(7); // 固定种子：笔触形态稳定不闪烁
 
     _drawTrunk(canvas, rng);
-    // 已放置标签的占位矩形，用于碰撞规避
-    final placed = <Rect>[];
     for (final branch in tree.branches) {
       // 生长动画：新枝从根向端逐渐伸出，长到六成后标题浮现
       final growing = branch.chapterId == growingChapterId;
@@ -63,17 +66,23 @@ class PencilTreePainter extends CustomPainter {
         }
         _drawPencilLine(canvas, twig.start, twigEnd, width: 1.1, rng: rng);
       }
+    }
 
-      // 章标题先画（优先占位），节标签随后自动避让
-      if (!growing || growProgress > 0.6) {
-        _drawLabel(canvas, placed, branch.title, branch.end, branch.leftSide,
-            bold: true);
-      }
-      for (final twig in branch.twigs) {
-        final twigGrowing = twig.sectionId == growingSectionId;
-        if (twigGrowing && growProgress <= 0.6) continue;
-        _drawLabel(canvas, placed, twig.title, twig.end, branch.leftSide);
-      }
+    // 标签：几何已由 placeLabels 决定，这里按生长进度过滤后绘制
+    for (final label in labels) {
+      final growingLabel = (label.chapterId != null &&
+              label.chapterId == growingChapterId) ||
+          (label.sectionId != null && label.sectionId == growingSectionId);
+      if (growingLabel && growProgress <= 0.6) continue;
+
+      final painter = TextPainter(
+        text: TextSpan(
+            text: label.text, style: labelStyle(bold: label.bold)),
+        textDirection: TextDirection.ltr,
+        maxLines: 1,
+        ellipsis: '…',
+      )..layout(maxWidth: 110);
+      painter.paint(canvas, label.rect.topLeft);
     }
   }
 
@@ -165,55 +174,10 @@ class PencilTreePainter extends CustomPainter {
     }
   }
 
-  /// 枝端标题：黑色小字，向枝伸展方向外侧排布
-  ///
-  /// 碰撞规避：依次尝试 枝端上方 → 下方 → 更高 → 更低 → 再外侧，
-  /// 取第一个不与 [placed] 中已放置标签重叠的位置（树密时兜底最后一个）
-  void _drawLabel(Canvas canvas, List<Rect> placed, String text, Offset anchor,
-      bool leftSide,
-      {bool bold = false}) {
-    final painter = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-          fontFamily: 'LXGWWenKai',
-          fontSize: bold ? 14 : 12,
-          fontWeight: bold ? FontWeight.w600 : FontWeight.w400,
-          color: Colors.black,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-      maxLines: 1,
-      ellipsis: '…',
-    )..layout(maxWidth: 110);
-
-    final dx = leftSide ? anchor.dx - painter.width - 6 : anchor.dx + 6;
-    final sideDx = leftSide ? -14.0 : 14.0;
-    final candidates = <Offset>[
-      Offset(dx, anchor.dy - painter.height - 2), // 枝端上方（首选）
-      Offset(dx, anchor.dy + 4), // 枝端下方
-      Offset(dx, anchor.dy - painter.height - 18), // 更高
-      Offset(dx, anchor.dy + 20), // 更低
-      Offset(dx + sideDx, anchor.dy - painter.height - 34), // 再外侧更高
-    ];
-
-    var pos = candidates.last;
-    for (final c in candidates) {
-      final rect =
-          Rect.fromLTWH(c.dx, c.dy, painter.width, painter.height).inflate(2);
-      if (!placed.any((r) => r.overlaps(rect))) {
-        pos = c;
-        break;
-      }
-    }
-    placed.add(
-        Rect.fromLTWH(pos.dx, pos.dy, painter.width, painter.height));
-    painter.paint(canvas, pos);
-  }
-
   @override
   bool shouldRepaint(PencilTreePainter oldDelegate) =>
       oldDelegate.tree != tree ||
+      oldDelegate.labels != labels ||
       oldDelegate.growProgress != growProgress ||
       oldDelegate.growingChapterId != growingChapterId ||
       oldDelegate.growingSectionId != growingSectionId;
