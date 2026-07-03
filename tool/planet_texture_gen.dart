@@ -14,6 +14,8 @@
 ///   --centers=a,b,...     各图真实中心经度（度）。素材若为同一星球的
 ///                         不同真实视角（如地球），按真实经度放置可拼出
 ///                         大陆连续不重复的球面；缺省时均匀分布
+///   --match-color         颜色统一：其余图按球内平均色向第一张图对齐
+///                         （独立生成的素材色调不一，接缝处会有补丁感）
 library;
 
 import 'dart:io';
@@ -26,6 +28,7 @@ void main(List<String> args) {
   var outW = 2048;
   (double, double, double)? circleRatio;
   var mirrorSouth = false;
+  var matchColor = false;
   List<double>? centersDeg;
   final inputPaths = <String>[];
 
@@ -41,6 +44,8 @@ void main(List<String> args) {
       mirrorSouth = true;
     } else if (a.startsWith('--centers=')) {
       centersDeg = a.substring(10).split(',').map(double.parse).toList();
+    } else if (a == '--match-color') {
+      matchColor = true;
     } else {
       inputPaths.add(a);
     }
@@ -94,6 +99,42 @@ void main(List<String> args) {
     stderr.writeln('图$i 球体圆: ${circles[i]}');
   }
 
+  // 颜色统一：算各图球内平均色，其余图向图 0 对齐（每通道线性增益）
+  final gains = List.filled(n, (1.0, 1.0, 1.0));
+  if (matchColor) {
+    final avgs = <(double, double, double)>[];
+    for (var i = 0; i < n; i++) {
+      final (cx, cy, r) = circles[i];
+      var sr = 0.0, sg = 0.0, sb = 0.0;
+      var cnt = 0;
+      // 球内网格抽样（步长取球径 1/60，足够估计均值）
+      final step = math.max(2, (r / 30).round());
+      for (var y = (cy - r).round(); y < cy + r; y += step) {
+        for (var x = (cx - r).round(); x < cx + r; x += step) {
+          final ddx = (x - cx) / r, ddy = (y - cy) / r;
+          if (ddx * ddx + ddy * ddy > 0.81) continue; // 只取球内 90%
+          if (x < 0 || y < 0 || x >= inputs[i].width || y >= inputs[i].height) {
+            continue;
+          }
+          final p = inputs[i].getPixel(x, y);
+          sr += p.r;
+          sg += p.g;
+          sb += p.b;
+          cnt++;
+        }
+      }
+      avgs.add((sr / cnt, sg / cnt, sb / cnt));
+    }
+    for (var i = 1; i < n; i++) {
+      gains[i] = (
+        (avgs[0].$1 / avgs[i].$1).clamp(0.6, 1.7),
+        (avgs[0].$2 / avgs[i].$2).clamp(0.6, 1.7),
+        (avgs[0].$3 / avgs[i].$3).clamp(0.6, 1.7),
+      );
+      stderr.writeln('图$i 颜色增益: ${gains[i]}');
+    }
+  }
+
   // 单图采样：lonRel 为相对该图正面中心的经度
   (int, int, int) samplePlanet(int idx, double lonRel, double latRaw) {
     final lat = mirrorSouth && latRaw < 0 ? -latRaw : latRaw;
@@ -108,8 +149,15 @@ void main(List<String> args) {
     }
     final px = cx + dx * r;
     final py = cy + dy * r;
+    // 颜色统一增益
+    final (gr, gg, gb) = gains[idx];
+    (int, int, int) corrected((int, int, int) c) => (
+          (c.$1 * gr).round().clamp(0, 255),
+          (c.$2 * gg).round().clamp(0, 255),
+          (c.$3 * gb).round().clamp(0, 255),
+        );
     // 边缘区（极区等）渐进模糊抗拉丝
-    if (len <= 0.72) return _bilinear(inputs[idx], px, py);
+    if (len <= 0.72) return corrected(_bilinear(inputs[idx], px, py));
     final blurR = (len - 0.72) / (0.96 - 0.72) * r * 0.055;
     var sr = 0.0, sg = 0.0, sb = 0.0;
     const taps = 8;
@@ -122,11 +170,11 @@ void main(List<String> args) {
       sb += tb;
     }
     final (cr, cg, cb) = _bilinear(inputs[idx], px, py);
-    return (
+    return corrected((
       ((sr + cr) / (taps + 1)).round(),
       ((sg + cg) / (taps + 1)).round(),
       ((sb + cb) / (taps + 1)).round(),
-    );
+    ));
   }
 
   double wrap(double a) {
@@ -147,7 +195,9 @@ void main(List<String> args) {
   final order = List.generate(n, (i) => i)
     ..sort((a, b) => centers[a].compareTo(centers[b]));
   final sorted = [for (final i in order) (center: centers[i], idx: i)];
-  const blendHalf = 0.14; // 混合带半宽（固定约 8°）
+  // 混合带半宽（约 11°）：色差由 --match-color 解决后，
+  // 中等宽度在"消除接缝"与"避免两图内容重影"之间取平衡
+  const blendHalf = 0.20;
 
   final out = img.Image(width: outW, height: outH);
   for (var v = 0; v < outH; v++) {
