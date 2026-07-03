@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-03 06:54:07　对应提交：5dca03f 之后的工作区状态
+> 生成时间：2026-07-03 07:29:28　对应提交：b0d2772 之后的工作区状态
 
 ## 一、索引状态
 
@@ -14,7 +14,7 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 Index Statistics:
   Files:     64
   Nodes:     880
-  Edges:     1,932
+  Edges:     1,929
   DB Size:   2.79 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
@@ -22,8 +22,8 @@ Index Statistics:
 Nodes by Kind:
   method          302
   import          211
-  function        105
-  constant        92
+  function        104
+  constant        93
   class           90
   file            60
   type_alias      12
@@ -94,7 +94,7 @@ Project Structure (64 files):
 |   |   |-- app_keys.dart (dart, 4 symbols)
 |   |   |-- carpet_constants.dart (dart, 11 symbols)
 |   |   |-- chinese_numbers.dart (dart, 5 symbols)
-|   |   `-- creative_energy.dart (dart, 10 symbols)
+|   |   `-- creative_energy.dart (dart, 11 symbols)
 |   |-- data
 |   |   |-- database
 |   |   |   |-- app_database.dart (dart, 9 symbols)
@@ -150,7 +150,7 @@ Project Structure (64 files):
 |       |-- tree_model_test.dart (dart, 10 symbols)
 |       `-- voice_capture_test.dart (dart, 22 symbols)
 |-- tool
-|   |-- planet_texture_gen.dart (dart, 15 symbols)
+|   |-- planet_texture_gen.dart (dart, 14 symbols)
 |   `-- probe_alpha.dart (dart, 4 symbols)
 |-- analysis_options.yaml (yaml, 0 symbols)
 `-- pubspec.yaml (yaml, 0 symbols)

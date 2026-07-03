@@ -22,6 +22,10 @@ const double kPlanetSpinMax = 0.12;
 /// 有内容时的转速起点（圈/秒）：一有创作即开始缓转
 const double kPlanetSpinBase = 0.02;
 
+/// 待机微转（圈/秒）：零创作也缓缓转动（约 2 分钟一圈）
+/// —— 2026-07-03 用户反馈"星球不转像坏了"，静止改为待机微转
+const double kPlanetSpinIdle = 0.008;
+
 /// 转速饱和常数：约 30 条创作量到达上限的 63%
 const double _spinTau = 30;
 
@@ -32,9 +36,9 @@ double starBrightness(int count) {
   return kStarBrightnessMin + (kStarBrightnessMax - kStarBrightnessMin) * t;
 }
 
-/// 创作量 [count] → 星球转速（圈/秒）；零内容严格静止
+/// 创作量 [count] → 星球转速（圈/秒）；零内容待机微转，越创作越快
 double planetSpin(int count) {
-  if (count <= 0) return 0;
+  if (count <= 0) return kPlanetSpinIdle;
   final t = 1 - math.exp(-count / _spinTau);
   return kPlanetSpinBase + (kPlanetSpinMax - kPlanetSpinBase) * t;
 }

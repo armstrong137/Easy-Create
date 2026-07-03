@@ -22,11 +22,12 @@ void main() {
   });
 
   group('星球转速 planetSpin', () {
-    test('零内容严格静止', () {
-      expect(planetSpin(0), 0);
+    test('零内容待机微转（2026-07-03 变更：静止像 bug）', () {
+      expect(planetSpin(0), kPlanetSpinIdle);
+      expect(planetSpin(0), lessThan(kPlanetSpinBase), reason: '待机应慢于创作起步');
     });
 
-    test('一有创作即开始转动（不低于起点转速）', () {
+    test('一有创作即明显加速（不低于起点转速）', () {
       expect(planetSpin(1), greaterThanOrEqualTo(kPlanetSpinBase));
     });
 
