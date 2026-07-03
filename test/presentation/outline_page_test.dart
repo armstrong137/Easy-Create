@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:novel_app/data/database/app_database.dart';
 import 'package:novel_app/data/providers.dart';
 import 'package:novel_app/domain/entities/outline_chapter.dart';
+import 'package:novel_app/presentation/home/home_page.dart'
+    show inspirationPoolProvider;
 import 'package:novel_app/presentation/outline/outline_page.dart';
 import 'package:novel_app/presentation/outline/pencil_tree_painter.dart';
 
@@ -42,6 +44,9 @@ void main() {
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
           outlineProvider.overrideWith((ref, novelId) => Stream.value(outline)),
+          // 魔毯也在大纲页上，灵感池流必须 override（防 drift 流挂死）
+          inspirationPoolProvider
+              .overrideWith((ref) => Stream.value(const [])),
         ],
         child: const MaterialApp(
           home: OutlinePage(novelId: 1, title: '测试小说'),

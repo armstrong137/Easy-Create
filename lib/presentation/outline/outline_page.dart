@@ -7,6 +7,7 @@ import '../../domain/entities/outline_chapter.dart';
 import '../section/section_page.dart';
 import 'glass_plus_button.dart';
 import 'label_layout.dart';
+import 'magic_carpet.dart';
 import 'pencil_tree_painter.dart';
 import 'tree_model.dart';
 
@@ -270,6 +271,12 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                   semanticLabel: '添加新节',
                   onTap: () => _addSection(outline),
                 ),
+              ),
+              // 灵感魔毯：右上角，永远最顶层（Stack 末位）
+              const Positioned(
+                top: 8,
+                right: 12,
+                child: MagicCarpet(),
               ),
             ],
           );
