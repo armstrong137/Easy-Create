@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/app_keys.dart';
+import 'presentation/home/home_page.dart';
 import 'presentation/shared/quick_capture/capture_button_prefs.dart';
 import 'presentation/shared/quick_capture/quick_capture_layer.dart';
 
@@ -35,24 +36,7 @@ class NovelApp extends StatelessWidget {
       ),
       // 用 builder 把速记双按钮叠在 Navigator 之上 → 任何界面可速记
       builder: (context, child) => QuickCaptureLayer(child: child!),
-      home: const _PlaceholderHomePage(),
-    );
-  }
-}
-
-/// 占位首页：阶段三将替换为"创作宇宙"（星空 + 3D 星球）
-class _PlaceholderHomePage extends StatelessWidget {
-  const _PlaceholderHomePage();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Text(
-          'Create Something',
-          style: TextStyle(fontSize: 24),
-        ),
-      ),
+      home: const HomePage(),
     );
   }
 }

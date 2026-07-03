@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-02 17:59:54　对应提交：0c331a2 之后的工作区状态
+> 生成时间：2026-07-02 19:16:53　对应提交：e84cde3 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,26 +12,26 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     35
-  Nodes:     547
-  Edges:     1,030
-  DB Size:   1.39 MB
+  Files:     40
+  Nodes:     596
+  Edges:     1,136
+  DB Size:   1.52 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          238
-  import          72
-  function        65
-  constant        64
-  class           57
-  file            31
+  method          242
+  import          94
+  constant        73
+  function        71
+  class           60
+  file            36
   type_alias      12
   variable        7
   namespace       1
 
 Files by Language:
-  dart            16
+  dart            21
   kotlin          4
   javascript      3
   swift           3
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (35 files):
+Project Structure (40 files):
 
 |-- .claude
 |   `-- skills
@@ -91,7 +91,8 @@ Project Structure (35 files):
 |       `-- RunnerTests.swift (swift, 6 symbols)
 |-- lib
 |   |-- core
-|   |   `-- app_keys.dart (dart, 4 symbols)
+|   |   |-- app_keys.dart (dart, 4 symbols)
+|   |   `-- creative_energy.dart (dart, 10 symbols)
 |   |-- data
 |   |   |-- database
 |   |   |   |-- app_database.dart (dart, 9 symbols)
@@ -102,6 +103,9 @@ Project Structure (35 files):
 |   |   |   `-- novel_repository.dart (dart, 17 symbols)
 |   |   `-- providers.dart (dart, 8 symbols)
 |   |-- presentation
+|   |   |-- home
+|   |   |   |-- home_page.dart (dart, 10 symbols)
+|   |   |   `-- starfield.dart (dart, 13 symbols)
 |   |   `-- shared
 |   |       `-- quick_capture
 |   |           |-- capture_button_prefs.dart (dart, 9 symbols)
@@ -109,11 +113,14 @@ Project Structure (35 files):
 |   |           |-- speech_service.dart (dart, 9 symbols)
 |   |           |-- text_capture_sheet.dart (dart, 11 symbols)
 |   |           `-- voice_capture_sheet.dart (dart, 14 symbols)
-|   `-- main.dart (dart, 12 symbols)
+|   `-- main.dart (dart, 11 symbols)
 |-- test
+|   |-- core
+|   |   `-- creative_energy_test.dart (dart, 4 symbols)
 |   |-- data
 |   |   `-- repositories_test.dart (dart, 9 symbols)
 |   `-- presentation
+|       |-- home_page_test.dart (dart, 15 symbols)
 |       |-- quick_capture_test.dart (dart, 13 symbols)
 |       `-- voice_capture_test.dart (dart, 19 symbols)
 |-- analysis_options.yaml (yaml, 0 symbols)
