@@ -3,7 +3,7 @@
 > 维护规则（用户规定）：每完成一步立即更新本文件，方便其他智能体接力开发。
 > 进度标记：☐ 未开始　🔄 进行中　✅ 已完成
 
-**当前进度：阶段三 · 第 2 步（FragmentShader 星球）**
+**当前进度：阶段三 · 第 4 步（环绕灵感文字）**
 
 ---
 
@@ -46,8 +46,10 @@
 
 - ✅ 1. 程序化星空背景：星点绘制，亮度参数化（随当前小说灵感数变化，有上下限）
   - 2026-07-02 完成：core/creative_energy.dart（亮度/转速指数饱和曲线，封顶保底，数值待阶段七调优）+ home/starfield.dart（固定种子 180 星点）+ home_page.dart（亮度暂由魔毯灵感数驱动，三·5 换当前小说）。重要教训：widget 测试严禁让 StreamProvider 监听真 drift 流（pending timer 挂死进程），必须 overrideWith 固定流；跑测试一律带超时、超时杀 flutter_tester
-- ☐ 2. FragmentShader 星球：球面贴图 + 昼夜光照 + 自转 uniform；接入 NASA 地球纹理
-- ☐ 3. 转速联动：零内容静止，灵感越多转速稍快（肉眼可见、封顶）
+- ✅ 2. FragmentShader 星球：球面贴图 + 昼夜光照 + 自转 uniform；接入 NASA 地球纹理
+  - 2026-07-02 完成：shaders/planet.frag（正交投影球面反解经纬度采样+Lambert 昼夜光照+边缘抗锯齿）+ home/planet_view.dart（Ticker 驱动自转，静止时停帧省电）；纹理 NASA Blue Marble 缩至 2048×1024 入 assets。模拟器实拍验收通过（真实地球+星空效果符合定稿）
+- ✅ 3. 转速联动：零内容静止，灵感越多转速稍快（肉眼可见、封顶）
+  - 2026-07-02 完成：planetSpin 曲线（core/creative_energy.dart，零静止/单调/封顶有单测）已接入 PlanetView；模拟器 10 秒间隔截图对比确认可见自转。注意：转速数据源暂为魔毯灵感数，三·5 改"当前小说灵感数+章节数"
 - ☐ 4. 环绕灵感文字：2.5D 椭圆轨道（缩放+透明度+星球遮挡），加粗黑楷体+细白描边，只显示最近几条、超长省略
 - ☐ 5. 多星球：左右滑动 PageView 切换小说；顶部纯白 "Create Something"（Arabic Typesetting）点击创建新星球（火星/木星/水星等纹理）
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,6 +8,7 @@ import 'package:novel_app/core/creative_energy.dart';
 import 'package:novel_app/data/database/app_database.dart';
 import 'package:novel_app/main.dart';
 import 'package:novel_app/presentation/home/home_page.dart';
+import 'package:novel_app/presentation/home/planet_view.dart';
 import 'package:novel_app/presentation/home/starfield.dart';
 import 'package:novel_app/presentation/shared/quick_capture/capture_button_prefs.dart';
 
@@ -38,6 +41,10 @@ void main() {
           sharedPreferencesProvider.overrideWithValue(prefs),
           // 固定数据流：立即发出并结束，无 pending timer
           inspirationPoolProvider.overrideWith((ref) => Stream.value(pool)),
+          // shader/纹理是真实 IO，FakeAsync 中会挂死——注入永不完成的
+          // Future 让星球分支不渲染；shader 渲染由模拟器冒烟验证
+          planetAssetsProvider.overrideWith(
+              (ref, planet) => Completer<PlanetShaderAssets>().future),
         ],
         child: const NovelApp(),
       ),

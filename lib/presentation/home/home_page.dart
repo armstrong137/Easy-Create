@@ -4,11 +4,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/creative_energy.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
+import 'planet_view.dart';
 import 'starfield.dart';
 
 /// 魔毯灵感池流（首页星空亮度暂由它驱动）
 final inspirationPoolProvider = StreamProvider<List<Inspiration>>(
   (ref) => ref.watch(inspirationRepositoryProvider).watchPool(),
+);
+
+/// 星球 shader 资源（按行星纹理名缓存，如 'earth'）
+final planetAssetsProvider =
+    FutureProvider.family<PlanetShaderAssets, String>(
+  (ref, planet) => PlanetShaderAssets.load(planet),
 );
 
 /// 首页｜创作宇宙
@@ -22,12 +29,22 @@ class HomePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final poolCount = ref.watch(inspirationPoolProvider).value?.length ?? 0;
+    final planetAssets = ref.watch(planetAssetsProvider('earth')).value;
 
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
           Starfield(brightness: starBrightness(poolCount)),
+          // 3D 星球居中；星球与屏宽比例和谐（定稿：星球不能太小）
+          if (planetAssets != null)
+            Center(
+              child: PlanetView(
+                assets: planetAssets,
+                spin: planetSpin(poolCount),
+                diameter: MediaQuery.sizeOf(context).width * 0.62,
+              ),
+            ),
           // 顶部标题：阶段三·5 换 Arabic Typesetting 字体并接"创建新星球"
           const SafeArea(
             child: Align(
