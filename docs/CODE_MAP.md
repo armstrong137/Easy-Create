@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-02 21:35:57　对应提交：ab9d8cd 之后的工作区状态
+> 生成时间：2026-07-02 21:45:43　对应提交：c0cb9eb 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,26 +12,26 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     49
-  Nodes:     707
-  Edges:     1,406
-  DB Size:   1.90 MB
+  Files:     52
+  Nodes:     735
+  Edges:     1,503
+  DB Size:   2.05 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          267
-  import          139
-  constant        81
-  function        80
-  class           75
-  file            45
+  method          275
+  import          147
+  function        85
+  constant        82
+  class           78
+  file            48
   type_alias      12
   variable        7
   namespace       1
 
 Files by Language:
-  dart            30
+  dart            33
   kotlin          4
   javascript      3
   swift           3
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (49 files):
+Project Structure (52 files):
 
 |-- .claude
 |   `-- skills
@@ -92,6 +92,7 @@ Project Structure (49 files):
 |-- lib
 |   |-- core
 |   |   |-- app_keys.dart (dart, 4 symbols)
+|   |   |-- chinese_numbers.dart (dart, 5 symbols)
 |   |   `-- creative_energy.dart (dart, 10 symbols)
 |   |-- data
 |   |   |-- database
@@ -112,7 +113,8 @@ Project Structure (49 files):
 |   |   |   |-- planet_view.dart (dart, 19 symbols)
 |   |   |   `-- starfield.dart (dart, 13 symbols)
 |   |   |-- outline
-|   |   |   |-- outline_page.dart (dart, 10 symbols)
+|   |   |   |-- glass_plus_button.dart (dart, 8 symbols)
+|   |   |   |-- outline_page.dart (dart, 18 symbols)
 |   |   |   |-- pencil_tree_painter.dart (dart, 10 symbols)
 |   |   |   `-- tree_model.dart (dart, 9 symbols)
 |   |   `-- shared
@@ -125,13 +127,14 @@ Project Structure (49 files):
 |   `-- main.dart (dart, 11 symbols)
 |-- test
 |   |-- core
+|   |   |-- chinese_numbers_test.dart (dart, 4 symbols)
 |   |   `-- creative_energy_test.dart (dart, 4 symbols)
 |   |-- data
 |   |   `-- repositories_test.dart (dart, 9 symbols)
 |   `-- presentation
 |       |-- home_page_test.dart (dart, 20 symbols)
 |       |-- orbiting_inspirations_test.dart (dart, 10 symbols)
-|       |-- outline_page_test.dart (dart, 11 symbols)
+|       |-- outline_page_test.dart (dart, 15 symbols)
 |       |-- quick_capture_test.dart (dart, 13 symbols)
 |       |-- tree_model_test.dart (dart, 9 symbols)
 |       `-- voice_capture_test.dart (dart, 19 symbols)

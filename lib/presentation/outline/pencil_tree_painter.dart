@@ -10,9 +10,21 @@ import 'tree_model.dart';
 /// 模拟铅笔笔触；岁月痕迹随 [TreeGeometry.age] 增加——
 /// 树干边线加重、内部排线阴影加密、出现结疤。
 class PencilTreePainter extends CustomPainter {
-  PencilTreePainter({required this.tree});
+  PencilTreePainter({
+    required this.tree,
+    this.growingChapterId,
+    this.growingSectionId,
+    this.growProgress = 1.0,
+  });
 
   final TreeGeometry tree;
+
+  /// 正在生长的章枝/节枝 id（新建时从根到端画出）
+  final int? growingChapterId;
+  final int? growingSectionId;
+
+  /// 生长进度 0→1
+  final double growProgress;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -31,15 +43,35 @@ class PencilTreePainter extends CustomPainter {
     // 已放置标签的占位矩形，用于碰撞规避
     final placed = <Rect>[];
     for (final branch in tree.branches) {
-      _drawPencilLine(canvas, branch.start, branch.end,
+      // 生长动画：新枝从根向端逐渐伸出，长到六成后标题浮现
+      final growing = branch.chapterId == growingChapterId;
+      final branchEnd = growing
+          ? Offset.lerp(branch.start, branch.end, growProgress)!
+          : branch.end;
+      _drawPencilLine(canvas, branch.start, branchEnd,
           width: 1.6 + 1.2 * tree.age, rng: rng);
+
       for (final twig in branch.twigs) {
-        _drawPencilLine(canvas, twig.start, twig.end, width: 1.1, rng: rng);
+        final twigGrowing = twig.sectionId == growingSectionId;
+        final twigEnd = twigGrowing
+            ? Offset.lerp(twig.start, twig.end, growProgress)!
+            : twig.end;
+        // 章枝还没长到节枝根部时，节枝不出现
+        if (growing && (twig.start - branch.start).distance >
+            (branchEnd - branch.start).distance) {
+          continue;
+        }
+        _drawPencilLine(canvas, twig.start, twigEnd, width: 1.1, rng: rng);
       }
+
       // 章标题先画（优先占位），节标签随后自动避让
-      _drawLabel(canvas, placed, branch.title, branch.end, branch.leftSide,
-          bold: true);
+      if (!growing || growProgress > 0.6) {
+        _drawLabel(canvas, placed, branch.title, branch.end, branch.leftSide,
+            bold: true);
+      }
       for (final twig in branch.twigs) {
+        final twigGrowing = twig.sectionId == growingSectionId;
+        if (twigGrowing && growProgress <= 0.6) continue;
         _drawLabel(canvas, placed, twig.title, twig.end, branch.leftSide);
       }
     }
@@ -181,5 +213,8 @@ class PencilTreePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(PencilTreePainter oldDelegate) =>
-      oldDelegate.tree != tree;
+      oldDelegate.tree != tree ||
+      oldDelegate.growProgress != growProgress ||
+      oldDelegate.growingChapterId != growingChapterId ||
+      oldDelegate.growingSectionId != growingSectionId;
 }
