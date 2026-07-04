@@ -26,8 +26,7 @@ class _CardDeckSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cards =
-        ref.watch(sectionCardsProvider(sectionId)).value ?? const [];
+    final cards = ref.watch(sectionCardsProvider(sectionId)).value ?? const [];
 
     return SizedBox(
       height: MediaQuery.sizeOf(context).height * 0.72,
@@ -39,13 +38,18 @@ class _CardDeckSheet extends ConsumerWidget {
               children: [
                 const Icon(Icons.style_outlined, size: 18),
                 const SizedBox(width: 8),
-                Text('卡片包 · ${cards.length} 张',
-                    style: const TextStyle(
-                        fontFamily: 'LXGWWenKai', fontSize: 15)),
+                Text(
+                  '卡片包 · ${cards.length} 张',
+                  style: const TextStyle(
+                    fontFamily: 'LXGWWenKai',
+                    fontSize: 15,
+                  ),
+                ),
                 const Spacer(),
-                const Text('长按拖动可重排',
-                    style:
-                        TextStyle(color: Colors.black38, fontSize: 12)),
+                const Text(
+                  '长按拖动可重排',
+                  style: TextStyle(color: Colors.black38, fontSize: 12),
+                ),
               ],
             ),
           ),
@@ -59,14 +63,10 @@ class _CardDeckSheet extends ConsumerWidget {
                 final ids = cards.map((c) => c.id).toList();
                 final moved = ids.removeAt(oldIndex);
                 ids.insert(newIndex, moved);
-                await ref
-                    .read(inspirationRepositoryProvider)
-                    .reorderCards(ids);
+                await ref.read(inspirationRepositoryProvider).reorderCards(ids);
               },
-              itemBuilder: (context, i) => _DeckTile(
-                key: ValueKey(cards[i].id),
-                card: cards[i],
-              ),
+              itemBuilder: (context, i) =>
+                  _DeckTile(key: ValueKey(cards[i].id), card: cards[i]),
             ),
           ),
         ],
@@ -90,27 +90,27 @@ class _DeckTile extends StatelessWidget {
         MaterialPageRoute(builder: (_) => CardEditorPage(inspiration: card)),
       ),
       child: Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: Colors.black, width: 1.2),
-        boxShadow: const [
-          BoxShadow(color: Colors.black, offset: Offset(2, 2)),
-        ],
-      ),
-      child: Text(
-        card.content,
-        maxLines: 3,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          fontFamily: 'LXGWWenKai',
-          fontSize: 13,
-          height: 1.5,
-          color: Colors.black87,
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(5),
+          border: Border.all(color: Colors.black, width: 1.2),
+          boxShadow: const [
+            BoxShadow(color: Colors.black, offset: Offset(2, 2)),
+          ],
         ),
-      ),
+        child: Text(
+          card.content,
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontFamily: 'LXGWWenKai',
+            fontSize: 13,
+            height: 1.5,
+            color: Colors.black87,
+          ),
+        ),
       ),
     );
   }

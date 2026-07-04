@@ -29,6 +29,12 @@ const kTendrilTipYFrac = 0.22;
 /// 窗口模式节行高（含间距）
 const kSectionRowHeight = 46.0;
 
+/// 小节标签下每条灵感小卡占的高度（有灵感的小节槽位据此加高）
+const kNoteRowHeight = 22.0;
+
+/// 小节标签下最多显示的灵感条数
+const kMaxSectionNotes = 2;
+
 /// 树龄 [0,1]：随章节规模成长（保留用于尺寸微调）
 double treeAge(int totalNodes) {
   if (totalNodes <= 0) return 0;
@@ -160,6 +166,7 @@ MagicTreeLayout layoutMagicTree({
   required List<OutlineChapter> outline,
   double chapterOffset = 0,
   Map<int, double> sectionScrolls = const {},
+  Map<int, int> sectionNoteCounts = const {},
 }) {
   final n = outline.length;
   final totalNodes =
@@ -168,20 +175,38 @@ MagicTreeLayout layoutMagicTree({
   final stage = stageForNodes(totalNodes);
 
   return n > 2
-      ? _layoutWindow(size, outline, stage, age, chapterOffset, sectionScrolls)
+      ? _layoutWindow(
+          size,
+          outline,
+          stage,
+          age,
+          chapterOffset,
+          sectionScrolls,
+          sectionNoteCounts,
+        )
       : _layoutWholeTree(size, outline, stage, age);
 }
 
 /// ≤2 章：整树可见，章枝直接锚在照片茎干上（第一章靠上）
 MagicTreeLayout _layoutWholeTree(
-    Size size, List<OutlineChapter> outline, int stage, double age) {
+  Size size,
+  List<OutlineChapter> outline,
+  int stage,
+  double age,
+) {
   // 阶段素材：整树占画布高 84%、贴底居中，左右留米白呼吸区
   final scale = math.min(
-      size.width / kStageImageWidth, size.height * 0.84 / kStageImageHeight);
+    size.width / kStageImageWidth,
+    size.height * 0.84 / kStageImageHeight,
+  );
   final dispW = kStageImageWidth * scale;
   final dispH = kStageImageHeight * scale;
   final imageRect = Rect.fromLTWH(
-      (size.width - dispW) / 2, size.height - 8 - dispH, dispW, dispH);
+    (size.width - dispW) / 2,
+    size.height - 8 - dispH,
+    dispW,
+    dispH,
+  );
 
   final stalk = _stalks[stage]!;
   final topY = imageRect.top + stalk.topY * dispH;
@@ -189,7 +214,11 @@ MagicTreeLayout _layoutWholeTree(
   final span = botY - topY;
   final cx = imageRect.center.dx;
   final trunkRect = Rect.fromLTRB(
-      cx - stalk.botHalfW * dispW, topY, cx + stalk.botHalfW * dispW, botY);
+    cx - stalk.botHalfW * dispW,
+    topY,
+    cx + stalk.botHalfW * dispW,
+    botY,
+  );
 
   double halfWAt(double y) {
     final t = ((y - topY) / span).clamp(0.0, 1.0);
@@ -222,20 +251,30 @@ MagicTreeLayout _layoutWholeTree(
     len = math.min(len, math.max(52.0, chSpacing * 1.1));
     len = math.max(len, 48.0);
     final h = len * kTendrilAspect;
-    final spriteRect =
-        Rect.fromLTWH(root.dx - len, root.dy - h * kTendrilRootYFrac, len, h);
-    chapters.add(VineBranch(
-      id: chapter.id,
-      title: chapter.title,
-      isChapter: true,
-      root: root,
-      spriteRect: spriteRect,
-      tip: Offset(spriteRect.left + len * kTendrilTipXFrac,
-          spriteRect.top + h * kTendrilTipYFrac),
-    ));
+    final spriteRect = Rect.fromLTWH(
+      root.dx - len,
+      root.dy - h * kTendrilRootYFrac,
+      len,
+      h,
+    );
+    chapters.add(
+      VineBranch(
+        id: chapter.id,
+        title: chapter.title,
+        isChapter: true,
+        root: root,
+        spriteRect: spriteRect,
+        tip: Offset(
+          spriteRect.left + len * kTendrilTipXFrac,
+          spriteRect.top + h * kTendrilTipYFrac,
+        ),
+      ),
+    );
 
     // 高度带：相邻章根中线分界（首章向上到树梢、末章向下到茎底）
-    final bandTop = i == 0 ? attachTop - span * 0.10 : (rootYs[i - 1] + rootY) / 2;
+    final bandTop = i == 0
+        ? attachTop - span * 0.10
+        : (rootYs[i - 1] + rootY) / 2;
     final bandBottom = i == n - 1 ? botY : (rootY + rootYs[i + 1]) / 2;
     bands[chapter.id] = (bandTop, bandBottom);
 
@@ -251,17 +290,25 @@ MagicTreeLayout _layoutWholeTree(
       sLen = math.min(sLen, math.max(38.0, secSpacing * 1.2));
       sLen = math.max(sLen, 34.0);
       final sh = sLen * kTendrilAspect;
-      final sRect =
-          Rect.fromLTWH(sRoot.dx, sy - sh * kTendrilRootYFrac, sLen, sh);
-      sections.add(VineBranch(
-        id: sectionList[j].id,
-        title: sectionList[j].title,
-        isChapter: false,
-        root: sRoot,
-        spriteRect: sRect,
-        tip: Offset(sRect.right - sLen * kTendrilTipXFrac,
-            sRect.top + sh * kTendrilTipYFrac),
-      ));
+      final sRect = Rect.fromLTWH(
+        sRoot.dx,
+        sy - sh * kTendrilRootYFrac,
+        sLen,
+        sh,
+      );
+      sections.add(
+        VineBranch(
+          id: sectionList[j].id,
+          title: sectionList[j].title,
+          isChapter: false,
+          root: sRoot,
+          spriteRect: sRect,
+          tip: Offset(
+            sRect.right - sLen * kTendrilTipXFrac,
+            sRect.top + sh * kTendrilTipYFrac,
+          ),
+        ),
+      );
     }
   }
 
@@ -287,6 +334,7 @@ MagicTreeLayout _layoutWindow(
   double age,
   double chapterOffset,
   Map<int, double> sectionScrolls,
+  Map<int, int> sectionNoteCounts,
 ) {
   final n = outline.length;
   final maxOffset = (n - 2).toDouble();
@@ -300,21 +348,25 @@ MagicTreeLayout _layoutWindow(
   final panT = maxOffset == 0 ? 0.0 : offset / maxOffset;
   final imageTop = -(dispH - size.height) * panT;
   final imageRect = Rect.fromLTWH(
-      (size.width - dispW) / 2, imageTop, dispW, dispH);
+    (size.width - dispW) / 2,
+    imageTop,
+    dispW,
+    dispH,
+  );
 
   final stalk = _stalks[stage]!;
   final stalkTopY = imageRect.top + stalk.topY * dispH;
   final stalkBotY = imageRect.top + stalk.botY * dispH;
   final cx = imageRect.center.dx;
   final trunkRect = Rect.fromLTRB(
-      cx - stalk.botHalfW * dispW,
-      math.max(0, stalkTopY),
-      cx + stalk.botHalfW * dispW,
-      math.min(size.height, stalkBotY));
+    cx - stalk.botHalfW * dispW,
+    math.max(0, stalkTopY),
+    cx + stalk.botHalfW * dispW,
+    math.min(size.height, stalkBotY),
+  );
 
   double halfWAt(double y) {
-    final t =
-        ((y - stalkTopY) / (stalkBotY - stalkTopY)).clamp(0.0, 1.0);
+    final t = ((y - stalkTopY) / (stalkBotY - stalkTopY)).clamp(0.0, 1.0);
     return (stalk.topHalfW + (stalk.botHalfW - stalk.topHalfW) * t) * dispW;
   }
 
@@ -344,33 +396,52 @@ MagicTreeLayout _layoutWindow(
     var len = math.min(root.dx - 10, size.width * 0.26);
     len = math.max(math.min(len, size.shortestSide * 0.22), 48.0);
     final h = len * kTendrilAspect;
-    final spriteRect =
-        Rect.fromLTWH(root.dx - len, rootY - h * kTendrilRootYFrac, len, h);
-    chapters.add(VineBranch(
-      id: chapter.id,
-      title: chapter.title,
-      isChapter: true,
-      root: root,
-      spriteRect: spriteRect,
-      tip: Offset(spriteRect.left + len * kTendrilTipXFrac,
-          spriteRect.top + h * kTendrilTipYFrac),
-    ));
+    final spriteRect = Rect.fromLTWH(
+      root.dx - len,
+      rootY - h * kTendrilRootYFrac,
+      len,
+      h,
+    );
+    chapters.add(
+      VineBranch(
+        id: chapter.id,
+        title: chapter.title,
+        isChapter: true,
+        root: root,
+        spriteRect: spriteRect,
+        tip: Offset(
+          spriteRect.left + len * kTendrilTipXFrac,
+          spriteRect.top + h * kTendrilTipYFrac,
+        ),
+      ),
+    );
 
     // 节行：带内自上而下排列，放不下时可滚（右滑），树背景不动。
-    // contentTop 下移，给第一节标签（在枝端上方）留出不被带顶裁掉的空间
+    // contentTop 下移，给第一节标签（在枝端上方）留出不被带顶裁掉的空间。
+    // 有灵感的小节槽位加高，给标签下方的灵感小卡留位。
     final sectionList = outline[i].sections;
     final m = sectionList.length;
     final contentTop = bandTop + 34;
     final contentBottom = bandBottom - 10;
     final availH = contentBottom - contentTop;
-    final overflow =
-        math.max(0.0, m * kSectionRowHeight - availH);
+
+    // 预算各节槽位顶部（累加变高槽位）
+    final rawTops = <double>[];
+    var raw = 0.0;
+    for (var j = 0; j < m; j++) {
+      rawTops.add(raw);
+      final notes = math.min(
+        sectionNoteCounts[sectionList[j].id] ?? 0,
+        kMaxSectionNotes,
+      );
+      raw += kSectionRowHeight + notes * kNoteRowHeight;
+    }
+    final overflow = math.max(0.0, raw - availH);
     scrollMax[chapter.id] = overflow;
     final scroll = (sectionScrolls[chapter.id] ?? 0).clamp(0.0, overflow);
 
     for (var j = 0; j < m; j++) {
-      final sy =
-          contentTop + j * kSectionRowHeight + kSectionRowHeight / 2 - scroll;
+      final sy = contentTop + rawTops[j] + kSectionRowHeight / 2 - scroll;
       // 行滚出带外就不布局（带内边缘由页面按带裁剪）
       if (sy < contentTop - kSectionRowHeight ||
           sy > contentBottom + kSectionRowHeight) {
@@ -380,18 +451,26 @@ MagicTreeLayout _layoutWindow(
       var sLen = math.min(size.width - sRoot.dx - 10, size.width * 0.18);
       sLen = math.max(math.min(sLen, size.shortestSide * 0.16), 34.0);
       final sh = sLen * kTendrilAspect;
-      final sRect =
-          Rect.fromLTWH(sRoot.dx, sy - sh * kTendrilRootYFrac, sLen, sh);
-      sections.add(VineBranch(
-        id: sectionList[j].id,
-        title: sectionList[j].title,
-        isChapter: false,
-        root: sRoot,
-        spriteRect: sRect,
-        tip: Offset(sRect.right - sLen * kTendrilTipXFrac,
-            sRect.top + sh * kTendrilTipYFrac),
-        clipChapterId: chapter.id,
-      ));
+      final sRect = Rect.fromLTWH(
+        sRoot.dx,
+        sy - sh * kTendrilRootYFrac,
+        sLen,
+        sh,
+      );
+      sections.add(
+        VineBranch(
+          id: sectionList[j].id,
+          title: sectionList[j].title,
+          isChapter: false,
+          root: sRoot,
+          spriteRect: sRect,
+          tip: Offset(
+            sRect.right - sLen * kTendrilTipXFrac,
+            sRect.top + sh * kTendrilTipYFrac,
+          ),
+          clipChapterId: chapter.id,
+        ),
+      );
     }
   }
 

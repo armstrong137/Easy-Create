@@ -46,6 +46,8 @@ void main() {
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
           outlineProvider.overrideWith((ref, novelId) => Stream.value(outline)),
+          sectionInspirationsProvider.overrideWith(
+              (ref, novelId) => Stream.value(const {})),
           inspirationPoolProvider
               .overrideWith((ref) => Stream.value(pool)),
           sectionCardsProvider

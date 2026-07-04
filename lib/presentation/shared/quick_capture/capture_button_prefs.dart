@@ -25,5 +25,6 @@ class VoiceOnLeftNotifier extends Notifier<bool> {
   }
 }
 
-final voiceOnLeftProvider =
-    NotifierProvider<VoiceOnLeftNotifier, bool>(VoiceOnLeftNotifier.new);
+final voiceOnLeftProvider = NotifierProvider<VoiceOnLeftNotifier, bool>(
+  VoiceOnLeftNotifier.new,
+);

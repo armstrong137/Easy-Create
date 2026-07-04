@@ -18,6 +18,17 @@ final outlineProvider = StreamProvider.family<List<OutlineChapter>, int>(
   (ref, novelId) => ref.watch(novelRepositoryProvider).watchOutline(novelId),
 );
 
+/// 某小说下"已挂靠小节的灵感"，按 section_id 分组（新的在前）。
+/// 大纲页在每个小节标签下显示最新几条。
+final sectionInspirationsProvider =
+    StreamProvider.family<Map<int, List<Inspiration>>, int>(
+      (ref, novelId) =>
+          ref.watch(novelRepositoryProvider).watchSectionInspirations(novelId),
+    );
+
+/// 小节标签下最多显示的灵感条数（用户定稿：数量太多只显示最新两条）
+const _maxSectionNotes = 2;
+
 /// 墨色（配米白羊皮纸底）
 const _ink = Color(0xFF3A2A18);
 
@@ -464,6 +475,54 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     await _dropInspiration(inspiration, target, outline);
   }
 
+  /// 小节标签下方的灵感小卡（最多 2 条最新，每条单行省略）
+  Widget _sectionNotes(
+    PlacedLabel label,
+    List<Inspiration> notes,
+    Offset shift,
+  ) {
+    final shown = notes.take(_maxSectionNotes).toList();
+    return Positioned(
+      left: label.rect.left - shift.dx,
+      top: label.rect.bottom + 2 - shift.dy,
+      child: IgnorePointer(
+        child: Opacity(
+          opacity: _labelOpacity(label),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final n in shown)
+                Container(
+                  margin: const EdgeInsets.only(top: 2),
+                  constraints: const BoxConstraints(maxWidth: 148),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xCCFFFCF4),
+                    borderRadius: BorderRadius.circular(7),
+                    border: Border.all(color: const Color(0x22C9A050)),
+                  ),
+                  child: Text(
+                    n.content,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'LXGWWenKai',
+                      fontSize: 11,
+                      height: 1.2,
+                      color: Color(0xCC3A2A18),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   /// 一枚枝端标签胶囊（热区：长按菜单/双击；磁吸时染金放大）
   Widget _labelCapsule(PlacedLabel label, Offset shift) {
     final magnet = _isMagnet(label);
@@ -531,6 +590,13 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   Widget build(BuildContext context) {
     final outline =
         ref.watch(outlineProvider(widget.novelId)).value ?? const [];
+    // 各小节已挂靠的灵感（新的在前），用于在小节标签下显示最新几条
+    final sectionInsp =
+        ref.watch(sectionInspirationsProvider(widget.novelId)).value ??
+        const <int, List<Inspiration>>{};
+    final noteCounts = {
+      for (final e in sectionInsp.entries) e.key: e.value.length,
+    };
 
     return Scaffold(
       backgroundColor: kParchment,
@@ -552,6 +618,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                         outline: outline,
                         chapterOffset: _camera.value,
                         sectionScrolls: _sectionScrolls,
+                        sectionNoteCounts: noteCounts,
                       );
                       _layout = layout;
                       final labels = placeMagicLabels(
@@ -664,6 +731,26 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                                 ],
                               ),
                             ),
+                            // 小节标签下的灵感小卡（与标签同裁剪规则）
+                            for (final label in labels)
+                              if (label.sectionId != null &&
+                                  secClip[label.sectionId] == null)
+                                _sectionNotes(
+                                  label,
+                                  sectionInsp[label.sectionId] ?? const [],
+                                  Offset.zero,
+                                ),
+                            for (final e in clipRects.entries)
+                              clipped(e.key, [
+                                for (final label in labels)
+                                  if (label.sectionId != null &&
+                                      secClip[label.sectionId] == e.key)
+                                    _sectionNotes(
+                                      label,
+                                      sectionInsp[label.sectionId] ?? const [],
+                                      e.value.topLeft,
+                                    ),
+                              ]),
                             // 标签热区：章与整树模式的节直接放；窗口模式的节按带裁剪
                             for (final label in labels)
                               if (label.chapterId != null ||

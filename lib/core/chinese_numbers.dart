@@ -19,5 +19,4 @@ String defaultChapterTitle(int index) =>
     index == 0 ? '引子' : '第${toChineseNumber(index)}章';
 
 /// 第 [index]（从 0 起）个节的默认标题：第一节 → 第二节 …
-String defaultSectionTitle(int index) =>
-    '第${toChineseNumber(index + 1)}节';
+String defaultSectionTitle(int index) => '第${toChineseNumber(index + 1)}节';

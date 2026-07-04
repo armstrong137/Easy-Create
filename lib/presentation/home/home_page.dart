@@ -27,8 +27,7 @@ final creativeCountProvider = StreamProvider.family<int, int>(
 );
 
 /// 星球 shader 资源（按行星纹理名缓存，如 'earth'）
-final planetAssetsProvider =
-    FutureProvider.family<PlanetShaderAssets, String>(
+final planetAssetsProvider = FutureProvider.family<PlanetShaderAssets, String>(
   (ref, planet) => PlanetShaderAssets.load(planet),
 );
 
@@ -78,7 +77,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     final name = title?.trim() ?? '';
     if (name.isEmpty) return;
     final count = ref.read(novelsProvider).value?.length ?? 0;
-    await ref.read(novelRepositoryProvider).createNovel(
+    await ref
+        .read(novelRepositoryProvider)
+        .createNovel(
           title: name,
           planet: kPlanetTextures[count % kPlanetTextures.length],
         );
@@ -90,8 +91,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     final pool = ref.watch(inspirationPoolProvider).value ?? const [];
 
     // 当前星球的创作量 → 星空亮度（无星球时最暗）
-    final currentNovel =
-        novels.isEmpty ? null : novels[_currentPage.clamp(0, novels.length - 1)];
+    final currentNovel = novels.isEmpty
+        ? null
+        : novels[_currentPage.clamp(0, novels.length - 1)];
     final currentCount = currentNovel == null
         ? 0
         : ref.watch(creativeCountProvider(currentNovel.id)).value ?? 0;
@@ -168,10 +170,12 @@ class _PlanetPage extends ConsumerWidget {
           GestureDetector(
             key: Key('星球_${novel.id}'),
             // 点星球 → 进入该小说的大纲页（铅笔树）
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) =>
-                  OutlinePage(novelId: novel.id, title: novel.title),
-            )),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    OutlinePage(novelId: novel.id, title: novel.title),
+              ),
+            ),
             child: OrbitingInspirations(
               items: pool,
               orbitWidth: diameter * 1.5,

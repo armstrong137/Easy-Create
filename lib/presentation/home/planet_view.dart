@@ -13,11 +13,9 @@ class PlanetShaderAssets {
 
   /// 从资产加载 shader 与指定行星纹理（planet 对应 `assets/textures/<planet>.jpg`）
   static Future<PlanetShaderAssets> load(String planet) async {
-    final program =
-        await ui.FragmentProgram.fromAsset('shaders/planet.frag');
+    final program = await ui.FragmentProgram.fromAsset('shaders/planet.frag');
     final bytes = await rootBundle.load('assets/textures/$planet.jpg');
-    final codec =
-        await ui.instantiateImageCodec(bytes.buffer.asUint8List());
+    final codec = await ui.instantiateImageCodec(bytes.buffer.asUint8List());
     final frame = await codec.getNextFrame();
     return PlanetShaderAssets(program: program, texture: frame.image);
   }
@@ -127,10 +125,7 @@ class _PlanetPainter extends CustomPainter {
       ..setFloat(2, rotation) // uRotation
       ..setImageSampler(0, texture); // uTexture
 
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()..shader = shader,
-    );
+    canvas.drawRect(Offset.zero & size, Paint()..shader = shader);
   }
 
   @override

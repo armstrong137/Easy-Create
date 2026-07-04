@@ -14,9 +14,10 @@ class Starfield extends StatelessWidget {
 
   /// 亮度归一化后分四档，对应 starfield_1（最暗）~ starfield_4（最亮）
   int get _tier {
-    final t = ((brightness - kStarBrightnessMin) /
-            (kStarBrightnessMax - kStarBrightnessMin))
-        .clamp(0.0, 1.0);
+    final t =
+        ((brightness - kStarBrightnessMin) /
+                (kStarBrightnessMax - kStarBrightnessMin))
+            .clamp(0.0, 1.0);
     return (t * 3.999).floor() + 1;
   }
 

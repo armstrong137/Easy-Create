@@ -69,7 +69,9 @@ class _SoftToastState extends State<_SoftToast>
                   filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 11),
+                      horizontal: 18,
+                      vertical: 11,
+                    ),
                     color: const Color(0xD92B2018), // 暖墨色 85%
                     child: Text(
                       widget.message,

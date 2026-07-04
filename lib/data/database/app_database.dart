@@ -19,12 +19,12 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        beforeOpen: (details) async {
-          // 开启外键约束：级联删除（删小说→删章→删节）与
-          // 删节时灵感放回魔毯（section_id 置 NULL）都依赖它
-          await customStatement('PRAGMA foreign_keys = ON');
-        },
-      );
+    beforeOpen: (details) async {
+      // 开启外键约束：级联删除（删小说→删章→删节）与
+      // 删节时灵感放回魔毯（section_id 置 NULL）都依赖它
+      await customStatement('PRAGMA foreign_keys = ON');
+    },
+  );
 
   static QueryExecutor _openConnection() {
     return driftDatabase(name: 'novel_app');

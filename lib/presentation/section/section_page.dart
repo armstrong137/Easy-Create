@@ -8,8 +8,7 @@ import 'card_editor_page.dart';
 import 'inspiration_card.dart';
 
 /// 某小节的卡堆流（按 card_order 升序，最后一张=最新拖入）
-final sectionCardsProvider =
-    StreamProvider.family<List<Inspiration>, int>(
+final sectionCardsProvider = StreamProvider.family<List<Inspiration>, int>(
   (ref, sectionId) =>
       ref.watch(inspirationRepositoryProvider).watchSectionCards(sectionId),
 );
@@ -30,8 +29,9 @@ class SectionPage extends ConsumerStatefulWidget {
 }
 
 class _SectionPageState extends ConsumerState<SectionPage> {
-  late final TextEditingController _title =
-      TextEditingController(text: widget.initialTitle);
+  late final TextEditingController _title = TextEditingController(
+    text: widget.initialTitle,
+  );
 
   @override
   void dispose() {
@@ -70,7 +70,7 @@ class _SectionPageState extends ConsumerState<SectionPage> {
         builder: (context, ref, _) {
           final cards =
               ref.watch(sectionCardsProvider(widget.sectionId)).value ??
-                  const [];
+              const [];
           if (cards.isEmpty) {
             return const Center(
               child: Text(
@@ -93,8 +93,7 @@ class _SectionPageState extends ConsumerState<SectionPage> {
                     // 点开单卡 → 全文编辑器（无字数上限）
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) =>
-                            CardEditorPage(inspiration: latest),
+                        builder: (_) => CardEditorPage(inspiration: latest),
                       ),
                     ),
                   ),
@@ -105,8 +104,7 @@ class _SectionPageState extends ConsumerState<SectionPage> {
                 alignment: const Alignment(0, 0.96),
                 child: _DeckButton(
                   count: cards.length,
-                  onTap: () =>
-                      showCardDeckSheet(context, widget.sectionId),
+                  onTap: () => showCardDeckSheet(context, widget.sectionId),
                 ),
               ),
             ],
@@ -137,16 +135,16 @@ class _DeckButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Padding(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.style_outlined, size: 18),
               const SizedBox(width: 6),
-              Text('卡片包 $count',
-                  style: const TextStyle(
-                      fontFamily: 'LXGWWenKai', fontSize: 13)),
+              Text(
+                '卡片包 $count',
+                style: const TextStyle(fontFamily: 'LXGWWenKai', fontSize: 13),
+              ),
             ],
           ),
         ),

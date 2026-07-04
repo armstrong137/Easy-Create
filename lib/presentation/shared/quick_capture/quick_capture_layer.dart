@@ -40,7 +40,8 @@ class CaptureSheetOpenNotifier extends Notifier<bool> {
 
 final captureSheetOpenProvider =
     NotifierProvider<CaptureSheetOpenNotifier, bool>(
-        CaptureSheetOpenNotifier.new);
+      CaptureSheetOpenNotifier.new,
+    );
 
 /// 全局路由观察者：任何 PopupRoute（对话框/菜单/底部弹层）出现时
 /// 通知速记按钮让位；普通翻页（PageRoute）不影响
@@ -94,8 +95,11 @@ class QuickCaptureLayer extends ConsumerWidget {
       key: const Key('语音速记按钮'),
       icon: Icons.mic,
       tooltip: '语音速记',
-      onTap: () => ref.read(captureSheetOpenProvider.notifier).during(
-          () => showVoiceCaptureSheet(rootNavigatorKey.currentContext!)),
+      onTap: () => ref
+          .read(captureSheetOpenProvider.notifier)
+          .during(
+            () => showVoiceCaptureSheet(rootNavigatorKey.currentContext!),
+          ),
       onLongPress: swap,
     );
 
@@ -104,8 +108,9 @@ class QuickCaptureLayer extends ConsumerWidget {
       icon: Icons.edit,
       tooltip: '文字速记',
       // 速记层在 Navigator 之上，必须用根 Navigator 的 context 弹出输入层
-      onTap: () => ref.read(captureSheetOpenProvider.notifier).during(
-          () => showTextCaptureSheet(rootNavigatorKey.currentContext!)),
+      onTap: () => ref
+          .read(captureSheetOpenProvider.notifier)
+          .during(() => showTextCaptureSheet(rootNavigatorKey.currentContext!)),
       onLongPress: swap,
     );
 

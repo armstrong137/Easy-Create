@@ -19,8 +19,9 @@ class CardEditorPage extends ConsumerStatefulWidget {
 }
 
 class _CardEditorPageState extends ConsumerState<CardEditorPage> {
-  late final TextEditingController _controller =
-      TextEditingController(text: widget.inspiration.content);
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.inspiration.content,
+  );
 
   @override
   void dispose() {
@@ -78,8 +79,10 @@ class _CardEditorPageState extends ConsumerState<CardEditorPage> {
           backgroundColor: Colors.white,
           foregroundColor: Colors.black,
           elevation: 0,
-          title: const Text('灵感全文',
-              style: TextStyle(fontFamily: 'LXGWWenKai', fontSize: 17)),
+          title: const Text(
+            '灵感全文',
+            style: TextStyle(fontFamily: 'LXGWWenKai', fontSize: 17),
+          ),
           actions: [
             IconButton(
               key: const Key('放回魔毯按钮'),

@@ -35,7 +35,9 @@ class SaturnView extends StatelessWidget {
             maxWidth: ringSize.width,
             maxHeight: ringSize.height,
             child: CustomPaint(
-                size: ringSize, painter: SaturnRingsPainter(front: false)),
+              size: ringSize,
+              painter: SaturnRingsPainter(front: false),
+            ),
           ),
           PlanetView(assets: assets, spin: spin, diameter: diameter),
           // 前半环（横跨球面的部分）
@@ -43,7 +45,9 @@ class SaturnView extends StatelessWidget {
             maxWidth: ringSize.width,
             maxHeight: ringSize.height,
             child: CustomPaint(
-                size: ringSize, painter: SaturnRingsPainter(front: true)),
+              size: ringSize,
+              painter: SaturnRingsPainter(front: true),
+            ),
           ),
         ],
       ),
@@ -87,9 +91,11 @@ class SaturnRingsPainter extends CustomPainter {
 
     // 前/后半环裁剪：环带的上半（y<0）在球后，下半在球前
     final clip = Path()
-      ..addRect(front
-          ? Rect.fromLTRB(-size.width, 0, size.width, size.height)
-          : Rect.fromLTRB(-size.width, -size.height, size.width, 0));
+      ..addRect(
+        front
+            ? Rect.fromLTRB(-size.width, 0, size.width, size.height)
+            : Rect.fromLTRB(-size.width, -size.height, size.width, 0),
+      );
     canvas.clipPath(clip);
 
     for (final (inner, outer, color, alpha) in _bands) {
@@ -100,7 +106,10 @@ class SaturnRingsPainter extends CustomPainter {
       final mid = (inner + outer) / 2 * planetR;
       canvas.drawOval(
         Rect.fromCenter(
-            center: Offset.zero, width: mid * 2, height: mid * 2 * _flatten),
+          center: Offset.zero,
+          width: mid * 2,
+          height: mid * 2 * _flatten,
+        ),
         paint,
       );
     }
@@ -111,12 +120,16 @@ class SaturnRingsPainter extends CustomPainter {
       final rr = (1.28 + rng.nextDouble() * 0.55) * planetR;
       canvas.drawOval(
         Rect.fromCenter(
-            center: Offset.zero, width: rr * 2, height: rr * 2 * _flatten),
+          center: Offset.zero,
+          width: rr * 2,
+          height: rr * 2 * _flatten,
+        ),
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 0.8
-          ..color = const Color(0xFF6B5E4C)
-              .withValues(alpha: 0.25 + rng.nextDouble() * 0.2),
+          ..color = const Color(
+            0xFF6B5E4C,
+          ).withValues(alpha: 0.25 + rng.nextDouble() * 0.2),
       );
     }
     canvas.restore();

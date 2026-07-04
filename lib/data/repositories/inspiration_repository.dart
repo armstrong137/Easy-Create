@@ -22,22 +22,25 @@ class InspirationRepository {
     final now = createdAt ?? DateTime.now();
     return _db
         .into(_db.inspirations)
-        .insertReturning(InspirationsCompanion.insert(
-          content: content,
-          createdAt: now,
-          updatedAt: now,
-          cardOrder: 0, // 在魔毯中无卡堆顺序，约定为 0
-        ));
+        .insertReturning(
+          InspirationsCompanion.insert(
+            content: content,
+            createdAt: now,
+            updatedAt: now,
+            cardOrder: 0, // 在魔毯中无卡堆顺序，约定为 0
+          ),
+        );
   }
 
   /// 监听魔毯灵感池（section_id 为 NULL 的灵感）
   ///
   /// 排序假设：定稿只说"按创建时间排序"，这里取新的在前，
   /// 保证速记后立刻出现在魔毯顶部、首页环绕取"最近几条"。
-  Stream<List<Inspiration>> watchPool() => (_db.select(_db.inspirations)
-        ..where((t) => t.sectionId.isNull())
-        ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
-      .watch();
+  Stream<List<Inspiration>> watchPool() =>
+      (_db.select(_db.inspirations)
+            ..where((t) => t.sectionId.isNull())
+            ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
+          .watch();
 
   /// 监听某小节的卡堆（按 card_order 升序，最新卡在 card_order 最大处）
   Stream<List<Inspiration>> watchSectionCards(int sectionId) =>
@@ -54,26 +57,31 @@ class InspirationRepository {
     final row = await maxOrderQuery.getSingle();
     final maxOrder = row.read(_db.inspirations.cardOrder.max()) ?? -1;
 
-    await (_db.update(_db.inspirations)
-          ..where((t) => t.id.equals(inspirationId)))
-        .write(InspirationsCompanion(
-      sectionId: Value(sectionId),
-      cardOrder: Value(maxOrder + 1),
-    ));
+    await (_db.update(
+      _db.inspirations,
+    )..where((t) => t.id.equals(inspirationId))).write(
+      InspirationsCompanion(
+        sectionId: Value(sectionId),
+        cardOrder: Value(maxOrder + 1),
+      ),
+    );
   }
 
   /// 从小节删卡：放回魔毯（创建时间不变，排序位置由它决定）
   Future<void> removeFromSection(int inspirationId) =>
-      (_db.update(_db.inspirations)..where((t) => t.id.equals(inspirationId)))
-          .write(const InspirationsCompanion(
-        sectionId: Value(null),
-        cardOrder: Value(0),
-      ));
+      (_db.update(
+        _db.inspirations,
+      )..where((t) => t.id.equals(inspirationId))).write(
+        const InspirationsCompanion(
+          sectionId: Value(null),
+          cardOrder: Value(0),
+        ),
+      );
 
   /// 在魔毯删除：真正删除，不可恢复（仅允许对魔毯中的灵感调用）
-  Future<void> deleteForever(int inspirationId) =>
-      (_db.delete(_db.inspirations)..where((t) => t.id.equals(inspirationId)))
-          .go();
+  Future<void> deleteForever(int inspirationId) => (_db.delete(
+    _db.inspirations,
+  )..where((t) => t.id.equals(inspirationId))).go();
 
   /// 卡堆重排序：按 [orderedIds] 的新顺序重写 card_order（0..n-1），
   /// 事务保证原子性（长按拖动重排的持久化）
@@ -89,9 +97,12 @@ class InspirationRepository {
 
   /// 编辑灵感正文（卡片全文编辑器保存时调用），刷新修改时间
   Future<void> updateContent(int inspirationId, String content) =>
-      (_db.update(_db.inspirations)..where((t) => t.id.equals(inspirationId)))
-          .write(InspirationsCompanion(
-        content: Value(content),
-        updatedAt: Value(DateTime.now()),
-      ));
+      (_db.update(
+        _db.inspirations,
+      )..where((t) => t.id.equals(inspirationId))).write(
+        InspirationsCompanion(
+          content: Value(content),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
 }

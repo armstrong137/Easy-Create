@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-03 22:47:17　对应提交：6c8755e 之后的工作区状态
+> 生成时间：2026-07-03 23:01:39　对应提交：dcb69f3 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,17 +13,17 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     70
-  Nodes:     1,045
-  Edges:     2,381
-  DB Size:   3.48 MB
+  Nodes:     1,051
+  Edges:     2,401
+  DB Size:   3.53 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          331
+  method          333
   import          220
   function        175
-  constant        133
+  constant        137
   class           93
   file            66
   variable        14
@@ -112,7 +112,7 @@ Project Structure (70 files):
 |   |   |   `-- tables.dart (dart, 25 symbols)
 |   |   |-- repositories
 |   |   |   |-- inspiration_repository.dart (dart, 12 symbols)
-|   |   |   `-- novel_repository.dart (dart, 20 symbols)
+|   |   |   `-- novel_repository.dart (dart, 21 symbols)
 |   |   `-- providers.dart (dart, 8 symbols)
 |   |-- domain
 |   |   `-- entities
@@ -127,8 +127,8 @@ Project Structure (70 files):
 |   |   |-- outline
 |   |   |   |-- label_layout.dart (dart, 12 symbols)
 |   |   |   |-- magic_carpet.dart (dart, 33 symbols)
-|   |   |   |-- magic_tree_model.dart (dart, 27 symbols)
-|   |   |   `-- outline_page.dart (dart, 47 symbols)
+|   |   |   |-- magic_tree_model.dart (dart, 29 symbols)
+|   |   |   `-- outline_page.dart (dart, 50 symbols)
 |   |   |-- section
 |   |   |   |-- card_deck_sheet.dart (dart, 12 symbols)
 |   |   |   |-- card_editor_page.dart (dart, 12 symbols)

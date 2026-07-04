@@ -54,8 +54,7 @@ class _OrbitingInspirationsState extends State<OrbitingInspirations>
 
   @override
   Widget build(BuildContext context) {
-    final items =
-        widget.items.take(OrbitingInspirations.maxItems).toList();
+    final items = widget.items.take(OrbitingInspirations.maxItems).toList();
 
     return AnimatedBuilder(
       animation: _controller,
