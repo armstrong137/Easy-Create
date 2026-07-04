@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 
-/// 灵感卡片：纯白卡 + 四周 3D 纯黑细框（定稿）
+/// 小节页配色（羊皮纸暖调，跟随全局魔树/魔毯基调）
+const kSectionParchment = Color(0xFFFDF6EC); // 页面底
+const kCardCream = Color(0xFFFFFDF5); // 卡面（略亮于页面）
+const kCardEdge = Color(0x33B58A3C); // 金色发丝边
+const kInk = Color(0xFF3A2A18); // 墨色正文
+
+/// 灵感卡片：羊皮纸暖调卡 + 金色发丝边 + iOS 柔和投影（2026-07-04 钱包版）
 ///
-/// 3D 效果：黑细描边 + 右下偏移的纯黑实体投影，像一张略微
-/// 悬浮于纸面的卡片；大小随文字长短自适应，超长省略。
+/// 用户定稿：苹果钱包叠层卡堆 + 羊皮纸米白暖调。去掉旧的黑硬描边，
+/// 改柔和多层投影与圆角，贴近 iOS 卡片质感；大小随文字自适应，超长省略。
 class InspirationCard extends StatelessWidget {
   const InspirationCard({
     super.key,
@@ -24,26 +30,35 @@ class InspirationCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        constraints: const BoxConstraints(minWidth: 160, minHeight: 80),
+        constraints: const BoxConstraints(minWidth: 200, minHeight: 96),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: Colors.black, width: 1.4),
+          color: kCardCream,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: kCardEdge),
           boxShadow: const [
-            // 右下纯黑实体投影 → 3D 细框立体感
-            BoxShadow(color: Colors.black, offset: Offset(3, 3)),
+            // iOS 柔和多层投影：近处轻、远处淡，卡片微微浮起
+            BoxShadow(
+              color: Color(0x1F000000),
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+            BoxShadow(
+              color: Color(0x14000000),
+              blurRadius: 28,
+              offset: Offset(0, 14),
+            ),
           ],
         ),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
         child: Text(
           content,
           maxLines: maxLines,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             fontFamily: 'LXGWWenKai',
-            fontSize: 15,
-            height: 1.6,
-            color: Colors.black87,
+            fontSize: 16,
+            height: 1.7,
+            color: kInk,
           ),
         ),
       ),

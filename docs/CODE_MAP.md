@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-03 23:45:05　对应提交：3dd8023 之后的工作区状态
+> 生成时间：2026-07-04 08:28:04　对应提交：c173fba 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,18 +13,18 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     70
-  Nodes:     1,068
-  Edges:     2,455
+  Nodes:     1,083
+  Edges:     2,487
   DB Size:   3.70 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          345
-  import          221
+  method          349
+  import          226
   function        177
-  constant        139
-  class           93
+  constant        143
+  class           95
   file            66
   variable        14
   type_alias      12
@@ -130,10 +130,10 @@ Project Structure (70 files):
 |   |   |   |-- magic_tree_model.dart (dart, 29 symbols)
 |   |   |   `-- outline_page.dart (dart, 51 symbols)
 |   |   |-- section
-|   |   |   |-- card_deck_sheet.dart (dart, 12 symbols)
-|   |   |   |-- card_editor_page.dart (dart, 12 symbols)
-|   |   |   |-- inspiration_card.dart (dart, 4 symbols)
-|   |   |   `-- section_page.dart (dart, 17 symbols)
+|   |   |   |-- card_deck_sheet.dart (dart, 14 symbols)
+|   |   |   |-- card_editor_page.dart (dart, 15 symbols)
+|   |   |   |-- inspiration_card.dart (dart, 8 symbols)
+|   |   |   `-- section_page.dart (dart, 23 symbols)
 |   |   `-- shared
 |   |       |-- quick_capture
 |   |       |   |-- capture_button_prefs.dart (dart, 9 symbols)

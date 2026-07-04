@@ -134,8 +134,8 @@ void main() {
       expect(find.byKey(const Key('全文编辑框')), findsOneWidget);
       await tester.enterText(find.byKey(const Key('全文编辑框')), '重写后的正文，长夜将尽。');
 
-      // 返回 → PopScope 自动保存
-      await tester.pageBack();
+      // 点自绘返回键 → PopScope 自动保存
+      await tester.tap(find.byKey(const Key('编辑器返回')));
       await tester.pumpAndSettle();
 
       final saved = await (db.select(
