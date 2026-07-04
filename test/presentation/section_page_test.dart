@@ -90,12 +90,13 @@ void main() {
     expect(find.textContaining('还没有灵感卡'), findsOneWidget);
   });
 
-  testWidgets('主区只显示最新一张卡（card_order 最大）', (tester) async {
-    await pumpSection(tester, [fake(1, '第一张卡', 0), fake(2, '最新的卡', 1)]);
+  testWidgets('主区只显示卡包第一张（当前展示卡），身后不露卡边', (tester) async {
+    // watchSectionCards 按 card_order 升序：第一张 = 当前展示（用户定稿）
+    await pumpSection(tester, [fake(1, '当前展示卡', 0), fake(2, '包里第二张', 1)]);
 
-    expect(find.byKey(const Key('主区卡_2')), findsOneWidget);
-    expect(find.text('最新的卡'), findsOneWidget);
-    expect(find.text('第一张卡'), findsNothing, reason: '主区默认只显示最新一张');
+    expect(find.byKey(const Key('主区卡_1')), findsOneWidget);
+    expect(find.text('当前展示卡'), findsOneWidget);
+    expect(find.text('包里第二张'), findsNothing, reason: '主区只显示第一张，其余在卡片包里');
   });
 
   testWidgets('点卡片包按钮展开全部卡片', (tester) async {

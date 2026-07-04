@@ -257,15 +257,11 @@ void main() {
     expect(chapters, isEmpty);
   });
 
-  testWidgets('双击节标签 → 进小节页', (tester) async {
+  testWidgets('单击节标签 → 进小节页（用户定稿：单击即进）', (tester) async {
     await seedNovel();
     await pumpOutline(tester, [fakeChapter(1, '引子', 1)]);
 
-    const twigKey = Key('节热区_100');
-    final center = tester.getCenter(find.byKey(twigKey));
-    await tester.tapAt(center);
-    await tester.pump(const Duration(milliseconds: 100));
-    await tester.tapAt(center);
+    await tester.tap(find.byKey(const Key('节热区_100')));
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump(const Duration(milliseconds: 350));
 

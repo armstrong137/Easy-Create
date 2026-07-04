@@ -154,7 +154,7 @@ void main() {
       expect(pool.map((e) => e.content).toList(), ['最新', '中间', '最早']);
     });
 
-    test('规则二：拖入小节后从魔毯消失，卡堆按拖入先后排序', () async {
+    test('规则二：拖入小节后从魔毯消失，最新拖入排最前（当前展示卡）', () async {
       final sectionId = await createSectionChain();
       final a = await inspirationRepo.addInspiration('灵感A');
       final b = await inspirationRepo.addInspiration('灵感B');
@@ -165,9 +165,10 @@ void main() {
       final pool = await inspirationRepo.watchPool().first;
       expect(pool, isEmpty, reason: '拖入后应从魔毯消失');
 
+      // 用户定稿：新拖入的成为卡包第一张（当前展示），故 B 在前
       final cards = await inspirationRepo.watchSectionCards(sectionId).first;
-      expect(cards.map((e) => e.content).toList(), ['灵感A', '灵感B']);
-      expect(cards.map((e) => e.cardOrder).toList(), [0, 1]);
+      expect(cards.map((e) => e.content).toList(), ['灵感B', '灵感A']);
+      expect(cards.first.content, '灵感B', reason: '最后拖入的排第一 = 当前展示');
     });
 
     test('规则三：从小节删卡放回魔毯，仍按创建时间排序（核心用例）', () async {

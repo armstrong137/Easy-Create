@@ -49,13 +49,16 @@ class InspirationRepository {
             ..orderBy([(t) => OrderingTerm.asc(t.cardOrder)]))
           .watch();
 
-  /// 拖入小节：灵感从魔毯消失，归属该节，排在卡堆末尾
+  /// 拖入小节：灵感从魔毯消失，归属该节，**排在卡堆最前**（成为当前展示卡，
+  /// 用户定稿：卡包第一张 = 主区显示；刚拖入的应立即成为当前）
   Future<void> assignToSection(int inspirationId, int sectionId) async {
-    final maxOrderQuery = _db.selectOnly(_db.inspirations)
-      ..addColumns([_db.inspirations.cardOrder.max()])
+    final minOrderQuery = _db.selectOnly(_db.inspirations)
+      ..addColumns([_db.inspirations.cardOrder.min()])
       ..where(_db.inspirations.sectionId.equals(sectionId));
-    final row = await maxOrderQuery.getSingle();
-    final maxOrder = row.read(_db.inspirations.cardOrder.max()) ?? -1;
+    final row = await minOrderQuery.getSingle();
+    final minOrder = row.read(_db.inspirations.cardOrder.min());
+    // 空节首卡取 0；否则比现有最小再小 1（升序时排最前 = 当前展示）
+    final newOrder = minOrder == null ? 0 : minOrder - 1;
 
     await (_db.update(
       _db.inspirations,
@@ -63,7 +66,7 @@ class InspirationRepository {
       InspirationsCompanion(
         sectionId: Value(sectionId),
         chapterId: const Value(null), // 挂到小节即脱离"直接挂章"
-        cardOrder: Value(maxOrder + 1),
+        cardOrder: Value(newOrder),
       ),
     );
   }

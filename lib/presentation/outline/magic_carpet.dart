@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/carpet_constants.dart';
 import '../../data/database/app_database.dart';
+import '../../data/providers.dart' show inspirationRepositoryProvider;
 import '../home/home_page.dart' show inspirationPoolProvider;
 import '../shared/quick_capture/quick_capture_layer.dart'
     show captureSheetOpenProvider;
@@ -14,6 +15,9 @@ const _ink = Color(0xFF3A2A18);
 
 /// 全局魔毯句柄（大纲页拖拽落点后调 collapse）
 final magicCarpetKey = GlobalKey<MagicCarpetState>();
+
+/// 正在从魔毯拖拽的灵感（null=未拖拽）。拖拽时底部浮现垃圾桶可永久删除。
+final carpetDragging = ValueNotifier<Inspiration?>(null);
 
 /// 全局魔毯层：叠在 Navigator 之上 → **任何界面**右上角都有魔毯
 /// （用户定稿 2026-07-03：魔毯设在所有界面最上面，星球主界面也要有）。
@@ -67,7 +71,109 @@ class _GlobalCarpet extends ConsumerWidget {
             ),
           ),
         ),
+        // 拖拽灵感时：底部浮现垃圾桶，拖上去松手 → 确认 → 永久删除
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: SafeArea(
+            child: ValueListenableBuilder<Inspiration?>(
+              valueListenable: carpetDragging,
+              builder: (context, dragging, _) => dragging == null
+                  ? const SizedBox.shrink()
+                  : Center(child: _TrashZone(inspiration: dragging)),
+            ),
+          ),
+        ),
       ],
+    );
+  }
+}
+
+/// 永久删除落区：拖拽灵感靠近时放大染红
+class _TrashZone extends ConsumerStatefulWidget {
+  const _TrashZone({required this.inspiration});
+
+  final Inspiration inspiration;
+
+  @override
+  ConsumerState<_TrashZone> createState() => _TrashZoneState();
+}
+
+class _TrashZoneState extends ConsumerState<_TrashZone> {
+  Future<void> _confirmDelete() async {
+    final ok = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text(
+          '永久删除这条灵感？',
+          style: TextStyle(
+            fontFamily: 'LXGWWenKai',
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(
+            '「${widget.inspiration.content}」将从魔毯彻底删除，无法恢复。',
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontFamily: 'LXGWWenKai', fontSize: 13),
+          ),
+        ),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消', style: TextStyle(fontFamily: 'LXGWWenKai')),
+          ),
+          CupertinoDialogAction(
+            key: const Key('永久删除确认按钮'),
+            isDestructiveAction: true,
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text(
+              '永久删除',
+              style: TextStyle(fontFamily: 'LXGWWenKai'),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await ref
+          .read(inspirationRepositoryProvider)
+          .deleteForever(widget.inspiration.id);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DragTarget<Inspiration>(
+      onWillAcceptWithDetails: (d) => d.data.id == widget.inspiration.id,
+      onAcceptWithDetails: (_) {
+        HapticFeedback.mediumImpact();
+        _confirmDelete();
+      },
+      builder: (context, candidates, _) {
+        final hot = candidates.isNotEmpty;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          margin: const EdgeInsets.only(bottom: 28),
+          width: hot ? 84 : 68,
+          height: hot ? 84 : 68,
+          decoration: BoxDecoration(
+            color: hot ? const Color(0xF2E5484D) : const Color(0xE62B2018),
+            shape: BoxShape.circle,
+            boxShadow: const [
+              BoxShadow(color: Color(0x40000000), blurRadius: 16),
+            ],
+          ),
+          child: Icon(
+            CupertinoIcons.trash,
+            color: Colors.white,
+            size: hot ? 36 : 28,
+          ),
+        );
+      },
     );
   }
 }
@@ -295,8 +401,14 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
                         itemCount: pool.length,
                         itemBuilder: (context, i) => CarpetItem(
                           inspiration: pool[i],
-                          onDragStarted: () => setState(() => _dragging = true),
-                          onDragEnd: () => setState(() => _dragging = false),
+                          onDragStarted: () {
+                            setState(() => _dragging = true);
+                            carpetDragging.value = pool[i];
+                          },
+                          onDragEnd: () {
+                            setState(() => _dragging = false);
+                            carpetDragging.value = null;
+                          },
                         ),
                       ),
               ),

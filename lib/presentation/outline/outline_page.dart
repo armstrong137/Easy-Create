@@ -344,17 +344,21 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     if (action == 'delete') await _delete(label);
   }
 
-  /// 双击：章 → 重命名；节 → 小节页
+  /// 单击节标签 → 直接进小节页（用户定稿：单击即进）
+  Future<void> _openSection(PlacedLabel label) async {
+    if (label.sectionId == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            SectionPage(sectionId: label.sectionId!, initialTitle: label.text),
+      ),
+    );
+  }
+
+  /// 双击：章 → 重命名（节的进入改为单击，见 _openSection）
   Future<void> _onDoubleTap(PlacedLabel label) async {
     if (label.sectionId != null) {
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => SectionPage(
-            sectionId: label.sectionId!,
-            initialTitle: label.text,
-          ),
-        ),
-      );
+      await _openSection(label);
     } else {
       await _rename(label);
     }
@@ -545,6 +549,8 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
               : '节热区_${label.sectionId}',
         ),
         behavior: HitTestBehavior.opaque,
+        // 单击：节 → 进小节页（章单击不响应，避免误触；章重命名走双击）
+        onTap: label.sectionId != null ? () => _openSection(label) : null,
         onLongPress: () => _showBranchMenu(label),
         onDoubleTap: () => _onDoubleTap(label),
         child: Opacity(
@@ -583,10 +589,14 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                           ),
                         ],
                 ),
-                child: Text(
-                  label.text,
-                  maxLines: 1,
-                  style: labelStyle(bold: label.bold),
+                child: SizedBox(
+                  width: label.rect.width,
+                  child: Text(
+                    label.text,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: labelStyle(bold: label.bold),
+                  ),
                 ),
               ),
             ),

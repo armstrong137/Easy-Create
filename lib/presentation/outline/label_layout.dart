@@ -48,16 +48,18 @@ List<PlacedLabel> placeMagicLabels(
 
   void place(VineBranch vine) {
     final bold = vine.isChapter;
+    // 名字长时最多换两行（限宽 118），不再横向拉长、不再单行省略；
+    // 宽度受限后整枚标签自然更靠树干（用户定稿：字数多往树干方向靠）
     final painter = TextPainter(
       text: TextSpan(
         text: vine.title,
         style: labelStyle(bold: bold),
       ),
       textDirection: TextDirection.ltr,
-      maxLines: 1,
+      maxLines: 2,
       ellipsis: '…',
       textScaler: textScaler,
-    )..layout(maxWidth: 160);
+    )..layout(maxWidth: 118);
 
     final anchor = vine.tip;
     // 章枝朝左 → 标签放端点左侧；节枝朝右 → 端点右侧

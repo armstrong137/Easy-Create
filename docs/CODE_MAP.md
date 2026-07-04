@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-04 08:28:04　对应提交：c173fba 之后的工作区状态
+> 生成时间：2026-07-04 13:50:59　对应提交：b2b8fa0 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,18 +13,18 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     70
-  Nodes:     1,083
-  Edges:     2,487
-  DB Size:   3.70 MB
+  Nodes:     1,089
+  Edges:     2,502
+  DB Size:   3.74 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          349
-  import          226
+  method          352
+  import          227
   function        177
-  constant        143
-  class           95
+  constant        144
+  class           96
   file            66
   variable        14
   type_alias      12
@@ -126,14 +126,14 @@ Project Structure (70 files):
 |   |   |   `-- starfield.dart (dart, 6 symbols)
 |   |   |-- outline
 |   |   |   |-- label_layout.dart (dart, 12 symbols)
-|   |   |   |-- magic_carpet.dart (dart, 33 symbols)
+|   |   |   |-- magic_carpet.dart (dart, 40 symbols)
 |   |   |   |-- magic_tree_model.dart (dart, 29 symbols)
-|   |   |   `-- outline_page.dart (dart, 51 symbols)
+|   |   |   `-- outline_page.dart (dart, 52 symbols)
 |   |   |-- section
 |   |   |   |-- card_deck_sheet.dart (dart, 14 symbols)
 |   |   |   |-- card_editor_page.dart (dart, 15 symbols)
 |   |   |   |-- inspiration_card.dart (dart, 8 symbols)
-|   |   |   `-- section_page.dart (dart, 23 symbols)
+|   |   |   `-- section_page.dart (dart, 21 symbols)
 |   |   `-- shared
 |   |       |-- quick_capture
 |   |       |   |-- capture_button_prefs.dart (dart, 9 symbols)

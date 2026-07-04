@@ -109,27 +109,23 @@ class _SectionPageState extends ConsumerState<SectionPage> {
                     const [];
                 if (cards.isEmpty) return const _EmptyDeck();
 
-                final latest = cards.last; // 最新拖入 = 卡堆最前
-                final behind = cards.length - 1; // 身后卡数（只露卡边）
+                // 主区只显示卡包第一张（当前展示卡）；其余卡藏在卡片包里，
+                // 不在主区露卡边（用户定稿：主区只要一个框）
+                final current = cards.first;
                 return Stack(
                   children: [
                     Center(
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.fromLTRB(28, 20, 28, 120),
-                        child: _WalletStack(
-                          behind: behind,
-                          front: InspirationCard(
-                            key: Key('主区卡_${latest.id}'),
-                            content: latest.content,
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    CardEditorPage(inspiration: latest),
-                              ),
+                        child: InspirationCard(
+                          key: Key('主区卡_${current.id}'),
+                          content: current.content,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  CardEditorPage(inspiration: current),
                             ),
                           ),
-                          onTapBehind: () =>
-                              showCardDeckSheet(context, widget.sectionId),
                         ),
                       ),
                     ),
@@ -149,57 +145,6 @@ class _SectionPageState extends ConsumerState<SectionPage> {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// 钱包式卡堆：身后卡只露一条卡边（叠在最前卡上方），最前卡完整可读
-class _WalletStack extends StatelessWidget {
-  const _WalletStack({
-    required this.behind,
-    required this.front,
-    required this.onTapBehind,
-  });
-
-  /// 身后卡数量（最多露 3 条边，多了不再叠加视觉负担）
-  final int behind;
-  final Widget front;
-  final VoidCallback onTapBehind;
-
-  @override
-  Widget build(BuildContext context) {
-    final peeks = behind.clamp(0, 3);
-    const peekH = 14.0; // 每条卡边露出的高度
-    const peekInset = 12.0; // 每条卡边左右内缩，形成层叠错落
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // 身后卡边：越靠后越窄、越淡（点它们展开卡片包）
-        for (var i = peeks; i >= 1; i--)
-          GestureDetector(
-            onTap: onTapBehind,
-            child: Container(
-              height: peekH + peekH,
-              margin: EdgeInsets.symmetric(horizontal: peekInset * i),
-              transform: Matrix4.translationValues(0, peekH * i, 0),
-              decoration: BoxDecoration(
-                color: Color.lerp(kCardCream, kSectionParchment, i / 4)!,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(16),
-                ),
-                border: Border.all(color: kCardEdge),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x12000000),
-                    blurRadius: 8,
-                    offset: Offset(0, -2),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        front,
-      ],
     );
   }
 }
