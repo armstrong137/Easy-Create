@@ -130,7 +130,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                 key: const Key('创建新星球标题'),
                 onTap: _createNovel,
                 child: const Padding(
-                  padding: EdgeInsets.only(top: 24),
+                  // 下移到右上角魔毯球（92px）下方，避免标题右端与球重叠
+                  padding: EdgeInsets.only(top: 100),
                   child: Text(
                     'Create Something',
                     style: TextStyle(
