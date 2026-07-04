@@ -480,8 +480,11 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     PlacedLabel label,
     List<Inspiration> notes,
     Offset shift,
+    double canvasWidth,
   ) {
     final shown = notes.take(_maxSectionNotes).toList();
+    // 卡宽钳制在到右缘的可用空间内（防止冲出屏幕右侧）
+    final maxW = (canvasWidth - label.rect.left - 6).clamp(60.0, 168.0);
     return Positioned(
       left: label.rect.left - shift.dx,
       top: label.rect.bottom + 2 - shift.dy,
@@ -494,7 +497,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
               for (final n in shown)
                 Container(
                   margin: const EdgeInsets.only(top: 2),
-                  constraints: const BoxConstraints(maxWidth: 148),
+                  constraints: BoxConstraints(maxWidth: maxW),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 7,
                     vertical: 1,
@@ -739,6 +742,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                                   label,
                                   sectionInsp[label.sectionId] ?? const [],
                                   Offset.zero,
+                                  size.width,
                                 ),
                             for (final e in clipRects.entries)
                               clipped(e.key, [
@@ -749,6 +753,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                                       label,
                                       sectionInsp[label.sectionId] ?? const [],
                                       e.value.topLeft,
+                                      size.width,
                                     ),
                               ]),
                             // 标签热区：章与整树模式的节直接放；窗口模式的节按带裁剪
