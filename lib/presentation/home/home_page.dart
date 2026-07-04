@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -48,30 +49,13 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   /// 点击标题创建新星球：输入书名，纹理按现有数量轮换分配
   Future<void> _createNovel() async {
-    final controller = TextEditingController();
-    final title = await showDialog<String>(
+    final title = await _promptText(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('创造一颗新星球'),
-        content: TextField(
-          key: const Key('新星球书名输入框'),
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: '这部小说叫什么？'),
-          onSubmitted: (v) => Navigator.of(context).pop(v),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            key: const Key('新星球确认按钮'),
-            onPressed: () => Navigator.of(context).pop(controller.text),
-            child: const Text('诞生'),
-          ),
-        ],
-      ),
+      heading: '创造一颗新星球',
+      hint: '这部小说叫什么？',
+      confirm: '诞生',
+      fieldKey: const Key('新星球书名输入框'),
+      confirmKey: const Key('新星球确认按钮'),
     );
 
     final name = title?.trim() ?? '';
@@ -126,13 +110,14 @@ class _HomePageState extends ConsumerState<HomePage> {
           SafeArea(
             child: Align(
               alignment: Alignment.topCenter,
-              child: GestureDetector(
-                key: const Key('创建新星球标题'),
-                onTap: _createNovel,
-                child: const Padding(
-                  // 下移到右上角魔毯球（92px）下方，避免标题右端与球重叠
-                  padding: EdgeInsets.only(top: 100),
-                  child: Text(
+              // 下移到右上角魔毯球（92px）下方，避免标题右端与球重叠。
+              // padding 放在 GestureDetector 外，热区只裹文字（点击命中稳定）
+              child: Padding(
+                padding: const EdgeInsets.only(top: 100),
+                child: GestureDetector(
+                  key: const Key('创建新星球标题'),
+                  onTap: _createNovel,
+                  child: const Text(
                     'Create Something',
                     style: TextStyle(
                       fontSize: 26,
@@ -214,32 +199,68 @@ class _PlanetPage extends ConsumerWidget {
 
   /// 单击书名 → 重命名对话框 → 落库
   Future<void> _renameNovel(BuildContext context, WidgetRef ref) async {
-    final controller = TextEditingController(text: novel.title);
-    final newTitle = await showDialog<String>(
+    final newTitle = await _promptText(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('重命名这颗星球'),
-        content: TextField(
-          key: const Key('书名重命名输入框'),
-          controller: controller,
-          autofocus: true,
-          onSubmitted: (v) => Navigator.of(context).pop(v),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            key: const Key('书名重命名确认按钮'),
-            onPressed: () => Navigator.of(context).pop(controller.text),
-            child: const Text('保存'),
-          ),
-        ],
-      ),
+      heading: '重命名这颗星球',
+      hint: '新名字',
+      confirm: '保存',
+      initial: novel.title,
+      fieldKey: const Key('书名重命名输入框'),
+      confirmKey: const Key('书名重命名确认按钮'),
     );
     final title = newTitle?.trim() ?? '';
     if (title.isEmpty || title == novel.title) return;
     await ref.read(novelRepositoryProvider).renameNovel(novel.id, title);
   }
+}
+
+/// 楷体文字（弹窗共用）
+TextStyle _dlgStyle({double size = 17, FontWeight? weight, Color? color}) =>
+    TextStyle(
+      fontFamily: 'LXGWWenKai',
+      fontSize: size,
+      fontWeight: weight,
+      color: color,
+    );
+
+/// iOS 质感文字输入弹窗（建星球/重命名共用，替代 Material AlertDialog）
+Future<String?> _promptText({
+  required BuildContext context,
+  required String heading,
+  required String hint,
+  required String confirm,
+  required Key fieldKey,
+  required Key confirmKey,
+  String? initial,
+}) {
+  final controller = TextEditingController(text: initial);
+  return showCupertinoDialog<String>(
+    context: context,
+    builder: (context) => CupertinoAlertDialog(
+      title: Text(heading, style: _dlgStyle(weight: FontWeight.w600)),
+      content: Padding(
+        padding: const EdgeInsets.only(top: 14),
+        child: CupertinoTextField(
+          key: fieldKey,
+          controller: controller,
+          autofocus: true,
+          placeholder: hint,
+          style: _dlgStyle(size: 15, color: const Color(0xFF1A1A1A)),
+          onSubmitted: (v) => Navigator.of(context).pop(v),
+        ),
+      ),
+      actions: [
+        CupertinoDialogAction(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('取消', style: _dlgStyle()),
+        ),
+        CupertinoDialogAction(
+          key: confirmKey,
+          isDefaultAction: true,
+          onPressed: () => Navigator.of(context).pop(controller.text),
+          child: Text(confirm, style: _dlgStyle(weight: FontWeight.w600)),
+        ),
+      ],
+    ),
+  );
 }
