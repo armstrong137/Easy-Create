@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/app_keys.dart';
 import 'presentation/home/home_page.dart';
+import 'presentation/outline/magic_carpet.dart' show CarpetOverlay;
 import 'presentation/shared/quick_capture/capture_button_prefs.dart';
 import 'presentation/shared/quick_capture/quick_capture_layer.dart';
 
@@ -43,8 +44,10 @@ class _NovelAppState extends ConsumerState<NovelApp> {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
         useMaterial3: true,
       ),
-      // 用 builder 把速记双按钮叠在 Navigator 之上 → 任何界面可速记
-      builder: (context, child) => QuickCaptureLayer(child: child!),
+      // 用 builder 把全局魔毯与速记双按钮叠在 Navigator 之上
+      // → 任何界面可速记、随时打开灵感魔毯
+      builder: (context, child) =>
+          QuickCaptureLayer(child: CarpetOverlay(child: child!)),
       home: const HomePage(),
     );
   }

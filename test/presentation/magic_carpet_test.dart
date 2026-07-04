@@ -11,15 +11,14 @@ import 'package:novel_app/presentation/outline/magic_carpet.dart';
 /// 阶段五·1+2：魔毯缩球/展开与列表（灵感池流照例 override）
 void main() {
   Inspiration fake(int id, String content) => Inspiration(
-        id: id,
-        content: content,
-        createdAt: DateTime(2026, 7, 1).add(Duration(minutes: id)),
-        updatedAt: DateTime(2026, 7, 1),
-        cardOrder: 0,
-      );
+    id: id,
+    content: content,
+    createdAt: DateTime(2026, 7, 1).add(Duration(minutes: id)),
+    updatedAt: DateTime(2026, 7, 1),
+    cardOrder: 0,
+  );
 
-  Future<void> pumpCarpet(
-      WidgetTester tester, List<Inspiration> pool) async {
+  Future<void> pumpCarpet(WidgetTester tester, List<Inspiration> pool) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -27,8 +26,7 @@ void main() {
         ],
         child: const MaterialApp(
           home: Scaffold(
-            body: Align(
-                alignment: Alignment.topRight, child: MagicCarpet()),
+            body: Align(alignment: Alignment.topRight, child: MagicCarpet()),
           ),
         ),
       ),
@@ -41,6 +39,12 @@ void main() {
       expect(carpetHeight(0), kCarpetMinHeight);
       expect(carpetHeight(2), greaterThan(carpetHeight(0)));
       expect(carpetHeight(1000), kCarpetMaxHeight);
+    });
+
+    test('魔毯视觉尺寸足够醒目', () {
+      expect(kCarpetBallSize, greaterThanOrEqualTo(88));
+      expect(kCarpetMinHeight, greaterThanOrEqualTo(170));
+      expect(kCarpetMaxHeight, greaterThanOrEqualTo(420));
     });
   });
 
@@ -55,6 +59,18 @@ void main() {
 
     expect(find.text('深夜的旋律'), findsOneWidget);
     expect(find.textContaining('灵感魔毯 · 1'), findsOneWidget);
+  });
+
+  testWidgets('展开态整体高度足够容纳大尺寸魔毯横幅', (tester) async {
+    await pumpCarpet(tester, [fake(1, '深夜的旋律')]);
+
+    await tester.tap(find.byKey(const Key('魔毯小球')));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getSize(find.byType(MagicCarpet)).height,
+      greaterThanOrEqualTo(420),
+    );
   });
 
   testWidgets('点收起按钮缩回小球', (tester) async {

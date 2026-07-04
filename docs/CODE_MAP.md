@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-03 08:46:40　对应提交：5928e42 之后的工作区状态
+> 生成时间：2026-07-03 20:06:48　对应提交：140c896 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,34 +12,34 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     64
-  Nodes:     891
-  Edges:     1,970
-  DB Size:   2.84 MB
+  Files:     70
+  Nodes:     1,040
+  Edges:     2,364
+  DB Size:   3.43 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          310
-  import          211
-  function        105
-  constant        93
-  class           92
-  file            60
+  method          326
+  import          220
+  function        175
+  constant        133
+  class           93
+  file            66
+  variable        14
   type_alias      12
-  variable        7
   namespace       1
 
 Files by Language:
-  dart            45
+  dart            47
+  javascript      6
   kotlin          4
-  javascript      3
   swift           3
   xml             3
   properties      2
+  typescript      2
   yaml            2
   c               1
-  typescript      1
 
 [OK] Index is up to date
 
@@ -49,8 +49,18 @@ Files by Language:
 
 ```
 
-Project Structure (64 files):
+Project Structure (70 files):
 
+|-- .agents
+|   `-- skills
+|       |-- brainstorming
+|       |   `-- scripts
+|       |       |-- helper.js (javascript, 9 symbols)
+|       |       `-- server.cjs (javascript, 75 symbols)
+|       |-- systematic-debugging
+|       |   `-- condition-based-waiting-example.ts (typescript, 6 symbols)
+|       `-- writing-skills
+|           `-- render-graphs.js (javascript, 8 symbols)
 |-- .claude
 |   `-- skills
 |       |-- brainstorming
@@ -92,7 +102,7 @@ Project Structure (64 files):
 |-- lib
 |   |-- core
 |   |   |-- app_keys.dart (dart, 4 symbols)
-|   |   |-- carpet_constants.dart (dart, 11 symbols)
+|   |   |-- carpet_constants.dart (dart, 6 symbols)
 |   |   |-- chinese_numbers.dart (dart, 5 symbols)
 |   |   `-- creative_energy.dart (dart, 11 symbols)
 |   |-- data
@@ -115,25 +125,24 @@ Project Structure (64 files):
 |   |   |   |-- saturn_rings_painter.dart (dart, 12 symbols)
 |   |   |   `-- starfield.dart (dart, 6 symbols)
 |   |   |-- outline
-|   |   |   |-- glass_plus_button.dart (dart, 8 symbols)
-|   |   |   |-- label_layout.dart (dart, 8 symbols)
-|   |   |   |-- magic_carpet.dart (dart, 17 symbols)
-|   |   |   |-- outline_page.dart (dart, 27 symbols)
-|   |   |   |-- pencil_tree_painter.dart (dart, 10 symbols)
-|   |   |   `-- tree_model.dart (dart, 9 symbols)
+|   |   |   |-- label_layout.dart (dart, 12 symbols)
+|   |   |   |-- magic_carpet.dart (dart, 33 symbols)
+|   |   |   |-- magic_tree_model.dart (dart, 27 symbols)
+|   |   |   `-- outline_page.dart (dart, 42 symbols)
 |   |   |-- section
 |   |   |   |-- card_deck_sheet.dart (dart, 12 symbols)
 |   |   |   |-- card_editor_page.dart (dart, 12 symbols)
 |   |   |   |-- inspiration_card.dart (dart, 4 symbols)
 |   |   |   `-- section_page.dart (dart, 17 symbols)
 |   |   `-- shared
-|   |       `-- quick_capture
-|   |           |-- capture_button_prefs.dart (dart, 9 symbols)
-|   |           |-- quick_capture_layer.dart (dart, 25 symbols)
-|   |           |-- speech_service.dart (dart, 9 symbols)
-|   |           |-- text_capture_sheet.dart (dart, 11 symbols)
-|   |           `-- voice_capture_sheet.dart (dart, 14 symbols)
-|   `-- main.dart (dart, 13 symbols)
+|   |       |-- quick_capture
+|   |       |   |-- capture_button_prefs.dart (dart, 9 symbols)
+|   |       |   |-- quick_capture_layer.dart (dart, 25 symbols)
+|   |       |   |-- speech_service.dart (dart, 9 symbols)
+|   |       |   |-- text_capture_sheet.dart (dart, 11 symbols)
+|   |       |   `-- voice_capture_sheet.dart (dart, 14 symbols)
+|   |       `-- soft_toast.dart (dart, 11 symbols)
+|   `-- main.dart (dart, 14 symbols)
 |-- test
 |   |-- core
 |   |   |-- chinese_numbers_test.dart (dart, 4 symbols)
@@ -143,15 +152,18 @@ Project Structure (64 files):
 |   `-- presentation
 |       |-- home_page_test.dart (dart, 20 symbols)
 |       |-- magic_carpet_test.dart (dart, 13 symbols)
+|       |-- magic_tree_model_test.dart (dart, 12 symbols)
 |       |-- orbiting_inspirations_test.dart (dart, 10 symbols)
-|       |-- outline_page_test.dart (dart, 17 symbols)
+|       |-- outline_page_test.dart (dart, 21 symbols)
 |       |-- quick_capture_test.dart (dart, 16 symbols)
 |       |-- section_page_test.dart (dart, 17 symbols)
-|       |-- tree_model_test.dart (dart, 10 symbols)
 |       `-- voice_capture_test.dart (dart, 22 symbols)
 |-- tool
+|   |-- crop_sprite.dart (dart, 4 symbols)
+|   |-- knockout_bg.dart (dart, 4 symbols)
 |   |-- planet_texture_gen.dart (dart, 18 symbols)
-|   `-- probe_alpha.dart (dart, 4 symbols)
+|   |-- probe_alpha.dart (dart, 4 symbols)
+|   `-- stage_convert.dart (dart, 4 symbols)
 |-- analysis_options.yaml (yaml, 0 symbols)
 `-- pubspec.yaml (yaml, 0 symbols)
 

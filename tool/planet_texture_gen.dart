@@ -178,8 +178,12 @@ void main(List<String> args) {
   }
 
   double wrap(double a) {
-    while (a > math.pi) a -= 2 * math.pi;
-    while (a < -math.pi) a += 2 * math.pi;
+    while (a > math.pi) {
+      a -= 2 * math.pi;
+    }
+    while (a < -math.pi) {
+      a += 2 * math.pi;
+    }
     return a;
   }
 

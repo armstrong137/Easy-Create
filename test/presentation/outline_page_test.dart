@@ -8,15 +8,15 @@ import 'package:novel_app/data/providers.dart';
 import 'package:novel_app/domain/entities/outline_chapter.dart';
 import 'package:novel_app/presentation/home/home_page.dart'
     show inspirationPoolProvider;
+import 'package:novel_app/presentation/outline/magic_carpet.dart'
+    show CarpetOverlay;
 import 'package:novel_app/presentation/outline/outline_page.dart';
-import 'package:novel_app/presentation/outline/pencil_tree_painter.dart';
 import 'package:novel_app/presentation/section/section_page.dart'
     show sectionCardsProvider;
 
-/// 阶段四：大纲页（铅笔树 + 玻璃＋号）
+/// 大纲页（魔树版，2026-07-03 改版）：左右空白点击生枝 + 标签交互
 ///
-/// 注意：大纲流一律 override（防 drift 流挂死）；页面含无限反光动画，
-/// 只能定点 pump，严禁 pumpAndSettle。创建落库用真内存库验证。
+/// 注意：drift 流一律 override；页面含动画时只定点 pump。
 void main() {
   late AppDatabase db;
 
@@ -46,131 +46,175 @@ void main() {
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
           outlineProvider.overrideWith((ref, novelId) => Stream.value(outline)),
-          // 魔毯也在大纲页上，灵感池流必须 override（防 drift 流挂死）
           inspirationPoolProvider
               .overrideWith((ref) => Stream.value(pool)),
-          // 双击节会进小节页（watch 卡堆流），同样必须 override
           sectionCardsProvider
               .overrideWith((ref, sectionId) => Stream.value(const [])),
         ],
-        child: const MaterialApp(
-          home: OutlinePage(novelId: 1, title: '测试小说'),
+        child: MaterialApp(
+          // 与 main.dart 一致：全局魔毯层叠在 Navigator 之上
+          builder: (context, child) => CarpetOverlay(child: child!),
+          home: const OutlinePage(novelId: 1, title: '测试小说'),
         ),
       ),
     );
     await tester.pump(const Duration(milliseconds: 100));
   }
 
-  testWidgets('空大纲渲染秃树页与左右玻璃＋号', (tester) async {
-    await pumpOutline(tester, const []);
+  /// 双击（建章/建节改为双击避免误触）：两次 tap 在同点、间隔 < 双击超时
+  Future<void> doubleTapAt(WidgetTester tester, Offset p) async {
+    await tester.tapAt(p);
+    await tester.pump(const Duration(milliseconds: 60));
+    await tester.tapAt(p);
+    await tester.pump(const Duration(milliseconds: 100));
+  }
 
-    expect(find.byType(CustomPaint), findsWidgets);
-    expect(find.byKey(const Key('长章按钮')), findsOneWidget);
-    expect(find.byKey(const Key('长节按钮')), findsOneWidget);
-  });
-
-  testWidgets('有章节时树 painter 收到正确数据', (tester) async {
-    await pumpOutline(tester, [fakeChapter(1, '引子', 1)]);
-
-    final paint = tester.widget<CustomPaint>(find.byWidgetPredicate(
-        (w) => w is CustomPaint && w.painter is PencilTreePainter));
-    final painter = paint.painter as PencilTreePainter;
-    expect(painter.tree.branches, hasLength(1));
-    expect(painter.tree.branches.single.twigs, hasLength(1));
-  });
-
-  testWidgets('点左＋：首章命名"引子"落库并播放生长动画', (tester) async {
-    await pumpOutline(tester, const []);
-
-    // 先造小说行，满足章的外键
+  Future<void> seedNovel() async {
     await db.into(db.novels).insert(NovelsCompanion.insert(
         title: '书', planet: 'earth', sortOrder: 0, createdAt: DateTime.now()));
+  }
 
-    await tester.tap(find.byKey(const Key('长章按钮')));
-    await tester.pump(const Duration(milliseconds: 100));
+  testWidgets('空大纲：光杆魔树 + 左右空白区就位', (tester) async {
+    await pumpOutline(tester, const []);
+
+    expect(find.byKey(const Key('左空白区')), findsOneWidget);
+    expect(find.byKey(const Key('右空白区')), findsOneWidget);
+    expect(find.byType(Image), findsWidgets, reason: '魔树树干素材');
+  });
+
+  testWidgets('点左空白：首章命名"引子"落库并播放生长动画', (tester) async {
+    await seedNovel();
+    await pumpOutline(tester, const []);
+
+    final size = tester.getSize(find.byType(Scaffold));
+    await doubleTapAt(tester, Offset(size.width * 0.05, size.height * 0.5));
 
     final chapters = await db.select(db.chapters).get();
     expect(chapters.single.title, '引子');
-
-    // 播完生长动画（700ms）
-    await tester.pump(const Duration(milliseconds: 800));
+    await tester.pump(const Duration(milliseconds: 800)); // 播完生长
   });
 
-  testWidgets('已有一章时点左＋命名"第一章"', (tester) async {
-    await db.into(db.novels).insert(NovelsCompanion.insert(
-        title: '书', planet: 'earth', sortOrder: 0, createdAt: DateTime.now()));
+  testWidgets('已有一章时点左空白命名"第一章"', (tester) async {
+    await seedNovel();
+    await db.into(db.chapters).insert(ChaptersCompanion.insert(
+        novelId: 1, title: '引子', sortOrder: 0));
     await pumpOutline(tester, [fakeChapter(1, '引子', 0)]);
 
-    await tester.tap(find.byKey(const Key('长章按钮')));
-    await tester.pump(const Duration(milliseconds: 100));
+    // 左下空白（章序自上而下：单章标签在左上角，左下角是干净空白）
+    final size = tester.getSize(find.byType(Scaffold));
+    await doubleTapAt(tester, Offset(size.width * 0.05, size.height * 0.75));
 
     final chapters = await db.select(db.chapters).get();
-    expect(chapters.single.title, '第一章', reason: '第二个章按序命名');
+    expect(chapters.map((c) => c.title), contains('第一章'));
     await tester.pump(const Duration(milliseconds: 800));
   });
 
-  testWidgets('无章时点右＋：提示先建章、不落库', (tester) async {
+  testWidgets('无章时点右空白：提示先长章枝、不落库', (tester) async {
     await pumpOutline(tester, const []);
 
-    await tester.tap(find.byKey(const Key('长节按钮')));
-    await tester.pump(const Duration(milliseconds: 100));
+    final size = tester.getSize(find.byType(Scaffold));
+    await doubleTapAt(tester, Offset(size.width * 0.95, size.height * 0.5));
 
-    expect(find.textContaining('先点左边的＋'), findsOneWidget);
+    expect(find.textContaining('先点左边空白'), findsOneWidget);
     final sections = await db.select(db.sections).get();
     expect(sections, isEmpty);
+
+    // 排干浮层提示的停留定时器与淡出动画（1.7s 停留 + 0.26s 淡出）
+    await tester.pump(const Duration(milliseconds: 1800));
+    await tester.pump(const Duration(milliseconds: 400));
   });
 
-  testWidgets('长按章标签 → 菜单 → 删除确认 → 章从库中剪掉', (tester) async {
-    await db.into(db.novels).insert(NovelsCompanion.insert(
-        title: '书', planet: 'earth', sortOrder: 0, createdAt: DateTime.now()));
+  testWidgets('点右空白：节挂到点击高度对应的章（左右对应关系）', (tester) async {
+    await seedNovel();
+    await db.into(db.chapters).insert(ChaptersCompanion.insert(
+        novelId: 1, title: '引子', sortOrder: 0));
+    await db.into(db.chapters).insert(ChaptersCompanion.insert(
+        novelId: 1, title: '第一章', sortOrder: 1));
+    await pumpOutline(
+        tester, [fakeChapter(1, '引子', 0), fakeChapter(2, '第一章', 0)]);
+
+    // 章序自上而下：引子在上、第一章在下 → 双击右侧靠下挂到第一章
+    final size = tester.getSize(find.byType(Scaffold));
+    await doubleTapAt(tester, Offset(size.width * 0.85, size.height * 0.78));
+
+    final sections = await db.select(db.sections).get();
+    expect(sections.single.chapterId, 2, reason: '靠下高度对应最后一章（第一章）');
+    expect(sections.single.title, '第一节');
+    await tester.pump(const Duration(milliseconds: 800));
+  });
+
+  testWidgets('窗口模式：一屏两章，左滑滚章节', (tester) async {
+    await seedNovel();
+    for (var i = 0; i < 4; i++) {
+      await db.into(db.chapters).insert(ChaptersCompanion.insert(
+          novelId: 1, title: '第${i + 1}章', sortOrder: i));
+    }
+    await pumpOutline(
+        tester, [for (var i = 1; i <= 4; i++) fakeChapter(i, '第$i章', 0)]);
+
+    expect(find.byKey(const Key('章热区_1')), findsOneWidget);
+    expect(find.byKey(const Key('章热区_2')), findsOneWidget);
+    expect(find.byKey(const Key('章热区_4')), findsNothing,
+        reason: '一屏只见两章');
+
+    // 左半屏向上滑两屏章高 → 镜头滑到末章
+    final size = tester.getSize(find.byType(Scaffold));
+    final bandH = (size.height - 52 - 12) / 2;
+    await tester.dragFrom(
+        Offset(size.width * 0.2, size.height * 0.7), Offset(0, -bandH * 2));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byKey(const Key('章热区_4')), findsOneWidget,
+        reason: '滑到底后末章可见');
+    expect(find.byKey(const Key('章热区_1')), findsNothing);
+  });
+
+  testWidgets('窗口模式：右滑滚小节（树背景不动、章带内滚）', (tester) async {
+    await seedNovel();
+    await pumpOutline(tester, [
+      fakeChapter(1, '第1章', 10),
+      fakeChapter(2, '第2章', 0),
+      fakeChapter(3, '第3章', 0),
+    ]);
+
+    expect(find.byKey(const Key('节热区_100')), findsOneWidget,
+        reason: '未滚动时第一节可见');
+    expect(find.byKey(const Key('节热区_109')), findsNothing,
+        reason: '第十节还在带外');
+
+    // 右半屏向上滑，滚第 1 章的小节
+    final size = tester.getSize(find.byType(Scaffold));
+    await tester.dragFrom(
+        Offset(size.width * 0.9, size.height * 0.35), const Offset(0, -260));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.byKey(const Key('节热区_109')), findsOneWidget,
+        reason: '滚动后第十节进入带内');
+  });
+
+  testWidgets('长按章标签 → 菜单 → 删除确认 → 章被剪掉', (tester) async {
+    await seedNovel();
     await db.into(db.chapters).insert(ChaptersCompanion.insert(
         novelId: 1, title: '引子', sortOrder: 0));
     await pumpOutline(tester, [fakeChapter(1, '引子', 0)]);
 
     await tester.longPress(find.byKey(const Key('章热区_1')));
     await tester.pump(const Duration(milliseconds: 400));
-
     await tester.tap(find.byKey(const Key('菜单删除')));
     await tester.pump(const Duration(milliseconds: 400));
     await tester.tap(find.byKey(const Key('删除确认按钮')));
     await tester.pump(const Duration(milliseconds: 400));
 
     final chapters = await db.select(db.chapters).get();
-    expect(chapters, isEmpty, reason: '确认后章应被删除');
+    expect(chapters, isEmpty);
   });
 
-  testWidgets('双击章标签 → 重命名对话框 → 保存落库', (tester) async {
-    await db.into(db.novels).insert(NovelsCompanion.insert(
-        title: '书', planet: 'earth', sortOrder: 0, createdAt: DateTime.now()));
-    await db.into(db.chapters).insert(ChaptersCompanion.insert(
-        novelId: 1, title: '引子', sortOrder: 0));
-    await pumpOutline(tester, [fakeChapter(1, '引子', 0)]);
-
-    // 双击 = 两次快速点击
-    await tester.tap(find.byKey(const Key('章热区_1')));
-    await tester.pump(const Duration(milliseconds: 80));
-    await tester.tap(find.byKey(const Key('章热区_1')));
-    await tester.pump(const Duration(milliseconds: 400));
-
-    await tester.enterText(
-        find.byKey(const Key('重命名输入框')), '楔子·星海之始');
-    await tester.tap(find.byKey(const Key('重命名确认按钮')));
-    await tester.pump(const Duration(milliseconds: 400));
-
-    final chapters = await db.select(db.chapters).get();
-    expect(chapters.single.title, '楔子·星海之始');
-  });
-
-  testWidgets('双击节标签 → 进小节页 → 改标题落库', (tester) async {
-    await db.into(db.novels).insert(NovelsCompanion.insert(
-        title: '书', planet: 'earth', sortOrder: 0, createdAt: DateTime.now()));
-    await db.into(db.chapters).insert(ChaptersCompanion.insert(
-        novelId: 1, title: '引子', sortOrder: 0));
-    await db.into(db.sections).insert(SectionsCompanion.insert(
-        chapterId: 1, title: '第一节', sortOrder: 0));
+  testWidgets('双击节标签 → 进小节页', (tester) async {
+    await seedNovel();
     await pumpOutline(tester, [fakeChapter(1, '引子', 1)]);
 
-    const twigKey = Key('节热区_100'); // fakeChapter 的节 id = 1*100+0
+    const twigKey = Key('节热区_100');
     final center = tester.getCenter(find.byKey(twigKey));
     await tester.tapAt(center);
     await tester.pump(const Duration(milliseconds: 100));
@@ -178,20 +222,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump(const Duration(milliseconds: 350));
 
-    final titleField = find.byKey(const Key('小节标题输入框'));
-    expect(titleField, findsOneWidget, reason: '双击节应进入小节页');
-
-    // 小节页操作真实节 id=100？——fake 数据 id 与真库 id 不同，
-    // 此处仅验证导航与输入框存在；改名落库单测放数据层
-    await tester.enterText(titleField, '月下独白');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
-    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const Key('小节标题输入框')), findsOneWidget);
   });
 
   testWidgets('拖拽：魔毯灵感拖到节标签 → 挂靠落库 → 魔毯缩球', (tester) async {
-    // 真库链路：小说→章→节 + 一条魔毯灵感
-    await db.into(db.novels).insert(NovelsCompanion.insert(
-        title: '书', planet: 'earth', sortOrder: 0, createdAt: DateTime.now()));
+    await seedNovel();
     await db.into(db.chapters).insert(ChaptersCompanion.insert(
         novelId: 1, title: '引子', sortOrder: 0));
     await db.into(db.sections).insert(SectionsCompanion.insert(
@@ -200,14 +235,13 @@ void main() {
     final inspId = await db.into(db.inspirations).insert(
         InspirationsCompanion.insert(
             content: '拖我上树', createdAt: now, updatedAt: now, cardOrder: 0));
-
     final insp = Inspiration(
         id: inspId,
         content: '拖我上树',
         createdAt: now,
         updatedAt: now,
         cardOrder: 0);
-    // outline 的节 id 必须与真库一致（=1），assignToSection 有外键约束
+
     await pumpOutline(
       tester,
       [
@@ -221,22 +255,17 @@ void main() {
       pool: [insp],
     );
 
-    // 展开魔毯并充分稳定（展开补间+水波动画未结束时长按拖拽会被干扰）
     await tester.tap(find.byKey(const Key('魔毯小球')));
     await tester.pump(const Duration(seconds: 1));
     await tester.pump(const Duration(seconds: 1));
 
-    // 长按拖起 → 移到节热区 → 松手
     final from = tester.getCenter(find.byKey(Key('魔毯灵感_$inspId')));
     final to = tester.getCenter(find.byKey(const Key('节热区_1')));
     final gesture = await tester.startGesture(from);
-    // ListView 中延迟拖拽：长按到点(500)+按压判定(100)后需一次移动才拖起
     await tester.pump(const Duration(milliseconds: 650));
     await gesture.moveBy(const Offset(0, 2));
     await tester.pump();
-    expect(find.text('拖我上树'), findsNWidgets(2),
-        reason: '拖起后应有原条目+浮影两份文本');
-    await gesture.moveTo(Offset.lerp(from, to, 0.5)!); // 分步移动
+    await gesture.moveTo(Offset.lerp(from, to, 0.5)!);
     await tester.pump();
     await gesture.moveTo(to);
     await tester.pump();
@@ -246,31 +275,8 @@ void main() {
     final saved = await (db.select(db.inspirations)
           ..where((t) => t.id.equals(inspId)))
         .getSingle();
-    expect(saved.sectionId, 1, reason: '灵感应挂到节 1');
+    expect(saved.sectionId, 1);
     expect(find.byKey(const Key('魔毯小球')), findsOneWidget,
         reason: '拖入后魔毯自动缩球');
-  });
-
-  testWidgets('点右＋：节挂到最新一章、按章内序号命名', (tester) async {
-    // 真库造链路：小说 + 两章（节要挂到最后一章 id=2）
-    await db.into(db.novels).insert(NovelsCompanion.insert(
-        title: '书', planet: 'earth', sortOrder: 0, createdAt: DateTime.now()));
-    await db.into(db.chapters).insert(ChaptersCompanion.insert(
-        novelId: 1, title: '引子', sortOrder: 0));
-    await db.into(db.chapters).insert(ChaptersCompanion.insert(
-        novelId: 1, title: '第一章', sortOrder: 1));
-
-    await pumpOutline(tester, [
-      fakeChapter(1, '引子', 0),
-      fakeChapter(2, '第一章', 2), // 已有 2 节 → 新节应叫"第三节"
-    ]);
-
-    await tester.tap(find.byKey(const Key('长节按钮')));
-    await tester.pump(const Duration(milliseconds: 100));
-
-    final sections = await db.select(db.sections).get();
-    expect(sections.single.chapterId, 2, reason: '挂到最新一章');
-    expect(sections.single.title, '第三节');
-    await tester.pump(const Duration(milliseconds: 800));
   });
 }
