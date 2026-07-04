@@ -27,10 +27,11 @@ class PlacedLabel {
 
 /// 标签文字样式（绘制与测量必须一致）
 /// 字号 17/15：用户反馈"标签胶囊太小"，加大一档
+/// 字重 w700/w600：用户定稿"章节和小节建议加粗"，章比节再重一档
 TextStyle labelStyle({required bool bold}) => TextStyle(
   fontFamily: 'LXGWWenKai',
   fontSize: bold ? 17 : 15,
-  fontWeight: bold ? FontWeight.w600 : FontWeight.w400,
+  fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
   color: const Color(0xFF3A2A18), // 深树皮色，配魔树
 );
 

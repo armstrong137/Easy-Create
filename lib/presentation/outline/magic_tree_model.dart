@@ -30,7 +30,8 @@ const kTendrilTipYFrac = 0.22;
 const kSectionRowHeight = 46.0;
 
 /// 小节标签下每条灵感小卡占的高度（有灵感的小节槽位据此加高）
-const kNoteRowHeight = 22.0;
+/// 26：小卡加大内边距后需多留高度，避免最后一节的小卡冲出章带被裁
+const kNoteRowHeight = 26.0;
 
 /// 小节标签下最多显示的灵感条数
 const kMaxSectionNotes = 2;

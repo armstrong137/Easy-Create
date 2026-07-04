@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
+import '../outline/magic_carpet.dart' show magicCarpetKey;
 import 'card_deck_sheet.dart';
 import 'card_editor_page.dart';
 import 'inspiration_card.dart';
@@ -89,25 +90,52 @@ class _SectionPageState extends ConsumerState<SectionPage> {
             },
           ),
         ),
-        const SizedBox(width: 54), // 平衡返回箭头
+        // 右侧留白避让右上角全局魔毯球（92 球宽 + 12 边距），标题不钻到球下
+        const SizedBox(width: 104),
       ],
     ),
   );
 
+  /// 把一条魔毯灵感挂进本节：排在卡堆最前（成为当前展示卡），并收起魔毯
+  Future<void> _acceptFromCarpet(Inspiration inspiration) async {
+    await ref
+        .read(inspirationRepositoryProvider)
+        .assignToSection(inspiration.id, widget.sectionId);
+    magicCarpetKey.currentState?.collapse();
+  }
+
   @override
   Widget build(BuildContext context) {
+    // 整个小节页 = 一个落点：从右上角魔毯拖一条灵感下来松手 → 挂进本节
+    // （用户定稿：图1 灵感拖不进具体小节。原先落点只在大纲树上。）
     return Scaffold(
       backgroundColor: kSectionParchment,
-      body: Column(
-        children: [
-          SafeArea(bottom: false, child: _header(context)),
-          Expanded(
-            child: Consumer(
-              builder: (context, ref, _) {
-                final cards =
-                    ref.watch(sectionCardsProvider(widget.sectionId)).value ??
-                    const [];
-                if (cards.isEmpty) return const _EmptyDeck();
+      body: DragTarget<Inspiration>(
+        onWillAcceptWithDetails: (_) => true,
+        onAcceptWithDetails: (d) => _acceptFromCarpet(d.data),
+        builder: (context, candidates, _) => Stack(
+          children: [
+            _body(context),
+            // 拖拽悬停时：金色提示层，明示"松手放入本节"
+            if (candidates.isNotEmpty)
+              const Positioned.fill(child: _DropHint()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _body(BuildContext context) {
+    return Column(
+      children: [
+        SafeArea(bottom: false, child: _header(context)),
+        Expanded(
+          child: Consumer(
+            builder: (context, ref, _) {
+              final cards =
+                  ref.watch(sectionCardsProvider(widget.sectionId)).value ??
+                  const [];
+              if (cards.isEmpty) return const _EmptyDeck();
 
                 // 主区只显示卡包第一张（当前展示卡）；其余卡藏在卡片包里，
                 // 不在主区露卡边（用户定稿：主区只要一个框）
@@ -144,6 +172,53 @@ class _SectionPageState extends ConsumerState<SectionPage> {
             ),
           ),
         ],
+      );
+  }
+}
+
+/// 拖拽悬停提示层：金色虚框 + 中央胶囊提示"松手放入本节"
+class _DropHint extends StatelessWidget {
+  const _DropHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        margin: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0x1FC9A050),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xCCC9A050), width: 2),
+        ),
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            decoration: BoxDecoration(
+              color: kCardCream,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: const Color(0xFFC9A050)),
+              boxShadow: const [
+                BoxShadow(color: Color(0x33000000), blurRadius: 14),
+              ],
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(CupertinoIcons.tray_arrow_down, size: 20, color: kInk),
+                SizedBox(width: 8),
+                Text(
+                  '松手，放入本节',
+                  style: TextStyle(
+                    fontFamily: 'LXGWWenKai',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: kInk,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

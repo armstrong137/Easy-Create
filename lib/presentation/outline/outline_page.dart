@@ -391,7 +391,8 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
             ),
           ),
         ),
-        const SizedBox(width: 54), // 平衡返回箭头宽度
+        // 右侧留白避让右上角全局魔毯球（92 球宽 + 12 边距），标题不钻到球下
+        const SizedBox(width: 104),
       ],
     ),
   );
@@ -507,11 +508,11 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
             children: [
               for (final n in shown)
                 Container(
-                  margin: const EdgeInsets.only(top: 2),
+                  margin: const EdgeInsets.only(top: 3),
                   constraints: BoxConstraints(maxWidth: maxW),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 7,
-                    vertical: 1,
+                    vertical: 3,
                   ),
                   decoration: BoxDecoration(
                     color: const Color(0xCCFFFCF4),
@@ -522,10 +523,11 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                     n.content,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    // 行高留 1.3，避免楷体字底被容器裁掉（用户反馈"部分内容被遮住"）
                     style: const TextStyle(
                       fontFamily: 'LXGWWenKai',
                       fontSize: 11,
-                      height: 1.2,
+                      height: 1.3,
                       color: Color(0xCC3A2A18),
                     ),
                   ),

@@ -99,6 +99,98 @@ void main() {
     expect(find.text('包里第二张'), findsNothing, reason: '主区只显示第一张，其余在卡片包里');
   });
 
+  testWidgets('从魔毯拖一条灵感到小节页 → 挂进本节（用户定稿：图1 拖入落点）', (
+    tester,
+  ) async {
+    // 真库造一条魔毯灵感（section_id 为空）
+    await db
+        .into(db.novels)
+        .insert(
+          NovelsCompanion.insert(
+            title: '书',
+            planet: 'earth',
+            sortOrder: 0,
+            createdAt: DateTime.now(),
+          ),
+        );
+    await db
+        .into(db.chapters)
+        .insert(ChaptersCompanion.insert(novelId: 1, title: '引子', sortOrder: 0));
+    await db
+        .into(db.sections)
+        .insert(
+          SectionsCompanion.insert(chapterId: 1, title: '第一节', sortOrder: 0),
+        );
+    final now = DateTime.now();
+    final inspId = await db
+        .into(db.inspirations)
+        .insert(
+          InspirationsCompanion.insert(
+            content: '拖进小节的灵感',
+            createdAt: now,
+            updatedAt: now,
+            cardOrder: 0,
+          ),
+        );
+    final insp = Inspiration(
+      id: inspId,
+      content: '拖进小节的灵感',
+      createdAt: now,
+      updatedAt: now,
+      cardOrder: 0,
+    );
+
+    // 卡堆流 override 空（避免真 drift 流挂 pending timer）；落点行为走真库，
+    // 断言直接查库。页面上铺一个 Draggable 源模拟魔毯里的灵感。
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          sectionCardsProvider.overrideWith(
+            (ref, sectionId) => Stream.value(const []),
+          ),
+        ],
+        child: MaterialApp(
+          home: Stack(
+            children: [
+              const SectionPage(sectionId: 1, initialTitle: '第一节'),
+              // 模拟魔毯里的一条可拖灵感
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Draggable<Inspiration>(
+                  data: insp,
+                  feedback: const SizedBox(width: 40, height: 20),
+                  child: Container(
+                    key: const Key('拖源'),
+                    width: 40,
+                    height: 20,
+                    color: const Color(0xFF000000),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 从拖源拖到屏幕中央（小节页 body 落点）
+    final from = tester.getCenter(find.byKey(const Key('拖源')));
+    final to = tester.getCenter(find.byType(SectionPage));
+    final g = await tester.startGesture(from);
+    await tester.pump(const Duration(milliseconds: 100));
+    await g.moveTo(to);
+    await tester.pump(const Duration(milliseconds: 100));
+    await g.up();
+    await tester.pumpAndSettle();
+
+    final saved = await (db.select(
+      db.inspirations,
+    )..where((t) => t.id.equals(inspId))).getSingle();
+    expect(saved.sectionId, 1, reason: '拖到小节页应挂进本节');
+  });
+
   testWidgets('点卡片包按钮展开全部卡片', (tester) async {
     await pumpSection(tester, [fake(1, '第一张卡', 0), fake(2, '最新的卡', 1)]);
 
