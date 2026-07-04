@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-03 23:05:03　对应提交：bd81e0e 之后的工作区状态
+> 生成时间：2026-07-03 23:17:42　对应提交：043a9b9 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,17 +13,17 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     70
-  Nodes:     1,051
-  Edges:     2,401
-  DB Size:   3.53 MB
+  Nodes:     1,065
+  Edges:     2,445
+  DB Size:   3.69 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          333
+  method          345
   import          220
   function        175
-  constant        137
+  constant        139
   class           93
   file            66
   variable        14
@@ -108,11 +108,11 @@ Project Structure (70 files):
 |   |-- data
 |   |   |-- database
 |   |   |   |-- app_database.dart (dart, 9 symbols)
-|   |   |   |-- app_database.g.dart (dart, 237 symbols)
-|   |   |   `-- tables.dart (dart, 25 symbols)
+|   |   |   |-- app_database.g.dart (dart, 247 symbols)
+|   |   |   `-- tables.dart (dart, 26 symbols)
 |   |   |-- repositories
-|   |   |   |-- inspiration_repository.dart (dart, 12 symbols)
-|   |   |   `-- novel_repository.dart (dart, 21 symbols)
+|   |   |   |-- inspiration_repository.dart (dart, 13 symbols)
+|   |   |   `-- novel_repository.dart (dart, 22 symbols)
 |   |   `-- providers.dart (dart, 8 symbols)
 |   |-- domain
 |   |   `-- entities
@@ -128,7 +128,7 @@ Project Structure (70 files):
 |   |   |   |-- label_layout.dart (dart, 12 symbols)
 |   |   |   |-- magic_carpet.dart (dart, 33 symbols)
 |   |   |   |-- magic_tree_model.dart (dart, 29 symbols)
-|   |   |   `-- outline_page.dart (dart, 50 symbols)
+|   |   |   `-- outline_page.dart (dart, 51 symbols)
 |   |   |-- section
 |   |   |   |-- card_deck_sheet.dart (dart, 12 symbols)
 |   |   |   |-- card_editor_page.dart (dart, 12 symbols)

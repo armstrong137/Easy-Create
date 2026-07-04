@@ -189,6 +189,29 @@ class NovelRepository {
     });
   }
 
+  /// 监听某小说下"直接挂靠到章的灵感"，按 chapter_id 分组、每组新的在前。
+  /// 大纲页在章标签下方显示最新几条灵感用。
+  Stream<Map<int, List<Inspiration>>> watchChapterInspirations(int novelId) {
+    final query =
+        _db.select(_db.inspirations).join([
+            innerJoin(
+              _db.chapters,
+              _db.chapters.id.equalsExp(_db.inspirations.chapterId),
+            ),
+          ])
+          ..where(_db.chapters.novelId.equals(novelId))
+          ..orderBy([OrderingTerm.desc(_db.inspirations.createdAt)]);
+
+    return query.watch().map((rows) {
+      final grouped = <int, List<Inspiration>>{};
+      for (final row in rows) {
+        final insp = row.readTable(_db.inspirations);
+        (grouped[insp.chapterId!] ??= <Inspiration>[]).add(insp);
+      }
+      return grouped;
+    });
+  }
+
   // ---------- 创作能量 ----------
 
   /// 监听某小说的创作量 = 章数 + 节数 + 挂在其小节下的灵感数
@@ -204,6 +227,9 @@ class NovelRepository {
         + (SELECT COUNT(*) FROM inspirations i
              JOIN sections s ON i.section_id = s.id
              JOIN chapters c ON s.chapter_id = c.id
+             WHERE c.novel_id = ?1)
+        + (SELECT COUNT(*) FROM inspirations i
+             JOIN chapters c ON i.chapter_id = c.id
              WHERE c.novel_id = ?1) AS total
       ''',
       variables: [Variable.withInt(novelId)],

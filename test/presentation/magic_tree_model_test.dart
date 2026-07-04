@@ -11,17 +11,17 @@ import 'package:novel_app/presentation/outline/magic_tree_model.dart';
 /// 章序自上而下（第一章树顶方向）；>2 章进入窗口模式一屏两章
 void main() {
   OutlineChapter chapterWith(int id, int sectionCount) => OutlineChapter(
-        chapter:
-            Chapter(id: id, novelId: 1, title: '第$id章', sortOrder: id),
-        sections: [
-          for (var j = 0; j < sectionCount; j++)
-            Section(
-                id: id * 100 + j,
-                chapterId: id,
-                title: '第${j + 1}节',
-                sortOrder: j),
-        ],
-      );
+    chapter: Chapter(id: id, novelId: 1, title: '第$id章', sortOrder: id),
+    sections: [
+      for (var j = 0; j < sectionCount; j++)
+        Section(
+          id: id * 100 + j,
+          chapterId: id,
+          title: '第${j + 1}节',
+          sortOrder: j,
+        ),
+    ],
+  );
 
   const size = Size(400, 800);
 
@@ -52,9 +52,11 @@ void main() {
       size: size,
       outline: [chapterWith(1, 2), chapterWith(2, 2)],
     );
-    expect(layout.chapters[0].root.dy,
-        lessThan(layout.chapters[1].root.dy),
-        reason: '第一章根更高（y 更小），新章向土壤方向生长');
+    expect(
+      layout.chapters[0].root.dy,
+      lessThan(layout.chapters[1].root.dy),
+      reason: '第一章根更高（y 更小），新章向土壤方向生长',
+    );
 
     final band1 = layout.chapterBands[1]!;
     for (final s in layout.sections.where((s) => s.id ~/ 100 == 1)) {
@@ -86,10 +88,16 @@ void main() {
     expect(top.chapterBands.keys, contains(2));
     expect(top.chapterBands.keys, isNot(contains(5)), reason: '一屏只两章');
 
-    final bottom =
-        layoutMagicTree(size: size, outline: outline, chapterOffset: 3);
-    expect(bottom.imageRect.bottom, closeTo(size.height, 0.5),
-        reason: '镜头在末章 → 看到土壤');
+    final bottom = layoutMagicTree(
+      size: size,
+      outline: outline,
+      chapterOffset: 3,
+    );
+    expect(
+      bottom.imageRect.bottom,
+      closeTo(size.height, 0.5),
+      reason: '镜头在末章 → 看到土壤',
+    );
     expect(bottom.chapterBands.keys, contains(4));
     expect(bottom.chapterBands.keys, contains(5));
     expect(bottom.chapterBands.keys, isNot(contains(1)));
@@ -107,11 +115,11 @@ void main() {
     final max = layout.sectionScrollMax[1]!;
     expect(max, greaterThan(0), reason: '12 节放不下半屏，必须可滚');
 
-    Set<int> ids(MagicTreeLayout l) =>
-        l.sections.map((s) => s.id).toSet();
+    Set<int> ids(MagicTreeLayout l) => l.sections.map((s) => s.id).toSet();
     final before = ids(layout);
-    final after = ids(layoutMagicTree(
-        size: size, outline: outline, sectionScrolls: {1: max}));
+    final after = ids(
+      layoutMagicTree(size: size, outline: outline, sectionScrolls: {1: max}),
+    );
     expect(before, contains(100), reason: '未滚动时第一节可见');
     expect(after, contains(100 + 11), reason: '滚到底后最后一节可见');
     expect(after, isNot(contains(100)), reason: '第一节被滚出带外');
@@ -127,12 +135,18 @@ void main() {
     expect(labels, isNotEmpty);
     for (var a = 0; a < labels.length; a++) {
       for (var b = a + 1; b < labels.length; b++) {
-        expect(labels[a].rect.overlaps(labels[b].rect), isFalse,
-            reason: '${labels[a].text} 与 ${labels[b].text} 不应重叠');
+        expect(
+          labels[a].rect.overlaps(labels[b].rect),
+          isFalse,
+          reason: '${labels[a].text} 与 ${labels[b].text} 不应重叠',
+        );
       }
       expect(labels[a].rect.left, greaterThanOrEqualTo(0), reason: '不出左缘');
-      expect(labels[a].rect.right, lessThanOrEqualTo(size.width),
-          reason: '不出右缘');
+      expect(
+        labels[a].rect.right,
+        lessThanOrEqualTo(size.width),
+        reason: '不出右缘',
+      );
     }
   });
 }

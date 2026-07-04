@@ -38,7 +38,7 @@ class InspirationRepository {
   /// 保证速记后立刻出现在魔毯顶部、首页环绕取"最近几条"。
   Stream<List<Inspiration>> watchPool() =>
       (_db.select(_db.inspirations)
-            ..where((t) => t.sectionId.isNull())
+            ..where((t) => t.sectionId.isNull() & t.chapterId.isNull())
             ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
           .watch();
 
@@ -62,18 +62,39 @@ class InspirationRepository {
     )..where((t) => t.id.equals(inspirationId))).write(
       InspirationsCompanion(
         sectionId: Value(sectionId),
+        chapterId: const Value(null), // 挂到小节即脱离"直接挂章"
         cardOrder: Value(maxOrder + 1),
       ),
     );
   }
 
-  /// 从小节删卡：放回魔毯（创建时间不变，排序位置由它决定）
+  /// 拖到某章下：灵感直接挂在章（不属于任何小节），从魔毯消失
+  Future<void> assignToChapter(int inspirationId, int chapterId) async {
+    final maxOrderQuery = _db.selectOnly(_db.inspirations)
+      ..addColumns([_db.inspirations.cardOrder.max()])
+      ..where(_db.inspirations.chapterId.equals(chapterId));
+    final row = await maxOrderQuery.getSingle();
+    final maxOrder = row.read(_db.inspirations.cardOrder.max()) ?? -1;
+
+    await (_db.update(
+      _db.inspirations,
+    )..where((t) => t.id.equals(inspirationId))).write(
+      InspirationsCompanion(
+        chapterId: Value(chapterId),
+        sectionId: const Value(null),
+        cardOrder: Value(maxOrder + 1),
+      ),
+    );
+  }
+
+  /// 从小节/章删卡：放回魔毯（创建时间不变，排序位置由它决定）
   Future<void> removeFromSection(int inspirationId) =>
       (_db.update(
         _db.inspirations,
       )..where((t) => t.id.equals(inspirationId))).write(
         const InspirationsCompanion(
           sectionId: Value(null),
+          chapterId: Value(null),
           cardOrder: Value(0),
         ),
       );

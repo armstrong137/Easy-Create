@@ -32,26 +32,34 @@ void main() {
         sections: [
           for (var j = 0; j < sectionCount; j++)
             Section(
-                id: id * 100 + j,
-                chapterId: id,
-                title: '第${j + 1}节',
-                sortOrder: j),
+              id: id * 100 + j,
+              chapterId: id,
+              title: '第${j + 1}节',
+              sortOrder: j,
+            ),
         ],
       );
 
-  Future<void> pumpOutline(WidgetTester tester, List<OutlineChapter> outline,
-      {List<Inspiration> pool = const []}) async {
+  Future<void> pumpOutline(
+    WidgetTester tester,
+    List<OutlineChapter> outline, {
+    List<Inspiration> pool = const [],
+  }) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
           outlineProvider.overrideWith((ref, novelId) => Stream.value(outline)),
           sectionInspirationsProvider.overrideWith(
-              (ref, novelId) => Stream.value(const {})),
-          inspirationPoolProvider
-              .overrideWith((ref) => Stream.value(pool)),
-          sectionCardsProvider
-              .overrideWith((ref, sectionId) => Stream.value(const [])),
+            (ref, novelId) => Stream.value(const {}),
+          ),
+          chapterInspirationsProvider.overrideWith(
+            (ref, novelId) => Stream.value(const {}),
+          ),
+          inspirationPoolProvider.overrideWith((ref) => Stream.value(pool)),
+          sectionCardsProvider.overrideWith(
+            (ref, sectionId) => Stream.value(const []),
+          ),
         ],
         child: MaterialApp(
           // 与 main.dart 一致：全局魔毯层叠在 Navigator 之上
@@ -72,8 +80,16 @@ void main() {
   }
 
   Future<void> seedNovel() async {
-    await db.into(db.novels).insert(NovelsCompanion.insert(
-        title: '书', planet: 'earth', sortOrder: 0, createdAt: DateTime.now()));
+    await db
+        .into(db.novels)
+        .insert(
+          NovelsCompanion.insert(
+            title: '书',
+            planet: 'earth',
+            sortOrder: 0,
+            createdAt: DateTime.now(),
+          ),
+        );
   }
 
   testWidgets('空大纲：光杆魔树 + 左右空白区就位', (tester) async {
@@ -98,8 +114,11 @@ void main() {
 
   testWidgets('已有一章时点左空白命名"第一章"', (tester) async {
     await seedNovel();
-    await db.into(db.chapters).insert(ChaptersCompanion.insert(
-        novelId: 1, title: '引子', sortOrder: 0));
+    await db
+        .into(db.chapters)
+        .insert(
+          ChaptersCompanion.insert(novelId: 1, title: '引子', sortOrder: 0),
+        );
     await pumpOutline(tester, [fakeChapter(1, '引子', 0)]);
 
     // 左下空白（章序自上而下：单章标签在左上角，左下角是干净空白）
@@ -128,12 +147,20 @@ void main() {
 
   testWidgets('点右空白：节挂到点击高度对应的章（左右对应关系）', (tester) async {
     await seedNovel();
-    await db.into(db.chapters).insert(ChaptersCompanion.insert(
-        novelId: 1, title: '引子', sortOrder: 0));
-    await db.into(db.chapters).insert(ChaptersCompanion.insert(
-        novelId: 1, title: '第一章', sortOrder: 1));
-    await pumpOutline(
-        tester, [fakeChapter(1, '引子', 0), fakeChapter(2, '第一章', 0)]);
+    await db
+        .into(db.chapters)
+        .insert(
+          ChaptersCompanion.insert(novelId: 1, title: '引子', sortOrder: 0),
+        );
+    await db
+        .into(db.chapters)
+        .insert(
+          ChaptersCompanion.insert(novelId: 1, title: '第一章', sortOrder: 1),
+        );
+    await pumpOutline(tester, [
+      fakeChapter(1, '引子', 0),
+      fakeChapter(2, '第一章', 0),
+    ]);
 
     // 章序自上而下：引子在上、第一章在下 → 双击右侧靠下挂到第一章
     final size = tester.getSize(find.byType(Scaffold));
@@ -148,27 +175,35 @@ void main() {
   testWidgets('窗口模式：一屏两章，左滑滚章节', (tester) async {
     await seedNovel();
     for (var i = 0; i < 4; i++) {
-      await db.into(db.chapters).insert(ChaptersCompanion.insert(
-          novelId: 1, title: '第${i + 1}章', sortOrder: i));
+      await db
+          .into(db.chapters)
+          .insert(
+            ChaptersCompanion.insert(
+              novelId: 1,
+              title: '第${i + 1}章',
+              sortOrder: i,
+            ),
+          );
     }
-    await pumpOutline(
-        tester, [for (var i = 1; i <= 4; i++) fakeChapter(i, '第$i章', 0)]);
+    await pumpOutline(tester, [
+      for (var i = 1; i <= 4; i++) fakeChapter(i, '第$i章', 0),
+    ]);
 
     expect(find.byKey(const Key('章热区_1')), findsOneWidget);
     expect(find.byKey(const Key('章热区_2')), findsOneWidget);
-    expect(find.byKey(const Key('章热区_4')), findsNothing,
-        reason: '一屏只见两章');
+    expect(find.byKey(const Key('章热区_4')), findsNothing, reason: '一屏只见两章');
 
     // 左半屏向上滑两屏章高 → 镜头滑到末章
     final size = tester.getSize(find.byType(Scaffold));
     final bandH = (size.height - 52 - 12) / 2;
     await tester.dragFrom(
-        Offset(size.width * 0.2, size.height * 0.7), Offset(0, -bandH * 2));
+      Offset(size.width * 0.2, size.height * 0.7),
+      Offset(0, -bandH * 2),
+    );
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.byKey(const Key('章热区_4')), findsOneWidget,
-        reason: '滑到底后末章可见');
+    expect(find.byKey(const Key('章热区_4')), findsOneWidget, reason: '滑到底后末章可见');
     expect(find.byKey(const Key('章热区_1')), findsNothing);
   });
 
@@ -180,25 +215,35 @@ void main() {
       fakeChapter(3, '第3章', 0),
     ]);
 
-    expect(find.byKey(const Key('节热区_100')), findsOneWidget,
-        reason: '未滚动时第一节可见');
-    expect(find.byKey(const Key('节热区_109')), findsNothing,
-        reason: '第十节还在带外');
+    expect(
+      find.byKey(const Key('节热区_100')),
+      findsOneWidget,
+      reason: '未滚动时第一节可见',
+    );
+    expect(find.byKey(const Key('节热区_109')), findsNothing, reason: '第十节还在带外');
 
     // 右半屏向上滑，滚第 1 章的小节
     final size = tester.getSize(find.byType(Scaffold));
     await tester.dragFrom(
-        Offset(size.width * 0.9, size.height * 0.35), const Offset(0, -260));
+      Offset(size.width * 0.9, size.height * 0.35),
+      const Offset(0, -260),
+    );
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.byKey(const Key('节热区_109')), findsOneWidget,
-        reason: '滚动后第十节进入带内');
+    expect(
+      find.byKey(const Key('节热区_109')),
+      findsOneWidget,
+      reason: '滚动后第十节进入带内',
+    );
   });
 
   testWidgets('长按章标签 → 菜单 → 删除确认 → 章被剪掉', (tester) async {
     await seedNovel();
-    await db.into(db.chapters).insert(ChaptersCompanion.insert(
-        novelId: 1, title: '引子', sortOrder: 0));
+    await db
+        .into(db.chapters)
+        .insert(
+          ChaptersCompanion.insert(novelId: 1, title: '引子', sortOrder: 0),
+        );
     await pumpOutline(tester, [fakeChapter(1, '引子', 0)]);
 
     await tester.longPress(find.byKey(const Key('章热区_1')));
@@ -229,29 +274,41 @@ void main() {
 
   testWidgets('拖拽：魔毯灵感拖到节标签 → 挂靠落库 → 魔毯缩球', (tester) async {
     await seedNovel();
-    await db.into(db.chapters).insert(ChaptersCompanion.insert(
-        novelId: 1, title: '引子', sortOrder: 0));
-    await db.into(db.sections).insert(SectionsCompanion.insert(
-        chapterId: 1, title: '第一节', sortOrder: 0));
+    await db
+        .into(db.chapters)
+        .insert(
+          ChaptersCompanion.insert(novelId: 1, title: '引子', sortOrder: 0),
+        );
+    await db
+        .into(db.sections)
+        .insert(
+          SectionsCompanion.insert(chapterId: 1, title: '第一节', sortOrder: 0),
+        );
     final now = DateTime.now();
-    final inspId = await db.into(db.inspirations).insert(
-        InspirationsCompanion.insert(
-            content: '拖我上树', createdAt: now, updatedAt: now, cardOrder: 0));
+    final inspId = await db
+        .into(db.inspirations)
+        .insert(
+          InspirationsCompanion.insert(
+            content: '拖我上树',
+            createdAt: now,
+            updatedAt: now,
+            cardOrder: 0,
+          ),
+        );
     final insp = Inspiration(
-        id: inspId,
-        content: '拖我上树',
-        createdAt: now,
-        updatedAt: now,
-        cardOrder: 0);
+      id: inspId,
+      content: '拖我上树',
+      createdAt: now,
+      updatedAt: now,
+      cardOrder: 0,
+    );
 
     await pumpOutline(
       tester,
       [
         const OutlineChapter(
           chapter: Chapter(id: 1, novelId: 1, title: '引子', sortOrder: 0),
-          sections: [
-            Section(id: 1, chapterId: 1, title: '第一节', sortOrder: 0),
-          ],
+          sections: [Section(id: 1, chapterId: 1, title: '第一节', sortOrder: 0)],
         ),
       ],
       pool: [insp],
@@ -274,11 +331,10 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
 
-    final saved = await (db.select(db.inspirations)
-          ..where((t) => t.id.equals(inspId)))
-        .getSingle();
+    final saved = await (db.select(
+      db.inspirations,
+    )..where((t) => t.id.equals(inspId))).getSingle();
     expect(saved.sectionId, 1);
-    expect(find.byKey(const Key('魔毯小球')), findsOneWidget,
-        reason: '拖入后魔毯自动缩球');
+    expect(find.byKey(const Key('魔毯小球')), findsOneWidget, reason: '拖入后魔毯自动缩球');
   });
 }

@@ -13,13 +13,13 @@ import 'package:novel_app/presentation/section/section_page.dart';
 /// 阶段六·1：小节页主区最新一张灵感卡（卡堆流照例 override）
 void main() {
   Inspiration fake(int id, String content, int order) => Inspiration(
-        id: id,
-        content: content,
-        createdAt: DateTime(2026, 7, 1),
-        updatedAt: DateTime(2026, 7, 1),
-        sectionId: 1,
-        cardOrder: order,
-      );
+    id: id,
+    content: content,
+    createdAt: DateTime(2026, 7, 1),
+    updatedAt: DateTime(2026, 7, 1),
+    sectionId: 1,
+    cardOrder: order,
+  );
 
   late AppDatabase db;
 
@@ -29,14 +29,14 @@ void main() {
 
   tearDown(() async => db.close());
 
-  Future<void> pumpSection(
-      WidgetTester tester, List<Inspiration> cards) async {
+  Future<void> pumpSection(WidgetTester tester, List<Inspiration> cards) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
           sectionCardsProvider.overrideWith(
-              (ref, sectionId) => Stream.value(cards)),
+            (ref, sectionId) => Stream.value(cards),
+          ),
         ],
         child: const MaterialApp(
           home: SectionPage(sectionId: 1, initialTitle: '第一节'),
@@ -48,22 +48,41 @@ void main() {
 
   /// 真库造一条挂在节 1 的灵感（编辑/放回操作走真库）
   Future<Inspiration> seedCard(String content) async {
-    await db.into(db.novels).insert(NovelsCompanion.insert(
-        title: '书', planet: 'earth', sortOrder: 0, createdAt: DateTime.now()));
-    await db.into(db.chapters).insert(
-        ChaptersCompanion.insert(novelId: 1, title: '引子', sortOrder: 0));
-    await db.into(db.sections).insert(
-        SectionsCompanion.insert(chapterId: 1, title: '第一节', sortOrder: 0));
+    await db
+        .into(db.novels)
+        .insert(
+          NovelsCompanion.insert(
+            title: '书',
+            planet: 'earth',
+            sortOrder: 0,
+            createdAt: DateTime.now(),
+          ),
+        );
+    await db
+        .into(db.chapters)
+        .insert(
+          ChaptersCompanion.insert(novelId: 1, title: '引子', sortOrder: 0),
+        );
+    await db
+        .into(db.sections)
+        .insert(
+          SectionsCompanion.insert(chapterId: 1, title: '第一节', sortOrder: 0),
+        );
     final now = DateTime.now();
-    final id = await db.into(db.inspirations).insert(
-        InspirationsCompanion.insert(
+    final id = await db
+        .into(db.inspirations)
+        .insert(
+          InspirationsCompanion.insert(
             content: content,
             createdAt: now,
             updatedAt: now,
             sectionId: const Value(1),
-            cardOrder: 0));
-    return (db.select(db.inspirations)..where((t) => t.id.equals(id)))
-        .getSingle();
+            cardOrder: 0,
+          ),
+        );
+    return (db.select(
+      db.inspirations,
+    )..where((t) => t.id.equals(id))).getSingle();
   }
 
   testWidgets('空节显示邀请文案', (tester) async {
@@ -72,10 +91,7 @@ void main() {
   });
 
   testWidgets('主区只显示最新一张卡（card_order 最大）', (tester) async {
-    await pumpSection(tester, [
-      fake(1, '第一张卡', 0),
-      fake(2, '最新的卡', 1),
-    ]);
+    await pumpSection(tester, [fake(1, '第一张卡', 0), fake(2, '最新的卡', 1)]);
 
     expect(find.byKey(const Key('主区卡_2')), findsOneWidget);
     expect(find.text('最新的卡'), findsOneWidget);
@@ -83,10 +99,7 @@ void main() {
   });
 
   testWidgets('点卡片包按钮展开全部卡片', (tester) async {
-    await pumpSection(tester, [
-      fake(1, '第一张卡', 0),
-      fake(2, '最新的卡', 1),
-    ]);
+    await pumpSection(tester, [fake(1, '第一张卡', 0), fake(2, '最新的卡', 1)]);
 
     await tester.tap(find.byKey(const Key('卡片包按钮')));
     await tester.pumpAndSettle();
@@ -100,10 +113,12 @@ void main() {
     final long = '灵感' * 3000; // 6000 字
     await pumpSection(tester, [fake(1, long, 0)]);
 
-    final text = tester.widget<Text>(find.descendant(
-      of: find.byType(InspirationCard),
-      matching: find.byType(Text),
-    ));
+    final text = tester.widget<Text>(
+      find.descendant(
+        of: find.byType(InspirationCard),
+        matching: find.byType(Text),
+      ),
+    );
     expect(text.overflow, TextOverflow.ellipsis);
     expect(text.maxLines, isNotNull);
   });
@@ -117,16 +132,15 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('全文编辑框')), findsOneWidget);
-      await tester.enterText(
-          find.byKey(const Key('全文编辑框')), '重写后的正文，长夜将尽。');
+      await tester.enterText(find.byKey(const Key('全文编辑框')), '重写后的正文，长夜将尽。');
 
       // 返回 → PopScope 自动保存
       await tester.pageBack();
       await tester.pumpAndSettle();
 
-      final saved = await (db.select(db.inspirations)
-            ..where((t) => t.id.equals(card.id)))
-          .getSingle();
+      final saved = await (db.select(
+        db.inspirations,
+      )..where((t) => t.id.equals(card.id))).getSingle();
       expect(saved.content, '重写后的正文，长夜将尽。');
       // 同毫秒内保存时 updatedAt 可能等于 createdAt，故断言"不早于"
       expect(saved.updatedAt.isBefore(saved.createdAt), isFalse);
@@ -153,12 +167,11 @@ void main() {
       await tester.tap(find.byKey(const Key('放回魔毯确认按钮')));
       await tester.pumpAndSettle();
 
-      final saved = await (db.select(db.inspirations)
-            ..where((t) => t.id.equals(card.id)))
-          .getSingle();
+      final saved = await (db.select(
+        db.inspirations,
+      )..where((t) => t.id.equals(card.id))).getSingle();
       expect(saved.sectionId, isNull, reason: '放回魔毯而非删除');
-      expect(find.byKey(const Key('全文编辑框')), findsNothing,
-          reason: '放回后应弹回小节页');
+      expect(find.byKey(const Key('全文编辑框')), findsNothing, reason: '放回后应弹回小节页');
     });
   });
 }

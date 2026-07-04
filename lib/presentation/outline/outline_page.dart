@@ -26,6 +26,13 @@ final sectionInspirationsProvider =
           ref.watch(novelRepositoryProvider).watchSectionInspirations(novelId),
     );
 
+/// 某小说下"直接挂靠到章的灵感"，按 chapter_id 分组（新的在前）。
+final chapterInspirationsProvider =
+    StreamProvider.family<Map<int, List<Inspiration>>, int>(
+      (ref, novelId) =>
+          ref.watch(novelRepositoryProvider).watchChapterInspirations(novelId),
+    );
+
 /// 小节标签下最多显示的灵感条数（用户定稿：数量太多只显示最新两条）
 const _maxSectionNotes = 2;
 
@@ -593,9 +600,12 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   Widget build(BuildContext context) {
     final outline =
         ref.watch(outlineProvider(widget.novelId)).value ?? const [];
-    // 各小节已挂靠的灵感（新的在前），用于在小节标签下显示最新几条
+    // 各小节/章已挂靠的灵感（新的在前），用于在标签下显示最新几条
     final sectionInsp =
         ref.watch(sectionInspirationsProvider(widget.novelId)).value ??
+        const <int, List<Inspiration>>{};
+    final chapterInsp =
+        ref.watch(chapterInspirationsProvider(widget.novelId)).value ??
         const <int, List<Inspiration>>{};
     final noteCounts = {
       for (final e in sectionInsp.entries) e.key: e.value.length,
@@ -734,6 +744,15 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                                 ],
                               ),
                             ),
+                            // 章标签下直接挂靠的灵感小卡（章不裁剪，直接放）
+                            for (final label in labels)
+                              if (label.chapterId != null)
+                                _sectionNotes(
+                                  label,
+                                  chapterInsp[label.chapterId] ?? const [],
+                                  Offset.zero,
+                                  size.width,
+                                ),
                             // 小节标签下的灵感小卡（与标签同裁剪规则）
                             for (final label in labels)
                               if (label.sectionId != null &&
@@ -782,28 +801,20 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     );
   }
 
-  /// 拖拽落点：灵感挂到节；落在章上则挂到该章最新一节
+  /// 拖拽落点：磁吸到小节 → 挂小节；磁吸到章 → 直接挂到该章下
   Future<void> _dropInspiration(
     Inspiration inspiration,
     PlacedLabel label,
     List<OutlineChapter> outline,
   ) async {
-    int? sectionId = label.sectionId;
-    if (sectionId == null && label.chapterId != null) {
-      final chapter = outline
-          .where((c) => c.chapter.id == label.chapterId)
-          .firstOrNull;
-      if (chapter == null || chapter.sections.isEmpty) {
-        showSoftToast(context, '这一章还没有小节，先点右边空白长一根节枝');
-        return;
-      }
-      sectionId = chapter.sections.last.id;
+    final repo = ref.read(inspirationRepositoryProvider);
+    if (label.sectionId != null) {
+      await repo.assignToSection(inspiration.id, label.sectionId!);
+    } else if (label.chapterId != null) {
+      await repo.assignToChapter(inspiration.id, label.chapterId!);
+    } else {
+      return;
     }
-    if (sectionId == null) return;
-
-    await ref
-        .read(inspirationRepositoryProvider)
-        .assignToSection(inspiration.id, sectionId);
     magicCarpetKey.currentState?.collapse();
   }
 }

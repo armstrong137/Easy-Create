@@ -15,13 +15,20 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      // v2：灵感新增 chapter_id（可直接挂靠到章下）
+      if (from < 2) {
+        await m.addColumn(inspirations, inspirations.chapterId);
+      }
+    },
     beforeOpen: (details) async {
       // 开启外键约束：级联删除（删小说→删章→删节）与
-      // 删节时灵感放回魔毯（section_id 置 NULL）都依赖它
+      // 删节/删章时灵感放回魔毯（section_id / chapter_id 置 NULL）都依赖它
       await customStatement('PRAGMA foreign_keys = ON');
     },
   );

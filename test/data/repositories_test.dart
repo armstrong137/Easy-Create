@@ -23,10 +23,14 @@ void main() {
   // 建一条 小说→章→节 链路，返回节 id（灵感测试的挂靠点）
   Future<int> createSectionChain() async {
     final novel = await novelRepo.createNovel(title: '测试小说', planet: 'earth');
-    final chapter =
-        await novelRepo.createChapter(novelId: novel.id, title: '第一章');
-    final section =
-        await novelRepo.createSection(chapterId: chapter.id, title: '第一节');
+    final chapter = await novelRepo.createChapter(
+      novelId: novel.id,
+      title: '第一章',
+    );
+    final section = await novelRepo.createSection(
+      chapterId: chapter.id,
+      title: '第一节',
+    );
     return section.id;
   }
 
@@ -40,8 +44,10 @@ void main() {
       final c1 = await novelRepo.createChapter(novelId: n1.id, title: '引子');
       final c2 = await novelRepo.createChapter(novelId: n1.id, title: '第一章');
       // 另一部小说的章序号独立计数
-      final cOther =
-          await novelRepo.createChapter(novelId: n2.id, title: '第一章');
+      final cOther = await novelRepo.createChapter(
+        novelId: n2.id,
+        title: '第一章',
+      );
       expect([c1.sortOrder, c2.sortOrder], [0, 1]);
       expect(cOther.sortOrder, 0);
 
@@ -74,20 +80,33 @@ void main() {
       final novel = await novelRepo.createNovel(title: '书', planet: 'earth');
       expect(await novelRepo.watchCreativeCount(novel.id).first, 0);
 
-      final chapter =
-          await novelRepo.createChapter(novelId: novel.id, title: '一章');
-      final section =
-          await novelRepo.createSection(chapterId: chapter.id, title: '一节');
-      expect(await novelRepo.watchCreativeCount(novel.id).first, 2,
-          reason: '1 章 + 1 节');
+      final chapter = await novelRepo.createChapter(
+        novelId: novel.id,
+        title: '一章',
+      );
+      final section = await novelRepo.createSection(
+        chapterId: chapter.id,
+        title: '一节',
+      );
+      expect(
+        await novelRepo.watchCreativeCount(novel.id).first,
+        2,
+        reason: '1 章 + 1 节',
+      );
 
       final insp = await inspirationRepo.addInspiration('灵感');
-      expect(await novelRepo.watchCreativeCount(novel.id).first, 2,
-          reason: '魔毯灵感不归属任何小说');
+      expect(
+        await novelRepo.watchCreativeCount(novel.id).first,
+        2,
+        reason: '魔毯灵感不归属任何小说',
+      );
 
       await inspirationRepo.assignToSection(insp.id, section.id);
-      expect(await novelRepo.watchCreativeCount(novel.id).first, 3,
-          reason: '挂入小节后计入该小说');
+      expect(
+        await novelRepo.watchCreativeCount(novel.id).first,
+        3,
+        reason: '挂入小节后计入该小说',
+      );
     });
   });
 
@@ -122,10 +141,14 @@ void main() {
     test('魔毯按创建时间排序，新的在前', () async {
       final t = DateTime(2026, 7, 1);
       await inspirationRepo.addInspiration('最早', createdAt: t);
-      await inspirationRepo.addInspiration('中间',
-          createdAt: t.add(const Duration(minutes: 1)));
-      await inspirationRepo.addInspiration('最新',
-          createdAt: t.add(const Duration(minutes: 2)));
+      await inspirationRepo.addInspiration(
+        '中间',
+        createdAt: t.add(const Duration(minutes: 1)),
+      );
+      await inspirationRepo.addInspiration(
+        '最新',
+        createdAt: t.add(const Duration(minutes: 2)),
+      );
 
       final pool = await inspirationRepo.watchPool().first;
       expect(pool.map((e) => e.content).toList(), ['最新', '中间', '最早']);
@@ -151,18 +174,25 @@ void main() {
       final sectionId = await createSectionChain();
       final t = DateTime(2026, 7, 1);
       await inspirationRepo.addInspiration('最早', createdAt: t);
-      final mid = await inspirationRepo.addInspiration('中间',
-          createdAt: t.add(const Duration(minutes: 1)));
-      await inspirationRepo.addInspiration('最新',
-          createdAt: t.add(const Duration(minutes: 2)));
+      final mid = await inspirationRepo.addInspiration(
+        '中间',
+        createdAt: t.add(const Duration(minutes: 1)),
+      );
+      await inspirationRepo.addInspiration(
+        '最新',
+        createdAt: t.add(const Duration(minutes: 2)),
+      );
 
       // “中间”拖入小节再放回：位置应回到创建时间对应的原位，而非顶端
       await inspirationRepo.assignToSection(mid.id, sectionId);
       await inspirationRepo.removeFromSection(mid.id);
 
       final pool = await inspirationRepo.watchPool().first;
-      expect(pool.map((e) => e.content).toList(), ['最新', '中间', '最早'],
-          reason: '放回后按创建时间排序，不因流转改变位置');
+      expect(pool.map((e) => e.content).toList(), [
+        '最新',
+        '中间',
+        '最早',
+      ], reason: '放回后按创建时间排序，不因流转改变位置');
     });
 
     test('规则四：在魔毯删除是真删，不可恢复', () async {
@@ -193,15 +223,20 @@ void main() {
       await novelRepo.deleteNovel(novels.single.id);
 
       final pool = await inspirationRepo.watchPool().first;
-      expect(pool.single.content, '挂在节上',
-          reason: '级联删除链（小说→章→节）末端触发 set null，灵感存活');
+      expect(
+        pool.single.content,
+        '挂在节上',
+        reason: '级联删除链（小说→章→节）末端触发 set null，灵感存活',
+      );
     });
 
     test('编辑灵感正文更新 updated_at，但 created_at 与魔毯排序不变', () async {
       final t = DateTime(2026, 7, 1);
       final old = await inspirationRepo.addInspiration('旧内容', createdAt: t);
-      await inspirationRepo.addInspiration('较新',
-          createdAt: t.add(const Duration(minutes: 1)));
+      await inspirationRepo.addInspiration(
+        '较新',
+        createdAt: t.add(const Duration(minutes: 1)),
+      );
 
       await inspirationRepo.updateContent(old.id, '改过的内容');
 

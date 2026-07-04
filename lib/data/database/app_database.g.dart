@@ -1029,6 +1029,20 @@ class $InspirationsTable extends Inspirations
       'REFERENCES sections (id) ON DELETE SET NULL',
     ),
   );
+  static const VerificationMeta _chapterIdMeta = const VerificationMeta(
+    'chapterId',
+  );
+  @override
+  late final GeneratedColumn<int> chapterId = GeneratedColumn<int>(
+    'chapter_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES chapters (id) ON DELETE SET NULL',
+    ),
+  );
   static const VerificationMeta _cardOrderMeta = const VerificationMeta(
     'cardOrder',
   );
@@ -1047,6 +1061,7 @@ class $InspirationsTable extends Inspirations
     createdAt,
     updatedAt,
     sectionId,
+    chapterId,
     cardOrder,
   ];
   @override
@@ -1094,6 +1109,12 @@ class $InspirationsTable extends Inspirations
         sectionId.isAcceptableOrUnknown(data['section_id']!, _sectionIdMeta),
       );
     }
+    if (data.containsKey('chapter_id')) {
+      context.handle(
+        _chapterIdMeta,
+        chapterId.isAcceptableOrUnknown(data['chapter_id']!, _chapterIdMeta),
+      );
+    }
     if (data.containsKey('card_order')) {
       context.handle(
         _cardOrderMeta,
@@ -1131,6 +1152,10 @@ class $InspirationsTable extends Inspirations
         DriftSqlType.int,
         data['${effectivePrefix}section_id'],
       ),
+      chapterId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}chapter_id'],
+      ),
       cardOrder: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}card_order'],
@@ -1156,9 +1181,13 @@ class Inspiration extends DataClass implements Insertable<Inspiration> {
   /// 最后修改时间
   final DateTime updatedAt;
 
-  /// 归属小节：NULL = 在魔毯；非空 = 挂在该小节。
+  /// 归属小节：NULL = 未挂在小节；非空 = 挂在该小节。
   /// 删除小节时置空（灵感放回魔毯，不随节陪葬）
   final int? sectionId;
+
+  /// 归属章：NULL = 未直接挂在章；非空 = 直接挂在该章下（不属于任何小节）。
+  /// 删除章时置空（灵感放回魔毯）
+  final int? chapterId;
 
   /// 小节内卡堆顺序（在魔毯时无意义，约定为 0）
   final int cardOrder;
@@ -1168,6 +1197,7 @@ class Inspiration extends DataClass implements Insertable<Inspiration> {
     required this.createdAt,
     required this.updatedAt,
     this.sectionId,
+    this.chapterId,
     required this.cardOrder,
   });
   @override
@@ -1179,6 +1209,9 @@ class Inspiration extends DataClass implements Insertable<Inspiration> {
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || sectionId != null) {
       map['section_id'] = Variable<int>(sectionId);
+    }
+    if (!nullToAbsent || chapterId != null) {
+      map['chapter_id'] = Variable<int>(chapterId);
     }
     map['card_order'] = Variable<int>(cardOrder);
     return map;
@@ -1193,6 +1226,9 @@ class Inspiration extends DataClass implements Insertable<Inspiration> {
       sectionId: sectionId == null && nullToAbsent
           ? const Value.absent()
           : Value(sectionId),
+      chapterId: chapterId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(chapterId),
       cardOrder: Value(cardOrder),
     );
   }
@@ -1208,6 +1244,7 @@ class Inspiration extends DataClass implements Insertable<Inspiration> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       sectionId: serializer.fromJson<int?>(json['sectionId']),
+      chapterId: serializer.fromJson<int?>(json['chapterId']),
       cardOrder: serializer.fromJson<int>(json['cardOrder']),
     );
   }
@@ -1220,6 +1257,7 @@ class Inspiration extends DataClass implements Insertable<Inspiration> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'sectionId': serializer.toJson<int?>(sectionId),
+      'chapterId': serializer.toJson<int?>(chapterId),
       'cardOrder': serializer.toJson<int>(cardOrder),
     };
   }
@@ -1230,6 +1268,7 @@ class Inspiration extends DataClass implements Insertable<Inspiration> {
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<int?> sectionId = const Value.absent(),
+    Value<int?> chapterId = const Value.absent(),
     int? cardOrder,
   }) => Inspiration(
     id: id ?? this.id,
@@ -1237,6 +1276,7 @@ class Inspiration extends DataClass implements Insertable<Inspiration> {
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     sectionId: sectionId.present ? sectionId.value : this.sectionId,
+    chapterId: chapterId.present ? chapterId.value : this.chapterId,
     cardOrder: cardOrder ?? this.cardOrder,
   );
   Inspiration copyWithCompanion(InspirationsCompanion data) {
@@ -1246,6 +1286,7 @@ class Inspiration extends DataClass implements Insertable<Inspiration> {
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       sectionId: data.sectionId.present ? data.sectionId.value : this.sectionId,
+      chapterId: data.chapterId.present ? data.chapterId.value : this.chapterId,
       cardOrder: data.cardOrder.present ? data.cardOrder.value : this.cardOrder,
     );
   }
@@ -1258,14 +1299,22 @@ class Inspiration extends DataClass implements Insertable<Inspiration> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('sectionId: $sectionId, ')
+          ..write('chapterId: $chapterId, ')
           ..write('cardOrder: $cardOrder')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, content, createdAt, updatedAt, sectionId, cardOrder);
+  int get hashCode => Object.hash(
+    id,
+    content,
+    createdAt,
+    updatedAt,
+    sectionId,
+    chapterId,
+    cardOrder,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1275,6 +1324,7 @@ class Inspiration extends DataClass implements Insertable<Inspiration> {
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.sectionId == this.sectionId &&
+          other.chapterId == this.chapterId &&
           other.cardOrder == this.cardOrder);
 }
 
@@ -1284,6 +1334,7 @@ class InspirationsCompanion extends UpdateCompanion<Inspiration> {
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int?> sectionId;
+  final Value<int?> chapterId;
   final Value<int> cardOrder;
   const InspirationsCompanion({
     this.id = const Value.absent(),
@@ -1291,6 +1342,7 @@ class InspirationsCompanion extends UpdateCompanion<Inspiration> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.sectionId = const Value.absent(),
+    this.chapterId = const Value.absent(),
     this.cardOrder = const Value.absent(),
   });
   InspirationsCompanion.insert({
@@ -1299,6 +1351,7 @@ class InspirationsCompanion extends UpdateCompanion<Inspiration> {
     required DateTime createdAt,
     required DateTime updatedAt,
     this.sectionId = const Value.absent(),
+    this.chapterId = const Value.absent(),
     required int cardOrder,
   }) : content = Value(content),
        createdAt = Value(createdAt),
@@ -1310,6 +1363,7 @@ class InspirationsCompanion extends UpdateCompanion<Inspiration> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? sectionId,
+    Expression<int>? chapterId,
     Expression<int>? cardOrder,
   }) {
     return RawValuesInsertable({
@@ -1318,6 +1372,7 @@ class InspirationsCompanion extends UpdateCompanion<Inspiration> {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (sectionId != null) 'section_id': sectionId,
+      if (chapterId != null) 'chapter_id': chapterId,
       if (cardOrder != null) 'card_order': cardOrder,
     });
   }
@@ -1328,6 +1383,7 @@ class InspirationsCompanion extends UpdateCompanion<Inspiration> {
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int?>? sectionId,
+    Value<int?>? chapterId,
     Value<int>? cardOrder,
   }) {
     return InspirationsCompanion(
@@ -1336,6 +1392,7 @@ class InspirationsCompanion extends UpdateCompanion<Inspiration> {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       sectionId: sectionId ?? this.sectionId,
+      chapterId: chapterId ?? this.chapterId,
       cardOrder: cardOrder ?? this.cardOrder,
     );
   }
@@ -1358,6 +1415,9 @@ class InspirationsCompanion extends UpdateCompanion<Inspiration> {
     if (sectionId.present) {
       map['section_id'] = Variable<int>(sectionId.value);
     }
+    if (chapterId.present) {
+      map['chapter_id'] = Variable<int>(chapterId.value);
+    }
     if (cardOrder.present) {
       map['card_order'] = Variable<int>(cardOrder.value);
     }
@@ -1372,6 +1432,7 @@ class InspirationsCompanion extends UpdateCompanion<Inspiration> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('sectionId: $sectionId, ')
+          ..write('chapterId: $chapterId, ')
           ..write('cardOrder: $cardOrder')
           ..write(')'))
         .toString();
@@ -1414,6 +1475,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     WritePropagation(
       on: TableUpdateQuery.onTableName(
         'sections',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('inspirations', kind: UpdateKind.update)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'chapters',
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('inspirations', kind: UpdateKind.update)],
@@ -1761,6 +1829,24 @@ final class $$ChaptersTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$InspirationsTable, List<Inspiration>>
+  _inspirationsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.inspirations,
+    aliasName: 'chapters__id__inspirations__chapter_id',
+  );
+
+  $$InspirationsTableProcessedTableManager get inspirationsRefs {
+    final manager = $$InspirationsTableTableManager(
+      $_db,
+      $_db.inspirations,
+    ).filter((f) => f.chapterId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_inspirationsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$ChaptersTableFilterComposer
@@ -1826,6 +1912,31 @@ class $$ChaptersTableFilterComposer
           }) => $$SectionsTableFilterComposer(
             $db: $db,
             $table: $db.sections,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> inspirationsRefs(
+    Expression<bool> Function($$InspirationsTableFilterComposer f) f,
+  ) {
+    final $$InspirationsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.inspirations,
+      getReferencedColumn: (t) => t.chapterId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$InspirationsTableFilterComposer(
+            $db: $db,
+            $table: $db.inspirations,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -1949,6 +2060,31 @@ class $$ChaptersTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> inspirationsRefs<T extends Object>(
+    Expression<T> Function($$InspirationsTableAnnotationComposer a) f,
+  ) {
+    final $$InspirationsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.inspirations,
+      getReferencedColumn: (t) => t.chapterId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$InspirationsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.inspirations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$ChaptersTableTableManager
@@ -1964,7 +2100,11 @@ class $$ChaptersTableTableManager
           $$ChaptersTableUpdateCompanionBuilder,
           (Chapter, $$ChaptersTableReferences),
           Chapter,
-          PrefetchHooks Function({bool novelId, bool sectionsRefs})
+          PrefetchHooks Function({
+            bool novelId,
+            bool sectionsRefs,
+            bool inspirationsRefs,
+          })
         > {
   $$ChaptersTableTableManager(_$AppDatabase db, $ChaptersTable table)
     : super(
@@ -2009,59 +2149,98 @@ class $$ChaptersTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({novelId = false, sectionsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [if (sectionsRefs) db.sections],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (novelId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.novelId,
-                                referencedTable: $$ChaptersTableReferences
-                                    ._novelIdTable(db),
-                                referencedColumn: $$ChaptersTableReferences
-                                    ._novelIdTable(db)
-                                    .id,
-                              )
-                              as T;
-                    }
+          prefetchHooksCallback:
+              ({
+                novelId = false,
+                sectionsRefs = false,
+                inspirationsRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (sectionsRefs) db.sections,
+                    if (inspirationsRefs) db.inspirations,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (novelId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.novelId,
+                                    referencedTable: $$ChaptersTableReferences
+                                        ._novelIdTable(db),
+                                    referencedColumn: $$ChaptersTableReferences
+                                        ._novelIdTable(db)
+                                        .id,
+                                  )
+                                  as T;
+                        }
 
-                    return state;
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (sectionsRefs)
+                        await $_getPrefetchedData<
+                          Chapter,
+                          $ChaptersTable,
+                          Section
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ChaptersTableReferences
+                              ._sectionsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ChaptersTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sectionsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.chapterId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (inspirationsRefs)
+                        await $_getPrefetchedData<
+                          Chapter,
+                          $ChaptersTable,
+                          Inspiration
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ChaptersTableReferences
+                              ._inspirationsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ChaptersTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).inspirationsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.chapterId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
                   },
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (sectionsRefs)
-                    await $_getPrefetchedData<Chapter, $ChaptersTable, Section>(
-                      currentTable: table,
-                      referencedTable: $$ChaptersTableReferences
-                          ._sectionsRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$ChaptersTableReferences(db, table, p0).sectionsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.chapterId == item.id),
-                      typedResults: items,
-                    ),
-                ];
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -2078,7 +2257,11 @@ typedef $$ChaptersTableProcessedTableManager =
       $$ChaptersTableUpdateCompanionBuilder,
       (Chapter, $$ChaptersTableReferences),
       Chapter,
-      PrefetchHooks Function({bool novelId, bool sectionsRefs})
+      PrefetchHooks Function({
+        bool novelId,
+        bool sectionsRefs,
+        bool inspirationsRefs,
+      })
     >;
 typedef $$SectionsTableCreateCompanionBuilder =
     SectionsCompanion Function({
@@ -2472,6 +2655,7 @@ typedef $$InspirationsTableCreateCompanionBuilder =
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<int?> sectionId,
+      Value<int?> chapterId,
       required int cardOrder,
     });
 typedef $$InspirationsTableUpdateCompanionBuilder =
@@ -2481,6 +2665,7 @@ typedef $$InspirationsTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int?> sectionId,
+      Value<int?> chapterId,
       Value<int> cardOrder,
     });
 
@@ -2499,6 +2684,23 @@ final class $$InspirationsTableReferences
       $_db.sections,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_sectionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $ChaptersTable _chapterIdTable(_$AppDatabase db) =>
+      db.chapters.createAlias('inspirations__chapter_id__chapters__id');
+
+  $$ChaptersTableProcessedTableManager? get chapterId {
+    final $_column = $_itemColumn<int>('chapter_id');
+    if ($_column == null) return null;
+    final manager = $$ChaptersTableTableManager(
+      $_db,
+      $_db.chapters,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_chapterIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -2554,6 +2756,29 @@ class $$InspirationsTableFilterComposer
           }) => $$SectionsTableFilterComposer(
             $db: $db,
             $table: $db.sections,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$ChaptersTableFilterComposer get chapterId {
+    final $$ChaptersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.chapterId,
+      referencedTable: $db.chapters,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChaptersTableFilterComposer(
+            $db: $db,
+            $table: $db.chapters,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -2620,6 +2845,29 @@ class $$InspirationsTableOrderingComposer
     );
     return composer;
   }
+
+  $$ChaptersTableOrderingComposer get chapterId {
+    final $$ChaptersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.chapterId,
+      referencedTable: $db.chapters,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChaptersTableOrderingComposer(
+            $db: $db,
+            $table: $db.chapters,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$InspirationsTableAnnotationComposer
@@ -2668,6 +2916,29 @@ class $$InspirationsTableAnnotationComposer
     );
     return composer;
   }
+
+  $$ChaptersTableAnnotationComposer get chapterId {
+    final $$ChaptersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.chapterId,
+      referencedTable: $db.chapters,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChaptersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.chapters,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$InspirationsTableTableManager
@@ -2683,7 +2954,7 @@ class $$InspirationsTableTableManager
           $$InspirationsTableUpdateCompanionBuilder,
           (Inspiration, $$InspirationsTableReferences),
           Inspiration,
-          PrefetchHooks Function({bool sectionId})
+          PrefetchHooks Function({bool sectionId, bool chapterId})
         > {
   $$InspirationsTableTableManager(_$AppDatabase db, $InspirationsTable table)
     : super(
@@ -2703,6 +2974,7 @@ class $$InspirationsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int?> sectionId = const Value.absent(),
+                Value<int?> chapterId = const Value.absent(),
                 Value<int> cardOrder = const Value.absent(),
               }) => InspirationsCompanion(
                 id: id,
@@ -2710,6 +2982,7 @@ class $$InspirationsTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 sectionId: sectionId,
+                chapterId: chapterId,
                 cardOrder: cardOrder,
               ),
           createCompanionCallback:
@@ -2719,6 +2992,7 @@ class $$InspirationsTableTableManager
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<int?> sectionId = const Value.absent(),
+                Value<int?> chapterId = const Value.absent(),
                 required int cardOrder,
               }) => InspirationsCompanion.insert(
                 id: id,
@@ -2726,6 +3000,7 @@ class $$InspirationsTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 sectionId: sectionId,
+                chapterId: chapterId,
                 cardOrder: cardOrder,
               ),
           withReferenceMapper: (p0) => p0
@@ -2736,7 +3011,7 @@ class $$InspirationsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({sectionId = false}) {
+          prefetchHooksCallback: ({sectionId = false, chapterId = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [],
@@ -2769,6 +3044,19 @@ class $$InspirationsTableTableManager
                               )
                               as T;
                     }
+                    if (chapterId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.chapterId,
+                                referencedTable: $$InspirationsTableReferences
+                                    ._chapterIdTable(db),
+                                referencedColumn: $$InspirationsTableReferences
+                                    ._chapterIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
 
                     return state;
                   },
@@ -2793,7 +3081,7 @@ typedef $$InspirationsTableProcessedTableManager =
       $$InspirationsTableUpdateCompanionBuilder,
       (Inspiration, $$InspirationsTableReferences),
       Inspiration,
-      PrefetchHooks Function({bool sectionId})
+      PrefetchHooks Function({bool sectionId, bool chapterId})
     >;
 
 class $AppDatabaseManager {

@@ -62,10 +62,10 @@ void main() {
           speechServiceProvider.overrideWithValue(speech),
           // 首页三路数据一律 override（真 drift 流/真 IO 会挂死）
           novelsProvider.overrideWith((ref) => Stream.value(const [])),
-          inspirationPoolProvider
-              .overrideWith((ref) => Stream.value(const [])),
+          inspirationPoolProvider.overrideWith((ref) => Stream.value(const [])),
           planetAssetsProvider.overrideWith(
-              (ref, planet) => Completer<PlanetShaderAssets>().future),
+            (ref, planet) => Completer<PlanetShaderAssets>().future,
+          ),
         ],
         child: const NovelApp(),
       ),
@@ -93,8 +93,7 @@ void main() {
     await tester.tap(find.byKey(const Key('语音保存按钮')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('语音识别文字')), findsNothing,
-        reason: '保存后弹层应关闭');
+    expect(find.byKey(const Key('语音识别文字')), findsNothing, reason: '保存后弹层应关闭');
     final all = await db.select(db.inspirations).get();
     expect(all.single.content, '月光落在旧钢琴上');
     expect(all.single.sectionId, isNull, reason: '语音灵感直接入魔毯');
@@ -118,8 +117,11 @@ void main() {
     await tester.tap(find.byKey(const Key('语音保存按钮')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('语音识别文字')), findsOneWidget,
-        reason: '空内容不应关闭弹层');
+    expect(
+      find.byKey(const Key('语音识别文字')),
+      findsOneWidget,
+      reason: '空内容不应关闭弹层',
+    );
     final all = await db.select(db.inspirations).get();
     expect(all, isEmpty);
   });

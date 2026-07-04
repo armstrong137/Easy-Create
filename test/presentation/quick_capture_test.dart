@@ -35,10 +35,10 @@ void main() {
           // 首页的三路数据一律 override：真 drift 流会挂死，
           // shader/纹理是真实 IO 也会挂（2026-07-02 教训）
           novelsProvider.overrideWith((ref) => Stream.value(const [])),
-          inspirationPoolProvider
-              .overrideWith((ref) => Stream.value(const [])),
+          inspirationPoolProvider.overrideWith((ref) => Stream.value(const [])),
           planetAssetsProvider.overrideWith(
-              (ref, planet) => Completer<PlanetShaderAssets>().future),
+            (ref, planet) => Completer<PlanetShaderAssets>().future,
+          ),
         ],
         child: const NovelApp(),
       ),
@@ -55,12 +55,18 @@ void main() {
       expect(voiceBtn, findsOneWidget);
       expect(textBtn, findsOneWidget);
 
-      final screenWidth = tester.view.physicalSize.width /
-          tester.view.devicePixelRatio;
-      expect(tester.getCenter(voiceBtn).dx, lessThan(screenWidth / 2),
-          reason: '默认语音按钮在左半屏');
-      expect(tester.getCenter(textBtn).dx, greaterThan(screenWidth / 2),
-          reason: '默认文字按钮在右半屏');
+      final screenWidth =
+          tester.view.physicalSize.width / tester.view.devicePixelRatio;
+      expect(
+        tester.getCenter(voiceBtn).dx,
+        lessThan(screenWidth / 2),
+        reason: '默认语音按钮在左半屏',
+      );
+      expect(
+        tester.getCenter(textBtn).dx,
+        greaterThan(screenWidth / 2),
+        reason: '默认文字按钮在右半屏',
+      );
     });
 
     testWidgets('长按互换位置，且偏好持久化', (tester) async {
@@ -69,12 +75,18 @@ void main() {
       await tester.longPress(voiceBtn);
       await tester.pumpAndSettle();
 
-      final screenWidth = tester.view.physicalSize.width /
-          tester.view.devicePixelRatio;
-      expect(tester.getCenter(voiceBtn).dx, greaterThan(screenWidth / 2),
-          reason: '互换后语音按钮到右侧');
-      expect(tester.getCenter(textBtn).dx, lessThan(screenWidth / 2),
-          reason: '互换后文字按钮到左侧');
+      final screenWidth =
+          tester.view.physicalSize.width / tester.view.devicePixelRatio;
+      expect(
+        tester.getCenter(voiceBtn).dx,
+        greaterThan(screenWidth / 2),
+        reason: '互换后语音按钮到右侧',
+      );
+      expect(
+        tester.getCenter(textBtn).dx,
+        lessThan(screenWidth / 2),
+        reason: '互换后文字按钮到左侧',
+      );
 
       // 偏好已写入持久化存储（重启后仍生效的依据）
       final prefs = await SharedPreferences.getInstance();
@@ -129,8 +141,11 @@ void main() {
       await tester.tap(find.byKey(const Key('灵感保存按钮')));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('灵感输入框')), findsOneWidget,
-          reason: '空内容不应关闭弹层');
+      expect(
+        find.byKey(const Key('灵感输入框')),
+        findsOneWidget,
+        reason: '空内容不应关闭弹层',
+      );
       final all = await db.select(db.inspirations).get();
       expect(all, isEmpty, reason: '空内容不应入库');
     });

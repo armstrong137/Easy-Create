@@ -31,12 +31,12 @@ void main() {
   tearDown(() async => db.close());
 
   Novel fakeNovel(int id, String title, {String planet = 'earth'}) => Novel(
-        id: id,
-        title: title,
-        planet: planet,
-        sortOrder: id,
-        createdAt: DateTime(2026, 7, 1),
-      );
+    id: id,
+    title: title,
+    planet: planet,
+    sortOrder: id,
+    createdAt: DateTime(2026, 7, 1),
+  );
 
   Future<void> pumpApp(
     WidgetTester tester, {
@@ -50,12 +50,13 @@ void main() {
           sharedPreferencesProvider.overrideWithValue(prefs),
           appDatabaseProvider.overrideWithValue(db),
           novelsProvider.overrideWith((ref) => Stream.value(novels)),
-          inspirationPoolProvider
-              .overrideWith((ref) => Stream.value(const [])),
+          inspirationPoolProvider.overrideWith((ref) => Stream.value(const [])),
           creativeCountProvider.overrideWith(
-              (ref, novelId) => Stream.value(creativeCount)),
+            (ref, novelId) => Stream.value(creativeCount),
+          ),
           planetAssetsProvider.overrideWith(
-              (ref, planet) => Completer<PlanetShaderAssets>().future),
+            (ref, planet) => Completer<PlanetShaderAssets>().future,
+          ),
         ],
         child: const NovelApp(),
       ),
@@ -72,8 +73,7 @@ void main() {
   });
 
   testWidgets('有小说且有创作量：星空亮于下限，显示书名', (tester) async {
-    await pumpApp(tester,
-        novels: [fakeNovel(1, '群星的回声')], creativeCount: 8);
+    await pumpApp(tester, novels: [fakeNovel(1, '群星的回声')], creativeCount: 8);
 
     final starfield = tester.widget<Starfield>(find.byType(Starfield));
     expect(starfield.brightness, greaterThan(kStarBrightnessMin));
@@ -87,8 +87,7 @@ void main() {
     await tester.tap(find.byKey(const Key('创建新星球标题')));
     await tester.pumpAndSettle();
 
-    await tester.enterText(
-        find.byKey(const Key('新星球书名输入框')), '第二颗行星');
+    await tester.enterText(find.byKey(const Key('新星球书名输入框')), '第二颗行星');
     await tester.tap(find.byKey(const Key('新星球确认按钮')));
     await tester.pumpAndSettle();
 
@@ -99,16 +98,22 @@ void main() {
 
   testWidgets('单击书名 → 重命名对话框 → 保存落库', (tester) async {
     // 真库造一本书（rename 走真库）
-    await db.into(db.novels).insert(NovelsCompanion.insert(
-        title: '旧书名', planet: 'earth', sortOrder: 0,
-        createdAt: DateTime.now()));
+    await db
+        .into(db.novels)
+        .insert(
+          NovelsCompanion.insert(
+            title: '旧书名',
+            planet: 'earth',
+            sortOrder: 0,
+            createdAt: DateTime.now(),
+          ),
+        );
     await pumpApp(tester, novels: [fakeNovel(1, '旧书名')]);
 
     await tester.tap(find.byKey(const Key('书名_1')));
     await tester.pumpAndSettle();
 
-    await tester.enterText(
-        find.byKey(const Key('书名重命名输入框')), '群星的新回声');
+    await tester.enterText(find.byKey(const Key('书名重命名输入框')), '群星的新回声');
     await tester.tap(find.byKey(const Key('书名重命名确认按钮')));
     await tester.pumpAndSettle();
 

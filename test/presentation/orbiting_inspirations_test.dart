@@ -10,15 +10,14 @@ import 'package:novel_app/presentation/home/orbiting_inspirations.dart';
 /// 严禁 pumpAndSettle（永不 settle 会超时）。
 void main() {
   Inspiration fake(int id, String content) => Inspiration(
-        id: id,
-        content: content,
-        createdAt: DateTime(2026, 7, 1),
-        updatedAt: DateTime(2026, 7, 1),
-        cardOrder: 0,
-      );
+    id: id,
+    content: content,
+    createdAt: DateTime(2026, 7, 1),
+    updatedAt: DateTime(2026, 7, 1),
+    cardOrder: 0,
+  );
 
-  Future<void> pumpOrbit(
-      WidgetTester tester, List<Inspiration> items) async {
+  Future<void> pumpOrbit(WidgetTester tester, List<Inspiration> items) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -26,8 +25,7 @@ void main() {
             child: OrbitingInspirations(
               items: items,
               orbitWidth: 300,
-              child: const SizedBox.square(
-                  dimension: 200, key: Key('星球占位')),
+              child: const SizedBox.square(dimension: 200, key: Key('星球占位')),
             ),
           ),
         ),

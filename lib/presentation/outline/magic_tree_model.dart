@@ -388,10 +388,15 @@ MagicTreeLayout _layoutWindow(
     final chapter = outline[i].chapter;
     bands[chapter.id] = (bandTop, bandBottom);
 
-    // 章枝锚点：带顶往下一行。根深埋进树干（宽度 42% 处而非边缘），
-    // 这样即使线性树干模型与照片弯曲的树梢有偏差，枝根也压在树干轮廓内、
-    // 不会悬空（用户反馈"引子枝丫悬空"）
-    final rootY = bandTop + 40;
+    // 章枝锚点：带顶往下一行，但**必须钳制在可见树干范围内**——
+    // 否则首章的枝根会落在树顶细梢上方的空白区、与树脱离
+    // （用户反馈"引子的树枝都和大树脱离了"）。
+    final trunkSpan = stalkBotY - stalkTopY;
+    final rootY = (bandTop + 40).clamp(
+      stalkTopY + trunkSpan * 0.06,
+      stalkBotY - trunkSpan * 0.06,
+    );
+    // 根深埋进树干（宽度 42% 处而非边缘），进一步防止与弯曲树干有缝
     final root = Offset(cx - halfWAt(rootY) * 0.42, rootY);
     var len = math.min(root.dx - 10, size.width * 0.26);
     len = math.max(math.min(len, size.shortestSide * 0.22), 48.0);

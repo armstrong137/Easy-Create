@@ -55,13 +55,15 @@ class Sections extends Table {
   IntColumn get sortOrder => integer().named('sort_order')();
 }
 
-/// 灵感表（灵感真身，生命周期由 sectionId 单字段表达）
+/// 灵感表（灵感真身）
 ///
-/// 生命周期规则（用户定稿）：
-/// - 新灵感入池：sectionId = NULL（在魔毯，所有星球共享，按创建时间排序）
-/// - 拖入某小节：sectionId = 该节 id（从魔毯消失，魔毯缩球）
-/// - 从小节删卡：sectionId 置回 NULL（放回魔毯，仍按创建时间排序）
+/// 生命周期规则（用户定稿，2026-07-03 扩展"可挂靠章"）：
+/// - 新灵感入池：section_id 与 chapter_id 均 NULL（在魔毯，所有星球共享）
+/// - 拖入某小节：section_id = 该节 id（chapter_id 清空，从魔毯消失）
+/// - 拖到某章下：chapter_id = 该章 id（section_id 清空，从魔毯消失）
+/// - 放回魔毯：两字段都置 NULL（仍按创建时间排序）
 /// - 在魔毯删除：DELETE 行，真正删除不可恢复
+/// 约束：section_id 与 chapter_id 至多一个非空。
 class Inspirations extends Table {
   IntColumn get id => integer().autoIncrement()();
 
@@ -74,12 +76,19 @@ class Inspirations extends Table {
   /// 最后修改时间
   DateTimeColumn get updatedAt => dateTime().named('updated_at')();
 
-  /// 归属小节：NULL = 在魔毯；非空 = 挂在该小节。
+  /// 归属小节：NULL = 未挂在小节；非空 = 挂在该小节。
   /// 删除小节时置空（灵感放回魔毯，不随节陪葬）
   IntColumn get sectionId => integer()
       .named('section_id')
       .nullable()
       .references(Sections, #id, onDelete: KeyAction.setNull)();
+
+  /// 归属章：NULL = 未直接挂在章；非空 = 直接挂在该章下（不属于任何小节）。
+  /// 删除章时置空（灵感放回魔毯）
+  IntColumn get chapterId => integer()
+      .named('chapter_id')
+      .nullable()
+      .references(Chapters, #id, onDelete: KeyAction.setNull)();
 
   /// 小节内卡堆顺序（在魔毯时无意义，约定为 0）
   IntColumn get cardOrder => integer().named('card_order')();
