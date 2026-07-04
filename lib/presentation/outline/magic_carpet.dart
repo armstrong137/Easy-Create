@@ -89,6 +89,9 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
     with SingleTickerProviderStateMixin {
   bool _expanded = false;
 
+  /// 面板是否仍在画面中：收起时先保留面板播放反向卷回帧，结束后再切小球
+  bool _showPanel = false;
+
   /// 正在拖拽灵感：面板半透明且不拦截指针，给树上落点让路
   bool _dragging = false;
 
@@ -113,16 +116,21 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
 
   /// 外部可调用：拖拽完成后自动缩回小球（定稿）
   void collapse() {
-    if (_expanded && mounted) _toggle(false);
+    if ((_expanded || _showPanel) && mounted) _toggle(false);
   }
 
-  void _toggle(bool open) {
+  Future<void> _toggle(bool open) async {
     HapticFeedback.lightImpact();
-    setState(() => _expanded = open);
     if (open) {
-      _unroll.forward(from: 0);
+      setState(() {
+        _expanded = true;
+        _showPanel = true;
+      });
+      await _unroll.forward(from: 0);
     } else {
-      _unroll.reverse();
+      setState(() => _expanded = false);
+      await _unroll.reverse();
+      if (mounted) setState(() => _showPanel = false);
     }
   }
 
@@ -150,9 +158,9 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
     return AnimatedContainer(
       duration: const Duration(milliseconds: 320),
       curve: Curves.easeOutBack,
-      width: _expanded ? width : kCarpetBallSize,
-      height: _expanded ? height : kCarpetBallSize,
-      child: _expanded
+      width: _showPanel ? width : kCarpetBallSize,
+      height: _showPanel ? height : kCarpetBallSize,
+      child: _showPanel
           // OverflowBox 让内容始终以展开后的尺寸布局，避免动画中途挤压溢出
           ? OverflowBox(
               minWidth: width,

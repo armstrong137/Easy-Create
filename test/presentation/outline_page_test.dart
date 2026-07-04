@@ -270,7 +270,7 @@ void main() {
     await gesture.moveTo(to);
     await tester.pump();
     await gesture.up();
-    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
 
     final saved = await (db.select(db.inspirations)
           ..where((t) => t.id.equals(inspId)))

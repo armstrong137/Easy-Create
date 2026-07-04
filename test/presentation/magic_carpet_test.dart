@@ -85,6 +85,27 @@ void main() {
     expect(find.text('A'), findsNothing);
   });
 
+  testWidgets('收起时先播放反向卷回帧，再回到小球', (tester) async {
+    await pumpCarpet(tester, [fake(1, '反向卷回')]);
+
+    await tester.tap(find.byKey(const Key('魔毯小球')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('魔毯收起按钮')));
+    await tester.pump(const Duration(milliseconds: 120));
+
+    expect(
+      find.text('反向卷回'),
+      findsOneWidget,
+      reason: '反向卷回动画期间仍应保持展开面板，而不是瞬间切回小球',
+    );
+    expect(find.byKey(const Key('魔毯小球')), findsNothing);
+
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('魔毯小球')), findsOneWidget);
+    expect(find.text('反向卷回'), findsNothing);
+  });
+
   testWidgets('空魔毯展开显示邀请文案', (tester) async {
     await pumpCarpet(tester, const []);
 
