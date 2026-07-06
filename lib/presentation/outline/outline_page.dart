@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/chinese_numbers.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import '../../domain/entities/outline_chapter.dart';
@@ -106,15 +105,12 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     if (mounted) setState(() => _growing = null);
   }
 
-  /// 点左侧空白：长出章枝（自动命名：引子 → 第一章 → …），镜头滑到新章
+  /// 点左侧空白：长出章枝（仓库按新序号原子命名：引子 → 第一章 → …），镜头滑到新章
   Future<void> _addChapter(List<OutlineChapter> outline) async {
     HapticFeedback.lightImpact();
     final chapter = await ref
         .read(novelRepositoryProvider)
-        .createChapter(
-          novelId: widget.novelId,
-          title: defaultChapterTitle(outline.length),
-        );
+        .createChapter(novelId: widget.novelId);
     final newCount = outline.length + 1;
     if (newCount > 2) {
       _camera.animateTo(
@@ -139,13 +135,9 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     final chapterId = layout.chapterForY(y);
     if (chapterId == null) return;
     HapticFeedback.lightImpact();
-    final chapter = outline.firstWhere((c) => c.chapter.id == chapterId);
     final section = await ref
         .read(novelRepositoryProvider)
-        .createSection(
-          chapterId: chapterId,
-          title: defaultSectionTitle(chapter.sections.length),
-        );
+        .createSection(chapterId: chapterId);
     await _playGrow(isChapter: false, id: section.id);
   }
 

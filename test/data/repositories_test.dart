@@ -56,6 +56,32 @@ void main() {
       expect([s1.sortOrder, s2.sortOrder], [0, 1]);
     });
 
+    test('并发建章：sort_order 与默认名互不重复（原子事务防连点竞态）', () async {
+      final novel = await novelRepo.createNovel(title: '书', planet: 'earth');
+      // 同时（不 await）发起 5 次建章，模拟快速连点/生长动画期间再点。
+      // 修复前"读 max→插入"非原子，5 次会读到同一 max、产生重复 sort_order 与重名。
+      final results = await Future.wait([
+        for (var i = 0; i < 5; i++) novelRepo.createChapter(novelId: novel.id),
+      ]);
+
+      final orders = results.map((c) => c.sortOrder).toList()..sort();
+      expect(orders, [0, 1, 2, 3, 4], reason: 'sort_order 连续且唯一');
+      final titles = results.map((c) => c.title).toSet();
+      expect(titles.length, 5, reason: '5 章标题互不重复（无两个第一章）');
+      expect(titles, containsAll(['引子', '第一章', '第二章', '第三章', '第四章']));
+    });
+
+    test('省略标题时按新序号自动命名（引子 → 第一章 …；节 第一节 …）', () async {
+      final novel = await novelRepo.createNovel(title: '书', planet: 'earth');
+      final c0 = await novelRepo.createChapter(novelId: novel.id);
+      final c1 = await novelRepo.createChapter(novelId: novel.id);
+      expect([c0.title, c1.title], ['引子', '第一章']);
+
+      final s0 = await novelRepo.createSection(chapterId: c1.id);
+      final s1 = await novelRepo.createSection(chapterId: c1.id);
+      expect([s0.title, s1.title], ['第一节', '第二节']);
+    });
+
     test('重命名小说/章/节生效', () async {
       final novel = await novelRepo.createNovel(title: '旧名', planet: 'earth');
       await novelRepo.renameNovel(novel.id, '新名');

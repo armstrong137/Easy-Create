@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../core/chinese_numbers.dart';
 import '../../domain/entities/outline_chapter.dart';
 import '../database/app_database.dart';
 
@@ -55,25 +56,34 @@ class NovelRepository {
             ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
           .watch();
 
-  /// 新增章：长在该小说现有章之后
+  /// 新增章：长在该小说现有章之后。
+  ///
+  /// [title] 省略时按新序号自动命名（引子 → 第一章 → …）。
+  /// **整个"读序号 + 命名 + 插入"在事务内完成**：drift 会串行化并发事务，
+  /// 故快速连点建章也各得唯一 sort_order 与标题，不再出现"两个第一章"
+  /// （用户反馈的重复章 = 非原子读改插 + 调用方按滞后 outline.length 命名的竞态）。
   Future<Chapter> createChapter({
     required int novelId,
-    required String title,
-  }) async {
-    final maxOrder = await _maxSortOrder(
-      _db.chapters,
-      _db.chapters.sortOrder,
-      where: _db.chapters.novelId.equals(novelId),
-    );
-    return _db
-        .into(_db.chapters)
-        .insertReturning(
-          ChaptersCompanion.insert(
-            novelId: novelId,
-            title: title,
-            sortOrder: maxOrder + 1,
-          ),
-        );
+    String? title,
+  }) {
+    return _db.transaction(() async {
+      final maxOrder = await _maxSortOrder(
+        _db.chapters,
+        _db.chapters.sortOrder,
+        where: _db.chapters.novelId.equals(novelId),
+      );
+      final order = maxOrder + 1;
+      return _db
+          .into(_db.chapters)
+          .insertReturning(
+            ChaptersCompanion.insert(
+              novelId: novelId,
+              // 以新序号为命名索引：永不复用已用过的编号，删章后也不会撞名
+              title: title ?? defaultChapterTitle(order),
+              sortOrder: order,
+            ),
+          );
+    });
   }
 
   /// 重命名章
@@ -95,25 +105,31 @@ class NovelRepository {
             ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
           .watch();
 
-  /// 新增节：长在该章现有节之后
+  /// 新增节：长在该章现有节之后。
+  ///
+  /// [title] 省略时按新序号自动命名（第一节 → 第二节 → …）。
+  /// 同建章：读序号 + 命名 + 插入在事务内完成，连点也不重复。
   Future<Section> createSection({
     required int chapterId,
-    required String title,
-  }) async {
-    final maxOrder = await _maxSortOrder(
-      _db.sections,
-      _db.sections.sortOrder,
-      where: _db.sections.chapterId.equals(chapterId),
-    );
-    return _db
-        .into(_db.sections)
-        .insertReturning(
-          SectionsCompanion.insert(
-            chapterId: chapterId,
-            title: title,
-            sortOrder: maxOrder + 1,
-          ),
-        );
+    String? title,
+  }) {
+    return _db.transaction(() async {
+      final maxOrder = await _maxSortOrder(
+        _db.sections,
+        _db.sections.sortOrder,
+        where: _db.sections.chapterId.equals(chapterId),
+      );
+      final order = maxOrder + 1;
+      return _db
+          .into(_db.sections)
+          .insertReturning(
+            SectionsCompanion.insert(
+              chapterId: chapterId,
+              title: title ?? defaultSectionTitle(order),
+              sortOrder: order,
+            ),
+          );
+    });
   }
 
   /// 重命名节（小节页顶部可编辑标题）
