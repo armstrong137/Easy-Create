@@ -29,6 +29,10 @@ const kTendrilTipYFrac = 0.22;
 /// 窗口模式节行高（含间距）
 const kSectionRowHeight = 46.0;
 
+/// 每章带底部预留的空白"加节区"高度：恒有落在本章带内的空白可双击加节
+/// （用户定稿：小节铺满时仍要能双击右侧空白给本章加节）
+const kSectionAddZone = 96.0;
+
 /// 小节标签下每条灵感小卡占的高度（有灵感的小节槽位据此加高）
 /// 26：小卡加大内边距后需多留高度，避免最后一节的小卡冲出章带被裁
 const kNoteRowHeight = 26.0;
@@ -431,7 +435,14 @@ MagicTreeLayout _layoutWindow(
     final sectionList = outline[i].sections;
     final m = sectionList.length;
     final contentTop = math.max(bandTop + 34, rootY + kSectionRowHeight * 0.5);
-    final contentBottom = math.min(bandBottom - 10, stalkBotY - trunkSpan * 0.04);
+    // 带内底部预留一条空白"加节区"：小节区终点上抬 kSectionAddZone，
+    // 使 [contentBottom, 带底] 恒为落在本章带内的空白，双击即可给本章加节，
+    // 不会因小节铺到带边界而把双击落到下一章（用户定稿：保留双击右侧空白加节）。
+    final trunkFloor = math.min(bandBottom - 10, stalkBotY - trunkSpan * 0.04);
+    final contentBottom = math.max(
+      contentTop + kSectionRowHeight,
+      trunkFloor - kSectionAddZone,
+    );
     final availH = math.max(0.0, contentBottom - contentTop);
 
     // 预算各节槽位顶部（累加变高槽位）
@@ -445,6 +456,9 @@ MagicTreeLayout _layoutWindow(
       );
       raw += kSectionRowHeight + notes * kNoteRowHeight;
     }
+    // 末尾预留空白"加节区"：无论小节多满，右滑到底都能露出可双击加节的空白
+    // （用户定稿：维持一屏两章 + 右侧滚动看全 + 双击右侧空白加节，需保证总有空白可点）
+    raw += kSectionRowHeight * 2.5;
     final overflow = math.max(0.0, raw - availH);
     scrollMax[chapter.id] = overflow;
     final scroll = (sectionScrolls[chapter.id] ?? 0).clamp(0.0, overflow);

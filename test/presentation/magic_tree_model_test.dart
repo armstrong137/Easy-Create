@@ -144,6 +144,32 @@ void main() {
     );
   });
 
+  test('窗口模式：小节铺满时带底仍有落在本章的空白加节区（可双击加节）', () {
+    // 章1有 20 节（远超一屏）；offset 0 → 显示章1、章2
+    final outline = [chapterWith(1, 20), chapterWith(2, 1), chapterWith(3, 1)];
+    final layout = layoutMagicTree(size: size, outline: outline);
+    final band1 = layout.chapterBands[1]!;
+
+    // 章1当前可见小节的最低枝根 y
+    final sec1Ys = layout.sections
+        .where((s) => s.id ~/ 100 == 1)
+        .map((s) => s.root.dy)
+        .toList();
+    var lowest = band1.$1;
+    for (final y in sec1Ys) {
+      if (y > lowest) lowest = y;
+    }
+
+    // 带底往上 20px 处：应落在本章带内、且在所有小节之下（= 空白加节区）
+    final probeY = band1.$2 - 20;
+    expect(layout.chapterForY(probeY), 1, reason: '带底空白应落回本章（双击加节到本章）');
+    expect(
+      probeY,
+      greaterThan(lowest),
+      reason: '带底应留出小节之下的空白加节区，不被小节铺满',
+    );
+  });
+
   test('虚拟树高随章数增长（生长速度变化，有封顶）', () {
     expect(treeGrowthFactor(2), 1);
     expect(treeGrowthFactor(5), greaterThan(treeGrowthFactor(3)));

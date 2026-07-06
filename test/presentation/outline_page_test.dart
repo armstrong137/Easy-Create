@@ -222,11 +222,11 @@ void main() {
     );
     expect(find.byKey(const Key('节热区_109')), findsNothing, reason: '第十节还在带外');
 
-    // 右半屏向上滑，滚第 1 章的小节
+    // 右半屏向上滑，滚第 1 章的小节（带底留了加节区，需滚更多才到末节）
     final size = tester.getSize(find.byType(Scaffold));
     await tester.dragFrom(
       Offset(size.width * 0.9, size.height * 0.35),
-      const Offset(0, -260),
+      const Offset(0, -400),
     );
     await tester.pump(const Duration(milliseconds: 200));
 
