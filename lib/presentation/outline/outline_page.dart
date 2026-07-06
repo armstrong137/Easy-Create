@@ -92,8 +92,12 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   MagicTreeLayout? _layout;
   Size _bodySize = Size.zero;
 
+  /// 上次设给魔毯的缩边栏状态（避免每帧重复设）
+  bool _lastTuck = false;
+
   @override
   void dispose() {
+    carpetTucked.value = false; // 离开大纲页恢复完整魔毯球
     _grow.dispose();
     _camera.dispose();
     super.dispose();
@@ -138,6 +142,9 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     final section = await ref
         .read(novelRepositoryProvider)
         .createSection(chapterId: chapterId);
+    // 新节追加在末尾：把该章小节滚到底，让显示区落在刚建的这一节
+    // （布局里会 clamp 到实际最大滚动量；用户定稿：加完自动往下滚显示新节）
+    _sectionScrolls[chapterId] = double.infinity;
     await _playGrow(isChapter: false, id: section.id);
   }
 
@@ -639,6 +646,16 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   Widget build(BuildContext context) {
     final outline =
         ref.watch(outlineProvider(widget.novelId)).value ?? const [];
+
+    // 章节多（>2 = 进入窗口模式）时把魔毯球缩到右边栏，避免挡住右上角小节标签；
+    // 章少时恢复完整球。只在状态变化时设，避免每帧刷。
+    final wantTuck = outline.length > 2;
+    if (_lastTuck != wantTuck) {
+      _lastTuck = wantTuck;
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => carpetTucked.value = wantTuck,
+      );
+    }
     // 各小节/章已挂靠的灵感（新的在前），用于在标签下显示最新几条
     final sectionInsp =
         ref.watch(sectionInspirationsProvider(widget.novelId)).value ??

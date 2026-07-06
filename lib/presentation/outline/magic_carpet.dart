@@ -19,6 +19,10 @@ final magicCarpetKey = GlobalKey<MagicCarpetState>();
 /// 正在从魔毯拖拽的灵感（null=未拖拽）。拖拽时底部浮现垃圾桶可永久删除。
 final carpetDragging = ValueNotifier<Inspiration?>(null);
 
+/// 魔毯小球是否缩到右边栏（只露一点点）。大纲页章节多时置 true 让路，
+/// 点缩起的小球即恢复完整（用户定稿：章节小节多了自动隐到边栏、点击恢复）。
+final carpetTucked = ValueNotifier<bool>(false);
+
 /// 全局魔毯层：叠在 Navigator 之上 → **任何界面**右上角都有魔毯
 /// （用户定稿 2026-07-03：魔毯设在所有界面最上面，星球主界面也要有）。
 /// 自带全屏 Overlay 供灵感拖拽浮影使用；空白区域不拦截指针；
@@ -280,17 +284,32 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
     );
   }
 
-  /// 缩球态：素材卷球照片，点击展开
+  /// 缩球态：素材卷球照片。点击展开；缩到边栏时先点击恢复完整小球。
   Widget _buildBall() {
-    return GestureDetector(
-      key: const Key('魔毯小球'),
-      onTap: () => _toggle(true),
-      child: Image.asset(
-        'assets/textures/carpet_ball.png',
-        width: kCarpetBallSize,
-        height: kCarpetBallSize,
-        fit: BoxFit.contain,
-        filterQuality: FilterQuality.medium,
+    return ValueListenableBuilder<bool>(
+      valueListenable: carpetTucked,
+      builder: (context, tucked, _) => AnimatedSlide(
+        // 缩边栏：向右滑出 62%，只露一点点；点击后恢复
+        offset: tucked ? const Offset(0.62, 0) : Offset.zero,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutBack,
+        child: GestureDetector(
+          key: const Key('魔毯小球'),
+          onTap: () {
+            if (tucked) {
+              carpetTucked.value = false; // 先恢复完整小球
+            } else {
+              _toggle(true); // 完整态：点击展开
+            }
+          },
+          child: Image.asset(
+            'assets/textures/carpet_ball.png',
+            width: kCarpetBallSize,
+            height: kCarpetBallSize,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.medium,
+          ),
+        ),
       ),
     );
   }

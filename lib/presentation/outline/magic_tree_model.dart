@@ -438,10 +438,11 @@ MagicTreeLayout _layoutWindow(
     // 带内底部预留一条空白"加节区"：小节区终点上抬 kSectionAddZone，
     // 使 [contentBottom, 带底] 恒为落在本章带内的空白，双击即可给本章加节，
     // 不会因小节铺到带边界而把双击落到下一章（用户定稿：保留双击右侧空白加节）。
-    final trunkFloor = math.min(bandBottom - 10, stalkBotY - trunkSpan * 0.04);
+    // 终点用"带底-加节区"（不再被树干底/土壤钳短），使上下两章的小节区等高，
+    // 两章能显示同样多的小节（用户定稿：上下二等分）。
     final contentBottom = math.max(
       contentTop + kSectionRowHeight,
-      trunkFloor - kSectionAddZone,
+      bandBottom - 10 - kSectionAddZone,
     );
     final availH = math.max(0.0, contentBottom - contentTop);
 
