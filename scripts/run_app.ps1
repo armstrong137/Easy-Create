@@ -22,7 +22,16 @@ function Get-FirstExisting([string[]]$paths) {
 }
 
 # ---- 0. 自动定位 adb / emulator / flutter ----
-$adbCandidates = @(
+# 关键：本机 Android SDK 物理上装在 Claude 沙箱容器里
+# （…\AppData\Local\Packages\Claude_*\LocalCache\Local\Android\Sdk）。
+# 该物理路径容器内外都可访问，故优先扫描它；再退到常规 SDK 位置。
+$adbCandidates = @()
+$pkgRoot = Join-Path $env:USERPROFILE 'AppData\Local\Packages'
+if (Test-Path -LiteralPath $pkgRoot) {
+  $adbCandidates += (Get-ChildItem -LiteralPath $pkgRoot -Directory -Filter 'Claude_*' -ErrorAction SilentlyContinue |
+    ForEach-Object { Join-Path $_.FullName 'LocalCache\Local\Android\Sdk\platform-tools\adb.exe' })
+}
+$adbCandidates += @(
   "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe",
   "$env:USERPROFILE\AppData\Local\Android\Sdk\platform-tools\adb.exe",
   "$env:ANDROID_HOME\platform-tools\adb.exe",
@@ -54,6 +63,10 @@ else { $Flutter = Get-FirstExisting @("C:\src\flutter\bin\flutter.bat", "$env:FL
 if (-not $Flutter) { Write-Host "[错误] 找不到 flutter：不在 PATH，也不在 C:\src\flutter\bin。请把 flutter\bin 加入 PATH。" -ForegroundColor Red; exit 1 }
 Log "flutter: $Flutter"
 
+# 显式声明 SDK 位置（容器外运行 emulator 时不靠默认推断）；
+# AVD 在真实 ~\.android，emulator 默认就找那里，无需额外设置。
+$env:ANDROID_SDK_ROOT = $Sdk
+$env:ANDROID_HOME = $Sdk
 # 工具目录进 PATH，供 flutter 子进程找 adb/emulator
 $env:Path = "$(Split-Path $Adb);$(Split-Path $Emulator);$env:Path"
 
@@ -106,6 +119,37 @@ if ($proc) {
 }
 
 # ---- 4. 构建并安装最新代码 ----
+# 必须切到项目根：双击 .bat / 计划任务的工作目录未必是项目根，
+# flutter 找不到 pubspec.yaml 会报 "No pubspec.yaml file found"。
+Set-Location -LiteralPath $Proj
+if (-not (Test-Path -LiteralPath (Join-Path $Proj 'pubspec.yaml'))) {
+  Write-Host "[错误] 项目根缺少 pubspec.yaml：$Proj" -ForegroundColor Red; exit 1
+}
+# 定位 JDK 并设 JAVA_HOME：容器外 Gradle 不会自动找到 flutter 配的 jdk-dir，
+# 没有 JAVA_HOME 会报 "JAVA_HOME is not set"。Android Studio 自带 JBR 在
+# Program Files（真实路径，容器内外都可访问）。
+if (-not $env:JAVA_HOME -or -not (Test-Path -LiteralPath (Join-Path $env:JAVA_HOME 'bin\java.exe'))) {
+  $jdkCandidates = @()
+  $fj = $null
+  try { $fj = (& $Flutter config --machine 2>$null | ConvertFrom-Json).'jdk-dir' } catch {}
+  if ($fj) { $jdkCandidates += $fj }
+  $jdkCandidates += @(
+    "$env:ProgramFiles\Android\Android Studio\jbr",
+    "$env:ProgramFiles\Android\Android Studio\jre",
+    "$env:LOCALAPPDATA\Programs\Android Studio\jbr"
+  )
+  foreach ($j in $jdkCandidates) {
+    if ($j -and (Test-Path -LiteralPath (Join-Path $j 'bin\java.exe'))) { $env:JAVA_HOME = $j; break }
+  }
+}
+if ($env:JAVA_HOME) {
+  $env:Path = "$env:JAVA_HOME\bin;$env:Path"
+  Log "JAVA_HOME: $env:JAVA_HOME"
+} else {
+  Write-Host "[错误] 找不到 JDK：JAVA_HOME 未设，且 Android Studio jbr 不存在。请装 Android Studio 或设 JAVA_HOME。" -ForegroundColor Red
+  exit 1
+}
+
 Log "构建 Debug APK（无改动时增量很快）..."
 & $Flutter build apk --debug
 if ($LASTEXITCODE -ne 0) { Write-Host "[错误] 构建失败，请看上方 Flutter 输出" -ForegroundColor Red; exit 1 }
