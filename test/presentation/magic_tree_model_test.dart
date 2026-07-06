@@ -122,6 +122,26 @@ void main() {
     }
   });
 
+  test('窗口模式：节枝根点超出可见树干时不进入布局', () {
+    // 镜头滑到末章时会看到土壤；修复前末章的底部小节仍会落到树干下方，
+    // 页面随后把枝丫画在土堆/留白上。
+    final outline = [chapterWith(1, 0), chapterWith(2, 0), chapterWith(3, 1)];
+    final layout = layoutMagicTree(
+      size: size,
+      outline: outline,
+      chapterOffset: 1,
+    );
+
+    expect(layout.windowMode, isTrue);
+    for (final s in layout.sections) {
+      expect(
+        s.root.dy,
+        inInclusiveRange(layout.trunkRect.top, layout.trunkRect.bottom),
+        reason: '${s.title} 的根点必须留在当前可见树干内，超出树干就不显示枝丫',
+      );
+    }
+  });
+
   test('窗口模式：一屏严格只两章（整数档与滚动中的分数档都不露第三章）', () {
     final outline = [for (var i = 1; i <= 6; i++) chapterWith(i, 1)];
     // offset 0（首档）

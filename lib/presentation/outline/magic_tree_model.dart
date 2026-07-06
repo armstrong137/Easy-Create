@@ -375,6 +375,10 @@ MagicTreeLayout _layoutWindow(
     return (stalk.topHalfW + (stalk.botHalfW - stalk.topHalfW) * t) * dispW;
   }
 
+  final trunkSpan = stalkBotY - stalkTopY;
+  final branchTop = math.max(trunkRect.top, stalkTopY + trunkSpan * 0.06);
+  final branchBottom = math.min(trunkRect.bottom, stalkBotY - trunkSpan * 0.06);
+
   // 高度带：一屏恰好两章
   const topPad = 6.0;
   final bandH = (size.height - topPad * 2) / 2;
@@ -397,11 +401,7 @@ MagicTreeLayout _layoutWindow(
     // 章枝锚点：带顶往下一行，但**必须钳制在可见树干范围内**——
     // 否则首章的枝根会落在树顶细梢上方的空白区、与树脱离
     // （用户反馈"引子的树枝都和大树脱离了"）。
-    final trunkSpan = stalkBotY - stalkTopY;
-    final rootY = (bandTop + 40).clamp(
-      stalkTopY + trunkSpan * 0.06,
-      stalkBotY - trunkSpan * 0.06,
-    );
+    final rootY = (bandTop + 40).clamp(branchTop, branchBottom);
     // 根深埋进树干（宽度 42% 处而非边缘），进一步防止与弯曲树干有缝
     final root = Offset(cx - halfWAt(rootY) * 0.42, rootY);
     var len = math.min(root.dx - 10, size.width * 0.26);
@@ -438,15 +438,12 @@ MagicTreeLayout _layoutWindow(
     // 这条带顶空白（[bandTop, contentTop]）恒落在本章带内，双击即可给本章加节
     // （用户定稿：保留双击空白加节；底部对齐后加节区从"带底"移到"带顶"）。
     final contentTop = math.max(
-      bandTop + kSectionAddZone,
-      rootY + kSectionRowHeight * 0.5,
+      math.max(bandTop + kSectionAddZone, rootY + kSectionRowHeight * 0.5),
+      branchTop,
     );
     // 小节区终点直贴带底（仅留 12px 边距不被裁切）：底部对齐下最新一节钉在这里，
     // 即"最新小节固定在该半屏的最底部"（用户定稿）。上下两章带等高 → 等量小节。
-    final contentBottom = math.max(
-      contentTop + kSectionRowHeight,
-      bandBottom - 12,
-    );
+    final contentBottom = math.min(bandBottom - 12, branchBottom);
     final availH = math.max(0.0, contentBottom - contentTop);
 
     // 预算各节槽位顶部（累加变高槽位）
@@ -469,6 +466,9 @@ MagicTreeLayout _layoutWindow(
       // scroll 增大 → 整块下移、从顶部露出更老的节（用户定稿：最新小节固定在半屏最底部）。
       final sy =
           contentBottom - raw + rawTops[j] + kSectionRowHeight / 2 + scroll;
+      if (sy < branchTop || sy > branchBottom) {
+        continue;
+      }
       // 行滚出带外就不布局（带内边缘由页面按带裁剪）
       if (sy < contentTop - kSectionRowHeight ||
           sy > contentBottom + kSectionRowHeight) {
