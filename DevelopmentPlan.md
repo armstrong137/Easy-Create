@@ -105,7 +105,14 @@
   - ✅ 速记弹层（文字/语音，2026-07-05 用户过审）：替换裸 Material 为羊皮纸质感（capture_sheet_style 共用外壳，顶部圆角+iOS抓手+楷体墨字+金色描边输入框+墨色胶囊按钮）
   - ✅ 全局 iOS 质感排查：弹窗全 CupertinoAlertDialog/ActionSheet、Toast 走 soft_toast（非 SnackBar）、全部 bottomSheet 羊皮纸化——无裸 Material 残留
 - ☐ 2. 动效细节打磨：环绕灵动度、树生长手感、魔毯质感
-- ☐ 3. 性能：长文本编辑、星球 Shader 帧率、低端机适配
+- 🔄 3. 性能：
+  - ✅ 长文本编辑真机压测（2026-07-05）：单卡注入 6.8 万字，全文编辑器秒开、
+    滚动流畅、无 ANR/OOM/跳帧告警（logcat 干净）；远超单节常规量。
+    备注：TextField 不虚拟化，若单卡写入数十万字以上的整本小说会渐吃内存——
+    正常按章/节/卡分文即可，属极端边界。
+  - ☐ 星球 Shader 帧率量化：Flutter/Impeller 自绘，标准 gfxinfo 抓不到帧
+    （需 flutter run --profile + DevTools timeline，留待有需要时做）
+  - ☐ 低端机适配
 - ☐ 4. iOS / Android 双平台差异验证（语音权限、字体、手势）
 - 🔄 5. 遗留终审项落定（2026-07-05 用户逐条过审）：
   - ✅ 速记按钮：由双按钮改为**单按钮**（轻点写字/长按说话），默认右侧，设置页可改左右
