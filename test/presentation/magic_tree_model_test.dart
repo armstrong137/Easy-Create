@@ -122,6 +122,28 @@ void main() {
     }
   });
 
+  test('窗口模式：一屏严格只两章（整数档与滚动中的分数档都不露第三章）', () {
+    final outline = [for (var i = 1; i <= 6; i++) chapterWith(i, 1)];
+    // offset 0（首档）
+    expect(layoutMagicTree(size: size, outline: outline).chapters.length, 2);
+    // 整数档
+    expect(
+      layoutMagicTree(size: size, outline: outline, chapterOffset: 2).chapters.length,
+      2,
+    );
+    // 分数档（滚动中）——修复前这里会出现 3 章
+    expect(
+      layoutMagicTree(size: size, outline: outline, chapterOffset: 2.4).chapters.length,
+      2,
+      reason: '滚动中也不能同时看到三章',
+    );
+    // 末档
+    expect(
+      layoutMagicTree(size: size, outline: outline, chapterOffset: 4).chapters.length,
+      2,
+    );
+  });
+
   test('虚拟树高随章数增长（生长速度变化，有封顶）', () {
     expect(treeGrowthFactor(2), 1);
     expect(treeGrowthFactor(5), greaterThan(treeGrowthFactor(3)));

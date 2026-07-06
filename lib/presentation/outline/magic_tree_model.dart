@@ -380,12 +380,13 @@ MagicTreeLayout _layoutWindow(
   final bands = <int, (double, double)>{};
   final scrollMax = <int, double>{};
 
+  // 一屏严格只显两章：当前镜头档 iStart 与其下一章。
+  // 用户定稿：左侧不能同时看到三章，否则不清楚新加的小节归到哪一章。
+  final iStart = offset.floor();
   for (var i = 0; i < n; i++) {
+    if (i < iStart || i > iStart + 1) continue;
     final bandTop = topPad + (i - offset) * bandH;
     final bandBottom = bandTop + bandH;
-    if (bandBottom < -bandH * 0.5 || bandTop > size.height + bandH * 0.5) {
-      continue; // 屏外过远的章不布局
-    }
     final chapter = outline[i].chapter;
     bands[chapter.id] = (bandTop, bandBottom);
 

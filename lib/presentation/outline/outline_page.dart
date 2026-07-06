@@ -492,44 +492,79 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     return Positioned(
       left: label.rect.left - shift.dx,
       top: label.rect.bottom + 2 - shift.dy,
-      child: IgnorePointer(
-        child: Opacity(
-          opacity: _labelOpacity(label),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (final n in shown)
-                Container(
-                  margin: const EdgeInsets.only(top: 3),
-                  constraints: BoxConstraints(maxWidth: maxW),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xCCFFFCF4),
-                    borderRadius: BorderRadius.circular(7),
-                    border: Border.all(color: const Color(0x22C9A050)),
-                  ),
-                  child: Text(
-                    n.content,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    // 行高留 1.3，避免楷体字底被容器裁掉（用户反馈"部分内容被遮住"）
-                    style: const TextStyle(
-                      fontFamily: 'LXGWWenKai',
-                      fontSize: 11,
-                      height: 1.3,
-                      color: Color(0xCC3A2A18),
-                    ),
-                  ),
+      child: Opacity(
+        opacity: _labelOpacity(label),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 长按拖起：可把这条灵感移到别的小节/章（挂靠点仍是整树磁吸 DragTarget）。
+            // 用户定稿：章下灵感可拖到该章某节；节下灵感可拖到其他节/其他章/其他章的节。
+            for (final n in shown)
+              LongPressDraggable<Inspiration>(
+                data: n,
+                dragAnchorStrategy: pointerDragAnchorStrategy,
+                onDragStarted: HapticFeedback.selectionClick,
+                feedback: _noteFeedback(n),
+                childWhenDragging: Opacity(
+                  opacity: 0.25,
+                  child: _noteChip(n, maxW),
                 ),
-            ],
-          ),
+                child: _noteChip(n, maxW),
+              ),
+          ],
         ),
       ),
     );
   }
+
+  /// 小节/章标签下的一枚灵感小卡（单行省略，楷体墨字）
+  Widget _noteChip(Inspiration n, double maxW) => Container(
+    margin: const EdgeInsets.only(top: 3),
+    constraints: BoxConstraints(maxWidth: maxW),
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+    decoration: BoxDecoration(
+      color: const Color(0xCCFFFCF4),
+      borderRadius: BorderRadius.circular(7),
+      border: Border.all(color: const Color(0x22C9A050)),
+    ),
+    child: Text(
+      n.content,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      // 行高留 1.3，避免楷体字底被容器裁掉（用户反馈"部分内容被遮住"）
+      style: const TextStyle(
+        fontFamily: 'LXGWWenKai',
+        fontSize: 11,
+        height: 1.3,
+        color: Color(0xCC3A2A18),
+      ),
+    ),
+  );
+
+  /// 拖起灵感小卡时的浮影：金边微光羊皮纸卡
+  Widget _noteFeedback(Inspiration n) => Material(
+    color: Colors.transparent,
+    child: Container(
+      width: 180,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFDF6),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFC9A050), width: 1.2),
+        boxShadow: const [BoxShadow(color: Color(0x59C9A050), blurRadius: 12)],
+      ),
+      child: Text(
+        n.content,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontFamily: 'LXGWWenKai',
+          fontSize: 12,
+          color: _ink,
+        ),
+      ),
+    ),
+  );
 
   /// 一枚枝端标签胶囊（热区：长按菜单/双击；磁吸时染金放大）
   Widget _labelCapsule(PlacedLabel label, Offset shift) {
