@@ -142,9 +142,9 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     final section = await ref
         .read(novelRepositoryProvider)
         .createSection(chapterId: chapterId);
-    // 新节追加在末尾：把该章小节滚到底，让显示区落在刚建的这一节
-    // （布局里会 clamp 到实际最大滚动量；用户定稿：加完自动往下滚显示新节）
-    _sectionScrolls[chapterId] = double.infinity;
+    // 底部对齐下最新节本就钉在带底：滚动归 0 即显示刚建的这一节
+    // （用户定稿：加完自动显示新节，最新节固定在半屏最底部）
+    _sectionScrolls[chapterId] = 0;
     await _playGrow(isChapter: false, id: section.id);
   }
 
@@ -197,7 +197,8 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     final max = layout.sectionScrollMax[ch] ?? 0;
     if (max <= 0) return;
     setState(() {
-      _sectionScrolls[ch] = ((_sectionScrolls[ch] ?? 0) - d.delta.dy).clamp(
+      // 底部对齐：下拉（delta.dy>0）增大 scroll → 从顶部露出更老的小节
+      _sectionScrolls[ch] = ((_sectionScrolls[ch] ?? 0) + d.delta.dy).clamp(
         0.0,
         max,
       );

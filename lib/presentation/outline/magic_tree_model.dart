@@ -434,15 +434,18 @@ MagicTreeLayout _layoutWindow(
     // 终点也钳在树干底之内，末章小节不落到土壤上。
     final sectionList = outline[i].sections;
     final m = sectionList.length;
-    final contentTop = math.max(bandTop + 34, rootY + kSectionRowHeight * 0.5);
-    // 带内底部预留一条空白"加节区"：小节区终点上抬 kSectionAddZone，
-    // 使 [contentBottom, 带底] 恒为落在本章带内的空白，双击即可给本章加节，
-    // 不会因小节铺到带边界而把双击落到下一章（用户定稿：保留双击右侧空白加节）。
-    // 终点用"带底-加节区"（不再被树干底/土壤钳短），使上下两章的小节区等高，
-    // 两章能显示同样多的小节（用户定稿：上下二等分）。
+    // 小节区顶端：落在"章根之下"，且相对带顶至少留 kSectionAddZone 的空白。
+    // 这条带顶空白（[bandTop, contentTop]）恒落在本章带内，双击即可给本章加节
+    // （用户定稿：保留双击空白加节；底部对齐后加节区从"带底"移到"带顶"）。
+    final contentTop = math.max(
+      bandTop + kSectionAddZone,
+      rootY + kSectionRowHeight * 0.5,
+    );
+    // 小节区终点直贴带底（仅留 12px 边距不被裁切）：底部对齐下最新一节钉在这里，
+    // 即"最新小节固定在该半屏的最底部"（用户定稿）。上下两章带等高 → 等量小节。
     final contentBottom = math.max(
       contentTop + kSectionRowHeight,
-      bandBottom - 10 - kSectionAddZone,
+      bandBottom - 12,
     );
     final availH = math.max(0.0, contentBottom - contentTop);
 
@@ -457,15 +460,15 @@ MagicTreeLayout _layoutWindow(
       );
       raw += kSectionRowHeight + notes * kNoteRowHeight;
     }
-    // 末尾预留空白"加节区"：无论小节多满，右滑到底都能露出可双击加节的空白
-    // （用户定稿：维持一屏两章 + 右侧滚动看全 + 双击右侧空白加节，需保证总有空白可点）
-    raw += kSectionRowHeight * 2.5;
     final overflow = math.max(0.0, raw - availH);
     scrollMax[chapter.id] = overflow;
     final scroll = (sectionScrolls[chapter.id] ?? 0).clamp(0.0, overflow);
 
     for (var j = 0; j < m; j++) {
-      final sy = contentTop + rawTops[j] + kSectionRowHeight / 2 - scroll;
+      // 底部对齐：最新（最后一节）钉在带底 contentBottom，老节在其上方；
+      // scroll 增大 → 整块下移、从顶部露出更老的节（用户定稿：最新小节固定在半屏最底部）。
+      final sy =
+          contentBottom - raw + rawTops[j] + kSectionRowHeight / 2 + scroll;
       // 行滚出带外就不布局（带内边缘由页面按带裁剪）
       if (sy < contentTop - kSectionRowHeight ||
           sy > contentBottom + kSectionRowHeight) {

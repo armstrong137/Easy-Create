@@ -144,29 +144,31 @@ void main() {
     );
   });
 
-  test('窗口模式：小节铺满时带底仍有落在本章的空白加节区（可双击加节）', () {
+  test('窗口模式：小节铺满时带顶仍有落在本章的空白加节区（可双击加节）', () {
+    // 底部对齐后加节区从"带底"移到"带顶"：最新一节钉在带底，最老的节向上排、
+    // 溢出则滚出带顶，带顶恒留一条落在本章带内的空白供双击加节。
     // 章1有 20 节（远超一屏）；offset 0 → 显示章1、章2
     final outline = [chapterWith(1, 20), chapterWith(2, 1), chapterWith(3, 1)];
     final layout = layoutMagicTree(size: size, outline: outline);
     final band1 = layout.chapterBands[1]!;
 
-    // 章1当前可见小节的最低枝根 y
+    // 章1当前可见小节的最高枝根 y（最靠上的一节）
     final sec1Ys = layout.sections
         .where((s) => s.id ~/ 100 == 1)
         .map((s) => s.root.dy)
         .toList();
-    var lowest = band1.$1;
+    var highest = band1.$2;
     for (final y in sec1Ys) {
-      if (y > lowest) lowest = y;
+      if (y < highest) highest = y;
     }
 
-    // 带底往上 20px 处：应落在本章带内、且在所有小节之下（= 空白加节区）
-    final probeY = band1.$2 - 20;
-    expect(layout.chapterForY(probeY), 1, reason: '带底空白应落回本章（双击加节到本章）');
+    // 带顶往下 20px 处：应落在本章带内、且在所有小节之上（= 空白加节区）
+    final probeY = band1.$1 + 20;
+    expect(layout.chapterForY(probeY), 1, reason: '带顶空白应落回本章（双击加节到本章）');
     expect(
       probeY,
-      greaterThan(lowest),
-      reason: '带底应留出小节之下的空白加节区，不被小节铺满',
+      lessThan(highest),
+      reason: '带顶应留出小节之上的空白加节区，不被小节铺满',
     );
   });
 
@@ -187,9 +189,12 @@ void main() {
     final after = ids(
       layoutMagicTree(size: size, outline: outline, sectionScrolls: {1: max}),
     );
-    expect(before, contains(100), reason: '未滚动时第一节可见');
-    expect(after, contains(100 + 11), reason: '滚到底后最后一节可见');
-    expect(after, isNot(contains(100)), reason: '第一节被滚出带外');
+    // 底部对齐：默认最新的第十二节钉在带底可见，最老的第一节在顶上溢出带外
+    expect(before, contains(100 + 11), reason: '默认最新节(第12节)在带底可见');
+    expect(before, isNot(contains(100)), reason: '最老的第一节在带外');
+    // 滚到底（scroll=max）→ 从顶部露出最老的第一节，最新节此时滚到带下方
+    expect(after, contains(100), reason: '滚到顶后最老的第一节露出');
+    expect(after, isNot(contains(100 + 11)), reason: '此时最新节在带下方');
   });
 
   test('窗口模式标签两两不重叠且不出画布', () {

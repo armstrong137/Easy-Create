@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -205,6 +207,10 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
   /// 正在拖拽灵感：面板半透明且不拦截指针，给树上落点让路
   bool _dragging = false;
 
+  /// 缩边栏态下临时"点开完整球"（3 秒后自动缩回边栏）
+  bool _showFull = false;
+  Timer? _reTuckTimer;
+
   /// 展开帧动画：value 0→1 映射素材帧 1→9
   /// （必须在 initState 立即创建：late 惰性到 dispose 才初始化会在
   /// 已卸载元素上建 Ticker 而崩溃）
@@ -232,9 +238,11 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
   Future<void> _toggle(bool open) async {
     HapticFeedback.lightImpact();
     if (open) {
+      _reTuckTimer?.cancel();
       setState(() {
         _expanded = true;
         _showPanel = true;
+        _showFull = false; // 展开后关闭时回到缩边栏态
       });
       await _unroll.forward(from: 0);
     } else {
@@ -255,6 +263,7 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
 
   @override
   void dispose() {
+    _reTuckTimer?.cancel();
     _unroll.dispose();
     super.dispose();
   }
@@ -284,33 +293,43 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
     );
   }
 
-  /// 缩球态：素材卷球照片。点击展开；缩到边栏时先点击恢复完整小球。
+  /// 缩球态：素材卷球照片。
+  /// 缩边栏（章节多）时只露一点点：点一下临时露出完整球（3 秒后自动缩回），
+  /// 完整态再点一下才展开魔毯；不缩边栏时点击直接展开。
   Widget _buildBall() {
     return ValueListenableBuilder<bool>(
       valueListenable: carpetTucked,
-      builder: (context, tucked, _) => AnimatedSlide(
-        // 缩边栏：向右滑出 62%，只露一点点；点击后恢复
-        offset: tucked ? const Offset(0.62, 0) : Offset.zero,
-        duration: const Duration(milliseconds: 260),
-        curve: Curves.easeOutBack,
-        child: GestureDetector(
-          key: const Key('魔毯小球'),
-          onTap: () {
-            if (tucked) {
-              carpetTucked.value = false; // 先恢复完整小球
-            } else {
-              _toggle(true); // 完整态：点击展开
-            }
-          },
-          child: Image.asset(
-            'assets/textures/carpet_ball.png',
-            width: kCarpetBallSize,
-            height: kCarpetBallSize,
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.medium,
+      builder: (context, tucked, _) {
+        final peek = tucked && !_showFull; // 真正贴边只露一点点的状态
+        return AnimatedSlide(
+          offset: peek ? const Offset(0.62, 0) : Offset.zero,
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutBack,
+          child: GestureDetector(
+            key: const Key('魔毯小球'),
+            onTap: () {
+              if (peek) {
+                // 贴边→点一下露出完整球，3 秒没进一步操作就自动缩回
+                setState(() => _showFull = true);
+                _reTuckTimer?.cancel();
+                _reTuckTimer = Timer(const Duration(seconds: 3), () {
+                  if (mounted) setState(() => _showFull = false);
+                });
+              } else {
+                _reTuckTimer?.cancel();
+                _toggle(true); // 完整态→展开魔毯
+              }
+            },
+            child: Image.asset(
+              'assets/textures/carpet_ball.png',
+              width: kCarpetBallSize,
+              height: kCarpetBallSize,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.medium,
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
