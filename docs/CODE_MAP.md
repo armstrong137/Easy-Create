@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-05 20:51:38　对应提交：e11f668 之后的工作区状态
+> 生成时间：2026-07-05 22:50:05　对应提交：bfd419b 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,26 +12,26 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     71
-  Nodes:     1,108
-  Edges:     2,571
-  DB Size:   3.86 MB
+  Files:     72
+  Nodes:     1,124
+  Edges:     2,609
+  DB Size:   3.89 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          357
-  import          232
-  function        178
-  constant        148
-  class           99
-  file            67
+  method          360
+  import          237
+  function        180
+  constant        151
+  class           101
+  file            68
   variable        14
   type_alias      12
   namespace       1
 
 Files by Language:
-  dart            48
+  dart            49
   javascript      6
   kotlin          4
   swift           3
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (71 files):
+Project Structure (72 files):
 
 |-- .agents
 |   `-- skills
@@ -119,7 +119,7 @@ Project Structure (71 files):
 |   |       `-- outline_chapter.dart (dart, 3 symbols)
 |   |-- presentation
 |   |   |-- home
-|   |   |   |-- home_page.dart (dart, 27 symbols)
+|   |   |   |-- home_page.dart (dart, 28 symbols)
 |   |   |   |-- orbiting_inspirations.dart (dart, 14 symbols)
 |   |   |   |-- planet_view.dart (dart, 19 symbols)
 |   |   |   |-- saturn_rings_painter.dart (dart, 12 symbols)
@@ -134,11 +134,13 @@ Project Structure (71 files):
 |   |   |   |-- card_editor_page.dart (dart, 15 symbols)
 |   |   |   |-- inspiration_card.dart (dart, 8 symbols)
 |   |   |   `-- section_page.dart (dart, 26 symbols)
+|   |   |-- settings
+|   |   |   `-- settings_page.dart (dart, 14 symbols)
 |   |   `-- shared
 |   |       |-- quick_capture
 |   |       |   |-- capture_button_prefs.dart (dart, 9 symbols)
 |   |       |   |-- capture_sheet_style.dart (dart, 11 symbols)
-|   |       |   |-- quick_capture_layer.dart (dart, 25 symbols)
+|   |       |   |-- quick_capture_layer.dart (dart, 27 symbols)
 |   |       |   |-- speech_service.dart (dart, 9 symbols)
 |   |       |   |-- text_capture_sheet.dart (dart, 12 symbols)
 |   |       |   `-- voice_capture_sheet.dart (dart, 16 symbols)

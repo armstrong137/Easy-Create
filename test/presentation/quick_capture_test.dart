@@ -45,79 +45,70 @@ void main() {
     );
   }
 
-  final voiceBtn = find.byKey(const Key('语音速记按钮'));
-  final textBtn = find.byKey(const Key('文字速记按钮'));
+  final captureBtn = find.byKey(const Key('速记按钮'));
 
-  group('双速记按钮', () {
-    testWidgets('任何界面均显示双按钮，默认左语音右文字', (tester) async {
+  group('单速记按钮', () {
+    testWidgets('任何界面显示单按钮，默认在右下', (tester) async {
       await pumpApp(tester);
 
-      expect(voiceBtn, findsOneWidget);
-      expect(textBtn, findsOneWidget);
+      expect(captureBtn, findsOneWidget);
 
       final screenWidth =
           tester.view.physicalSize.width / tester.view.devicePixelRatio;
       expect(
-        tester.getCenter(voiceBtn).dx,
-        lessThan(screenWidth / 2),
-        reason: '默认语音按钮在左半屏',
-      );
-      expect(
-        tester.getCenter(textBtn).dx,
+        tester.getCenter(captureBtn).dx,
         greaterThan(screenWidth / 2),
-        reason: '默认文字按钮在右半屏',
+        reason: '默认速记按钮在右半屏',
       );
     });
 
-    testWidgets('长按互换位置，且偏好持久化', (tester) async {
+    testWidgets('设置页切到靠左 → 按钮移到左下且偏好持久化', (tester) async {
       await pumpApp(tester);
 
-      await tester.longPress(voiceBtn);
+      // 进设置页 → 选"靠左" → 返回
+      await tester.tap(find.byKey(const Key('设置入口')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('速记靠左')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('设置返回')));
       await tester.pumpAndSettle();
 
       final screenWidth =
           tester.view.physicalSize.width / tester.view.devicePixelRatio;
       expect(
-        tester.getCenter(voiceBtn).dx,
-        greaterThan(screenWidth / 2),
-        reason: '互换后语音按钮到右侧',
-      );
-      expect(
-        tester.getCenter(textBtn).dx,
+        tester.getCenter(captureBtn).dx,
         lessThan(screenWidth / 2),
-        reason: '互换后文字按钮到左侧',
+        reason: '切换后按钮到左半屏',
       );
 
-      // 偏好已写入持久化存储（重启后仍生效的依据）
+      // 偏好已写入持久化存储（重启后仍生效）
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getBool('voice_button_on_left'), isFalse);
+      expect(prefs.getBool('capture_button_on_left'), isTrue);
     });
   });
 
-  group('文字输入弹层', () {
-    testWidgets('弹层打开期间隐藏双按钮，关闭后恢复', (tester) async {
+  group('文字速记（轻点）', () {
+    testWidgets('弹层打开期间隐藏按钮，关闭后恢复', (tester) async {
       await pumpApp(tester);
 
-      await tester.tap(textBtn);
+      await tester.tap(captureBtn);
       await tester.pumpAndSettle();
-      expect(voiceBtn, findsNothing, reason: '弹层打开时按钮应隐藏，避免遮挡');
-      expect(textBtn, findsNothing);
+      expect(captureBtn, findsNothing, reason: '弹层打开时按钮应隐藏，避免遮挡');
 
       // 点弹层外区域关闭
       await tester.tapAt(const Offset(400, 50));
       await tester.pumpAndSettle();
-      expect(voiceBtn, findsOneWidget, reason: '弹层关闭后按钮应恢复');
-      expect(textBtn, findsOneWidget);
+      expect(captureBtn, findsOneWidget, reason: '弹层关闭后按钮应恢复');
     });
 
-    testWidgets('点文字按钮弹层出现，输入保存后灵感入池、弹层关闭', (tester) async {
+    testWidgets('轻点速记按钮弹出文字层，输入保存后灵感入池、弹层关闭', (tester) async {
       await pumpApp(tester);
 
-      await tester.tap(textBtn);
+      await tester.tap(captureBtn);
       await tester.pumpAndSettle();
 
       final input = find.byKey(const Key('灵感输入框'));
-      expect(input, findsOneWidget, reason: '弹层应出现输入框');
+      expect(input, findsOneWidget, reason: '轻点应弹出文字输入框');
 
       await tester.enterText(input, '深夜的一个灵感');
       await tester.tap(find.byKey(const Key('灵感保存按钮')));
@@ -134,7 +125,7 @@ void main() {
     testWidgets('空内容点保存不入库、弹层不关闭', (tester) async {
       await pumpApp(tester);
 
-      await tester.tap(textBtn);
+      await tester.tap(captureBtn);
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byKey(const Key('灵感输入框')), '   ');

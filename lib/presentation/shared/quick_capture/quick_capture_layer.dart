@@ -70,10 +70,10 @@ class ModalAwareObserver extends NavigatorObserver {
       _sync(route, false);
 }
 
-/// 全局灵感速记层：左下 + 右下双悬浮按钮，覆盖在任何页面之上
+/// 全局灵感速记层：单个悬浮按钮，覆盖在任何页面之上
 ///
-/// - 默认左 = 语音、右 = 文字；长按任一按钮左右互换（偏好持久化）
-/// - 语音识别在阶段二·3 接入，当前点击语音按钮仅提示
+/// - **轻点写字**（文字速记弹层）、**长按说话**（语音识别弹层）
+/// - 默认在右下；左右侧在设置页切换（偏好持久化，照顾左右利手）
 class QuickCaptureLayer extends ConsumerWidget {
   const QuickCaptureLayer({super.key, required this.child});
 
@@ -82,73 +82,51 @@ class QuickCaptureLayer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final voiceOnLeft = ref.watch(voiceOnLeftProvider);
+    final onLeft = ref.watch(captureOnLeftProvider);
     final sheetOpen = ref.watch(captureSheetOpenProvider);
 
-    // 长按互换左右位置（假设的交互方式，待终审），带触觉反馈
-    Future<void> swap() async {
-      await ref.read(voiceOnLeftProvider.notifier).swap();
-      await HapticFeedback.mediumImpact();
-    }
+    // 速记层在 Navigator 之上，必须用根 Navigator 的 context 弹出输入层
+    Future<void> openText() => ref
+        .read(captureSheetOpenProvider.notifier)
+        .during(() => showTextCaptureSheet(rootNavigatorKey.currentContext!));
 
-    final voiceButton = _CaptureButton(
-      key: const Key('语音速记按钮'),
-      icon: Icons.mic,
-      tooltip: '语音速记',
-      onTap: () => ref
+    Future<void> openVoice() {
+      HapticFeedback.mediumImpact(); // 长按触发说话，给触觉确认（不 await，弹层同步弹出）
+      return ref
           .read(captureSheetOpenProvider.notifier)
           .during(
             () => showVoiceCaptureSheet(rootNavigatorKey.currentContext!),
-          ),
-      onLongPress: swap,
-    );
-
-    final textButton = _CaptureButton(
-      key: const Key('文字速记按钮'),
-      icon: Icons.edit,
-      tooltip: '文字速记',
-      // 速记层在 Navigator 之上，必须用根 Navigator 的 context 弹出输入层
-      onTap: () => ref
-          .read(captureSheetOpenProvider.notifier)
-          .during(() => showTextCaptureSheet(rootNavigatorKey.currentContext!)),
-      onLongPress: swap,
-    );
+          );
+    }
 
     return Stack(
       children: [
         child,
         // 弹层打开期间隐藏按钮，避免遮挡弹层内容
-        if (!sheetOpen) ...[
-          // 左下角
+        if (!sheetOpen)
           Positioned(
-            left: 24,
+            left: onLeft ? 24 : null,
+            right: onLeft ? null : 24,
             bottom: 24,
-            child: voiceOnLeft ? voiceButton : textButton,
+            child: _CaptureButton(
+              key: const Key('速记按钮'),
+              onTap: openText,
+              onLongPress: openVoice,
+            ),
           ),
-          // 右下角
-          Positioned(
-            right: 24,
-            bottom: 24,
-            child: voiceOnLeft ? textButton : voiceButton,
-          ),
-        ],
       ],
     );
   }
 }
 
-/// 单个速记圆形按钮（黑白基调，契合铅笔树的素净风格）
+/// 单个速记圆形按钮（黑白基调，契合素净风格）：轻点写字、长按说话
 class _CaptureButton extends StatelessWidget {
   const _CaptureButton({
     super.key,
-    required this.icon,
-    required this.tooltip,
     required this.onTap,
     required this.onLongPress,
   });
 
-  final IconData icon;
-  final String tooltip;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
 
@@ -157,7 +135,7 @@ class _CaptureButton extends StatelessWidget {
     // 注意：不能用 Tooltip——本层位于 Navigator/Overlay 之上，Tooltip 会找不到
     // Overlay 而崩溃；改用 Semantics 提供无障碍标签
     return Semantics(
-      label: tooltip,
+      label: '速记：轻点写字，长按说话',
       button: true,
       child: Material(
         color: Colors.black87,
@@ -167,9 +145,9 @@ class _CaptureButton extends StatelessWidget {
           customBorder: const CircleBorder(),
           onTap: onTap,
           onLongPress: onLongPress,
-          child: SizedBox.square(
+          child: const SizedBox.square(
             dimension: 56,
-            child: Icon(icon, color: Colors.white, size: 26),
+            child: Icon(Icons.edit, color: Colors.white, size: 26),
           ),
         ),
       ),

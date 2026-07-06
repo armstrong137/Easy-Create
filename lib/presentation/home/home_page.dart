@@ -6,6 +6,7 @@ import '../../core/creative_energy.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import '../outline/outline_page.dart';
+import '../settings/settings_page.dart';
 import 'orbiting_inspirations.dart';
 import 'planet_view.dart';
 import 'saturn_rings_painter.dart';
@@ -104,6 +105,30 @@ class _HomePageState extends ConsumerState<HomePage> {
               itemBuilder: (context, i) =>
                   _PlanetPage(novel: novels[i], pool: pool),
             ),
+          // 左上角设置入口（齿轮）：进设置页改速记按钮左右侧
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 12, top: 4),
+                child: GestureDetector(
+                  key: const Key('设置入口'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SettingsPage()),
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Icon(
+                      CupertinoIcons.gear,
+                      color: Colors.white70,
+                      size: 28,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
           // 顶部标题：点击创建新星球
           // 定稿要求 Arabic Typesetting（微软授权字体，无法打包分发）——
           // 暂以衬线斜体近似，待终审；有授权字体文件放 assets/fonts 即可替换

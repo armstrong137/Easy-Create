@@ -72,12 +72,13 @@ void main() {
     );
   }
 
-  final voiceBtn = find.byKey(const Key('语音速记按钮'));
+  // 单按钮：长按 = 语音速记
+  final captureBtn = find.byKey(const Key('速记按钮'));
 
   testWidgets('识别文字实时显示，确认后入池、弹层关闭', (tester) async {
     await pumpApp(tester);
 
-    await tester.tap(voiceBtn);
+    await tester.longPress(captureBtn);
     await tester.pumpAndSettle();
 
     // partial 结果实时刷新
@@ -102,7 +103,7 @@ void main() {
   testWidgets('设备不支持时显示不可用提示', (tester) async {
     await pumpApp(tester, available: false);
 
-    await tester.tap(voiceBtn);
+    await tester.longPress(captureBtn);
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('语音不可用提示')), findsOneWidget);
@@ -111,7 +112,7 @@ void main() {
   testWidgets('未识别到内容时点保存不入库、弹层不关闭', (tester) async {
     await pumpApp(tester);
 
-    await tester.tap(voiceBtn);
+    await tester.longPress(captureBtn);
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('语音保存按钮')));
@@ -129,7 +130,7 @@ void main() {
   testWidgets('划掉弹层时停止聆听', (tester) async {
     await pumpApp(tester);
 
-    await tester.tap(voiceBtn);
+    await tester.longPress(captureBtn);
     await tester.pumpAndSettle();
 
     // 点弹层外区域关闭
