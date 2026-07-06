@@ -73,11 +73,13 @@ flutter:
   shaders:
     - shaders/planet.frag
 
-  # 楷体（霞鹜文楷，OFL 开源）：环绕灵感文字用
+  # 楷体（霞鹜文楷 Lite，OFL 开源）：全局楷体。
+  # Lite = 去 CJK 扩展 B 区生僻/历史字、保留全部常用汉字，13.7MB（原全量 25.4MB）。
+  # family 名保持 LXGWWenKai，代码零改动。
   fonts:
     - family: LXGWWenKai
       fonts:
-        - asset: assets/fonts/LXGWWenKai-Medium.ttf
+        - asset: assets/fonts/LXGWWenKaiLite-Medium.ttf
           weight: 500
 
   # An image asset can refer to one or more resolution-specific "variants", see
