@@ -40,11 +40,32 @@ void main() {
 
   // 昼夜光照：光源在左上前方（屏幕 y 向下，故 y 分量取负朝上）
   vec3 lightDir = normalize(vec3(-0.5, -0.35, 0.8));
-  float diff = max(dot(n, lightDir), 0.0);
-  float light = 0.08 + 0.92 * diff; // 夜半球保留 8% 微光，轮廓不消失
+  float ndl = dot(n, lightDir);
+
+  // 柔和晨昏线：用围绕 0 的平滑过渡替代硬 Lambert，晨昏带更宽更柔
+  float day = smoothstep(-0.12, 0.32, ndl);
+  float light = 0.06 + 0.94 * day; // 夜半球保留 6% 微光，轮廓不消失
+
+  // 晨昏线暖调：过渡带（day 中段）叠一层暖橙，模拟大气散射的日出日落色
+  float terminator = day * (1.0 - day); // 晨昏带最大、正午/深夜为 0
+  color = color + vec3(1.0, 0.5, 0.22) * terminator * 0.5;
+
+  vec3 lit = color * light;
+
+  // 海面高光：识别水面（蓝多于红/绿），只在向阳面加 Blinn-Phong 镜面反射
+  vec3 viewDir = vec3(0.0, 0.0, 1.0); // 正交投影视线恒为 +z
+  vec3 halfDir = normalize(lightDir + viewDir);
+  float ocean = smoothstep(0.02, 0.12, color.b - max(color.r, color.g));
+  float spec = pow(max(dot(n, halfDir), 0.0), 64.0) * ocean * day;
+  lit += vec3(0.85, 0.92, 1.0) * spec * 0.55;
+
+  // 大气临边辉光：Fresnel 临边（n.z 小）+ 向阳侧，天蓝色薄辉
+  float rim = pow(1.0 - n.z, 3.0);
+  float atmo = rim * smoothstep(-0.25, 0.55, ndl);
+  lit += vec3(0.35, 0.56, 1.0) * atmo * 0.65;
 
   // 边缘平滑：单位圆边界 1px 抗锯齿过渡
   float edge = smoothstep(1.0, 1.0 - 4.0 / uSize.x, r2);
 
-  fragColor = vec4(color * light, 1.0) * edge;
+  fragColor = vec4(lit, 1.0) * edge;
 }
