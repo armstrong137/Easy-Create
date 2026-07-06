@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-04 17:20:07　对应提交：6f6e837 之后的工作区状态
+> 生成时间：2026-07-05 20:09:39　对应提交：781ff87 之后的工作区状态
 
 ## 一、索引状态
 
@@ -14,8 +14,8 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 Index Statistics:
   Files:     70
   Nodes:     1,094
-  Edges:     2,530
-  DB Size:   3.82 MB
+  Edges:     2,534
+  DB Size:   3.84 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 

@@ -423,13 +423,15 @@ MagicTreeLayout _layoutWindow(
     );
 
     // 节行：带内自上而下排列，放不下时可滚（右滑），树背景不动。
-    // contentTop 下移，给第一节标签（在枝端上方）留出不被带顶裁掉的空间。
-    // 有灵感的小节槽位加高，给标签下方的灵感小卡留位。
+    // 起点必须落在"章根之下 + 可见树干之内"：章根 rootY 已被钳进树干范围，
+    // 若仍用带几何顶(bandTop+34)，首章带顶高过树干时小节会飘到章的上方、
+    // 甚至窜到树顶魔毯球旁（用户反馈：章节多了之后小节错位）。
+    // 终点也钳在树干底之内，末章小节不落到土壤上。
     final sectionList = outline[i].sections;
     final m = sectionList.length;
-    final contentTop = bandTop + 34;
-    final contentBottom = bandBottom - 10;
-    final availH = contentBottom - contentTop;
+    final contentTop = math.max(bandTop + 34, rootY + kSectionRowHeight * 0.5);
+    final contentBottom = math.min(bandBottom - 10, stalkBotY - trunkSpan * 0.04);
+    final availH = math.max(0.0, contentBottom - contentTop);
 
     // 预算各节槽位顶部（累加变高槽位）
     final rawTops = <double>[];

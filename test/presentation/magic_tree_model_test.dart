@@ -103,6 +103,25 @@ void main() {
     expect(bottom.chapterBands.keys, isNot(contains(1)));
   });
 
+  test('窗口模式：首章小节落在章根之下（不飘到树顶/魔毯球旁）', () {
+    // 3 章 → 窗口模式；首章带顶贴屏顶、远高于树干顶。
+    // 修复前 contentTop=bandTop+34 让小节排到章根之上、窜到树顶（用户反馈错位）。
+    final outline = [chapterWith(1, 2), chapterWith(2, 0), chapterWith(3, 0)];
+    final layout = layoutMagicTree(size: size, outline: outline);
+    expect(layout.windowMode, isTrue);
+
+    final ch1Root = layout.chapters.firstWhere((c) => c.id == 1).root.dy;
+    final ch1Sections = layout.sections.where((s) => s.id ~/ 100 == 1);
+    expect(ch1Sections, isNotEmpty, reason: '首章小节应可见');
+    for (final s in ch1Sections) {
+      expect(
+        s.root.dy,
+        greaterThanOrEqualTo(ch1Root),
+        reason: '首章小节 ${s.title} 须在章根之下，不得飘到章的上方',
+      );
+    }
+  });
+
   test('虚拟树高随章数增长（生长速度变化，有封顶）', () {
     expect(treeGrowthFactor(2), 1);
     expect(treeGrowthFactor(5), greaterThan(treeGrowthFactor(3)));
