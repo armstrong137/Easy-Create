@@ -213,33 +213,38 @@ class _PlanetPage extends ConsumerWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        if (assets != null)
-          GestureDetector(
-            key: Key('星球_${novel.id}'),
-            // 点星球 → 进入该小说的大纲页（铅笔树）
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) =>
-                    OutlinePage(novelId: novel.id, title: novel.title),
-              ),
-            ),
-            child: OrbitingInspirations(
-              items: pool,
-              orbitWidth: diameter * 1.5,
-              // 土星带静态光环贴层，其余星球为纯球体
-              child: novel.planet == 'saturn'
-                  ? SaturnView(
-                      assets: assets,
-                      spin: planetSpin(count),
-                      diameter: diameter,
-                    )
-                  : PlanetView(
-                      assets: assets,
-                      spin: planetSpin(count),
-                      diameter: diameter,
-                    ),
-            ),
-          ),
+        GestureDetector(
+          key: Key('星球_${novel.id}'),
+          behavior: HitTestBehavior.opaque,
+          // 点星球 → 进入该小说的大纲页（铅笔树）
+          onTap: assets == null
+              ? null
+              : () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        OutlinePage(novelId: novel.id, title: novel.title),
+                  ),
+                ),
+          onLongPress: () => _confirmDeleteNovel(context, ref),
+          child: assets == null
+              ? SizedBox.square(dimension: diameter)
+              : OrbitingInspirations(
+                  items: pool,
+                  orbitWidth: diameter * 1.5,
+                  // 土星带静态光环贴层，其余星球为纯球体
+                  child: novel.planet == 'saturn'
+                      ? SaturnView(
+                          assets: assets,
+                          spin: planetSpin(count),
+                          diameter: diameter,
+                        )
+                      : PlanetView(
+                          assets: assets,
+                          spin: planetSpin(count),
+                          diameter: diameter,
+                        ),
+                ),
+        ),
         const SizedBox(height: 28),
         // 书名（楷体白字）：单击可重命名（2026-07-03 用户需求）
         GestureDetector(
@@ -256,6 +261,38 @@ class _PlanetPage extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _confirmDeleteNovel(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: Text('删除这颗星球？', style: _dlgStyle(weight: FontWeight.w600)),
+        content: Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: Text(
+            '「${novel.title}」的大纲会被剪掉，挂在小节里的灵感会回到魔毯。',
+            style: _dlgStyle(size: 14, color: const Color(0xFF4A3A28)),
+          ),
+        ),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('取消', style: _dlgStyle()),
+          ),
+          CupertinoDialogAction(
+            key: const Key('星球删除确认按钮'),
+            isDestructiveAction: true,
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('删除', style: _dlgStyle(weight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await ref.read(novelRepositoryProvider).deleteNovel(novel.id);
+    }
   }
 
   /// 单击书名 → 重命名对话框 → 落库

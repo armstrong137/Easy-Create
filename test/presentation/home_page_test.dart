@@ -151,6 +151,35 @@ void main() {
     expect(find.text('第三颗'), findsOneWidget);
   });
 
+  testWidgets('长按星球弹出删除确认，确认后删除小说', (tester) async {
+    await db
+        .into(db.novels)
+        .insert(
+          NovelsCompanion.insert(
+            title: '待删除星球',
+            planet: 'earth',
+            sortOrder: 0,
+            createdAt: DateTime.now(),
+          ),
+        );
+    await pumpApp(tester, novels: [fakeNovel(1, '待删除星球')]);
+
+    await tester.longPress(find.byKey(const Key('星球_1')));
+    await tester.pumpAndSettle();
+    expect(find.text('删除这颗星球？'), findsOneWidget);
+
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    expect(await db.select(db.novels).get(), hasLength(1));
+
+    await tester.longPress(find.byKey(const Key('星球_1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('星球删除确认按钮')));
+    await tester.pumpAndSettle();
+
+    expect(await db.select(db.novels).get(), isEmpty);
+  });
+
   testWidgets('单击书名 → 重命名对话框 → 保存落库', (tester) async {
     // 真库造一本书（rename 走真库）
     await db
