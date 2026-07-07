@@ -254,6 +254,19 @@ void main() {
     expect(saved.sectionId, isNull, reason: '主区卡拖回魔毯后应脱离小节');
   });
 
+  testWidgets('长按主区灵感卡即可放回灵感池', (tester) async {
+    final card = await seedCard('主区长按直接放回');
+    await pumpSectionWithCarpet(tester, [card]);
+
+    await tester.longPress(find.byKey(Key('主区卡_${card.id}')));
+    await tester.pumpAndSettle();
+
+    final saved = await (db.select(
+      db.inspirations,
+    )..where((t) => t.id.equals(card.id))).getSingle();
+    expect(saved.sectionId, isNull, reason: '主区卡长按后应直接脱离小节回到魔毯');
+  });
+
   testWidgets('长按卡片包内灵感卡拖到魔毯后放回灵感池', (tester) async {
     final card = await seedCard('从卡片包拖回魔毯');
     await pumpSectionWithCarpet(tester, [card]);
@@ -266,6 +279,21 @@ void main() {
       db.inspirations,
     )..where((t) => t.id.equals(card.id))).getSingle();
     expect(saved.sectionId, isNull, reason: '卡片包内卡拖回魔毯后应脱离小节');
+  });
+
+  testWidgets('长按卡片包内灵感卡即可放回灵感池', (tester) async {
+    final card = await seedCard('卡包长按直接放回');
+    await pumpSectionWithCarpet(tester, [card]);
+
+    await tester.tap(find.byKey(const Key('卡片包按钮')));
+    await tester.pumpAndSettle();
+    await tester.longPress(find.byKey(Key('包内卡_${card.id}')));
+    await tester.pumpAndSettle();
+
+    final saved = await (db.select(
+      db.inspirations,
+    )..where((t) => t.id.equals(card.id))).getSingle();
+    expect(saved.sectionId, isNull, reason: '卡片包内卡长按后应直接脱离小节回到魔毯');
   });
 
   testWidgets('超长内容省略显示（不撑爆屏幕）', (tester) async {

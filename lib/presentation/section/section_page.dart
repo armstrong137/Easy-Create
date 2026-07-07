@@ -105,6 +105,13 @@ class _SectionPageState extends ConsumerState<SectionPage> {
     magicCarpetKey.currentState?.collapse();
   }
 
+  Future<void> _returnToCarpet(Inspiration inspiration) async {
+    HapticFeedback.mediumImpact();
+    await ref
+        .read(inspirationRepositoryProvider)
+        .removeFromSection(inspiration.id);
+  }
+
   @override
   Widget build(BuildContext context) {
     // 整个小节页 = 一个落点：从右上角魔毯拖一条灵感下来松手 → 挂进本节
@@ -112,7 +119,7 @@ class _SectionPageState extends ConsumerState<SectionPage> {
     return Scaffold(
       backgroundColor: kSectionParchment,
       body: DragTarget<Inspiration>(
-        onWillAcceptWithDetails: (_) => true,
+        onWillAcceptWithDetails: (d) => d.data.sectionId != widget.sectionId,
         onAcceptWithDetails: (d) => _acceptFromCarpet(d.data),
         builder: (context, candidates, _) => Stack(
           children: [
@@ -149,7 +156,7 @@ class _SectionPageState extends ConsumerState<SectionPage> {
                       child: LongPressDraggable<Inspiration>(
                         data: current,
                         dragAnchorStrategy: pointerDragAnchorStrategy,
-                        onDragStarted: HapticFeedback.selectionClick,
+                        onDragStarted: () => _returnToCarpet(current),
                         feedback: InspirationDragFeedback(
                           content: current.content,
                         ),

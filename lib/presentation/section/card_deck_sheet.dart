@@ -93,6 +93,12 @@ class _CardDeckSheet extends ConsumerWidget {
                 key: ValueKey(cards[i].id),
                 card: cards[i],
                 index: i,
+                onReturnToCarpet: () async {
+                  HapticFeedback.mediumImpact();
+                  await ref
+                      .read(inspirationRepositoryProvider)
+                      .removeFromSection(cards[i].id);
+                },
               ),
             ),
           ),
@@ -104,10 +110,16 @@ class _CardDeckSheet extends ConsumerWidget {
 
 /// 卡片包中的缩略卡（羊皮纸暖调紧凑版）
 class _DeckTile extends StatelessWidget {
-  const _DeckTile({super.key, required this.card, required this.index});
+  const _DeckTile({
+    super.key,
+    required this.card,
+    required this.index,
+    required this.onReturnToCarpet,
+  });
 
   final Inspiration card;
   final int index;
+  final VoidCallback onReturnToCarpet;
 
   @override
   Widget build(BuildContext context) {
@@ -117,7 +129,7 @@ class _DeckTile extends StatelessWidget {
       child: LongPressDraggable<Inspiration>(
         data: card,
         dragAnchorStrategy: pointerDragAnchorStrategy,
-        onDragStarted: HapticFeedback.selectionClick,
+        onDragStarted: onReturnToCarpet,
         feedback: InspirationDragFeedback(content: card.content),
         childWhenDragging: Opacity(opacity: 0.28, child: _tile(context)),
         child: _tile(context),
