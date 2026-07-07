@@ -787,12 +787,14 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                                   for (final b in layout.chapters)
                                     _tendril(b, Offset.zero),
                                   for (final b in layout.sections)
-                                    if (b.clipChapterId == null)
+                                    if (b.clipChapterId == null &&
+                                        b.showTendril)
                                       _tendril(b, Offset.zero),
                                   for (final e in clipRects.entries)
                                     clipped(e.key, [
                                       for (final b in layout.sections)
-                                        if (b.clipChapterId == e.key)
+                                        if (b.clipChapterId == e.key &&
+                                            b.showTendril)
                                           _tendril(b, e.value.topLeft),
                                     ]),
                                 ],

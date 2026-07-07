@@ -84,6 +84,7 @@ class VineBranch {
     required this.root,
     required this.spriteRect,
     required this.tip,
+    this.showTendril = true,
     this.clipChapterId,
   });
 
@@ -100,6 +101,9 @@ class VineBranch {
 
   /// 螺旋端（标签锚点）
   final Offset tip;
+
+  /// false = 只保留标签/热区，不绘制枝丫（用于靠近泥土的节）
+  final bool showTendril;
 
   /// 非空 = 该节枝须裁剪在此章的高度带内（窗口模式滚动小节用）
   final int? clipChapterId;
@@ -442,9 +446,8 @@ MagicTreeLayout _layoutWindow(
       math.max(bandTop + kSectionAddZone, rootY + kSectionRowHeight * 0.5),
       branchTop,
     );
-    // 小节区终点避开泥土：靠近土堆的节枝不再进入布局。
-    final contentBottom = math.min(bandBottom - 12, branchBottom);
-    final availH = math.max(0.0, contentBottom - contentTop);
+    final labelBottom = bandBottom - 12;
+    final availH = math.max(0.0, labelBottom - contentTop);
 
     // 预算各节槽位顶部（累加变高槽位）
     final rawTops = <double>[];
@@ -468,14 +471,15 @@ MagicTreeLayout _layoutWindow(
     for (var j = 0; j < m; j++) {
       // 自上而下：第一节在上，后续小节向下生长；scroll 增大表示向下看更新的小节。
       final sy = contentTop + rawTops[j] + kSectionRowHeight / 2 - scroll;
-      if (sy < branchTop || sy > branchBottom) {
+      if (sy < branchTop || sy > labelBottom) {
         continue;
       }
       // 行滚出带外就不布局（带内边缘由页面按带裁剪）
       if (sy < contentTop - kSectionRowHeight ||
-          sy > contentBottom + kSectionRowHeight) {
+          sy > labelBottom + kSectionRowHeight) {
         continue;
       }
+      final showTendril = sy <= branchBottom;
       final sRoot = Offset(cx + halfWAt(sy) * 0.42, sy);
       var sLen = math.min(size.width - sRoot.dx - 10, size.width * 0.18);
       sLen = math.max(math.min(sLen, size.shortestSide * 0.16), 34.0);
@@ -497,6 +501,7 @@ MagicTreeLayout _layoutWindow(
             sRect.right - sLen * kTendrilTipXFrac,
             sRect.top + sh * kTendrilTipYFrac,
           ),
+          showTendril: showTendril,
           clipChapterId: chapter.id,
         ),
       );

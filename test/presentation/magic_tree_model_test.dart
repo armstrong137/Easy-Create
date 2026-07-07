@@ -160,7 +160,7 @@ void main() {
     );
   });
 
-  test('窗口模式：靠近泥土的小节枝丫不进入布局', () {
+  test('窗口模式：靠近泥土的小节只隐藏枝丫不隐藏标签', () {
     final outline = [chapterWith(1, 0), chapterWith(2, 0), chapterWith(3, 6)];
     final layout = layoutMagicTree(
       size: size,
@@ -169,14 +169,37 @@ void main() {
     );
     final soilSafeBottom =
         layout.trunkRect.bottom - layout.trunkRect.height * 0.12;
+    final chapter3Sections = layout.sections
+        .where((s) => s.id ~/ 100 == 3)
+        .toList();
 
-    for (final s in layout.sections.where((s) => s.id ~/ 100 == 3)) {
-      expect(
-        s.root.dy,
-        lessThanOrEqualTo(soilSafeBottom),
-        reason: '${s.title} 太靠近泥土时不应继续显示枝丫',
-      );
+    expect(chapter3Sections.length, greaterThan(3), reason: '泥土附近仍应保留小节标签');
+    for (final s in chapter3Sections) {
+      if (s.root.dy > soilSafeBottom) {
+        expect(s.showTendril, isFalse, reason: '${s.title} 太靠近泥土时不显示枝丫');
+      }
     }
+  });
+
+  test('窗口模式：泥土附近隐藏枝丫时仍保留足够小节标签', () {
+    final outline = [
+      chapterWith(1, 0),
+      chapterWith(2, 0),
+      chapterWith(3, 0),
+      chapterWith(4, 14),
+    ];
+    final layout = layoutMagicTree(
+      size: size,
+      outline: outline,
+      chapterOffset: 2,
+    );
+
+    final chapter4Sections = layout.sections.where((s) => s.id ~/ 100 == 4);
+    expect(
+      chapter4Sections.length,
+      greaterThanOrEqualTo(5),
+      reason: '靠近泥土只应隐藏枝丫，不能把小节标签也裁到只剩三枚',
+    );
   });
 
   test('窗口模式：一屏严格只两章（整数档与滚动中的分数档都不露第三章）', () {
@@ -185,18 +208,30 @@ void main() {
     expect(layoutMagicTree(size: size, outline: outline).chapters.length, 2);
     // 整数档
     expect(
-      layoutMagicTree(size: size, outline: outline, chapterOffset: 2).chapters.length,
+      layoutMagicTree(
+        size: size,
+        outline: outline,
+        chapterOffset: 2,
+      ).chapters.length,
       2,
     );
     // 分数档（滚动中）——修复前这里会出现 3 章
     expect(
-      layoutMagicTree(size: size, outline: outline, chapterOffset: 2.4).chapters.length,
+      layoutMagicTree(
+        size: size,
+        outline: outline,
+        chapterOffset: 2.4,
+      ).chapters.length,
       2,
       reason: '滚动中也不能同时看到三章',
     );
     // 末档
     expect(
-      layoutMagicTree(size: size, outline: outline, chapterOffset: 4).chapters.length,
+      layoutMagicTree(
+        size: size,
+        outline: outline,
+        chapterOffset: 4,
+      ).chapters.length,
       2,
     );
   });
@@ -222,11 +257,7 @@ void main() {
     // 带顶往下 20px 处：应落在本章带内、且在所有小节之上（= 空白加节区）
     final probeY = band1.$1 + 20;
     expect(layout.chapterForY(probeY), 1, reason: '带顶空白应落回本章（双击加节到本章）');
-    expect(
-      probeY,
-      lessThan(highest),
-      reason: '带顶应留出小节之上的空白加节区，不被小节铺满',
-    );
+    expect(probeY, lessThan(highest), reason: '带顶应留出小节之上的空白加节区，不被小节铺满');
   });
 
   test('虚拟树高随章数增长（生长速度变化，有封顶）', () {
