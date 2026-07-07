@@ -377,7 +377,8 @@ MagicTreeLayout _layoutWindow(
 
   final trunkSpan = stalkBotY - stalkTopY;
   final branchTop = math.max(trunkRect.top, stalkTopY + trunkSpan * 0.06);
-  final branchBottom = math.min(trunkRect.bottom, stalkBotY - trunkSpan * 0.06);
+  final soilSafeBottom = trunkRect.bottom - trunkRect.height * 0.12;
+  final branchBottom = math.min(soilSafeBottom, stalkBotY - trunkSpan * 0.06);
 
   // 高度带：一屏恰好两章
   const topPad = 6.0;
@@ -441,8 +442,7 @@ MagicTreeLayout _layoutWindow(
       math.max(bandTop + kSectionAddZone, rootY + kSectionRowHeight * 0.5),
       branchTop,
     );
-    // 小节区终点直贴带底（仅留 12px 边距不被裁切）：底部对齐下最新一节钉在这里，
-    // 即"最新小节固定在该半屏的最底部"（用户定稿）。上下两章带等高 → 等量小节。
+    // 小节区终点避开泥土：靠近土堆的节枝不再进入布局。
     final contentBottom = math.min(bandBottom - 12, branchBottom);
     final availH = math.max(0.0, contentBottom - contentTop);
 
@@ -459,13 +459,15 @@ MagicTreeLayout _layoutWindow(
     }
     final overflow = math.max(0.0, raw - availH);
     scrollMax[chapter.id] = overflow;
-    final scroll = (sectionScrolls[chapter.id] ?? 0).clamp(0.0, overflow);
+    // 默认自动滚到末尾：小节从上往下生长，放不下时隐藏最早的小节。
+    final scroll = (sectionScrolls[chapter.id] ?? overflow).clamp(
+      0.0,
+      overflow,
+    );
 
     for (var j = 0; j < m; j++) {
-      // 底部对齐：最新（最后一节）钉在带底 contentBottom，老节在其上方；
-      // scroll 增大 → 整块下移、从顶部露出更老的节（用户定稿：最新小节固定在半屏最底部）。
-      final sy =
-          contentBottom - raw + rawTops[j] + kSectionRowHeight / 2 + scroll;
+      // 自上而下：第一节在上，后续小节向下生长；scroll 增大表示向下看更新的小节。
+      final sy = contentTop + rawTops[j] + kSectionRowHeight / 2 - scroll;
       if (sy < branchTop || sy > branchBottom) {
         continue;
       }

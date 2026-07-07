@@ -142,6 +142,43 @@ void main() {
     }
   });
 
+  test('窗口模式：未铺满的小节从章带上方开始向下生长', () {
+    final outline = [chapterWith(1, 0), chapterWith(2, 0), chapterWith(3, 1)];
+    final layout = layoutMagicTree(
+      size: size,
+      outline: outline,
+      chapterOffset: 1,
+    );
+
+    final band3 = layout.chapterBands[3]!;
+    final section = layout.sections.singleWhere((s) => s.id == 300);
+
+    expect(
+      section.root.dy,
+      lessThan(band3.$1 + kSectionAddZone + kSectionRowHeight),
+      reason: '只有一节时应从本章小节区顶部长出，而不是钉在章带最底部',
+    );
+  });
+
+  test('窗口模式：靠近泥土的小节枝丫不进入布局', () {
+    final outline = [chapterWith(1, 0), chapterWith(2, 0), chapterWith(3, 6)];
+    final layout = layoutMagicTree(
+      size: size,
+      outline: outline,
+      chapterOffset: 1,
+    );
+    final soilSafeBottom =
+        layout.trunkRect.bottom - layout.trunkRect.height * 0.12;
+
+    for (final s in layout.sections.where((s) => s.id ~/ 100 == 3)) {
+      expect(
+        s.root.dy,
+        lessThanOrEqualTo(soilSafeBottom),
+        reason: '${s.title} 太靠近泥土时不应继续显示枝丫',
+      );
+    }
+  });
+
   test('窗口模式：一屏严格只两章（整数档与滚动中的分数档都不露第三章）', () {
     final outline = [for (var i = 1; i <= 6; i++) chapterWith(i, 1)];
     // offset 0（首档）
@@ -207,13 +244,13 @@ void main() {
     Set<int> ids(MagicTreeLayout l) => l.sections.map((s) => s.id).toSet();
     final before = ids(layout);
     final after = ids(
-      layoutMagicTree(size: size, outline: outline, sectionScrolls: {1: max}),
+      layoutMagicTree(size: size, outline: outline, sectionScrolls: {1: 0}),
     );
-    // 底部对齐：默认最新的第十二节钉在带底可见，最老的第一节在顶上溢出带外
+    // 默认自动滚到末尾：最新的第十二节可见，最老的第一节在顶上溢出带外
     expect(before, contains(100 + 11), reason: '默认最新节(第12节)在带底可见');
     expect(before, isNot(contains(100)), reason: '最老的第一节在带外');
-    // 滚到底（scroll=max）→ 从顶部露出最老的第一节，最新节此时滚到带下方
-    expect(after, contains(100), reason: '滚到顶后最老的第一节露出');
+    // 滚回起点（scroll=0）→ 从顶部露出最老的第一节，最新节此时滚到带下方
+    expect(after, contains(100), reason: '滚回起点后最老的第一节露出');
     expect(after, isNot(contains(100 + 11)), reason: '此时最新节在带下方');
   });
 
