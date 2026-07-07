@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,6 +20,11 @@ void main() {
     updatedAt: DateTime(2026, 7, 1),
     cardOrder: 0,
   );
+
+  tearDown(() {
+    carpetDragging.value = null;
+    carpetTucked.value = false;
+  });
 
   Future<void> pumpCarpet(WidgetTester tester, List<Inspiration> pool) async {
     await tester.pumpWidget(
@@ -124,5 +132,45 @@ void main() {
     final newest = tester.getTopLeft(find.text('最新'));
     final oldest = tester.getTopLeft(find.text('最早'));
     expect(newest.dy, lessThan(oldest.dy), reason: '新灵感在列表上方');
+  });
+
+  testWidgets('拖拽中外部收起魔毯会清理拖拽态', (tester) async {
+    final pool = StreamController<List<Inspiration>>();
+    addTearDown(pool.close);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [inspirationPoolProvider.overrideWith((ref) => pool.stream)],
+        child: MaterialApp(
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.topRight,
+              child: MagicCarpet(key: magicCarpetKey),
+            ),
+          ),
+        ),
+      ),
+    );
+    pool.add([fake(1, '会被拖走的灵感')]);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('魔毯小球')));
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byKey(const Key('魔毯灵感_1'))),
+    );
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 100));
+    await gesture.moveBy(const Offset(-8, 8));
+    await tester.pump();
+    expect(carpetDragging.value?.id, 1, reason: '测试应先进入拖拽态');
+
+    magicCarpetKey.currentState?.collapse();
+    await tester.pump(const Duration(milliseconds: 40));
+
+    expect(carpetDragging.value, isNull, reason: '外部收起时必须同步清理拖拽态');
+
+    await gesture.up();
+    await tester.pumpAndSettle();
   });
 }

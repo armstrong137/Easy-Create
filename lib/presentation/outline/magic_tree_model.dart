@@ -40,6 +40,9 @@ const kNoteRowHeight = 26.0;
 /// 小节标签下最多显示的灵感条数
 const kMaxSectionNotes = 3;
 
+/// 右下速记按钮占用约 56px + 24px 边距，再多留一点呼吸区。
+const _kQuickCaptureBottomGuard = 96.0;
+
 /// 树龄 [0,1]：随章节规模成长（保留用于尺寸微调）
 double treeAge(int totalNodes) {
   if (totalNodes <= 0) return 0;
@@ -254,6 +257,7 @@ MagicTreeLayout _layoutSingleChapter(
 
   final attachTop = topY + span * 0.14;
   final attachBot = botY - span * 0.10;
+  final soilSafeBottom = botY - span * 0.12;
   final rootY = attachTop + (attachBot - attachTop) * 0.15;
   final chapter = outline.chapter;
   final root = Offset(cx - halfWAt(rootY) + dispW * 0.006, rootY);
@@ -285,7 +289,10 @@ MagicTreeLayout _layoutSingleChapter(
   final bandTop = 0.0;
   final bandBottom = size.height;
   final contentTop = math.max(rootY + kSectionRowHeight * 0.5, topY);
-  final labelBottom = math.min(size.height - 14, botY);
+  final labelBottom = math.min(
+    math.min(size.height - _kQuickCaptureBottomGuard, botY),
+    attachBot,
+  );
   final availH = math.max(0.0, labelBottom - contentTop);
 
   final rawTops = <double>[];
@@ -307,8 +314,7 @@ MagicTreeLayout _layoutSingleChapter(
   for (var j = 0; j < outline.sections.length; j++) {
     final section = outline.sections[j];
     final sy = contentTop + rawTops[j] + kSectionRowHeight / 2 - scroll;
-    if (sy < contentTop - kSectionRowHeight ||
-        sy > labelBottom + kSectionRowHeight) {
+    if (sy < contentTop - kSectionRowHeight || sy > labelBottom) {
       continue;
     }
 
@@ -330,6 +336,7 @@ MagicTreeLayout _layoutSingleChapter(
         root: sRoot,
         spriteRect: sRect,
         tip: Offset(fixedTipX, sRect.top + sh * kTendrilTipYFrac),
+        showTendril: sRect.bottom <= soilSafeBottom,
         clipChapterId: chapter.id,
       ),
     );
@@ -392,6 +399,7 @@ MagicTreeLayout _layoutWholeTree(
   // 枝根吸附段（避开顶部细梢与底部土堆）
   final attachTop = topY + span * 0.14;
   final attachBot = botY - span * 0.10;
+  final soilSafeBottom = botY - span * 0.12;
   final attachRange = attachBot - attachTop;
 
   final n = outline.length;
@@ -449,7 +457,10 @@ MagicTreeLayout _layoutWholeTree(
       bandTop + 12,
       math.min(rootY + kSectionRowHeight * 0.45, bandBottom - 80),
     );
-    final labelBottom = bandBottom - 10;
+    final labelBottom = math.min(
+      math.min(bandBottom - 10, size.height - _kQuickCaptureBottomGuard),
+      botY,
+    );
     final availH = math.max(0.0, labelBottom - contentTop);
     final rawTops = <double>[];
     var raw = 0.0;
@@ -471,8 +482,7 @@ MagicTreeLayout _layoutWholeTree(
 
     for (var j = 0; j < sectionList.length; j++) {
       final sy = contentTop + rawTops[j] + kSectionRowHeight / 2 - scroll;
-      if (sy < contentTop - kSectionRowHeight ||
-          sy > labelBottom + kSectionRowHeight) {
+      if (sy < contentTop - kSectionRowHeight || sy > labelBottom) {
         continue;
       }
       final sRoot = Offset(cx + halfWAt(sy) - dispW * 0.006, sy);
@@ -494,6 +504,7 @@ MagicTreeLayout _layoutWholeTree(
           root: sRoot,
           spriteRect: sRect,
           tip: Offset(fixedTipX, sRect.top + sh * kTendrilTipYFrac),
+          showTendril: sRect.bottom <= soilSafeBottom,
           clipChapterId: chapter.id,
         ),
       );
@@ -625,7 +636,10 @@ MagicTreeLayout _layoutWindow(
       math.max(bandTop + kSectionAddZone, rootY + kSectionRowHeight * 0.5),
       branchTop,
     );
-    final labelBottom = bandBottom - 12;
+    final labelBottom = math.min(
+      bandBottom - 12,
+      size.height - _kQuickCaptureBottomGuard,
+    );
     final availH = math.max(0.0, labelBottom - contentTop);
 
     // 预算各节槽位顶部（累加变高槽位）
@@ -650,12 +664,9 @@ MagicTreeLayout _layoutWindow(
     for (var j = 0; j < m; j++) {
       // 自上而下：第一节在上，后续小节向下生长；scroll 增大表示向下看更新的小节。
       final sy = contentTop + rawTops[j] + kSectionRowHeight / 2 - scroll;
-      if (sy < branchTop || sy > labelBottom) {
-        continue;
-      }
-      // 行滚出带外就不布局（带内边缘由页面按带裁剪）
-      if (sy < contentTop - kSectionRowHeight ||
-          sy > labelBottom + kSectionRowHeight) {
+      if (sy < branchTop ||
+          sy < contentTop - kSectionRowHeight ||
+          sy > labelBottom) {
         continue;
       }
       final showTendril = sy <= branchBottom;

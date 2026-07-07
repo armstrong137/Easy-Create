@@ -232,7 +232,13 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
 
   /// 外部可调用：拖拽完成后自动缩回小球（定稿）
   void collapse() {
+    _finishDrag();
     if ((_expanded || _showPanel) && mounted) _toggle(false);
+  }
+
+  void _finishDrag() {
+    carpetDragging.value = null;
+    if (_dragging && mounted) setState(() => _dragging = false);
   }
 
   Future<void> _returnToCarpet(Inspiration inspiration) async {
@@ -266,6 +272,7 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
       });
       await _unroll.forward(from: 0);
     } else {
+      _finishDrag();
       setState(() => _expanded = false);
       await _unroll.reverse();
       if (mounted) setState(() => _showPanel = false);
@@ -465,10 +472,7 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
                             setState(() => _dragging = true);
                             carpetDragging.value = pool[i];
                           },
-                          onDragEnd: () {
-                            setState(() => _dragging = false);
-                            carpetDragging.value = null;
-                          },
+                          onDragEnd: _finishDrag,
                         ),
                       ),
               ),
@@ -505,6 +509,8 @@ class CarpetItem extends StatelessWidget {
       dragAnchorStrategy: pointerDragAnchorStrategy,
       onDragStarted: onDragStarted,
       onDragEnd: (_) => onDragEnd?.call(),
+      onDragCompleted: onDragEnd,
+      onDraggableCanceled: (_, _) => onDragEnd?.call(),
       // 拖起时的浮影：一张微光羊皮纸小卡
       feedback: Material(
         color: Colors.transparent,

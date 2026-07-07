@@ -361,6 +361,77 @@ void main() {
     expect(maxLeft - minLeft, lessThan(12), reason: '引子的小节标签应保持右侧一列');
   });
 
+  test('窗口模式：小节标签要么完整显示，要么不显示', () {
+    final outline = [chapterWith(1, 14), chapterWith(2, 0), chapterWith(3, 0)];
+    final layout = layoutMagicTree(
+      size: size,
+      outline: outline,
+      sectionScrolls: {
+        1:
+            layoutMagicTree(size: size, outline: outline).sectionScrollMax[1]! /
+            2,
+      },
+    );
+    final labels = placeMagicLabels(layout, canvasWidth: size.width);
+
+    for (final label in labels.where((l) => l.sectionId != null)) {
+      final section = layout.sections.singleWhere(
+        (s) => s.id == label.sectionId,
+      );
+      final band = layout.chapterBands[section.clipChapterId]!;
+      expect(
+        label.rect.top,
+        greaterThanOrEqualTo(band.$1 + 2),
+        reason: '${label.text} 不能被本章上边界裁成半截',
+      );
+      expect(
+        label.rect.bottom,
+        lessThanOrEqualTo(band.$2 - 2),
+        reason: '${label.text} 不能被本章下边界裁成半截',
+      );
+    }
+  });
+
+  test('窗口模式：靠近右下输入按钮的小节不进入布局', () {
+    final outline = [
+      chapterWith(1, 0),
+      chapterWith(2, 0),
+      chapterWith(3, 0),
+      chapterWith(4, 12),
+    ];
+    final layout = layoutMagicTree(
+      size: size,
+      outline: outline,
+      chapterOffset: 2,
+    );
+    final labels = placeMagicLabels(layout, canvasWidth: size.width);
+
+    for (final label in labels.where((l) => l.sectionId != null)) {
+      expect(
+        label.rect.bottom,
+        lessThanOrEqualTo(size.height - 96),
+        reason: '${label.text} 靠近右下速记按钮时应整条隐藏',
+      );
+    }
+  });
+
+  test('整树模式：小节枝丫压到泥土时隐藏枝丫', () {
+    final outline = [chapterWith(1, 10)];
+    final layout = layoutMagicTree(size: size, outline: outline);
+    final soilSafeBottom =
+        layout.trunkRect.bottom - layout.trunkRect.height * 0.12;
+
+    for (final section in layout.sections) {
+      if (section.spriteRect.bottom > soilSafeBottom) {
+        expect(
+          section.showTendril,
+          isFalse,
+          reason: '${section.title} 的枝丫不能压到泥土上',
+        );
+      }
+    }
+  });
+
   test('窗口模式标签两两不重叠且不出画布', () {
     final layout = layoutMagicTree(
       size: size,

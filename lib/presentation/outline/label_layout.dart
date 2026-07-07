@@ -78,6 +78,9 @@ List<PlacedLabel> placeMagicLabels(
     final columns = !vine.isChapter && vine.clipChapterId != null
         ? [dx]
         : [dx, inner];
+    final clip = !vine.isChapter && vine.clipChapterId != null
+        ? layout.chapterBands[vine.clipChapterId]
+        : null;
     final candidates = <Offset>[
       for (final col in columns) ...[
         Offset(col, anchor.dy - painter.height - 16), // 端部上方（避开卷勾）
@@ -87,7 +90,7 @@ List<PlacedLabel> placeMagicLabels(
       ],
     ];
 
-    var pos = candidates.last;
+    Offset? pos;
     for (final c in candidates) {
       // inflate(8)：标签带羊皮纸胶囊底（加大版），留足间距防胶囊叠边
       final rect = Rect.fromLTWH(
@@ -96,11 +99,16 @@ List<PlacedLabel> placeMagicLabels(
         painter.width,
         painter.height,
       ).inflate(8);
+      if (clip != null &&
+          (rect.top < clip.$1 + 2 || rect.bottom > clip.$2 - 2)) {
+        continue;
+      }
       if (!placed.any((l) => l.rect.inflate(8).overlaps(rect))) {
         pos = c;
         break;
       }
     }
+    if (pos == null) return;
     placed.add(
       PlacedLabel(
         text: vine.title,
