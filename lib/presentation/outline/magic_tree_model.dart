@@ -183,7 +183,16 @@ MagicTreeLayout layoutMagicTree({
   final age = treeAge(totalNodes);
   final stage = stageForNodes(totalNodes);
 
-  return n > 2
+  return n == 1
+      ? _layoutSingleChapter(
+          size,
+          outline.single,
+          stage,
+          age,
+          sectionScrolls,
+          sectionNoteCounts,
+        )
+      : n > 2
       ? _layoutWindow(
           size,
           outline,
@@ -194,6 +203,143 @@ MagicTreeLayout layoutMagicTree({
           sectionNoteCounts,
         )
       : _layoutWholeTree(size, outline, stage, age);
+}
+
+/// 单章：整棵树仍随小节数量成长，但小节始终只在右侧一列中向下生长。
+/// 超出可见容量时默认滚到最新小节，用户可在右半屏下拉回看更早小节。
+MagicTreeLayout _layoutSingleChapter(
+  Size size,
+  OutlineChapter outline,
+  int stage,
+  double age,
+  Map<int, double> sectionScrolls,
+  Map<int, int> sectionNoteCounts,
+) {
+  final scale = math.min(
+    size.width / kStageImageWidth,
+    size.height * 0.84 / kStageImageHeight,
+  );
+  final dispW = kStageImageWidth * scale;
+  final dispH = kStageImageHeight * scale;
+  final imageRect = Rect.fromLTWH(
+    (size.width - dispW) / 2,
+    size.height - 8 - dispH,
+    dispW,
+    dispH,
+  );
+
+  final stalk = _stalks[stage]!;
+  final topY = imageRect.top + stalk.topY * dispH;
+  final botY = imageRect.top + stalk.botY * dispH;
+  final span = botY - topY;
+  final cx = imageRect.center.dx;
+  final trunkRect = Rect.fromLTRB(
+    cx - stalk.botHalfW * dispW,
+    topY,
+    cx + stalk.botHalfW * dispW,
+    botY,
+  );
+
+  double halfWAt(double y) {
+    final t = ((y - topY) / span).clamp(0.0, 1.0);
+    return (stalk.topHalfW + (stalk.botHalfW - stalk.topHalfW) * t) * dispW;
+  }
+
+  final attachTop = topY + span * 0.14;
+  final attachBot = botY - span * 0.10;
+  final rootY = attachTop + (attachBot - attachTop) * 0.15;
+  final chapter = outline.chapter;
+  final root = Offset(cx - halfWAt(rootY) + dispW * 0.006, rootY);
+
+  var len = math.min(root.dx - 10, size.width * 0.28);
+  len = math.min(len, size.shortestSide * 0.25);
+  len = math.max(len, 48.0);
+  final h = len * kTendrilAspect;
+  final spriteRect = Rect.fromLTWH(
+    root.dx - len,
+    root.dy - h * kTendrilRootYFrac,
+    len,
+    h,
+  );
+  final chapters = [
+    VineBranch(
+      id: chapter.id,
+      title: chapter.title,
+      isChapter: true,
+      root: root,
+      spriteRect: spriteRect,
+      tip: Offset(
+        spriteRect.left + len * kTendrilTipXFrac,
+        spriteRect.top + h * kTendrilTipYFrac,
+      ),
+    ),
+  ];
+
+  final bandTop = 0.0;
+  final bandBottom = size.height;
+  final contentTop = math.max(rootY + kSectionRowHeight * 0.5, topY);
+  final labelBottom = math.min(size.height - 14, botY);
+  final availH = math.max(0.0, labelBottom - contentTop);
+
+  final rawTops = <double>[];
+  var raw = 0.0;
+  for (final section in outline.sections) {
+    rawTops.add(raw);
+    final notes = math.min(
+      sectionNoteCounts[section.id] ?? 0,
+      kMaxSectionNotes,
+    );
+    raw += kSectionRowHeight + notes * kNoteRowHeight;
+  }
+
+  final overflow = math.max(0.0, raw - availH);
+  final scroll = (sectionScrolls[chapter.id] ?? overflow).clamp(0.0, overflow);
+  final fixedTipX = math.min(size.width - 96, cx + dispW * 0.19);
+  final sections = <VineBranch>[];
+
+  for (var j = 0; j < outline.sections.length; j++) {
+    final section = outline.sections[j];
+    final sy = contentTop + rawTops[j] + kSectionRowHeight / 2 - scroll;
+    if (sy < contentTop - kSectionRowHeight ||
+        sy > labelBottom + kSectionRowHeight) {
+      continue;
+    }
+
+    final sRoot = Offset(cx + halfWAt(sy) * 0.42, sy);
+    var sLen = math.min(size.width - sRoot.dx - 10, size.width * 0.18);
+    sLen = math.max(math.min(sLen, size.shortestSide * 0.16), 34.0);
+    final sh = sLen * kTendrilAspect;
+    final sRect = Rect.fromLTWH(
+      sRoot.dx,
+      sy - sh * kTendrilRootYFrac,
+      sLen,
+      sh,
+    );
+    sections.add(
+      VineBranch(
+        id: section.id,
+        title: section.title,
+        isChapter: false,
+        root: sRoot,
+        spriteRect: sRect,
+        tip: Offset(fixedTipX, sRect.top + sh * kTendrilTipYFrac),
+        clipChapterId: chapter.id,
+      ),
+    );
+  }
+
+  return MagicTreeLayout(
+    age: age,
+    stage: stage,
+    windowMode: true,
+    imageRect: imageRect,
+    trunkRect: trunkRect,
+    chapters: chapters,
+    sections: sections,
+    chapterBands: {chapter.id: (bandTop, bandBottom)},
+    maxChapterOffset: 0,
+    sectionScrollMax: {chapter.id: overflow},
+  );
 }
 
 /// ≤2 章：整树可见，章枝直接锚在照片茎干上（第一章靠上）

@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-07 14:29:48　对应提交：d5d714e 之后的工作区状态
+> 生成时间：2026-07-07 15:10:46　对应提交：5be3d1b 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,16 +13,16 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     72
-  Nodes:     1,146
-  Edges:     2,746
-  DB Size:   4.18 MB
+  Nodes:     1,149
+  Edges:     2,772
+  DB Size:   4.22 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          370
-  import          243
-  function        183
+  import          244
+  function        185
   constant        153
   class           102
   file            68
@@ -127,7 +127,7 @@ Project Structure (72 files):
 |   |   |-- outline
 |   |   |   |-- label_layout.dart (dart, 12 symbols)
 |   |   |   |-- magic_carpet.dart (dart, 44 symbols)
-|   |   |   |-- magic_tree_model.dart (dart, 30 symbols)
+|   |   |   |-- magic_tree_model.dart (dart, 33 symbols)
 |   |   |   `-- outline_page.dart (dart, 53 symbols)
 |   |   |-- section
 |   |   |   |-- card_deck_sheet.dart (dart, 16 symbols)
@@ -155,7 +155,7 @@ Project Structure (72 files):
 |   `-- presentation
 |       |-- home_page_test.dart (dart, 20 symbols)
 |       |-- magic_carpet_test.dart (dart, 13 symbols)
-|       |-- magic_tree_model_test.dart (dart, 12 symbols)
+|       |-- magic_tree_model_test.dart (dart, 13 symbols)
 |       |-- orbiting_inspirations_test.dart (dart, 10 symbols)
 |       |-- outline_page_test.dart (dart, 23 symbols)
 |       |-- quick_capture_test.dart (dart, 16 symbols)

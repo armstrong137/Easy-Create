@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -309,6 +310,27 @@ void main() {
     // 滚回起点（scroll=0）→ 从顶部露出最老的第一节，最新节此时滚到带下方
     expect(after, contains(100), reason: '滚回起点后最老的第一节露出');
     expect(after, isNot(contains(100 + 11)), reason: '此时最新节在带下方');
+  });
+
+  test('单章多小节：默认自动滚到最新小节，且节标签保持单列', () {
+    final outline = [chapterWith(1, 20)];
+    final layout = layoutMagicTree(size: size, outline: outline);
+
+    expect(layout.sectionScrollMax[1], greaterThan(0), reason: '单章小节过多时也必须可滚');
+
+    final visibleIds = layout.sections.map((s) => s.id).toSet();
+    expect(visibleIds, contains(100 + 19), reason: '默认应显示最新的第二十节');
+    expect(visibleIds, isNot(contains(100)), reason: '超过容量后第一节应先滚出屏幕');
+
+    final labels = placeMagicLabels(
+      layout,
+      canvasWidth: size.width,
+    ).where((l) => l.sectionId != null).toList();
+    expect(labels, isNotEmpty);
+    final lefts = labels.map((l) => l.rect.left).toList();
+    final minLeft = lefts.reduce(math.min);
+    final maxLeft = lefts.reduce(math.max);
+    expect(maxLeft - minLeft, lessThan(12), reason: '单章小节标签应始终保持右侧一列');
   });
 
   test('窗口模式标签两两不重叠且不出画布', () {
