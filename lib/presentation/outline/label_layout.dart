@@ -72,10 +72,14 @@ List<PlacedLabel> placeMagicLabels(
     }
 
     dx = clampX(dx);
-    // 密集时首列四个纵向槽位不够，再开一列"内侧列"（横向完全错开）
+    // 密集时首列四个纵向槽位不够，再开一列"内侧列"（横向完全错开）。
+    // 但可滚小节（clipChapterId 非空）已经由布局控制可见数量，必须保持单列。
     final inner = clampX(dx + (vine.isChapter ? 1 : -1) * (painter.width + 22));
+    final columns = !vine.isChapter && vine.clipChapterId != null
+        ? [dx]
+        : [dx, inner];
     final candidates = <Offset>[
-      for (final col in [dx, inner]) ...[
+      for (final col in columns) ...[
         Offset(col, anchor.dy - painter.height - 16), // 端部上方（避开卷勾）
         Offset(col, anchor.dy + 8),
         Offset(col, anchor.dy - painter.height - 34),

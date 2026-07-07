@@ -202,7 +202,14 @@ MagicTreeLayout layoutMagicTree({
           sectionScrolls,
           sectionNoteCounts,
         )
-      : _layoutWholeTree(size, outline, stage, age);
+      : _layoutWholeTree(
+          size,
+          outline,
+          stage,
+          age,
+          sectionScrolls,
+          sectionNoteCounts,
+        );
 }
 
 /// 单章：整棵树仍随小节数量成长，但小节始终只在右侧一列中向下生长。
@@ -348,6 +355,8 @@ MagicTreeLayout _layoutWholeTree(
   List<OutlineChapter> outline,
   int stage,
   double age,
+  Map<int, double> sectionScrolls,
+  Map<int, int> sectionNoteCounts,
 ) {
   // 阶段素材：整树占画布高 84%、贴底居中，左右留米白呼吸区
   final scale = math.min(
@@ -389,6 +398,7 @@ MagicTreeLayout _layoutWholeTree(
   final chapters = <VineBranch>[];
   final sections = <VineBranch>[];
   final bands = <int, (double, double)>{};
+  final scrollMax = <int, double>{};
   final chSpacing = n <= 1 ? attachRange : attachRange / (n - 1);
   // 章序自上而下：第一章在树梢方向
   final rootYs = <double>[
@@ -433,16 +443,41 @@ MagicTreeLayout _layoutWholeTree(
     final bandBottom = i == n - 1 ? botY : (rootY + rootYs[i + 1]) / 2;
     bands[chapter.id] = (bandTop, bandBottom);
 
-    // 节枝：向右，带内自上而下 = 第一节最高（阅读顺序）
+    // 节枝：向右，带内始终单列；放不下时默认滚到最新小节。
     final sectionList = outline[i].sections;
-    final m = sectionList.length;
-    final secSpacing = (bandBottom - bandTop) / (m + 1);
-    for (var j = 0; j < m; j++) {
-      final sy = bandTop + secSpacing * (j + 1);
+    final contentTop = math.max(
+      bandTop + 12,
+      math.min(rootY + kSectionRowHeight * 0.45, bandBottom - 80),
+    );
+    final labelBottom = bandBottom - 10;
+    final availH = math.max(0.0, labelBottom - contentTop);
+    final rawTops = <double>[];
+    var raw = 0.0;
+    for (final section in sectionList) {
+      rawTops.add(raw);
+      final notes = math.min(
+        sectionNoteCounts[section.id] ?? 0,
+        kMaxSectionNotes,
+      );
+      raw += kSectionRowHeight + notes * kNoteRowHeight;
+    }
+    final overflow = math.max(0.0, raw - availH);
+    scrollMax[chapter.id] = overflow;
+    final scroll = (sectionScrolls[chapter.id] ?? overflow).clamp(
+      0.0,
+      overflow,
+    );
+    final fixedTipX = math.min(size.width - 96, cx + dispW * 0.19);
+
+    for (var j = 0; j < sectionList.length; j++) {
+      final sy = contentTop + rawTops[j] + kSectionRowHeight / 2 - scroll;
+      if (sy < contentTop - kSectionRowHeight ||
+          sy > labelBottom + kSectionRowHeight) {
+        continue;
+      }
       final sRoot = Offset(cx + halfWAt(sy) - dispW * 0.006, sy);
       var sLen = math.min(size.width - sRoot.dx - 10, size.width * 0.21);
       sLen = math.min(sLen, size.shortestSide * 0.18);
-      sLen = math.min(sLen, math.max(38.0, secSpacing * 1.2));
       sLen = math.max(sLen, 34.0);
       final sh = sLen * kTendrilAspect;
       final sRect = Rect.fromLTWH(
@@ -458,10 +493,8 @@ MagicTreeLayout _layoutWholeTree(
           isChapter: false,
           root: sRoot,
           spriteRect: sRect,
-          tip: Offset(
-            sRect.right - sLen * kTendrilTipXFrac,
-            sRect.top + sh * kTendrilTipYFrac,
-          ),
+          tip: Offset(fixedTipX, sRect.top + sh * kTendrilTipYFrac),
+          clipChapterId: chapter.id,
         ),
       );
     }
@@ -470,14 +503,14 @@ MagicTreeLayout _layoutWholeTree(
   return MagicTreeLayout(
     age: age,
     stage: stage,
-    windowMode: false,
+    windowMode: outline.isNotEmpty,
     imageRect: imageRect,
     trunkRect: trunkRect,
     chapters: chapters,
     sections: sections,
     chapterBands: bands,
     maxChapterOffset: 0,
-    sectionScrollMax: const {},
+    sectionScrollMax: scrollMax,
   );
 }
 

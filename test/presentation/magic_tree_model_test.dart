@@ -333,6 +333,34 @@ void main() {
     expect(maxLeft - minLeft, lessThan(12), reason: '单章小节标签应始终保持右侧一列');
   });
 
+  test('两章时单章小节过多：本章小节仍保持单列并默认显示最新', () {
+    final outline = [chapterWith(1, 20), chapterWith(2, 0)];
+    final layout = layoutMagicTree(size: size, outline: outline);
+
+    expect(
+      layout.sectionScrollMax[1],
+      greaterThan(0),
+      reason: '两章整树可见时，单章小节过多也必须可滚',
+    );
+
+    final chapter1Visible = layout.sections
+        .where((s) => s.id ~/ 100 == 1)
+        .map((s) => s.id)
+        .toSet();
+    expect(chapter1Visible, contains(100 + 19), reason: '引子默认显示最新的第二十节');
+    expect(chapter1Visible, isNot(contains(100)), reason: '引子第一节应先滚出可见区');
+
+    final labels = placeMagicLabels(
+      layout,
+      canvasWidth: size.width,
+    ).where((l) => l.sectionId != null && l.sectionId! ~/ 100 == 1).toList();
+    expect(labels, isNotEmpty);
+    final lefts = labels.map((l) => l.rect.left).toList();
+    final minLeft = lefts.reduce(math.min);
+    final maxLeft = lefts.reduce(math.max);
+    expect(maxLeft - minLeft, lessThan(12), reason: '引子的小节标签应保持右侧一列');
+  });
+
   test('窗口模式标签两两不重叠且不出画布', () {
     final layout = layoutMagicTree(
       size: size,
