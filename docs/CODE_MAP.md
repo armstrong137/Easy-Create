@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-07 13:28:52　对应提交：605e2fa 之后的工作区状态
+> 生成时间：2026-07-07 14:29:48　对应提交：d5d714e 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,18 +13,18 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     72
-  Nodes:     1,133
-  Edges:     2,679
-  DB Size:   4.10 MB
+  Nodes:     1,146
+  Edges:     2,746
+  DB Size:   4.18 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          366
-  import          238
-  function        180
+  method          370
+  import          243
+  function        183
   constant        153
-  class           101
+  class           102
   file            68
   variable        14
   type_alias      12
@@ -126,14 +126,14 @@ Project Structure (72 files):
 |   |   |   `-- starfield.dart (dart, 6 symbols)
 |   |   |-- outline
 |   |   |   |-- label_layout.dart (dart, 12 symbols)
-|   |   |   |-- magic_carpet.dart (dart, 42 symbols)
+|   |   |   |-- magic_carpet.dart (dart, 44 symbols)
 |   |   |   |-- magic_tree_model.dart (dart, 30 symbols)
 |   |   |   `-- outline_page.dart (dart, 53 symbols)
 |   |   |-- section
-|   |   |   |-- card_deck_sheet.dart (dart, 14 symbols)
+|   |   |   |-- card_deck_sheet.dart (dart, 16 symbols)
 |   |   |   |-- card_editor_page.dart (dart, 15 symbols)
-|   |   |   |-- inspiration_card.dart (dart, 8 symbols)
-|   |   |   `-- section_page.dart (dart, 26 symbols)
+|   |   |   |-- inspiration_card.dart (dart, 10 symbols)
+|   |   |   `-- section_page.dart (dart, 27 symbols)
 |   |   |-- settings
 |   |   |   `-- settings_page.dart (dart, 14 symbols)
 |   |   `-- shared
@@ -157,9 +157,9 @@ Project Structure (72 files):
 |       |-- magic_carpet_test.dart (dart, 13 symbols)
 |       |-- magic_tree_model_test.dart (dart, 12 symbols)
 |       |-- orbiting_inspirations_test.dart (dart, 10 symbols)
-|       |-- outline_page_test.dart (dart, 21 symbols)
+|       |-- outline_page_test.dart (dart, 23 symbols)
 |       |-- quick_capture_test.dart (dart, 16 symbols)
-|       |-- section_page_test.dart (dart, 17 symbols)
+|       |-- section_page_test.dart (dart, 24 symbols)
 |       `-- voice_capture_test.dart (dart, 22 symbols)
 |-- tool
 |   |-- crop_sprite.dart (dart, 4 symbols)

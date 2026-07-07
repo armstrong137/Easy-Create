@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -7,6 +8,10 @@ import 'package:drift/native.dart';
 
 import 'package:novel_app/data/database/app_database.dart';
 import 'package:novel_app/data/providers.dart';
+import 'package:novel_app/presentation/home/home_page.dart'
+    show inspirationPoolProvider;
+import 'package:novel_app/presentation/outline/magic_carpet.dart'
+    show CarpetOverlay;
 import 'package:novel_app/presentation/section/inspiration_card.dart';
 import 'package:novel_app/presentation/section/section_page.dart';
 
@@ -43,6 +48,41 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> pumpSectionWithCarpet(
+    WidgetTester tester,
+    List<Inspiration> cards,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          sectionCardsProvider.overrideWith(
+            (ref, sectionId) => Stream.value(cards),
+          ),
+          inspirationPoolProvider.overrideWith((ref) => Stream.value(const [])),
+        ],
+        child: MaterialApp(
+          builder: (context, child) => CarpetOverlay(child: child!),
+          home: const SectionPage(sectionId: 1, initialTitle: '第一节'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> dragToCarpet(WidgetTester tester, Finder source) async {
+    final from = tester.getCenter(source);
+    final to = tester.getCenter(find.byKey(const Key('魔毯小球')));
+    final gesture = await tester.startGesture(from);
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 100));
+    await gesture.moveBy(const Offset(0, -4));
+    await tester.pump();
+    await gesture.moveTo(to);
+    await tester.pump();
+    await gesture.up();
     await tester.pumpAndSettle();
   }
 
@@ -99,9 +139,7 @@ void main() {
     expect(find.text('包里第二张'), findsNothing, reason: '主区只显示第一张，其余在卡片包里');
   });
 
-  testWidgets('从魔毯拖一条灵感到小节页 → 挂进本节（用户定稿：图1 拖入落点）', (
-    tester,
-  ) async {
+  testWidgets('从魔毯拖一条灵感到小节页 → 挂进本节（用户定稿：图1 拖入落点）', (tester) async {
     // 真库造一条魔毯灵感（section_id 为空）
     await db
         .into(db.novels)
@@ -115,7 +153,9 @@ void main() {
         );
     await db
         .into(db.chapters)
-        .insert(ChaptersCompanion.insert(novelId: 1, title: '引子', sortOrder: 0));
+        .insert(
+          ChaptersCompanion.insert(novelId: 1, title: '引子', sortOrder: 0),
+        );
     await db
         .into(db.sections)
         .insert(
@@ -200,6 +240,32 @@ void main() {
     expect(find.byKey(const Key('包内卡_1')), findsOneWidget);
     expect(find.byKey(const Key('包内卡_2')), findsOneWidget);
     expect(find.textContaining('卡片包 · 2 张'), findsOneWidget);
+  });
+
+  testWidgets('长按主区灵感卡拖到魔毯后放回灵感池', (tester) async {
+    final card = await seedCard('从主区拖回魔毯');
+    await pumpSectionWithCarpet(tester, [card]);
+
+    await dragToCarpet(tester, find.byKey(Key('主区卡_${card.id}')));
+
+    final saved = await (db.select(
+      db.inspirations,
+    )..where((t) => t.id.equals(card.id))).getSingle();
+    expect(saved.sectionId, isNull, reason: '主区卡拖回魔毯后应脱离小节');
+  });
+
+  testWidgets('长按卡片包内灵感卡拖到魔毯后放回灵感池', (tester) async {
+    final card = await seedCard('从卡片包拖回魔毯');
+    await pumpSectionWithCarpet(tester, [card]);
+
+    await tester.tap(find.byKey(const Key('卡片包按钮')));
+    await tester.pumpAndSettle();
+    await dragToCarpet(tester, find.byKey(Key('包内卡_${card.id}')));
+
+    final saved = await (db.select(
+      db.inspirations,
+    )..where((t) => t.id.equals(card.id))).getSingle();
+    expect(saved.sectionId, isNull, reason: '卡片包内卡拖回魔毯后应脱离小节');
   });
 
   testWidgets('超长内容省略显示（不撑爆屏幕）', (tester) async {

@@ -65,3 +65,40 @@ class InspirationCard extends StatelessWidget {
     );
   }
 }
+
+/// 灵感卡拖拽浮影：主区卡、卡片包拖回魔毯时共用。
+class InspirationDragFeedback extends StatelessWidget {
+  const InspirationDragFeedback({super.key, required this.content});
+
+  final String content;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: 210,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: kCardCream,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFC9A050), width: 1.2),
+          boxShadow: const [
+            BoxShadow(color: Color(0x59C9A050), blurRadius: 14),
+          ],
+        ),
+        child: Text(
+          content,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontFamily: 'LXGWWenKai',
+            fontSize: 13,
+            height: 1.45,
+            color: kInk,
+          ),
+        ),
+      ),
+    );
+  }
+}

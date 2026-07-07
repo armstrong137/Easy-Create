@@ -32,8 +32,8 @@ final chapterInspirationsProvider =
           ref.watch(novelRepositoryProvider).watchChapterInspirations(novelId),
     );
 
-/// 小节标签下最多显示的灵感条数（用户定稿：数量太多只显示最新两条）
-const _maxSectionNotes = 2;
+/// 小节标签下最多显示的灵感条数（数量太多只显示最新三条）
+const _maxSectionNotes = 3;
 
 /// 墨色（配米白羊皮纸底）
 const _ink = Color(0xFF3A2A18);
@@ -484,7 +484,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     await _dropInspiration(inspiration, target, outline);
   }
 
-  /// 小节标签下方的灵感小卡（最多 2 条最新，每条单行省略）
+  /// 小节标签下方的灵感小卡（最多 3 条最新，每条单行省略）
   Widget _sectionNotes(
     PlacedLabel label,
     List<Inspiration> notes,

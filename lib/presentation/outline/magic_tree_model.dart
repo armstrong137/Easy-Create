@@ -38,7 +38,7 @@ const kSectionAddZone = 96.0;
 const kNoteRowHeight = 26.0;
 
 /// 小节标签下最多显示的灵感条数
-const kMaxSectionNotes = 2;
+const kMaxSectionNotes = 3;
 
 /// 树龄 [0,1]：随章节规模成长（保留用于尺寸微调）
 double treeAge(int totalNodes) {

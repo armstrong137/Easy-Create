@@ -235,6 +235,26 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
     if ((_expanded || _showPanel) && mounted) _toggle(false);
   }
 
+  Future<void> _returnToCarpet(Inspiration inspiration) async {
+    HapticFeedback.mediumImpact();
+    await ref
+        .read(inspirationRepositoryProvider)
+        .removeFromSection(inspiration.id);
+  }
+
+  Widget _returnDropTarget(Widget child) {
+    return DragTarget<Inspiration>(
+      onWillAcceptWithDetails: (d) =>
+          d.data.sectionId != null || d.data.chapterId != null,
+      onAcceptWithDetails: (d) => _returnToCarpet(d.data),
+      builder: (context, candidates, _) => AnimatedScale(
+        duration: const Duration(milliseconds: 120),
+        scale: candidates.isNotEmpty ? 1.06 : 1.0,
+        child: child,
+      ),
+    );
+  }
+
   Future<void> _toggle(bool open) async {
     HapticFeedback.lightImpact();
     if (open) {
@@ -287,9 +307,11 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
               minHeight: height,
               maxHeight: height,
               alignment: Alignment.topLeft,
-              child: _buildPanel(pool, width, height),
+              child: _dragging
+                  ? _buildPanel(pool, width, height)
+                  : _returnDropTarget(_buildPanel(pool, width, height)),
             )
-          : _buildBall(),
+          : _returnDropTarget(_buildBall()),
     );
   }
 

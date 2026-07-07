@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database/app_database.dart';
@@ -137,14 +138,25 @@ class _SectionPageState extends ConsumerState<SectionPage> {
                   const [];
               if (cards.isEmpty) return const _EmptyDeck();
 
-                // 主区只显示卡包第一张（当前展示卡）；其余卡藏在卡片包里，
-                // 不在主区露卡边（用户定稿：主区只要一个框）
-                final current = cards.first;
-                return Stack(
-                  children: [
-                    Center(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(28, 20, 28, 120),
+              // 主区只显示卡包第一张（当前展示卡）；其余卡藏在卡片包里，
+              // 不在主区露卡边（用户定稿：主区只要一个框）
+              final current = cards.first;
+              return Stack(
+                children: [
+                  Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(28, 20, 28, 120),
+                      child: LongPressDraggable<Inspiration>(
+                        data: current,
+                        dragAnchorStrategy: pointerDragAnchorStrategy,
+                        onDragStarted: HapticFeedback.selectionClick,
+                        feedback: InspirationDragFeedback(
+                          content: current.content,
+                        ),
+                        childWhenDragging: Opacity(
+                          opacity: 0.28,
+                          child: InspirationCard(content: current.content),
+                        ),
                         child: InspirationCard(
                           key: Key('主区卡_${current.id}'),
                           content: current.content,
@@ -157,22 +169,22 @@ class _SectionPageState extends ConsumerState<SectionPage> {
                         ),
                       ),
                     ),
-                    // 底部：卡片包入口（展开全部 + 重排）
-                    Align(
-                      alignment: const Alignment(0, 0.94),
-                      child: _DeckButton(
-                        count: cards.length,
-                        onTap: () =>
-                            showCardDeckSheet(context, widget.sectionId),
-                      ),
+                  ),
+                  // 底部：卡片包入口（展开全部 + 重排）
+                  Align(
+                    alignment: const Alignment(0, 0.94),
+                    child: _DeckButton(
+                      count: cards.length,
+                      onTap: () => showCardDeckSheet(context, widget.sectionId),
                     ),
-                  ],
-                );
-              },
-            ),
+                  ),
+                ],
+              );
+            },
           ),
-        ],
-      );
+        ),
+      ],
+    );
   }
 }
 

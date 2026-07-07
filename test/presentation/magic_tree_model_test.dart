@@ -260,6 +260,32 @@ void main() {
     expect(probeY, lessThan(highest), reason: '带顶应留出小节之上的空白加节区，不被小节铺满');
   });
 
+  test('窗口模式：每小节最多按三条灵感预览预留高度', () {
+    final outline = [chapterWith(1, 12), chapterWith(2, 0), chapterWith(3, 0)];
+    final withoutNotes = layoutMagicTree(size: size, outline: outline);
+    final withThreeNotes = layoutMagicTree(
+      size: size,
+      outline: outline,
+      sectionNoteCounts: {100: 3},
+    );
+    final withManyNotes = layoutMagicTree(
+      size: size,
+      outline: outline,
+      sectionNoteCounts: {100: 99},
+    );
+
+    expect(
+      withThreeNotes.sectionScrollMax[1]! - withoutNotes.sectionScrollMax[1]!,
+      closeTo(kNoteRowHeight * 3, 0.1),
+      reason: '小节有 3 条灵感时，应为 3 条预览小卡预留高度',
+    );
+    expect(
+      withManyNotes.sectionScrollMax[1],
+      closeTo(withThreeNotes.sectionScrollMax[1]!, 0.1),
+      reason: '超过 3 条仍只按 3 条预览计算，避免撑坏画面',
+    );
+  });
+
   test('虚拟树高随章数增长（生长速度变化，有封顶）', () {
     expect(treeGrowthFactor(2), 1);
     expect(treeGrowthFactor(5), greaterThan(treeGrowthFactor(3)));

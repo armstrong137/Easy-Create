@@ -44,6 +44,7 @@ void main() {
     WidgetTester tester,
     List<OutlineChapter> outline, {
     List<Inspiration> pool = const [],
+    Map<int, List<Inspiration>> sectionInspirations = const {},
   }) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -51,7 +52,7 @@ void main() {
           appDatabaseProvider.overrideWithValue(db),
           outlineProvider.overrideWith((ref, novelId) => Stream.value(outline)),
           sectionInspirationsProvider.overrideWith(
-            (ref, novelId) => Stream.value(const {}),
+            (ref, novelId) => Stream.value(sectionInspirations),
           ),
           chapterInspirationsProvider.overrideWith(
             (ref, novelId) => Stream.value(const {}),
@@ -91,6 +92,16 @@ void main() {
           ),
         );
   }
+
+  Inspiration fakeInspiration(int id, String content, int sectionId) =>
+      Inspiration(
+        id: id,
+        content: content,
+        createdAt: DateTime(2026, 7, 1).add(Duration(minutes: id)),
+        updatedAt: DateTime(2026, 7, 1),
+        sectionId: sectionId,
+        cardOrder: id,
+      );
 
   testWidgets('空大纲：光杆魔树 + 左右空白区就位', (tester) async {
     await pumpOutline(tester, const []);
@@ -255,6 +266,26 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
 
     expect(find.byKey(const Key('小节标题输入框')), findsOneWidget);
+  });
+
+  testWidgets('小节标签下最多显示三条灵感预览', (tester) async {
+    await pumpOutline(
+      tester,
+      [fakeChapter(1, '引子', 1)],
+      sectionInspirations: {
+        100: [
+          fakeInspiration(1, '第一条预览', 100),
+          fakeInspiration(2, '第二条预览', 100),
+          fakeInspiration(3, '第三条预览', 100),
+          fakeInspiration(4, '第四条不显示', 100),
+        ],
+      },
+    );
+
+    expect(find.text('第一条预览'), findsOneWidget);
+    expect(find.text('第二条预览'), findsOneWidget);
+    expect(find.text('第三条预览'), findsOneWidget);
+    expect(find.text('第四条不显示'), findsNothing);
   });
 
   testWidgets('拖拽：魔毯灵感拖到节标签 → 挂靠落库 → 魔毯缩球', (tester) async {
