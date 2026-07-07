@@ -41,6 +41,7 @@ void main() {
   Future<void> pumpApp(
     WidgetTester tester, {
     List<Novel> novels = const [],
+    Stream<List<Novel>>? novelsStream,
     int creativeCount = 0,
   }) async {
     final prefs = await SharedPreferences.getInstance();
@@ -49,7 +50,9 @@ void main() {
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
           appDatabaseProvider.overrideWithValue(db),
-          novelsProvider.overrideWith((ref) => Stream.value(novels)),
+          novelsProvider.overrideWith(
+            (ref) => novelsStream ?? Stream.value(novels),
+          ),
           inspirationPoolProvider.overrideWith((ref) => Stream.value(const [])),
           creativeCountProvider.overrideWith(
             (ref, novelId) => Stream.value(creativeCount),
@@ -94,6 +97,58 @@ void main() {
     final saved = await db.select(db.novels).get();
     expect(saved.single.title, '第二颗行星');
     expect(saved.single.planet, 'earth', reason: '第 1 颗星球分配 earth 纹理');
+  });
+
+  testWidgets('创建新星球成功后自动切到新星球页', (tester) async {
+    await db
+        .into(db.novels)
+        .insert(
+          NovelsCompanion.insert(
+            title: '第一颗',
+            planet: 'earth',
+            sortOrder: 0,
+            createdAt: DateTime.now(),
+          ),
+        );
+    await db
+        .into(db.novels)
+        .insert(
+          NovelsCompanion.insert(
+            title: '第二颗',
+            planet: 'mars',
+            sortOrder: 1,
+            createdAt: DateTime.now(),
+          ),
+        );
+    final novelsStream = StreamController<List<Novel>>();
+    addTearDown(novelsStream.close);
+
+    await pumpApp(tester, novelsStream: novelsStream.stream);
+    novelsStream.add(await db.select(db.novels).get());
+    await tester.pumpAndSettle();
+    expect(find.text('第一颗'), findsOneWidget);
+    expect(find.text('第三颗'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('创建新星球标题')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('新星球书名输入框')), '第三颗');
+    await tester.tap(find.byKey(const Key('新星球确认按钮')));
+    await tester.pump();
+
+    var saved = await db.select(db.novels).get();
+    for (var i = 0; i < 10 && saved.length < 3; i++) {
+      await tester.pump(const Duration(milliseconds: 20));
+      saved = await db.select(db.novels).get();
+    }
+    expect(saved, hasLength(3));
+    expect(saved.map((n) => n.title), contains('第三颗'));
+    novelsStream.add(saved);
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final pageView = tester.widget<PageView>(find.byType(PageView));
+    expect(pageView.childrenDelegate.estimatedChildCount, 3);
+    expect(find.text('第三颗'), findsOneWidget);
   });
 
   testWidgets('单击书名 → 重命名对话框 → 保存落库', (tester) async {

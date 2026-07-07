@@ -45,8 +45,24 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  late final PageController _pageController;
+
   /// 当前浏览的星球下标（星空亮度跟随它对应的小说）
   int _currentPage = 0;
+
+  int? _pendingNovelId;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   /// 点击标题创建新星球：输入书名，纹理按现有数量轮换分配
   Future<void> _createNovel() async {
@@ -62,12 +78,15 @@ class _HomePageState extends ConsumerState<HomePage> {
     final name = title?.trim() ?? '';
     if (name.isEmpty) return;
     final count = ref.read(novelsProvider).value?.length ?? 0;
-    await ref
+    final novel = await ref
         .read(novelRepositoryProvider)
         .createNovel(
           title: name,
           planet: kPlanetTextures[count % kPlanetTextures.length],
         );
+    if (!mounted) return;
+    setState(() => _pendingNovelId = novel.id);
+    _scheduleCreatedNovelJump(ref.read(novelsProvider).value ?? const []);
   }
 
   @override
@@ -82,6 +101,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final currentCount = currentNovel == null
         ? 0
         : ref.watch(creativeCountProvider(currentNovel.id)).value ?? 0;
+    _scheduleCreatedNovelJump(novels);
 
     return Scaffold(
       body: Stack(
@@ -100,6 +120,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           else
             // 一页一星球，左右滑切换小说
             PageView.builder(
+              controller: _pageController,
               itemCount: novels.length,
               onPageChanged: (i) => setState(() => _currentPage = i),
               itemBuilder: (context, i) =>
@@ -158,6 +179,21 @@ class _HomePageState extends ConsumerState<HomePage> {
         ],
       ),
     );
+  }
+
+  void _scheduleCreatedNovelJump(List<Novel> novels) {
+    final pendingId = _pendingNovelId;
+    if (pendingId == null) return;
+    final target = novels.indexWhere((n) => n.id == pendingId);
+    if (target < 0) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _pendingNovelId != pendingId) return;
+      _pendingNovelId = null;
+      setState(() => _currentPage = target);
+      if (!_pageController.hasClients) return;
+      _pageController.jumpToPage(target);
+    });
   }
 }
 
