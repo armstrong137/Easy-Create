@@ -45,8 +45,18 @@ void main() {
   group('高度伸缩 carpetHeight', () {
     test('有上下限：零灵感取下限，海量灵感封顶', () {
       expect(carpetHeight(0), kCarpetMinHeight);
-      expect(carpetHeight(2), greaterThan(carpetHeight(0)));
-      expect(carpetHeight(1000), kCarpetMaxHeight);
+      expect(carpetHeight(3), greaterThan(carpetHeight(0)));
+      expect(carpetHeight(1000), lessThanOrEqualTo(kCarpetMaxHeight));
+    });
+
+    test('整槽显示：列表高度是卡槽整数倍，且不超可用空间（卡要么完整要么不显示）', () {
+      // 溢出时（灵感多于可见槽数）高度须恰为 整槽数×槽高+顶部内边距
+      final h = carpetHeight(1000);
+      expect((h - kCarpetListTopPad) % kCarpetItemHeight, 0);
+      // 屏幕剩余空间受限时同样整槽、且不超出可用空间（防止面板伸出屏幕底）
+      final h2 = carpetHeight(1000, maxAvail: 300);
+      expect((h2 - kCarpetListTopPad) % kCarpetItemHeight, 0);
+      expect(h2, lessThanOrEqualTo(300));
     });
 
     test('魔毯视觉尺寸足够醒目', () {

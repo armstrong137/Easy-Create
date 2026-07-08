@@ -15,6 +15,44 @@ import '../shared/quick_capture/quick_capture_layer.dart'
 /// 墨色（配羊皮纸面板）
 const _ink = Color(0xFF3A2A18);
 
+/// 整卡吸附滚动：惯性滑完后吸附到卡槽整数倍位置，
+/// 静止时永远不出现被拦腰截断的灵感卡（用户定稿：要么完整显示要么不显示）
+class _SnapToCardPhysics extends ScrollPhysics {
+  const _SnapToCardPhysics({super.parent});
+
+  @override
+  _SnapToCardPhysics applyTo(ScrollPhysics? ancestor) =>
+      _SnapToCardPhysics(parent: buildParent(ancestor));
+
+  @override
+  Simulation? createBallisticSimulation(
+    ScrollMetrics position,
+    double velocity,
+  ) {
+    // 越界回弹交给父物理
+    if (position.pixels <= position.minScrollExtent ||
+        position.pixels >= position.maxScrollExtent) {
+      return super.createBallisticSimulation(position, velocity);
+    }
+    // 先按父物理惯性模拟出落点（3 秒足够任何 fling 停稳），再吸附最近卡槽
+    final sim = super.createBallisticSimulation(position, velocity);
+    final end = sim?.x(3.0) ?? position.pixels;
+    final target = ((end / kCarpetItemHeight).roundToDouble() *
+            kCarpetItemHeight)
+        .clamp(position.minScrollExtent, position.maxScrollExtent);
+    if ((target - position.pixels).abs() < toleranceFor(position).distance) {
+      return null;
+    }
+    return ScrollSpringSimulation(
+      spring,
+      position.pixels,
+      target,
+      velocity,
+      tolerance: toleranceFor(position),
+    );
+  }
+}
+
 /// 全局魔毯句柄（大纲页拖拽落点后调 collapse）
 final magicCarpetKey = GlobalKey<MagicCarpetState>();
 
@@ -228,6 +266,9 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
   /// 展开面板顶部魔毯横幅高度
   static const _bannerHeight = 210.0;
 
+  /// 标题行固定高度（参与面板总高计算，保证列表区恰为整数个卡槽）
+  static const _titleHeight = 32.0;
+
   bool get expanded => _expanded;
 
   /// 外部可调用：拖拽完成后自动缩回小球（定稿）
@@ -298,8 +339,22 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
   @override
   Widget build(BuildContext context) {
     final pool = ref.watch(inspirationPoolProvider).value ?? const [];
-    final width = MediaQuery.sizeOf(context).width * 0.86;
-    final height = _bannerHeight + carpetHeight(pool.length);
+    final screen = MediaQuery.sizeOf(context);
+    final width = screen.width * 0.86;
+    // 列表可用空间 = 屏高 - 顶部安全区与留白 - 横幅 - 标题 - 底部留白：
+    // 面板绝不伸出屏幕底（灵感多时末尾卡片会被屏幕截断、滑也滑不出来），
+    // 且列表只取整数个卡槽 → 卡片要么完整显示要么不显示（用户定稿）
+    final avail =
+        screen.height -
+        MediaQuery.paddingOf(context).top -
+        6 -
+        _bannerHeight -
+        _titleHeight -
+        16;
+    final height =
+        _bannerHeight +
+        _titleHeight +
+        carpetHeight(pool.length, maxAvail: avail);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 320),
@@ -432,17 +487,23 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
                   ],
                 ),
               ),
-              // 标题（浮字带白晕，任何背景上可读）
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-                child: Text(
-                  '灵感魔毯 · ${pool.length}',
-                  style: const TextStyle(
-                    fontFamily: 'LXGWWenKai',
-                    color: _ink,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    shadows: _floatShadow,
+              // 标题（浮字带白晕，任何背景上可读；定高参与面板总高计算）
+              SizedBox(
+                height: _titleHeight,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '灵感魔毯 · ${pool.length}',
+                      style: const TextStyle(
+                        fontFamily: 'LXGWWenKai',
+                        color: _ink,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        shadows: _floatShadow,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -465,6 +526,9 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
                       )
                     : ListView.builder(
                         padding: const EdgeInsets.fromLTRB(12, 2, 12, 12),
+                        // 固定槽高 + 整卡吸附：静止时不出现被拦腰截断的卡
+                        itemExtent: kCarpetItemHeight,
+                        physics: const _SnapToCardPhysics(),
                         itemCount: pool.length,
                         itemBuilder: (context, i) => CarpetItem(
                           inspiration: pool[i],
@@ -544,8 +608,10 @@ class CarpetItem extends StatelessWidget {
 
   Widget _tile() {
     return Container(
+      // 固定卡槽（外层 itemExtent = kCarpetItemHeight）内单行居中、两行占满
       margin: const EdgeInsets.only(bottom: 7),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      alignment: Alignment.centerLeft,
       decoration: BoxDecoration(
         // 不透明羊皮纸底：卡片浮在星空/魔树背景上文字仍清晰
         color: const Color(0xFAFFFCF4),
