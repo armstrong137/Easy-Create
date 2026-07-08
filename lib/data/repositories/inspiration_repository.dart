@@ -5,9 +5,9 @@ import '../database/app_database.dart';
 /// 灵感仓库：实现灵感生命周期四步流转（用户定稿规则）
 ///
 /// ```
-/// 新灵感 → 入池（section_id = NULL，魔毯按创建时间排序）
+/// 新灵感 → 入池（section_id = NULL，排到魔毯末尾）
 /// 拖入某小节 → section_id = 节 id（从魔毯消失）
-/// 从小节删卡 → section_id 置回 NULL（放回魔毯，仍按创建时间排序）
+/// 从小节删卡 → section_id 置回 NULL（放回魔毯末尾）
 /// 在魔毯删除 → DELETE，真正删除不可恢复
 /// ```
 class InspirationRepository {
@@ -15,31 +15,50 @@ class InspirationRepository {
 
   final AppDatabase _db;
 
-  /// 速记新灵感 → 入池（魔毯）
+  /// 魔毯池末尾的下一个 card_order（池内最大值 +1，空池取 0）
+  Future<int> _nextPoolOrder() async {
+    final q = _db.selectOnly(_db.inspirations)
+      ..addColumns([_db.inspirations.cardOrder.max()])
+      ..where(
+        _db.inspirations.sectionId.isNull() &
+            _db.inspirations.chapterId.isNull(),
+      );
+    final max = (await q.getSingle()).read(_db.inspirations.cardOrder.max());
+    return (max ?? -1) + 1;
+  }
+
+  /// 速记新灵感 → 入池（魔毯），排到末尾
   ///
   /// [createdAt] 仅测试注入用，正常调用不传、取当前时间。
   Future<Inspiration> addInspiration(String content, {DateTime? createdAt}) {
     final now = createdAt ?? DateTime.now();
-    return _db
-        .into(_db.inspirations)
-        .insertReturning(
-          InspirationsCompanion.insert(
-            content: content,
-            createdAt: now,
-            updatedAt: now,
-            cardOrder: 0, // 在魔毯中无卡堆顺序，约定为 0
-          ),
-        );
+    return _db.transaction(() async {
+      final order = await _nextPoolOrder();
+      return _db
+          .into(_db.inspirations)
+          .insertReturning(
+            InspirationsCompanion.insert(
+              content: content,
+              createdAt: now,
+              updatedAt: now,
+              cardOrder: order,
+            ),
+          );
+    });
   }
 
   /// 监听魔毯灵感池（section_id 为 NULL 的灵感）
   ///
-  /// 排序假设：定稿只说"按创建时间排序"，这里取新的在前，
-  /// 保证速记后立刻出现在魔毯顶部、首页环绕取"最近几条"。
+  /// 排序（用户定稿 2026-07-08）：最早的灵感在最上（灵感一在顶），
+  /// 主排序键 card_order 支持魔毯内手动重排，创建时间兜底。
   Stream<List<Inspiration>> watchPool() =>
       (_db.select(_db.inspirations)
             ..where((t) => t.sectionId.isNull() & t.chapterId.isNull())
-            ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
+            ..orderBy([
+              (t) => OrderingTerm.asc(t.cardOrder),
+              (t) => OrderingTerm.asc(t.createdAt),
+              (t) => OrderingTerm.asc(t.id),
+            ]))
           .watch();
 
   /// 监听某小节的卡堆（按 card_order 升序，最新卡在 card_order 最大处）
@@ -90,17 +109,22 @@ class InspirationRepository {
     );
   }
 
-  /// 从小节/章删卡：放回魔毯（创建时间不变，排序位置由它决定）
-  Future<void> removeFromSection(int inspirationId) =>
-      (_db.update(
+  /// 从小节/章删卡：放回魔毯，排到末尾
+  /// （魔毯支持手动排序后不再"回创建位"，末尾位置最可预期）
+  Future<void> removeFromSection(int inspirationId) {
+    return _db.transaction(() async {
+      final order = await _nextPoolOrder();
+      await (_db.update(
         _db.inspirations,
       )..where((t) => t.id.equals(inspirationId))).write(
-        const InspirationsCompanion(
-          sectionId: Value(null),
-          chapterId: Value(null),
-          cardOrder: Value(0),
+        InspirationsCompanion(
+          sectionId: const Value(null),
+          chapterId: const Value(null),
+          cardOrder: Value(order),
         ),
       );
+    });
+  }
 
   /// 在魔毯删除：真正删除，不可恢复（仅允许对魔毯中的灵感调用）
   Future<void> deleteForever(int inspirationId) => (_db.delete(

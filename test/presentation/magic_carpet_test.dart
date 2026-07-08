@@ -133,15 +133,16 @@ void main() {
     expect(find.textContaining('魔毯空空如也'), findsOneWidget);
   });
 
-  testWidgets('列表按传入顺序渲染（灵感池已保证新的在前）', (tester) async {
-    await pumpCarpet(tester, [fake(3, '最新'), fake(2, '中间'), fake(1, '最早')]);
+  testWidgets('列表按传入顺序渲染（池序由仓库保证：先入池的在上）', (tester) async {
+    await pumpCarpet(tester, [fake(1, '第一条'), fake(2, '第二条'), fake(3, '第三条')]);
 
     await tester.tap(find.byKey(const Key('魔毯小球')));
     await tester.pumpAndSettle();
 
-    final newest = tester.getTopLeft(find.text('最新'));
-    final oldest = tester.getTopLeft(find.text('最早'));
-    expect(newest.dy, lessThan(oldest.dy), reason: '新灵感在列表上方');
+    final first = tester.getTopLeft(find.text('第一条'));
+    final third = tester.getTopLeft(find.text('第三条'));
+    expect(first.dy, lessThan(third.dy), reason: '池序第一条在列表最上');
+    expect(find.byKey(const Key('魔毯排序把手_1')), findsOneWidget, reason: '每行有排序把手');
   });
 
   testWidgets('拖拽中外部收起魔毯会清理拖拽态', (tester) async {

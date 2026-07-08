@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-08 14:21:34　对应提交：8388718 之后的工作区状态
+> 生成时间：2026-07-08 14:45:50　对应提交：dc9880a 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,14 +13,14 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     72
-  Nodes:     1,160
-  Edges:     2,834
-  DB Size:   4.36 MB
+  Nodes:     1,163
+  Edges:     2,849
+  DB Size:   4.42 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          374
+  method          377
   import          246
   function        185
   constant        157
@@ -111,7 +111,7 @@ Project Structure (72 files):
 |   |   |   |-- app_database.g.dart (dart, 247 symbols)
 |   |   |   `-- tables.dart (dart, 26 symbols)
 |   |   |-- repositories
-|   |   |   |-- inspiration_repository.dart (dart, 13 symbols)
+|   |   |   |-- inspiration_repository.dart (dart, 14 symbols)
 |   |   |   `-- novel_repository.dart (dart, 23 symbols)
 |   |   `-- providers.dart (dart, 8 symbols)
 |   |-- domain
@@ -126,7 +126,7 @@ Project Structure (72 files):
 |   |   |   `-- starfield.dart (dart, 6 symbols)
 |   |   |-- outline
 |   |   |   |-- label_layout.dart (dart, 12 symbols)
-|   |   |   |-- magic_carpet.dart (dart, 49 symbols)
+|   |   |   |-- magic_carpet.dart (dart, 51 symbols)
 |   |   |   |-- magic_tree_model.dart (dart, 34 symbols)
 |   |   |   `-- outline_page.dart (dart, 53 symbols)
 |   |   |-- section

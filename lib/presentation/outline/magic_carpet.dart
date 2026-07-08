@@ -249,6 +249,12 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
   bool _showFull = false;
   Timer? _reTuckTimer;
 
+  /// 列表滚动控制（滚动停止后吸附整卡用）
+  final ScrollController _listScroll = ScrollController();
+
+  /// 正在拖动重排：期间不做吸附补正（重排自带自动滚动）
+  bool _reordering = false;
+
   /// 展开帧动画：value 0→1 映射素材帧 1→9
   /// （必须在 initState 立即创建：late 惰性到 dispose 才初始化会在
   /// 已卸载元素上建 Ticker 而崩溃）
@@ -332,8 +338,34 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
   @override
   void dispose() {
     _reTuckTimer?.cancel();
+    _listScroll.dispose();
     _unroll.dispose();
     super.dispose();
+  }
+
+  /// 把列表残余的半卡偏移补回最近卡槽（下一帧执行，避开当前滚动活动）
+  void _scheduleSnapToSlot() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _reordering || !_listScroll.hasClients) return;
+      final m = _listScroll.position;
+      final target =
+          ((m.pixels / kCarpetItemHeight).roundToDouble() * kCarpetItemHeight)
+              .clamp(m.minScrollExtent, m.maxScrollExtent);
+      if ((target - m.pixels).abs() > 0.5) {
+        _listScroll.animateTo(
+          target,
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  /// 吸附补漏：轻点打断惯性等路径不经过物理层 ballistic（吸附管不到），
+  /// 滚动一停就补吸附（用户定稿：不出现半张卡）
+  bool _snapAfterScroll(ScrollEndNotification n) {
+    if (!_reordering) _scheduleSnapToSlot();
+    return false;
   }
 
   @override
@@ -524,19 +556,73 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
                           ),
                         ),
                       )
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(12, 2, 12, 12),
-                        // 固定槽高 + 整卡吸附：静止时不出现被拦腰截断的卡
-                        itemExtent: kCarpetItemHeight,
-                        physics: const _SnapToCardPhysics(),
-                        itemCount: pool.length,
-                        itemBuilder: (context, i) => CarpetItem(
-                          inspiration: pool[i],
-                          onDragStarted: () {
-                            setState(() => _dragging = true);
-                            carpetDragging.value = pool[i];
+                    : NotificationListener<ScrollEndNotification>(
+                        onNotification: _snapAfterScroll,
+                        // 可重排列表：右侧把手拖动重排（长按卡片本体仍是拖上树）
+                        child: ReorderableListView.builder(
+                          scrollController: _listScroll,
+                          padding: const EdgeInsets.fromLTRB(12, 2, 12, 12),
+                          // 固定槽高 + 整卡吸附：静止时不出现被拦腰截断的卡
+                          physics: const _SnapToCardPhysics(),
+                          buildDefaultDragHandles: false,
+                          // 拖动替身透明底（默认 Material 灰底会遮星空背景）
+                          proxyDecorator: (child, index, animation) => Material(
+                            type: MaterialType.transparency,
+                            child: child,
+                          ),
+                          onReorderStart: (_) {
+                            _reordering = true;
+                            HapticFeedback.selectionClick();
                           },
-                          onDragEnd: _finishDrag,
+                          onReorderEnd: (_) {
+                            // 重排的自动滚动可能停在半卡位，结束后补吸附
+                            _reordering = false;
+                            _scheduleSnapToSlot();
+                          },
+                          // onReorderItem 已自动修正移除位后的 newIndex
+                          onReorderItem: (oldIndex, newIndex) {
+                            final ids = pool.map((e) => e.id).toList();
+                            ids.insert(newIndex, ids.removeAt(oldIndex));
+                            ref
+                                .read(inspirationRepositoryProvider)
+                                .reorderCards(ids);
+                          },
+                          itemCount: pool.length,
+                          itemBuilder: (context, i) => SizedBox(
+                            key: Key('魔毯行_${pool[i].id}'),
+                            height: kCarpetItemHeight,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: CarpetItem(
+                                    inspiration: pool[i],
+                                    onDragStarted: () {
+                                      setState(() => _dragging = true);
+                                      carpetDragging.value = pool[i];
+                                    },
+                                    onDragEnd: _finishDrag,
+                                  ),
+                                ),
+                                // 排序把手：按住直接拖动重排
+                                ReorderableDragStartListener(
+                                  index: i,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(
+                                      left: 6,
+                                      bottom: 7,
+                                    ),
+                                    child: Icon(
+                                      CupertinoIcons.line_horizontal_3,
+                                      key: Key('魔毯排序把手_${pool[i].id}'),
+                                      size: 18,
+                                      color: const Color(0xE63A2A18),
+                                      shadows: _floatShadow,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
               ),

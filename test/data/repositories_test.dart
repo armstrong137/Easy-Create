@@ -164,7 +164,7 @@ void main() {
       expect(pool.single.content, '一个灵感');
     });
 
-    test('魔毯按创建时间排序，新的在前', () async {
+    test('魔毯按创建先后排序，最早的在最上（用户定稿：灵感一在顶）', () async {
       final t = DateTime(2026, 7, 1);
       await inspirationRepo.addInspiration('最早', createdAt: t);
       await inspirationRepo.addInspiration(
@@ -177,7 +177,23 @@ void main() {
       );
 
       final pool = await inspirationRepo.watchPool().first;
-      expect(pool.map((e) => e.content).toList(), ['最新', '中间', '最早']);
+      expect(pool.map((e) => e.content).toList(), ['最早', '中间', '最新']);
+    });
+
+    test('魔毯内重排：reorderCards 重写池序并持久生效', () async {
+      final a = await inspirationRepo.addInspiration('A');
+      final b = await inspirationRepo.addInspiration('B');
+      final c = await inspirationRepo.addInspiration('C');
+
+      await inspirationRepo.reorderCards([c.id, a.id, b.id]);
+
+      final pool = await inspirationRepo.watchPool().first;
+      expect(pool.map((e) => e.content).toList(), ['C', 'A', 'B']);
+
+      // 重排后新速记的灵感仍排在末尾（card_order 接最大值）
+      await inspirationRepo.addInspiration('D');
+      final pool2 = await inspirationRepo.watchPool().first;
+      expect(pool2.map((e) => e.content).toList(), ['C', 'A', 'B', 'D']);
     });
 
     test('规则二：拖入小节后从魔毯消失，最新拖入排最前（当前展示卡）', () async {
@@ -197,7 +213,7 @@ void main() {
       expect(cards.first.content, '灵感B', reason: '最后拖入的排第一 = 当前展示');
     });
 
-    test('规则三：从小节删卡放回魔毯，仍按创建时间排序（核心用例）', () async {
+    test('规则三：从小节删卡放回魔毯，排到魔毯末尾（核心用例）', () async {
       final sectionId = await createSectionChain();
       final t = DateTime(2026, 7, 1);
       await inspirationRepo.addInspiration('最早', createdAt: t);
@@ -210,16 +226,17 @@ void main() {
         createdAt: t.add(const Duration(minutes: 2)),
       );
 
-      // “中间”拖入小节再放回：位置应回到创建时间对应的原位，而非顶端
+      // “中间”拖入小节再放回：魔毯支持手动排序后不再"回创建位"，
+      // 统一排到末尾（位置最可预期）
       await inspirationRepo.assignToSection(mid.id, sectionId);
       await inspirationRepo.removeFromSection(mid.id);
 
       final pool = await inspirationRepo.watchPool().first;
       expect(pool.map((e) => e.content).toList(), [
+        '最早',
         '最新',
         '中间',
-        '最早',
-      ], reason: '放回后按创建时间排序，不因流转改变位置');
+      ], reason: '放回的灵感排到魔毯末尾');
     });
 
     test('规则四：在魔毯删除是真删，不可恢复', () async {
@@ -268,9 +285,9 @@ void main() {
       await inspirationRepo.updateContent(old.id, '改过的内容');
 
       final pool = await inspirationRepo.watchPool().first;
-      // 排序依据是创建时间：改内容不会把旧灵感顶到前面
-      expect(pool.map((e) => e.content).toList(), ['较新', '改过的内容']);
-      final edited = pool[1];
+      // 排序依据是池序（创建先后）：改内容不改变位置
+      expect(pool.map((e) => e.content).toList(), ['改过的内容', '较新']);
+      final edited = pool[0];
       expect(edited.updatedAt.isAfter(edited.createdAt), isTrue);
     });
   });

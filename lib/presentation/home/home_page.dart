@@ -229,7 +229,10 @@ class _PlanetPage extends ConsumerWidget {
           child: assets == null
               ? SizedBox.square(dimension: diameter)
               : OrbitingInspirations(
-                  items: pool,
+                  // 环绕取"最近几条"：魔毯池已改为旧→新/手动序，
+                  // 这里单独按创建时间倒序取最新（轨道显示灵感原文）
+                  items: [...pool]
+                    ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
                   orbitWidth: diameter * 1.5,
                   // 土星带静态光环贴层，其余星球为纯球体
                   child: novel.planet == 'saturn'
