@@ -22,9 +22,15 @@
 - 框架：Flutter（Impeller 渲染）
 - 状态管理：Riverpod
 - 数据库：SQLite via drift（类型安全）
-- 3D 星球：FragmentShader 球面贴图 + NASA 公有领域真实摄影纹理
-- 复杂动效：Rive（灵感魔毯）+ CustomPainter（铅笔树）
 - 语音：speech_to_text 插件（双端系统本地引擎）
+- **UI 表现层（改造中，见下）**：
+  - 现状（旧实现，仅作过渡与低端机回退，不代表最终目标）：
+    FragmentShader 球面贴图星球、静态图星空、照片魔树+2D 卷须、
+    PNG 帧动画魔毯、Container+阴影卡片
+  - 目标（2026-07-08 用户定稿）：**Flutter 应用壳 + 实时 3D/高级动画表现层**，
+    首页星球/星空粒子/魔树/魔毯/卡堆/转场全部升级为真实 3D 或多层伪 3D 场景。
+    主清单与执行顺序见 `docs/ui_review/2026-07-08-UI改造第一版清单.md`，
+    技术选型结论见 `docs/ui_review/3D架构验证报告.md`
 
 ### 数据模型（4 张表）
 ```
