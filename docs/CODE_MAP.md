@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-09 07:40:23　对应提交：73690dc 之后的工作区状态
+> 生成时间：2026-07-09 08:08:55　对应提交：05405df 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,33 +12,33 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     72
-  Nodes:     1,166
-  Edges:     2,863
-  DB Size:   4.47 MB
+  Files:     86
+  Nodes:     2,161
+  Edges:     9,555
+  DB Size:   10.58 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          379
-  import          246
-  function        185
-  constant        157
-  class           104
-  file            68
+  method          924
+  function        448
+  class           272
+  import          253
+  constant        158
+  file            78
   variable        14
   type_alias      12
-  namespace       1
+  namespace       2
 
 Files by Language:
-  dart            49
-  javascript      6
-  kotlin          4
+  dart            50
+  javascript      8
+  kotlin          8
+  xml             6
+  properties      4
+  yaml            4
   swift           3
-  xml             3
-  properties      2
   typescript      2
-  yaml            2
   c               1
 
 [OK] Index is up to date
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (72 files):
+Project Structure (86 files):
 
 |-- .agents
 |   `-- skills
@@ -92,6 +92,37 @@ Project Structure (72 files):
 |   |-- build.gradle.kts (kotlin, 2 symbols)
 |   |-- gradle.properties (properties, 0 symbols)
 |   `-- settings.gradle.kts (kotlin, 1 symbols)
+|-- experiments
+|   `-- planet_3d_demo
+|       |-- android
+|       |   |-- app
+|       |   |   |-- src
+|       |   |   |   |-- debug
+|       |   |   |   |   `-- AndroidManifest.xml (xml, 1 symbols)
+|       |   |   |   |-- main
+|       |   |   |   |   |-- kotlin
+|       |   |   |   |   |   `-- com
+|       |   |   |   |   |       `-- example
+|       |   |   |   |   |           `-- planet_3d_demo
+|       |   |   |   |   |               `-- MainActivity.kt (kotlin, 4 symbols)
+|       |   |   |   |   `-- AndroidManifest.xml (xml, 1 symbols)
+|       |   |   |   `-- profile
+|       |   |   |       `-- AndroidManifest.xml (xml, 1 symbols)
+|       |   |   `-- build.gradle.kts (kotlin, 1 symbols)
+|       |   |-- gradle
+|       |   |   `-- wrapper
+|       |   |       `-- gradle-wrapper.properties (properties, 0 symbols)
+|       |   |-- build.gradle.kts (kotlin, 2 symbols)
+|       |   |-- gradle.properties (properties, 0 symbols)
+|       |   `-- settings.gradle.kts (kotlin, 1 symbols)
+|       |-- assets
+|       |   `-- web
+|       |       |-- OrbitControls.js (javascript, 48 symbols)
+|       |       `-- three.min.js (javascript, 1680 symbols)
+|       |-- lib
+|       |   `-- main.dart (dart, 19 symbols)
+|       |-- analysis_options.yaml (yaml, 0 symbols)
+|       `-- pubspec.yaml (yaml, 0 symbols)
 |-- ios
 |   |-- Runner
 |   |   |-- AppDelegate.swift (swift, 6 symbols)

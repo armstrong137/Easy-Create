@@ -143,8 +143,16 @@
 
 - 🔄 P0 锁定方向：清单立为主清单 ✅；DevelopmentPlan/AGENTS.md/claude.md 已同步 ✅；
   验收目录 docs/ui_review/{baseline,targets,rounds,videos} 已建 ✅
-- 🔄 P1 3D 技术验证：首页 3D 星球 Demo（experiments/planet_3d_demo/）+
-  `docs/ui_review/3D架构验证报告.md`（最终方案结论）
+- ✅ P1 3D 技术验证（2026-07-09 完成，待用户过真机门禁）：
+  - Demo `experiments/planet_3d_demo/`：真 3D 球网格 + 4K 地表 + 法线 + 海洋高光 +
+    云壳 + 大气 + 夜光 + 星空粒子 + OrbitControls 手势 + Flutter 叠层双向桥，
+    模拟器实拍全项通过；录屏与截图在 `docs/ui_review/rounds/2026-07-09/`
+  - 结论报告 `docs/ui_review/3D架构验证报告.md`：正式接入 = Flutter 壳 +
+    WebView(three.js r147) 离线场景层；中期锁定迁移 flutter_scene(Impeller)
+    （其现要求 master 渠道故暂不可用）；回退链 三级；包体积 +2.7MB
+  - 关键工程事实：WebGL 纹理必须走 127.0.0.1 回环服务（file:// 被 CORS 拦）；
+    模拟器 WebView WebGL=SwiftShader 软渲染（2~5fps 不代表真机），
+    **P2 开工前强制真机 profile 门禁：静置 ≥55fps / 交互 ≥40fps**
 - ☐ P2 首页宇宙正式重构（3D 星球/动态星空/环绕灵感/宇宙事件动画）
 - ☐ P3 大纲页 3D 魔树重构（生长动画/镜头巡航/空间标签）
 - ☐ P4 魔毯 3D 重构（布料形变/灵感池空间化）

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<!--
+  P1 技术验证：真实 3D 地球场景（three.js r147，离线打包，无任何网络请求）
+  验证点：真 3D 球体网格 / 4K 地表 / 法线凹凸 / 海洋高光 / 云层壳 / 夜光 /
+          大气辉光 / 星空粒子 / 拖拽旋转 / 双指缩放 / 惯性 / 与 Flutter 双向桥
+-->
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<style>
+  html, body { margin: 0; padding: 0; overflow: hidden; background: #000; touch-action: none; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<script src="three.min.js"></script>
+<script src="OrbitControls.js"></script>
+<script>
+'use strict';
+
+// ---------- 渲染器与场景 ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+document.body.appendChild(renderer.domElement);
+
+// 诊断：确认 WebGL 是硬件还是 SwiftShader 软件渲染
+try {
+  const gl = renderer.getContext();
+  const ext = gl.getExtension('WEBGL_debug_renderer_info');
+  console.log('GL_RENDERER: ' + (ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : 'unknown'));
+} catch (e) { console.log('GL_RENDERER 查询失败: ' + e); }
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 400);
+camera.position.set(0, 0.35, 4.4);
+
+// ---------- 光照：单一主光（太阳）+ 弱环境光，保证阴影方向一致 ----------
+const sunDir = new THREE.Vector3(5, 2, 3).normalize();
+const sun = new THREE.DirectionalLight(0xffffff, 1.25);
+sun.position.copy(sunDir);
+scene.add(sun);
+scene.add(new THREE.AmbientLight(0x334455, 0.38));
+
+// ---------- 纹理 ----------
+const loader = new THREE.TextureLoader();
+// 诊断：逐张纹理报告加载成败
+const texLog = function (name) {
+  return [
+    function () { console.log('纹理OK: ' + name); },
+    undefined,
+    function (e) { console.log('纹理FAIL: ' + name + ' ' + e); },
+  ];
+};
+const texDay = loader.load('textures/earth_day_4096.jpg', ...texLog('day'));
+texDay.encoding = THREE.sRGBEncoding;
+texDay.anisotropy = renderer.capabilities.getMaxAnisotropy();
+const texNormal = loader.load('textures/earth_normal_2048.jpg', ...texLog('normal'));
+const texSpecular = loader.load('textures/earth_specular_2048.jpg', ...texLog('specular'));
+const texClouds = loader.load('textures/earth_clouds_2048.jpg', ...texLog('clouds'));
+const texNight = loader.load('textures/2k_earth_nightmap.jpg', ...texLog('night'));
+texNight.encoding = THREE.sRGBEncoding;
+
+// ---------- 地球本体：真实球体网格（96 段），法线凹凸 + 海洋镜面高光 ----------
+const earth = new THREE.Mesh(
+  new THREE.SphereGeometry(1, 64, 64),
+  new THREE.MeshPhongMaterial({
+    map: texDay,
+    normalMap: texNormal,
+    normalScale: new THREE.Vector2(0.85, 0.85),
+    specularMap: texSpecular,    // 只有海面反光，陆地粗糙
+    specular: new THREE.Color(0x66788c),
+    shininess: 22,
+  })
+);
+scene.add(earth);
+
+// ---------- 夜光层：自定义 shader，仅在背阳面点亮城市灯光 ----------
+const nightMat = new THREE.ShaderMaterial({
+  uniforms: {
+    nightMap: { value: texNight },
+    lightDir: { value: sunDir },
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    varying vec3 vWorldNormal;
+    void main() {
+      vUv = uv;
+      vWorldNormal = normalize(mat3(modelMatrix) * normal);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }`,
+  fragmentShader: `
+    uniform sampler2D nightMap;
+    uniform vec3 lightDir;
+    varying vec2 vUv;
+    varying vec3 vWorldNormal;
+    void main() {
+      // 背阳面渐显：晨昏线附近平滑过渡
+      float night = smoothstep(0.10, -0.22, dot(normalize(vWorldNormal), lightDir));
+      vec3 lights = texture2D(nightMap, vUv).rgb;
+      gl_FragColor = vec4(lights * night * 1.35, 1.0);
+    }`,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  transparent: true,
+});
+const nightShell = new THREE.Mesh(new THREE.SphereGeometry(1.001, 64, 64), nightMat);
+scene.add(nightShell);
+
+// ---------- 云层壳：独立球壳、与地表不同转速（加色混合对黑底云图稳健） ----------
+const clouds = new THREE.Mesh(
+  new THREE.SphereGeometry(1.012, 64, 64),
+  new THREE.MeshLambertMaterial({
+    map: texClouds,
+    blending: THREE.AdditiveBlending,
+    transparent: true,
+    opacity: 0.55,
+    depthWrite: false,
+  })
+);
+scene.add(clouds);
+
+// ---------- 大气层：菲涅尔临边辉光（BackSide 壳） ----------
+const atmosphere = new THREE.Mesh(
+  new THREE.SphereGeometry(1.09, 64, 64),
+  new THREE.ShaderMaterial({
+    vertexShader: `
+      varying vec3 vNormal;
+      void main() {
+        vNormal = normalize(normalMatrix * normal);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: `
+      varying vec3 vNormal;
+      void main() {
+        float glow = pow(max(0.72 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 0.0), 3.5);
+        gl_FragColor = vec4(vec3(0.32, 0.54, 1.0) * glow * 1.5, 1.0);
+      }`,
+    side: THREE.BackSide,
+    blending: THREE.AdditiveBlending,
+    transparent: true,
+    depthWrite: false,
+  })
+);
+scene.add(atmosphere);
+
+// ---------- 星空粒子：3000 颗分布在远层球壳，近似首页银河氛围 ----------
+function makeStars(count, sizePx, opacity) {
+  const pos = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    // 均匀球面分布 + 60~140 距离层
+    const r = 60 + Math.random() * 80;
+    const theta = Math.random() * Math.PI * 2;
+    const z = Math.random() * 2 - 1;
+    const s = Math.sqrt(1 - z * z);
+    pos[i * 3] = r * s * Math.cos(theta);
+    pos[i * 3 + 1] = r * z;
+    pos[i * 3 + 2] = r * s * Math.sin(theta);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  return new THREE.Points(geo, new THREE.PointsMaterial({
+    color: 0xffffff, size: sizePx, sizeAttenuation: false,
+    transparent: true, opacity: opacity, depthWrite: false,
+  }));
+}
+scene.add(makeStars(2600, 1.4, 0.75));  // 底层细星
+scene.add(makeStars(320, 2.6, 0.95));   // 少量亮星
+
+// ---------- 手势：OrbitControls（拖拽旋转 + 双指缩放 + 阻尼惯性） ----------
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;      // 惯性
+controls.dampingFactor = 0.055;
+controls.rotateSpeed = 0.45;
+controls.enablePan = false;
+controls.minDistance = 1.35;        // 最近：地表细节检验位
+controls.maxDistance = 8.0;
+controls.autoRotate = true;         // 待机自转（对应创作能量转速）
+controls.autoRotateSpeed = 0.35;
+
+// ---------- Flutter → JS：叠层按钮驱动镜头推拉（带 easeOutBack 回弹） ----------
+let zoomTween = null;
+window.demoZoom = function (factor) {
+  const from = camera.position.distanceTo(controls.target);
+  const to = Math.min(Math.max(from * factor, controls.minDistance), controls.maxDistance);
+  zoomTween = { from: from, to: to, t0: performance.now(), dur: 650 };
+};
+function easeOutBack(x) {
+  const c1 = 1.20, c3 = c1 + 1;
+  return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
+}
+
+// ---------- 渲染循环 + JS → Flutter：FPS/镜头距离上报 ----------
+let frames = 0, lastPost = performance.now();
+function animate() {
+  requestAnimationFrame(animate);
+  // 云层相对地表缓慢漂移（不同转速）
+  clouds.rotation.y += 0.00012;
+  if (zoomTween) {
+    const p = Math.min((performance.now() - zoomTween.t0) / zoomTween.dur, 1);
+    const d = zoomTween.from + (zoomTween.to - zoomTween.from) * easeOutBack(p);
+    const dir = camera.position.clone().sub(controls.target).normalize();
+    camera.position.copy(dir.multiplyScalar(Math.max(d, 1.2)).add(controls.target));
+    if (p >= 1) zoomTween = null;
+  }
+  controls.update();
+  renderer.render(scene, camera);
+  frames++;
+  const now = performance.now();
+  if (now - lastPost > 500 && window.FlutterBridge) {
+    const fps = Math.round(frames * 1000 / (now - lastPost));
+    const dist = camera.position.distanceTo(controls.target);
+    FlutterBridge.postMessage(JSON.stringify({ fps: fps, dist: dist.toFixed(2) }));
+    frames = 0; lastPost = now;
+  }
+}
+animate();
+
+window.addEventListener('resize', function () {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
