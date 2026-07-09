@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -89,6 +89,9 @@ void main() {
 
     await tester.tap(find.byKey(const Key('创建新星球标题')));
     await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('星球名称弹窗卡片')), findsOneWidget);
+    expect(find.byType(CupertinoAlertDialog), findsNothing);
 
     await tester.enterText(find.byKey(const Key('新星球书名输入框')), '第二颗行星');
     await tester.tap(find.byKey(const Key('新星球确认按钮')));

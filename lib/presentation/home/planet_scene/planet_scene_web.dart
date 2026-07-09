@@ -7,7 +7,7 @@ import 'package:web/web.dart' as web;
 ///
 /// 与移动端 PlanetScene 同名同接口（planet_scene.dart 条件导出分发）：
 /// - iframe 指向打包进 web 构建的 assets/planet_scene/index.html（同源，无 CORS）
-/// - pointer-events:none —— 手势穿透给 Flutter（点击进大纲/翻页照旧）
+/// - iframe 接收触摸事件，交给场景内 OrbitControls 做拖拽旋转与双指缩放
 /// - 五颗球 albedo 走 apptex 相对路径参数（移动端为回环服务的 /app-textures/）
 /// - Web 体验版转速取初始值（能量档位变化不动态跟随，正式端在移动 App）
 class PlanetScene extends StatelessWidget {
@@ -25,9 +25,7 @@ class PlanetScene extends StatelessWidget {
             '?planet=$planet&spin=$spin&apptex=../../textures/'
         ..style.border = 'none'
         ..style.width = '100%'
-        ..style.height = '100%'
-        // 手势穿透：iframe 不拦截任何指针事件，交互全归 Flutter 层
-        ..style.pointerEvents = 'none';
+        ..style.height = '100%';
       return iframe;
     });
   }

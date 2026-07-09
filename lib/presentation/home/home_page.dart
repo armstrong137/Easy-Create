@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -210,7 +212,9 @@ class _PlanetPage extends ConsumerWidget {
     final count = ref.watch(creativeCountProvider(novel.id)).value ?? 0;
     final use3D = ref.watch(advanced3DProvider);
     // 3D 场景不依赖 shader 资源；旧路径（测试/低端回退）仍需等待加载
-    final assets = use3D ? null : ref.watch(planetAssetsProvider(novel.planet)).value;
+    final assets = use3D
+        ? null
+        : ref.watch(planetAssetsProvider(novel.planet)).value;
     final diameter = MediaQuery.sizeOf(context).width * 0.62;
     final ready = use3D || assets != null;
 
@@ -351,33 +355,145 @@ Future<String?> _promptText({
   String? initial,
 }) {
   final controller = TextEditingController(text: initial);
-  return showCupertinoDialog<String>(
+  final result = showGeneralDialog<String>(
     context: context,
-    builder: (context) => CupertinoAlertDialog(
-      title: Text(heading, style: _dlgStyle(weight: FontWeight.w600)),
-      content: Padding(
-        padding: const EdgeInsets.only(top: 14),
-        child: CupertinoTextField(
-          key: fieldKey,
-          controller: controller,
-          autofocus: true,
-          placeholder: hint,
-          style: _dlgStyle(size: 15, color: const Color(0xFF1A1A1A)),
-          onSubmitted: (v) => Navigator.of(context).pop(v),
+    barrierDismissible: true,
+    barrierLabel: '关闭',
+    barrierColor: Colors.black.withValues(alpha: 0.28),
+    transitionDuration: const Duration(milliseconds: 160),
+    pageBuilder: (dialogContext, animation, secondaryAnimation) {
+      final media = MediaQuery.of(dialogContext);
+      final width = math.min(media.size.width - 48, 330.0);
+      return Material(
+        type: MaterialType.transparency,
+        child: AnimatedPadding(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
+          child: SafeArea(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 34),
+                child: Container(
+                  key: const Key('星球名称弹窗卡片'),
+                  width: width,
+                  decoration: BoxDecoration(
+                    color: const Color(0xF8FFFDF8),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.78),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.18),
+                        blurRadius: 24,
+                        offset: const Offset(0, 12),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(22, 20, 22, 12),
+                        child: Text(
+                          heading,
+                          textAlign: TextAlign.center,
+                          style: _dlgStyle(
+                            size: 20,
+                            weight: FontWeight.w600,
+                            color: const Color(0xFF3D332A),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                        child: CupertinoTextField(
+                          key: fieldKey,
+                          controller: controller,
+                          autofocus: true,
+                          placeholder: hint,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 13,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.92),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFFE3D8C7)),
+                          ),
+                          style: _dlgStyle(
+                            size: 16,
+                            color: const Color(0xFF1A1A1A),
+                          ),
+                          placeholderStyle: _dlgStyle(
+                            size: 16,
+                            color: const Color(0x993D332A),
+                          ),
+                          onSubmitted: (v) =>
+                              Navigator.of(dialogContext).pop(v),
+                        ),
+                      ),
+                      DecoratedBox(
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            top: BorderSide(color: Color(0x1F3D332A)),
+                          ),
+                        ),
+                        child: SizedBox(
+                          height: 54,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: CupertinoButton(
+                                  padding: EdgeInsets.zero,
+                                  onPressed: () =>
+                                      Navigator.of(dialogContext).pop(),
+                                  child: Text(
+                                    '取消',
+                                    style: _dlgStyle(
+                                      size: 18,
+                                      color: const Color(0xFF8C4A63),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const VerticalDivider(
+                                width: 1,
+                                thickness: 1,
+                                color: Color(0x1F3D332A),
+                              ),
+                              Expanded(
+                                child: CupertinoButton(
+                                  key: confirmKey,
+                                  padding: EdgeInsets.zero,
+                                  onPressed: () => Navigator.of(
+                                    dialogContext,
+                                  ).pop(controller.text),
+                                  child: Text(
+                                    confirm,
+                                    style: _dlgStyle(
+                                      size: 18,
+                                      weight: FontWeight.w600,
+                                      color: const Color(0xFF8C4A63),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
-      ),
-      actions: [
-        CupertinoDialogAction(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text('取消', style: _dlgStyle()),
-        ),
-        CupertinoDialogAction(
-          key: confirmKey,
-          isDefaultAction: true,
-          onPressed: () => Navigator.of(context).pop(controller.text),
-          child: Text(confirm, style: _dlgStyle(weight: FontWeight.w600)),
-        ),
-      ],
-    ),
+      );
+    },
   );
+  return result.whenComplete(controller.dispose);
 }

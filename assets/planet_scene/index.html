@@ -5,19 +5,20 @@
   - URL 参数初始化：?planet=earth&spin=0.008（避免加载时序竞态）
   - Flutter → JS：setSpin(转/秒)、pauseRender()、resumeRender()
   - JS → Flutter：SceneBridge 通道上报 {ready, fps}
-  - 手势不在本层处理（Flutter 侧 IgnorePointer 包裹）：点击/长按/翻页全归 Flutter
+  - 手势在本层处理：拖拽旋转 + 双指缩放交给 OrbitControls
 -->
 <html lang="zh">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <style>
-  html, body { margin: 0; padding: 0; overflow: hidden; background: transparent; }
+  html, body { margin: 0; padding: 0; overflow: hidden; background: transparent; touch-action: none; }
   canvas { display: block; }
 </style>
 </head>
 <body>
 <script src="three.min.js"></script>
+<script src="OrbitControls.js"></script>
 <script>
 'use strict';
 
@@ -209,6 +210,16 @@ const d0 = fitDistance(frameRadius, 1.02);
 camera.position.set(0, 0, d0);
 camera.lookAt(0, 0, 0);
 
+// ---------- 手势：拖拽旋转 + 双指缩放 ----------
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.enablePan = false;
+controls.minDistance = d0 * 0.72;
+controls.maxDistance = d0 * 1.55;
+controls.rotateSpeed = 0.62;
+controls.zoomSpeed = 0.72;
+
 // ---------- Flutter 控制接口 ----------
 window.setSpin = function (revPerSec) { spinRevPerSec = revPerSec; };
 let paused = false;
@@ -226,6 +237,7 @@ function animate() {
   const w = spinRevPerSec * Math.PI * 2 * dt;
   planet.rotation.y += w;
   if (clouds) clouds.rotation.y += w * 1.18 + 0.00006; // 云层略快于地表
+  controls.update();
   renderer.render(scene, camera);
   frames++;
   if (now - lastPost > 1000) {
@@ -245,6 +257,7 @@ window.addEventListener('resize', function () {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  controls.update();
 });
 </script>
 </body>

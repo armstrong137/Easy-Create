@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-09 16:45:44　对应提交：784abbb 之后的工作区状态
+> 生成时间：2026-07-09 18:07:25　对应提交：0aa0d76 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,27 +12,27 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     93
-  Nodes:     3,785
-  Edges:     18,327
-  DB Size:   18.92 MB
+  Files:     95
+  Nodes:     3,838
+  Edges:     18,499
+  DB Size:   19.02 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,469
-  function        1,334
-  class           438
-  import          270
+  method          1,471
+  function        1,378
+  class           440
+  import          273
   constant        161
-  file            85
+  file            87
   variable        14
   type_alias      12
   namespace       2
 
 Files by Language:
-  dart            55
-  javascript      10
+  dart            56
+  javascript      11
   kotlin          8
   xml             6
   properties      4
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (93 files):
+Project Structure (95 files):
 
 |-- .agents
 |   `-- skills
@@ -94,6 +94,7 @@ Project Structure (93 files):
 |   `-- settings.gradle.kts (kotlin, 1 symbols)
 |-- assets
 |   `-- planet_scene
+|       |-- OrbitControls.js (javascript, 48 symbols)
 |       `-- three.min.js (javascript, 1680 symbols)
 |-- experiments
 |   `-- planet_3d_demo
@@ -158,7 +159,7 @@ Project Structure (93 files):
 |   |   |   |   |-- planet_scene_web.dart (dart, 6 symbols)
 |   |   |   |   |-- planet_scene.dart (dart, 6 symbols)
 |   |   |   |   `-- scene_server.dart (dart, 11 symbols)
-|   |   |   |-- home_page.dart (dart, 35 symbols)
+|   |   |   |-- home_page.dart (dart, 36 symbols)
 |   |   |   |-- orbiting_inspirations.dart (dart, 14 symbols)
 |   |   |   |-- planet_view.dart (dart, 19 symbols)
 |   |   |   |-- saturn_rings_painter.dart (dart, 12 symbols)
@@ -198,6 +199,7 @@ Project Structure (93 files):
 |       |-- magic_tree_model_test.dart (dart, 13 symbols)
 |       |-- orbiting_inspirations_test.dart (dart, 10 symbols)
 |       |-- outline_page_test.dart (dart, 23 symbols)
+|       |-- planet_scene_touch_config_test.dart (dart, 4 symbols)
 |       |-- quick_capture_test.dart (dart, 16 symbols)
 |       |-- section_page_test.dart (dart, 24 symbols)
 |       `-- voice_capture_test.dart (dart, 22 symbols)
