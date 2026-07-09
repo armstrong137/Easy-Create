@@ -8,7 +8,7 @@ part 'app_database.g.dart';
 /// 应用唯一数据库（纯本地 SQLite，无账号无后端）
 @DriftDatabase(tables: [Novels, Chapters, Sections, Inspirations])
 class AppDatabase extends _$AppDatabase {
-  /// 正式运行用：drift_flutter 自动选择双端本地文件位置
+  /// 正式运行用：native 自动选本地文件；Web 显式指定 wasm/worker 运行时
   AppDatabase() : super(_openConnection());
 
   /// 测试用：允许注入内存数据库等任意执行器
@@ -34,6 +34,12 @@ class AppDatabase extends _$AppDatabase {
   );
 
   static QueryExecutor _openConnection() {
-    return driftDatabase(name: 'novel_app');
+    return driftDatabase(
+      name: 'novel_app',
+      web: DriftWebOptions(
+        sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+        driftWorker: Uri.parse('drift_worker.js'),
+      ),
+    );
   }
 }

@@ -165,10 +165,12 @@
     双端明文回环配置（Android networkSecurityConfig 仅 127.0.0.1 / iOS ATS）；
     测试环境（FLUTTER_TEST）自动回退旧 shader——也是低端机降级开关接入点。
     模拟器实拍验收：地球五层/点击进大纲/土星环/PageView 切换/自转全过，
-    全量测试 100 项绿。
+    全量测试 101 项绿。
     重要修复：OrbitingInspirations 原先把星球 child 放在动态下标位置，
     文字跨前后边界即销毁重建星球 State（旧 shader 球自转相位一直被暗中重置、
     WebView 场景永远加载不完）→ 外层 Stack 固定 3 槽结构
+    补充修复：Web 端数据库连接显式接入已有 `web/sqlite3.wasm` 与
+    `web/drift_worker.js`，避免 drift web 运行时无法打开数据库，导致小说/灵感写入失败。
   - ☐ P2-1 后续：真机（iOS）复验 App 内 WKWebView 合成；星球切换横移动画；
     创建/删除小说宇宙事件动画（P2-4）
 - ☐ P3 大纲页 3D 魔树重构（生长动画/镜头巡航/空间标签）

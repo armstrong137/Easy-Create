@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-09 16:25:31　对应提交：397e35d 之后的工作区状态
+> 生成时间：2026-07-09 16:45:44　对应提交：784abbb 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,26 +12,26 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     92
-  Nodes:     3,781
-  Edges:     18,323
+  Files:     93
+  Nodes:     3,785
+  Edges:     18,327
   DB Size:   18.92 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,469
-  function        1,333
+  function        1,334
   class           438
-  import          268
+  import          270
   constant        161
-  file            84
+  file            85
   variable        14
   type_alias      12
   namespace       2
 
 Files by Language:
-  dart            54
+  dart            55
   javascript      10
   kotlin          8
   xml             6
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (92 files):
+Project Structure (93 files):
 
 |-- .agents
 |   `-- skills
@@ -190,6 +190,7 @@ Project Structure (92 files):
 |   |   |-- chinese_numbers_test.dart (dart, 4 symbols)
 |   |   `-- creative_energy_test.dart (dart, 4 symbols)
 |   |-- data
+|   |   |-- app_database_config_test.dart (dart, 4 symbols)
 |   |   `-- repositories_test.dart (dart, 9 symbols)
 |   `-- presentation
 |       |-- home_page_test.dart (dart, 20 symbols)
