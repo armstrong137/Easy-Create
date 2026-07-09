@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<!--
+  首页正式 3D 星球场景（阶段八 P2-1，three.js r147 离线打包）
+  - 透明背景：星空仍由 Flutter 层（四档银河图）负责，本场景只渲染星球
+  - URL 参数初始化：?planet=earth&spin=0.008（避免加载时序竞态）
+  - Flutter → JS：setSpin(转/秒)、pauseRender()、resumeRender()
+  - JS → Flutter：SceneBridge 通道上报 {ready, fps}
+  - 手势不在本层处理（Flutter 侧 IgnorePointer 包裹）：点击/长按/翻页全归 Flutter
+-->
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<style>
+  html, body { margin: 0; padding: 0; overflow: hidden; background: transparent; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<script src="three.min.js"></script>
+<script>
+'use strict';
+
+// ---------- 启动参数 ----------
+const params = new URLSearchParams(location.search);
+const planetName = params.get('planet') || 'earth';
+let spinRevPerSec = parseFloat(params.get('spin') || '0.008');
+
+// ---------- 渲染器：透明底叠在 Flutter 星空之上 ----------
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  alpha: true,
+  powerPreference: 'high-performance',
+});
+renderer.setClearColor(0x000000, 0);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
+
+// 取景：星球占满视口短边（Flutter 侧 SizedBox 已按直径定尺寸，土星留环余量）
+function fitDistance(radius, margin) {
+  const vfov = camera.fov * Math.PI / 180;
+  const hfov = 2 * Math.atan(Math.tan(vfov / 2) * camera.aspect);
+  return margin * radius / Math.tan(Math.min(vfov, hfov) / 2);
+}
+
+// ---------- 光照：主光方向与现有 shader 星球一致（右上前方） ----------
+const sunDir = new THREE.Vector3(5, 2, 3).normalize();
+const sun = new THREE.DirectionalLight(0xffffff, 1.25);
+sun.position.copy(sunDir);
+scene.add(sun);
+scene.add(new THREE.AmbientLight(0x334455, 0.42));
+
+// ---------- 星球材质组配置（earth 全五层，其余用户素材 albedo + 各自大气色） ----------
+const PLANETS = {
+  earth: {
+    map: 'textures/earth_day_4096.jpg',
+    normal: 'textures/earth_normal_2048.jpg',
+    specular: 'textures/earth_specular_2048.jpg',
+    clouds: 'textures/earth_clouds_2048.jpg',
+    night: 'textures/2k_earth_nightmap.jpg',
+    atmosColor: [0.32, 0.54, 1.0], atmosStrength: 1.5,
+  },
+  mars:    { map: 'app-textures/mars.jpg',    atmosColor: [1.0, 0.45, 0.25], atmosStrength: 0.7 },
+  jupiter: { map: 'app-textures/jupiter.jpg', atmosColor: [0.95, 0.80, 0.58], atmosStrength: 0.6 },
+  venus:   { map: 'app-textures/venus.jpg',   atmosColor: [1.0, 0.85, 0.55], atmosStrength: 1.1 },
+  saturn:  { map: 'app-textures/saturn.jpg',  atmosColor: [0.95, 0.85, 0.62], atmosStrength: 0.6, ring: true },
+};
+const cfg = PLANETS[planetName] || PLANETS.earth;
+
+const loader = new THREE.TextureLoader();
+function srgb(path) {
+  const t = loader.load(path);
+  t.encoding = THREE.sRGBEncoding;
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return t;
+}
+
+// ---------- 星球本体 ----------
+const matOpts = { map: srgb(cfg.map) };
+if (cfg.normal) {
+  matOpts.normalMap = loader.load(cfg.normal);
+  matOpts.normalScale = new THREE.Vector2(0.85, 0.85);
+}
+if (cfg.specular) {
+  matOpts.specularMap = loader.load(cfg.specular);
+  matOpts.specular = new THREE.Color(0x66788c);
+  matOpts.shininess = 22;
+} else {
+  matOpts.specular = new THREE.Color(0x000000); // 非地球：无镜面，哑光地表
+}
+const planet = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), new THREE.MeshPhongMaterial(matOpts));
+scene.add(planet);
+
+// ---------- 夜光层（仅地球）：背阳面城市灯光 ----------
+if (cfg.night) {
+  const nightMat = new THREE.ShaderMaterial({
+    uniforms: { nightMap: { value: srgb(cfg.night) }, lightDir: { value: sunDir } },
+    vertexShader: `
+      varying vec2 vUv; varying vec3 vWorldNormal;
+      void main() {
+        vUv = uv;
+        vWorldNormal = normalize(mat3(modelMatrix) * normal);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: `
+      uniform sampler2D nightMap; uniform vec3 lightDir;
+      varying vec2 vUv; varying vec3 vWorldNormal;
+      void main() {
+        float night = smoothstep(0.10, -0.22, dot(normalize(vWorldNormal), lightDir));
+        gl_FragColor = vec4(texture2D(nightMap, vUv).rgb * night * 1.35, 1.0);
+      }`,
+    blending: THREE.AdditiveBlending, depthWrite: false, transparent: true,
+  });
+  const shell = new THREE.Mesh(new THREE.SphereGeometry(1.001, 64, 64), nightMat);
+  shell.name = 'night';
+  planet.add(shell); // 挂在星球下随其自转
+}
+
+// ---------- 云层（仅地球）：独立慢速漂移 ----------
+let clouds = null;
+if (cfg.clouds) {
+  clouds = new THREE.Mesh(
+    new THREE.SphereGeometry(1.012, 64, 64),
+    new THREE.MeshLambertMaterial({
+      map: srgb(cfg.clouds),
+      blending: THREE.AdditiveBlending, transparent: true, opacity: 0.55, depthWrite: false,
+    })
+  );
+  scene.add(clouds);
+}
+
+// ---------- 大气临边辉光：颜色/强度按星球配置 ----------
+const atmosphere = new THREE.Mesh(
+  new THREE.SphereGeometry(1.09, 64, 64),
+  new THREE.ShaderMaterial({
+    uniforms: {
+      glowColor: { value: new THREE.Vector3(...cfg.atmosColor) },
+      strength: { value: cfg.atmosStrength },
+    },
+    vertexShader: `
+      varying vec3 vNormal;
+      void main() {
+        vNormal = normalize(normalMatrix * normal);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: `
+      uniform vec3 glowColor; uniform float strength;
+      varying vec3 vNormal;
+      void main() {
+        float glow = pow(max(0.72 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 0.0), 3.5);
+        gl_FragColor = vec4(glowColor * glow * strength, glow * strength);
+      }`,
+    side: THREE.BackSide, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false,
+  })
+);
+scene.add(atmosphere);
+
+// ---------- 土星环：真 3D 环带（前后遮挡/倾角透视天然成立），程序化环纹 ----------
+let ringOuter = 0;
+if (cfg.ring) {
+  ringOuter = 2.15;
+  const cvs = document.createElement('canvas');
+  cvs.width = 512; cvs.height = 16;
+  const ctx = cvs.getContext('2d');
+  // 径向条纹：以真实卡西尼缝观感为参照的疏密带
+  const bands = [
+    [0.00, 0.06, 0.35], [0.06, 0.18, 0.62], [0.18, 0.22, 0.28], [0.22, 0.40, 0.78],
+    [0.40, 0.44, 0.12], [0.44, 0.72, 0.92], [0.72, 0.76, 0.30], [0.76, 0.92, 0.66],
+    [0.92, 1.00, 0.38],
+  ];
+  for (const [a, b, alpha] of bands) {
+    const grad = ctx.createLinearGradient(a * 512, 0, b * 512, 0);
+    const tone = 205 + Math.round(30 * alpha);
+    grad.addColorStop(0, 'rgba(' + tone + ',' + (tone - 22) + ',' + (tone - 52) + ',' + alpha * 0.55 + ')');
+    grad.addColorStop(0.5, 'rgba(' + tone + ',' + (tone - 18) + ',' + (tone - 45) + ',' + alpha + ')');
+    grad.addColorStop(1, 'rgba(' + tone + ',' + (tone - 22) + ',' + (tone - 52) + ',' + alpha * 0.55 + ')');
+    ctx.fillStyle = grad;
+    ctx.fillRect(a * 512, 0, (b - a) * 512, 16);
+  }
+  const ringTex = new THREE.CanvasTexture(cvs);
+  // RingGeometry 的 UV 沿半径方向重映射，使贴图 x 轴对应内→外
+  const ringGeo = new THREE.RingGeometry(1.35, ringOuter, 128, 1);
+  const pos = ringGeo.attributes.position;
+  const uv = ringGeo.attributes.uv;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    uv.setXY(i, (v.length() - 1.35) / (ringOuter - 1.35), 1);
+  }
+  const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({
+    map: ringTex, side: THREE.DoubleSide, transparent: true, depthWrite: false,
+  }));
+  ring.rotation.x = Math.PI / 2 - 0.42; // 倾角 ~24°
+  ring.rotation.y = 0.18;
+  scene.add(ring);
+}
+
+// 取景距离：土星按环外径框，普通星球按大气壳框
+const frameRadius = cfg.ring ? ringOuter * 0.94 : 1.09;
+const d0 = fitDistance(frameRadius, 1.02);
+camera.position.set(0, 0, d0);
+camera.lookAt(0, 0, 0);
+
+// ---------- Flutter 控制接口 ----------
+window.setSpin = function (revPerSec) { spinRevPerSec = revPerSec; };
+let paused = false;
+window.pauseRender = function () { paused = true; };
+window.resumeRender = function () { paused = false; requestAnimationFrame(animate); };
+
+// ---------- 渲染循环 ----------
+let last = performance.now(), frames = 0, lastPost = last, notified = false;
+function animate() {
+  if (paused) return;
+  requestAnimationFrame(animate);
+  const now = performance.now();
+  const dt = Math.min((now - last) / 1000, 0.1);
+  last = now;
+  const w = spinRevPerSec * Math.PI * 2 * dt;
+  planet.rotation.y += w;
+  if (clouds) clouds.rotation.y += w * 1.18 + 0.00006; // 云层略快于地表
+  renderer.render(scene, camera);
+  frames++;
+  if (now - lastPost > 1000) {
+    if (window.SceneBridge) {
+      SceneBridge.postMessage(JSON.stringify({
+        ready: !notified ? true : undefined,
+        fps: Math.round(frames * 1000 / (now - lastPost)),
+      }));
+      notified = true;
+    }
+    frames = 0; lastPost = now;
+  }
+}
+animate();
+
+window.addEventListener('resize', function () {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>

@@ -8,6 +8,7 @@ import '../../data/providers.dart';
 import '../outline/outline_page.dart';
 import '../settings/settings_page.dart';
 import 'orbiting_inspirations.dart';
+import 'planet_scene/planet_scene.dart';
 import 'planet_view.dart';
 import 'saturn_rings_painter.dart';
 import 'starfield.dart';
@@ -207,8 +208,34 @@ class _PlanetPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final count = ref.watch(creativeCountProvider(novel.id)).value ?? 0;
-    final assets = ref.watch(planetAssetsProvider(novel.planet)).value;
+    final use3D = ref.watch(advanced3DProvider);
+    // 3D 场景不依赖 shader 资源；旧路径（测试/低端回退）仍需等待加载
+    final assets = use3D ? null : ref.watch(planetAssetsProvider(novel.planet)).value;
     final diameter = MediaQuery.sizeOf(context).width * 0.62;
+    final ready = use3D || assets != null;
+
+    // 星球本体：真实 3D 场景（阶段八 P2-1）或旧 FragmentShader（回退）
+    Widget planetBody() {
+      if (use3D) {
+        return PlanetScene(
+          planet: novel.planet,
+          spin: planetSpin(count),
+          // 土星的 3D 环带在场景内渲染，加宽画幅给环留位
+          diameter: novel.planet == 'saturn' ? diameter * 1.4 : diameter,
+        );
+      }
+      return novel.planet == 'saturn'
+          ? SaturnView(
+              assets: assets!,
+              spin: planetSpin(count),
+              diameter: diameter,
+            )
+          : PlanetView(
+              assets: assets!,
+              spin: planetSpin(count),
+              diameter: diameter,
+            );
+    }
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -217,7 +244,7 @@ class _PlanetPage extends ConsumerWidget {
           key: Key('星球_${novel.id}'),
           behavior: HitTestBehavior.opaque,
           // 点星球 → 进入该小说的大纲页（铅笔树）
-          onTap: assets == null
+          onTap: !ready
               ? null
               : () => Navigator.of(context).push(
                   MaterialPageRoute(
@@ -226,7 +253,7 @@ class _PlanetPage extends ConsumerWidget {
                   ),
                 ),
           onLongPress: () => _confirmDeleteNovel(context, ref),
-          child: assets == null
+          child: !ready
               ? SizedBox.square(dimension: diameter)
               : OrbitingInspirations(
                   // 环绕取"最近几条"：魔毯池已改为旧→新/手动序，
@@ -234,18 +261,7 @@ class _PlanetPage extends ConsumerWidget {
                   items: [...pool]
                     ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
                   orbitWidth: diameter * 1.5,
-                  // 土星带静态光环贴层，其余星球为纯球体
-                  child: novel.planet == 'saturn'
-                      ? SaturnView(
-                          assets: assets,
-                          spin: planetSpin(count),
-                          diameter: diameter,
-                        )
-                      : PlanetView(
-                          assets: assets,
-                          spin: planetSpin(count),
-                          diameter: diameter,
-                        ),
+                  child: planetBody(),
                 ),
         ),
         const SizedBox(height: 28),

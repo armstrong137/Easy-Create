@@ -155,7 +155,22 @@
   - 关键工程事实：WebGL 纹理必须走 127.0.0.1 回环服务（file:// 被 CORS 拦）；
     模拟器 WebView WebGL=SwiftShader 软渲染（2~5fps 不代表真机），
     **P2 开工前强制真机 profile 门禁：静置 ≥55fps / 交互 ≥40fps**
-- ☐ P2 首页宇宙正式重构（3D 星球/动态星空/环绕灵感/宇宙事件动画）
+- 🔄 P2 首页宇宙正式重构（3D 星球/动态星空/环绕灵感/宇宙事件动画）
+  - ✅ P2-1 正式接入 3D 星球场景（2026-07-09）：
+    lib/presentation/home/planet_scene/{planet_scene,scene_server}.dart，
+    PlanetScene 同位替换 PlanetView/SaturnView（IgnorePointer 包裹，
+    点击/长按/翻页手势零回归）；五星球材质组（地球全五层 4K，
+    其余用户素材 albedo+各自大气色）；土星升级真 3D 环带（程序化环纹，
+    前后遮挡/倾角透视天然成立）；创作能量转速经桥下发；
+    双端明文回环配置（Android networkSecurityConfig 仅 127.0.0.1 / iOS ATS）；
+    测试环境（FLUTTER_TEST）自动回退旧 shader——也是低端机降级开关接入点。
+    模拟器实拍验收：地球五层/点击进大纲/土星环/PageView 切换/自转全过，
+    全量测试 100 项绿。
+    重要修复：OrbitingInspirations 原先把星球 child 放在动态下标位置，
+    文字跨前后边界即销毁重建星球 State（旧 shader 球自转相位一直被暗中重置、
+    WebView 场景永远加载不完）→ 外层 Stack 固定 3 槽结构
+  - ☐ P2-1 后续：真机（iOS）复验 App 内 WKWebView 合成；星球切换横移动画；
+    创建/删除小说宇宙事件动画（P2-4）
 - ☐ P3 大纲页 3D 魔树重构（生长动画/镜头巡航/空间标签）
 - ☐ P4 魔毯 3D 重构（布料形变/灵感池空间化）
 - ☐ P5 小节页 3D 写作工作台（卡堆/卡片包/沉浸编辑器）

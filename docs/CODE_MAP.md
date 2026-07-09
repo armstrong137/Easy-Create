@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-09 13:44:53　对应提交：acba694 之后的工作区状态
+> 生成时间：2026-07-09 16:02:08　对应提交：9d295b8 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,27 +12,27 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     86
-  Nodes:     2,161
-  Edges:     9,555
-  DB Size:   10.58 MB
+  Files:     89
+  Nodes:     3,105
+  Edges:     15,023
+  DB Size:   14.25 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          924
-  function        448
-  class           272
-  import          253
-  constant        158
-  file            78
+  method          1,468
+  function        668
+  class           437
+  import          262
+  constant        161
+  file            81
   variable        14
   type_alias      12
   namespace       2
 
 Files by Language:
-  dart            50
-  javascript      8
+  dart            52
+  javascript      9
   kotlin          8
   xml             6
   properties      4
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (86 files):
+Project Structure (89 files):
 
 |-- .agents
 |   `-- skills
@@ -92,6 +92,9 @@ Project Structure (86 files):
 |   |-- build.gradle.kts (kotlin, 2 symbols)
 |   |-- gradle.properties (properties, 0 symbols)
 |   `-- settings.gradle.kts (kotlin, 1 symbols)
+|-- assets
+|   `-- planet_scene
+|       `-- three.min.js (javascript, 1680 symbols)
 |-- experiments
 |   `-- planet_3d_demo
 |       |-- android
@@ -150,7 +153,10 @@ Project Structure (86 files):
 |   |       `-- outline_chapter.dart (dart, 3 symbols)
 |   |-- presentation
 |   |   |-- home
-|   |   |   |-- home_page.dart (dart, 32 symbols)
+|   |   |   |-- planet_scene
+|   |   |   |   |-- planet_scene.dart (dart, 14 symbols)
+|   |   |   |   `-- scene_server.dart (dart, 11 symbols)
+|   |   |   |-- home_page.dart (dart, 35 symbols)
 |   |   |   |-- orbiting_inspirations.dart (dart, 14 symbols)
 |   |   |   |-- planet_view.dart (dart, 19 symbols)
 |   |   |   |-- saturn_rings_painter.dart (dart, 12 symbols)

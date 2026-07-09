@@ -39,6 +39,8 @@ dependencies:
   drift_flutter: ^0.3.0
   speech_to_text: ^7.4.0
   shared_preferences: ^2.5.5
+  # 3D 星球场景层（阶段八 P2-1，承载离线打包的 three.js 场景）
+  webview_flutter: ^4.9.0
 
 dev_dependencies:
   flutter_test:
@@ -68,6 +70,9 @@ flutter:
   # 行星纹理（NASA 公有领域真实摄影，等距圆柱投影）
   assets:
     - assets/textures/
+    # 3D 星球场景（three.js 页面 + 地球多层纹理，经回环服务供给 WebView）
+    - assets/planet_scene/
+    - assets/planet_scene/textures/
 
   # 3D 星球 fragment shader
   shaders:

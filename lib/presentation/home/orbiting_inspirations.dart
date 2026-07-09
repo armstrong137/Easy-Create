@@ -92,9 +92,16 @@ class _OrbitingInspirationsState extends State<OrbitingInspirations>
           (z > 0 ? front : back).add(text);
         }
 
+        // 前后文字层各自包一层 Stack，外层恒为 3 个 children：
+        // 文字跨前后边界时（back/front 条数变化）星球 child 的树位置不变，
+        // 否则其 State 每次被销毁重建（自转相位重置；3D WebView 场景永远加载不完）
         return Stack(
           alignment: Alignment.center,
-          children: [...back, widget.child, ...front],
+          children: [
+            Stack(alignment: Alignment.center, children: back),
+            widget.child,
+            Stack(alignment: Alignment.center, children: front),
+          ],
         );
       },
     );

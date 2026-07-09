@@ -1,9 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- 语音速记：录音权限（speech_to_text 系统本地识别引擎） -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- networkSecurityConfig：仅放行 127.0.0.1 明文（3D 场景回环资产服务） -->
     <application
         android:label="novel_app"
         android:name="${applicationName}"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
