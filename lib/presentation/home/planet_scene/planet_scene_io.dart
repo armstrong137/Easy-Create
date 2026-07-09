@@ -17,6 +17,7 @@ class PlanetScene extends ConsumerStatefulWidget {
     required this.planet,
     required this.spin,
     required this.diameter,
+    this.stageScale = 1,
   });
 
   /// 行星纹理名（earth/mars/jupiter/venus/saturn）
@@ -27,6 +28,9 @@ class PlanetScene extends ConsumerStatefulWidget {
 
   /// 星球直径（逻辑像素；土星场景自动在此框内缩小球体给环留位）
   final double diameter;
+
+  /// 透明舞台倍率：>1 时初始视觉大小不变，但放大空间更大。
+  final double stageScale;
 
   @override
   ConsumerState<PlanetScene> createState() => _PlanetSceneState();
@@ -65,7 +69,7 @@ class _PlanetSceneState extends ConsumerState<PlanetScene> {
       ..loadRequest(
         Uri.parse(
           'http://127.0.0.1:$port/index.html'
-          '?planet=${widget.planet}&spin=${widget.spin}',
+          '?planet=${widget.planet}&spin=${widget.spin}&stage=${widget.stageScale}',
         ),
       );
     if (!mounted) return;

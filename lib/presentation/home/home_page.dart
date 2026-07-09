@@ -39,6 +39,9 @@ final planetAssetsProvider = FutureProvider.family<PlanetShaderAssets, String>(
 /// 可选行星纹理（新建星球按当前数量轮换分配）
 const kPlanetTextures = ['earth', 'mars', 'jupiter', 'venus', 'saturn'];
 
+/// 3D 星球透明舞台倍率：初始视觉大小不变，放大时有足够空间不露方形裁切边。
+const kPlanetSceneStageScale = 3.0;
+
 /// 首页｜创作宇宙：一颗星球 = 一部小说，左右滑切换
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -221,11 +224,22 @@ class _PlanetPage extends ConsumerWidget {
     // 星球本体：真实 3D 场景（阶段八 P2-1）或旧 FragmentShader（回退）
     Widget planetBody() {
       if (use3D) {
-        return PlanetScene(
-          planet: novel.planet,
-          spin: planetSpin(count),
-          // 土星的 3D 环带在场景内渲染，加宽画幅给环留位
-          diameter: novel.planet == 'saturn' ? diameter * 1.4 : diameter,
+        final sceneDiameter = novel.planet == 'saturn'
+            ? diameter * 1.4
+            : diameter;
+        return SizedBox.square(
+          dimension: sceneDiameter,
+          child: OverflowBox(
+            maxWidth: sceneDiameter * kPlanetSceneStageScale,
+            maxHeight: sceneDiameter * kPlanetSceneStageScale,
+            child: PlanetScene(
+              planet: novel.planet,
+              spin: planetSpin(count),
+              // 土星的 3D 环带在场景内渲染，加宽画幅给环留位
+              diameter: sceneDiameter * kPlanetSceneStageScale,
+              stageScale: kPlanetSceneStageScale,
+            ),
+          ),
         );
       }
       return novel.planet == 'saturn'

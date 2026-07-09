@@ -16,13 +16,14 @@ class PlanetScene extends StatelessWidget {
     required this.planet,
     required this.spin,
     required this.diameter,
+    this.stageScale = 1,
   }) {
     // 每颗星球注册一次 iframe 工厂（重复注册同名 viewType 会被忽略/覆盖，无害）
     ui_web.platformViewRegistry.registerViewFactory('星球场景_$planet', (_) {
       final iframe = web.HTMLIFrameElement()
         ..src =
             'assets/assets/planet_scene/index.html'
-            '?planet=$planet&spin=$spin&apptex=../../textures/'
+            '?planet=$planet&spin=$spin&stage=$stageScale&apptex=../../textures/'
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%';
@@ -38,6 +39,9 @@ class PlanetScene extends StatelessWidget {
 
   /// 星球直径（逻辑像素；土星场景自动在此框内缩小球体给环留位）
   final double diameter;
+
+  /// 透明舞台倍率：>1 时初始视觉大小不变，但放大空间更大。
+  final double stageScale;
 
   @override
   Widget build(BuildContext context) {

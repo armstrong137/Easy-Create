@@ -97,6 +97,7 @@ class _OrbitingInspirationsState extends State<OrbitingInspirations>
         // 否则其 State 每次被销毁重建（自转相位重置；3D WebView 场景永远加载不完）
         return Stack(
           alignment: Alignment.center,
+          clipBehavior: Clip.none,
           children: [
             Stack(alignment: Alignment.center, children: back),
             widget.child,
