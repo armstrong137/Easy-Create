@@ -7,9 +7,13 @@ import '../database/app_database.dart';
 /// ```
 /// 新灵感 → 入池（section_id = NULL，排到魔毯末尾）
 /// 拖入某小节 → section_id = 节 id（从魔毯消失）
-/// 从小节删卡 → section_id 置回 NULL（放回魔毯末尾）
+/// 从小节删卡 → section_id 置回 NULL（放回魔毯**顶部**）
 /// 在魔毯删除 → DELETE，真正删除不可恢复
 /// ```
+///
+/// 池序原则（用户定稿 2026-07-08）：基础序为手动序（card_order），
+/// 新速记入末尾；刚发生改动的（编辑正文/从小节放回）跳到顶部，
+/// 方便用户马上处理。
 class InspirationRepository {
   InspirationRepository(this._db);
 
@@ -25,6 +29,18 @@ class InspirationRepository {
       );
     final max = (await q.getSingle()).read(_db.inspirations.cardOrder.max());
     return (max ?? -1) + 1;
+  }
+
+  /// 魔毯池顶部的下一个 card_order（池内最小值 -1，空池取 0）
+  Future<int> _poolTopOrder() async {
+    final q = _db.selectOnly(_db.inspirations)
+      ..addColumns([_db.inspirations.cardOrder.min()])
+      ..where(
+        _db.inspirations.sectionId.isNull() &
+            _db.inspirations.chapterId.isNull(),
+      );
+    final min = (await q.getSingle()).read(_db.inspirations.cardOrder.min());
+    return (min ?? 1) - 1;
   }
 
   /// 速记新灵感 → 入池（魔毯），排到末尾
@@ -109,11 +125,11 @@ class InspirationRepository {
     );
   }
 
-  /// 从小节/章删卡：放回魔毯，排到末尾
-  /// （魔毯支持手动排序后不再"回创建位"，末尾位置最可预期）
+  /// 从小节/章删卡：放回魔毯，排到**顶部**
+  /// （用户定稿：刚发生改动的放第一，方便马上处理）
   Future<void> removeFromSection(int inspirationId) {
     return _db.transaction(() async {
-      final order = await _nextPoolOrder();
+      final order = await _poolTopOrder();
       await (_db.update(
         _db.inspirations,
       )..where((t) => t.id.equals(inspirationId))).write(
@@ -143,14 +159,25 @@ class InspirationRepository {
     });
   }
 
-  /// 编辑灵感正文（卡片全文编辑器保存时调用），刷新修改时间
-  Future<void> updateContent(int inspirationId, String content) =>
-      (_db.update(
+  /// 编辑灵感正文（卡片全文编辑器保存时调用），刷新修改时间；
+  /// 若该灵感在魔毯池中，同时跳到池顶部（用户定稿：刚改动的放第一）
+  Future<void> updateContent(int inspirationId, String content) {
+    return _db.transaction(() async {
+      final row = await (_db.select(
+        _db.inspirations,
+      )..where((t) => t.id.equals(inspirationId))).getSingle();
+      final inPool = row.sectionId == null && row.chapterId == null;
+      await (_db.update(
         _db.inspirations,
       )..where((t) => t.id.equals(inspirationId))).write(
         InspirationsCompanion(
           content: Value(content),
           updatedAt: Value(DateTime.now()),
+          cardOrder: inPool
+              ? Value(await _poolTopOrder())
+              : const Value.absent(),
         ),
       );
+    });
+  }
 }

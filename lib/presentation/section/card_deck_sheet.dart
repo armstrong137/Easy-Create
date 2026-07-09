@@ -22,14 +22,30 @@ Future<void> showCardDeckSheet(BuildContext context, int sectionId) {
   );
 }
 
-class _CardDeckSheet extends ConsumerWidget {
+class _CardDeckSheet extends ConsumerStatefulWidget {
   const _CardDeckSheet({required this.sectionId});
 
   final int sectionId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final cards = ref.watch(sectionCardsProvider(sectionId)).value ?? const [];
+  ConsumerState<_CardDeckSheet> createState() => _CardDeckSheetState();
+}
+
+class _CardDeckSheetState extends ConsumerState<_CardDeckSheet> {
+  /// 重排后的乐观顺序：数据库流回填前先按用户拖完的样子显示，
+  /// 避免松手瞬间闪回旧序再跳新序（用户反馈"不连贯"）
+  List<Inspiration>? _optimistic;
+
+  @override
+  Widget build(BuildContext context) {
+    // 数据库流一有新值（重排落库后的回填）就丢掉乐观顺序
+    ref.listen(sectionCardsProvider(widget.sectionId), (_, _) {
+      if (_optimistic != null) setState(() => _optimistic = null);
+    });
+    final cards =
+        _optimistic ??
+        ref.watch(sectionCardsProvider(widget.sectionId)).value ??
+        const [];
 
     return SizedBox(
       height: MediaQuery.sizeOf(context).height * 0.72,
@@ -82,12 +98,15 @@ class _CardDeckSheet extends ConsumerWidget {
               buildDefaultDragHandles: false,
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
               itemCount: cards.length,
-              // onReorderItem：新回调已自动修正 newIndex（不含自身占位）
-              onReorderItem: (oldIndex, newIndex) async {
-                final ids = cards.map((c) => c.id).toList();
-                final moved = ids.removeAt(oldIndex);
-                ids.insert(newIndex, moved);
-                await ref.read(inspirationRepositoryProvider).reorderCards(ids);
+              // onReorderItem：新回调已自动修正 newIndex（不含自身占位）。
+              // 先乐观更新本地顺序（拖完什么样就是什么样），再落库
+              onReorderItem: (oldIndex, newIndex) {
+                final list = [...cards];
+                list.insert(newIndex, list.removeAt(oldIndex));
+                setState(() => _optimistic = list);
+                ref
+                    .read(inspirationRepositoryProvider)
+                    .reorderCards(list.map((c) => c.id).toList());
               },
               itemBuilder: (context, i) => _DeckTile(
                 key: ValueKey(cards[i].id),

@@ -213,7 +213,7 @@ void main() {
       expect(cards.first.content, '灵感B', reason: '最后拖入的排第一 = 当前展示');
     });
 
-    test('规则三：从小节删卡放回魔毯，排到魔毯末尾（核心用例）', () async {
+    test('规则三：从小节删卡放回魔毯，排到魔毯顶部（核心用例）', () async {
       final sectionId = await createSectionChain();
       final t = DateTime(2026, 7, 1);
       await inspirationRepo.addInspiration('最早', createdAt: t);
@@ -226,17 +226,17 @@ void main() {
         createdAt: t.add(const Duration(minutes: 2)),
       );
 
-      // “中间”拖入小节再放回：魔毯支持手动排序后不再"回创建位"，
-      // 统一排到末尾（位置最可预期）
+      // “中间”拖入小节再放回：刚发生改动的放第一（用户定稿），
+      // 方便用户马上处理刚放回的灵感
       await inspirationRepo.assignToSection(mid.id, sectionId);
       await inspirationRepo.removeFromSection(mid.id);
 
       final pool = await inspirationRepo.watchPool().first;
       expect(pool.map((e) => e.content).toList(), [
+        '中间',
         '最早',
         '最新',
-        '中间',
-      ], reason: '放回的灵感排到魔毯末尾');
+      ], reason: '放回的灵感排到魔毯顶部');
     });
 
     test('规则四：在魔毯删除是真删，不可恢复', () async {
@@ -274,21 +274,35 @@ void main() {
       );
     });
 
-    test('编辑灵感正文更新 updated_at，但 created_at 与魔毯排序不变', () async {
+    test('编辑魔毯中的灵感 → 跳到池顶部（用户定稿：刚改动的放第一）', () async {
       final t = DateTime(2026, 7, 1);
-      final old = await inspirationRepo.addInspiration('旧内容', createdAt: t);
-      await inspirationRepo.addInspiration(
-        '较新',
+      await inspirationRepo.addInspiration('第一条', createdAt: t);
+      final second = await inspirationRepo.addInspiration(
+        '第二条',
         createdAt: t.add(const Duration(minutes: 1)),
       );
 
-      await inspirationRepo.updateContent(old.id, '改过的内容');
+      // 编辑排在下面的"第二条" → 应跳到魔毯顶部，方便马上处理
+      await inspirationRepo.updateContent(second.id, '改过的第二条');
 
       final pool = await inspirationRepo.watchPool().first;
-      // 排序依据是池序（创建先后）：改内容不改变位置
-      expect(pool.map((e) => e.content).toList(), ['改过的内容', '较新']);
+      expect(pool.map((e) => e.content).toList(), ['改过的第二条', '第一条']);
       final edited = pool[0];
       expect(edited.updatedAt.isAfter(edited.createdAt), isTrue);
+    });
+
+    test('编辑挂在小节里的灵感：只改内容，不动卡堆顺序', () async {
+      final sectionId = await createSectionChain();
+      final a = await inspirationRepo.addInspiration('卡A');
+      final b = await inspirationRepo.addInspiration('卡B');
+      await inspirationRepo.assignToSection(a.id, sectionId);
+      await inspirationRepo.assignToSection(b.id, sectionId);
+
+      // 编辑卡堆第二张（A）：不应改变卡堆顺序
+      await inspirationRepo.updateContent(a.id, '改过的卡A');
+
+      final cards = await inspirationRepo.watchSectionCards(sectionId).first;
+      expect(cards.map((e) => e.content).toList(), ['卡B', '改过的卡A']);
     });
   });
 }

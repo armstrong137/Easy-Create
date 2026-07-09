@@ -255,6 +255,10 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
   /// 正在拖动重排：期间不做吸附补正（重排自带自动滚动）
   bool _reordering = false;
 
+  /// 重排后的乐观顺序：数据库流回填前先按用户拖完的样子显示，
+  /// 避免松手瞬间闪回旧序再跳新序（用户反馈"不连贯"）
+  List<Inspiration>? _optimisticPool;
+
   /// 展开帧动画：value 0→1 映射素材帧 1→9
   /// （必须在 initState 立即创建：late 惰性到 dispose 才初始化会在
   /// 已卸载元素上建 Ticker 而崩溃）
@@ -370,7 +374,14 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
 
   @override
   Widget build(BuildContext context) {
-    final pool = ref.watch(inspirationPoolProvider).value ?? const [];
+    // 数据库流一有新值（重排落库后的回填）就丢掉乐观顺序
+    ref.listen(inspirationPoolProvider, (_, _) {
+      if (_optimisticPool != null) setState(() => _optimisticPool = null);
+    });
+    final pool =
+        _optimisticPool ??
+        ref.watch(inspirationPoolProvider).value ??
+        const [];
     final screen = MediaQuery.sizeOf(context);
     final width = screen.width * 0.86;
     // 列表可用空间 = 屏高 - 顶部安全区与留白 - 横幅 - 标题 - 底部留白：
@@ -455,7 +466,8 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
       ignoring: _dragging,
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 150),
-        opacity: _dragging ? 0.22 : 1,
+        // 拖拽时完全隐藏面板：半透明残卡会像"残影"干扰落点（用户反馈）
+        opacity: _dragging ? 0 : 1,
         child: _panelBody(pool, width, height),
       ),
     );
@@ -579,13 +591,17 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
                             _reordering = false;
                             _scheduleSnapToSlot();
                           },
-                          // onReorderItem 已自动修正移除位后的 newIndex
+                          // onReorderItem 已自动修正移除位后的 newIndex。
+                          // 先乐观更新本地顺序（拖完什么样就是什么样），再落库
                           onReorderItem: (oldIndex, newIndex) {
-                            final ids = pool.map((e) => e.id).toList();
-                            ids.insert(newIndex, ids.removeAt(oldIndex));
+                            final list = [...pool];
+                            list.insert(newIndex, list.removeAt(oldIndex));
+                            setState(() => _optimisticPool = list);
                             ref
                                 .read(inspirationRepositoryProvider)
-                                .reorderCards(ids);
+                                .reorderCards(
+                                  list.map((e) => e.id).toList(),
+                                );
                           },
                           itemCount: pool.length,
                           itemBuilder: (context, i) => SizedBox(
