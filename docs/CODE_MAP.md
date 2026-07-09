@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-09 16:02:08　对应提交：9d295b8 之后的工作区状态
+> 生成时间：2026-07-09 16:25:31　对应提交：397e35d 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,27 +12,27 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     89
-  Nodes:     3,105
-  Edges:     15,023
-  DB Size:   14.25 MB
+  Files:     92
+  Nodes:     3,781
+  Edges:     18,323
+  DB Size:   18.92 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,468
-  function        668
-  class           437
-  import          262
+  method          1,469
+  function        1,333
+  class           438
+  import          268
   constant        161
-  file            81
+  file            84
   variable        14
   type_alias      12
   namespace       2
 
 Files by Language:
-  dart            52
-  javascript      9
+  dart            54
+  javascript      10
   kotlin          8
   xml             6
   properties      4
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (89 files):
+Project Structure (92 files):
 
 |-- .agents
 |   `-- skills
@@ -154,7 +154,9 @@ Project Structure (89 files):
 |   |-- presentation
 |   |   |-- home
 |   |   |   |-- planet_scene
-|   |   |   |   |-- planet_scene.dart (dart, 14 symbols)
+|   |   |   |   |-- planet_scene_io.dart (dart, 12 symbols)
+|   |   |   |   |-- planet_scene_web.dart (dart, 6 symbols)
+|   |   |   |   |-- planet_scene.dart (dart, 6 symbols)
 |   |   |   |   `-- scene_server.dart (dart, 11 symbols)
 |   |   |   |-- home_page.dart (dart, 35 symbols)
 |   |   |   |-- orbiting_inspirations.dart (dart, 14 symbols)
@@ -204,6 +206,8 @@ Project Structure (89 files):
 |   |-- planet_texture_gen.dart (dart, 18 symbols)
 |   |-- probe_alpha.dart (dart, 4 symbols)
 |   `-- stage_convert.dart (dart, 4 symbols)
+|-- web
+|   `-- drift_worker.js (javascript, 666 symbols)
 |-- analysis_options.yaml (yaml, 0 symbols)
 `-- pubspec.yaml (yaml, 0 symbols)
 

@@ -41,6 +41,8 @@ dependencies:
   shared_preferences: ^2.5.5
   # 3D 星球场景层（阶段八 P2-1，承载离线打包的 three.js 场景）
   webview_flutter: ^4.9.0
+  # Web 端星球场景 iframe 互操作（planet_scene_web.dart）
+  web: ^1.1.0
 
 dev_dependencies:
   flutter_test:

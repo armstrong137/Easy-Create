@@ -25,6 +25,9 @@
 const params = new URLSearchParams(location.search);
 const planetName = params.get('planet') || 'earth';
 let spinRevPerSec = parseFloat(params.get('spin') || '0.008');
+// 五颗球 albedo 的基路径：移动端=回环服务路由 /app-textures/；
+// Web 端（iframe 同源静态资产）=相对路径 ../../textures/
+const appTex = params.get('apptex') || '/app-textures/';
 
 // ---------- 渲染器：透明底叠在 Flutter 星空之上 ----------
 const renderer = new THREE.WebGLRenderer({
@@ -65,10 +68,10 @@ const PLANETS = {
     night: 'textures/2k_earth_nightmap.jpg',
     atmosColor: [0.32, 0.54, 1.0], atmosStrength: 1.5,
   },
-  mars:    { map: 'app-textures/mars.jpg',    atmosColor: [1.0, 0.45, 0.25], atmosStrength: 0.7 },
-  jupiter: { map: 'app-textures/jupiter.jpg', atmosColor: [0.95, 0.80, 0.58], atmosStrength: 0.6 },
-  venus:   { map: 'app-textures/venus.jpg',   atmosColor: [1.0, 0.85, 0.55], atmosStrength: 1.1 },
-  saturn:  { map: 'app-textures/saturn.jpg',  atmosColor: [0.95, 0.85, 0.62], atmosStrength: 0.6, ring: true },
+  mars:    { map: appTex + 'mars.jpg',    atmosColor: [1.0, 0.45, 0.25], atmosStrength: 0.7 },
+  jupiter: { map: appTex + 'jupiter.jpg', atmosColor: [0.95, 0.80, 0.58], atmosStrength: 0.6 },
+  venus:   { map: appTex + 'venus.jpg',   atmosColor: [1.0, 0.85, 0.55], atmosStrength: 1.1 },
+  saturn:  { map: appTex + 'saturn.jpg',  atmosColor: [0.95, 0.85, 0.62], atmosStrength: 0.6, ring: true },
 };
 const cfg = PLANETS[planetName] || PLANETS.earth;
 
