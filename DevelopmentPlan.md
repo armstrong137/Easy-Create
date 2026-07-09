@@ -143,7 +143,9 @@
 
 - 🔄 P0 锁定方向：清单立为主清单 ✅；DevelopmentPlan/AGENTS.md/claude.md 已同步 ✅；
   验收目录 docs/ui_review/{baseline,targets,rounds,videos} 已建 ✅
-- ✅ P1 3D 技术验证（2026-07-09 完成，待用户过真机门禁）：
+- ✅ P1 3D 技术验证（2026-07-09 完成，**真机门禁已过**：用户 iPhone Safari
+  实测静置/拖拽/双指缩放三场景全 60fps 满帧，WebKit 与 WKWebView 同引擎等价；
+  顺带修复竖屏初始取景裁切——镜头距离按视口宽高比自适应）：
   - Demo `experiments/planet_3d_demo/`：真 3D 球网格 + 4K 地表 + 法线 + 海洋高光 +
     云壳 + 大气 + 夜光 + 星空粒子 + OrbitControls 手势 + Flutter 叠层双向桥，
     模拟器实拍全项通过；录屏与截图在 `docs/ui_review/rounds/2026-07-09/`
