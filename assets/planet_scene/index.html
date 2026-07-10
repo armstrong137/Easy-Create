@@ -259,12 +259,72 @@ const lodParam = params.get('lod');
 const useMid = lodParam ? lodParam === 'mid' : isMobileLike;
 const lodSrc = useMid ? cfg.mapMid : cfg.mapHi;
 
-// LOD 迟滞切换：放大过 lodZoomIn 换高清档，缩回 lodZoomOut 以下换回常态档并
-// 释放高清纹理（手机显存友好；常态档带 mipmap，缩小观看不闪砂）。
-// 迟滞区间避免在阈值附近来回抖动导致反复加载。
-const lodZoomIn = 1.35, lodZoomOut = 1.15;
+// LOD 迟滞切换：缩放刚开始先预热，真正放大过 lodZoomIn 才换高清档；
+// 缩回 lodZoomOut 以下不立刻收尾，而是延迟降档/释放，避免手势中来回重配画布。
+const lodPrewarmZoom = 1.06, lodZoomIn = 1.35, lodZoomOut = 1.15;
+const lodSettleDelayMs = 700, lodDisposeDelayMs = 8000;
 const baseTex = planetMat.map; // 常态贴图常驻，永不释放
-let hiTex = null, hiLoading = false;
+let hiTex = null, hiLoading = false, hiPrewarmRequested = false;
+let lodSettleTimer = 0, lodDisposeTimer = 0;
+
+function runWhenIdle(task) {
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(task, { timeout: 1800 });
+  } else {
+    setTimeout(task, 350);
+  }
+}
+
+function cancelLodTimers() {
+  if (lodSettleTimer) {
+    clearTimeout(lodSettleTimer);
+    lodSettleTimer = 0;
+  }
+  if (lodDisposeTimer) {
+    clearTimeout(lodDisposeTimer);
+    lodDisposeTimer = 0;
+  }
+}
+
+// createImageBitmap 只把解码挪走；首次 GPU 上传仍会卡一帧。
+// 用 1x1 离屏 render target 提前采样一次，让上传发生在空闲帧。
+function warmTextureOnGpu(tex) {
+  if (!tex || tex.userData.gpuWarm) return;
+  const warmScene = new THREE.Scene();
+  const warmCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 2);
+  warmCamera.position.z = 1;
+  const warmGeo = new THREE.PlaneGeometry(2, 2);
+  const warmMat = new THREE.MeshBasicMaterial({ map: tex });
+  warmScene.add(new THREE.Mesh(warmGeo, warmMat));
+  const oldTarget = renderer.getRenderTarget();
+  const target = new THREE.WebGLRenderTarget(1, 1, {
+    depthBuffer: false,
+    stencilBuffer: false,
+  });
+  renderer.setRenderTarget(target);
+  renderer.render(warmScene, warmCamera);
+  renderer.setRenderTarget(oldTarget);
+  target.dispose();
+  warmGeo.dispose();
+  warmMat.dispose();
+  tex.userData.gpuWarm = true;
+}
+
+function prewarmPixelRatioBoost() {
+  if (prZoomed === prIdle) return;
+  runWhenIdle(function () {
+    const before = prCurrent;
+    setPixelRatioBoost(true);
+    renderer.render(scene, camera);
+    if (zoomTarget < lodZoomIn && before !== prZoomed) setPixelRatioBoost(false);
+  });
+}
+
+function prewarmHiTexture() {
+  if (hiPrewarmRequested || hiTex || !lodSrc || lodSrc === cfg.map) return;
+  hiPrewarmRequested = true;
+  runWhenIdle(function () { ensureHiTexture(); });
+}
 
 // 解码放到主线程之外（createImageBitmap），避免大图解码时整页卡住
 async function ensureHiTexture() {
@@ -279,6 +339,7 @@ async function ensureHiTexture() {
     tex.minFilter = THREE.LinearFilter;
     tex.needsUpdate = true;
     hiTex = tex;
+    warmTextureOnGpu(tex);
     applyLod(); // 加载完成时可能已缩回，交由 applyLod 决定用不用
   } catch (e) {
     // 失败静默留用常态贴图，不影响交互
@@ -297,7 +358,12 @@ function setPixelRatioBoost(on) {
 }
 
 function applyLod() {
+  if (zoomTarget >= lodPrewarmZoom) {
+    prewarmHiTexture();
+    prewarmPixelRatioBoost();
+  }
   if (zoomTarget >= lodZoomIn) {
+    cancelLodTimers();
     setPixelRatioBoost(true);
     if (hiTex) {
       if (planetMat.map !== hiTex) {
@@ -308,16 +374,33 @@ function applyLod() {
       ensureHiTexture();
     }
   } else if (zoomTarget <= lodZoomOut) {
+    scheduleLodSettleDown();
+  }
+}
+
+function scheduleLodSettleDown() {
+  if (lodSettleTimer) clearTimeout(lodSettleTimer);
+  lodSettleTimer = setTimeout(function () {
+    lodSettleTimer = 0;
+    if (zoomTarget > lodZoomOut) return;
     setPixelRatioBoost(false);
     if (planetMat.map !== baseTex) {
       planetMat.map = baseTex;
       planetMat.needsUpdate = true;
     }
-    if (hiTex) {
-      hiTex.dispose(); // 缩回即释放高清档显存（重新放大会再取，走 HTTP 缓存）
-      hiTex = null;
-    }
-  }
+    scheduleHiTextureDispose();
+  }, lodSettleDelayMs);
+}
+
+function scheduleHiTextureDispose() {
+  if (lodDisposeTimer) clearTimeout(lodDisposeTimer);
+  lodDisposeTimer = setTimeout(function () {
+    lodDisposeTimer = 0;
+    if (zoomTarget > lodZoomOut || !hiTex || planetMat.map === hiTex) return;
+    hiTex.dispose(); // 延迟释放；短时间再次放大直接复用，避免重新 fetch/upload
+    hiTex = null;
+    hiPrewarmRequested = false;
+  }, lodDisposeDelayMs);
 }
 
 window.setZoom = function (z) {

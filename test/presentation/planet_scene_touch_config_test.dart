@@ -180,6 +180,39 @@ void main() {
     );
   });
 
+  test('LOD 调度避开手势热路径：空闲预热、GPU 预热、缩回延迟收尾', () {
+    expect(
+      sceneHtml,
+      contains('requestIdleCallback'),
+      reason: '高清纹理解码/预热应尽量安排到空闲时间，而不是捏合过阈值那一刻',
+    );
+    expect(
+      sceneHtml,
+      contains('prewarmHiTexture'),
+      reason: '场景稳定后要主动预热放大档，避免第一次放大才开始搬大图',
+    );
+    expect(
+      sceneHtml,
+      contains('warmTextureOnGpu'),
+      reason: 'createImageBitmap 只解决解码，首次 GPU 上传也要提前做掉',
+    );
+    expect(
+      sceneHtml,
+      contains('lodSettleDelayMs'),
+      reason: '缩回时不要立刻降像素比/换贴图，避免手势中来回重配画布',
+    );
+    expect(
+      sceneHtml,
+      contains('lodDisposeDelayMs'),
+      reason: '高清纹理释放要更晚，短时间再次放大不能重新 fetch/upload',
+    );
+    expect(
+      sceneHtml,
+      contains('cancelLodTimers'),
+      reason: '重新放大时必须取消延迟收尾，否则会把正在看的高清档释放掉',
+    );
+  });
+
   test('五颗星球都有高清 LOD 与源图（CC-BY solarsystemscope）', () {
     for (final p in ['mars', 'venus', 'jupiter', 'saturn']) {
       expect(sceneHtml, contains('textures/${p}_2048.jpg'));
