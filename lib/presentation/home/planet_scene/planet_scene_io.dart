@@ -21,6 +21,7 @@ class PlanetScene extends ConsumerStatefulWidget {
     this.zoom = 1,
     this.yaw = 0,
     this.pitch = 0,
+    this.autoPrewarm = true,
   });
 
   /// 行星纹理名（earth/mars/jupiter/venus/saturn）
@@ -41,6 +42,11 @@ class PlanetScene extends ConsumerStatefulWidget {
   /// 拖动转星球的累计偏航/俯仰角（弧度，地球仪手感）
   final double yaw;
   final double pitch;
+
+  /// 是否允许场景在首屏稳定后主动预热高清 LOD。
+  ///
+  /// 首页会预构建相邻页来减少切星球卡顿；相邻页只暖基础场景，避免多颗星球同时抢高清显存。
+  final bool autoPrewarm;
 
   @override
   ConsumerState<PlanetScene> createState() => _PlanetSceneState();
@@ -82,7 +88,8 @@ class _PlanetSceneState extends ConsumerState<PlanetScene> {
           '?planet=${widget.planet}&spin=${widget.spin}'
           // lod=mid：移动端放大档封顶 4096。8192 单张纹理占显存约 134MB，
           // iPhone Safari/WKWebView 会直接卡死
-          '&stage=${widget.stageScale}&lod=mid',
+          '&stage=${widget.stageScale}&lod=mid'
+          '&autoPrewarm=${widget.autoPrewarm ? 1 : 0}',
         ),
       );
     if (!mounted) return;
@@ -103,6 +110,9 @@ class _PlanetSceneState extends ConsumerState<PlanetScene> {
     // 拖动 → 转星球（场景侧同样带阻尼）
     if (old.yaw != widget.yaw || old.pitch != widget.pitch) {
       _web?.runJavaScript('setRotation(${widget.yaw}, ${widget.pitch})');
+    }
+    if (old.autoPrewarm != widget.autoPrewarm) {
+      _web?.runJavaScript('setAutoPrewarm(${widget.autoPrewarm})');
     }
   }
 

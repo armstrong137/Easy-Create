@@ -213,6 +213,39 @@ void main() {
     );
   });
 
+  test('当前星球进入页面后自动空闲预热高清 LOD，第一次捏合前就把重活提前做掉', () {
+    expect(
+      sceneHtml,
+      contains('initialPrewarmDelayMs'),
+      reason: '当前页稳定 1~2 秒后要主动预热，而不是等用户第一次捏合才加载高清贴图',
+    );
+    expect(
+      sceneHtml,
+      contains('scheduleInitialScenePrewarm'),
+      reason: '预热入口应由场景加载后主动触发，覆盖第一次放大卡顿',
+    );
+    expect(
+      sceneHtml,
+      contains('setTimeout(scheduleInitialScenePrewarm'),
+      reason: '预热需要延迟到首屏渲染之后，避免和页面初始加载抢主线程',
+    );
+  });
+
+  test('切换星球前预构建相邻页，已访问星球页保活，减少第一次切页冷启动卡顿', () {
+    expect(
+      homePage,
+      contains('allowImplicitScrolling: true'),
+      reason: 'PageView 应提前构建相邻页，让左右星球的 WebView/iframe 先启动加载',
+    );
+    expect(
+      homePage,
+      contains('AutomaticKeepAliveClientMixin'),
+      reason: '已访问星球页需要保活，避免来回切换时重新创建 3D 场景',
+    );
+    expect(homePage, contains('bool get wantKeepAlive => true'));
+    expect(homePage, contains('super.build(context)'));
+  });
+
   test('LOD 高清贴图与常态贴图保持同一 UV 朝向，缩放换档不能让大陆跳变', () {
     expect(
       sceneHtml,

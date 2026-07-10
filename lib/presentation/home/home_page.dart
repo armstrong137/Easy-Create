@@ -150,13 +150,18 @@ class _HomePageState extends ConsumerState<HomePage> {
               builder: (context, locked, _) => PageView.builder(
                 controller: _pageController,
                 itemCount: novels.length,
+                allowImplicitScrolling: true,
                 // 捏合放大星球期间禁翻页（否则双指会被识别成滑动换书）
                 physics: locked ? const NeverScrollableScrollPhysics() : null,
                 onPageChanged: (i) => setState(() => _currentPage = i),
                 // ClipRect：放大的星球画布只在本页内铺开，
                 // 不会溢出到相邻星球页造成"两颗星球重影"
                 itemBuilder: (context, i) => ClipRect(
-                  child: _PlanetPage(novel: novels[i], pool: pool),
+                  child: _PlanetPage(
+                    novel: novels[i],
+                    pool: pool,
+                    active: i == _currentPage,
+                  ),
                 ),
               ),
             ),
@@ -233,17 +238,22 @@ class _HomePageState extends ConsumerState<HomePage> {
 
 /// 单颗星球页：星球 + 环绕灵感 + 书名，点星球进大纲页
 class _PlanetPage extends ConsumerStatefulWidget {
-  const _PlanetPage({required this.novel, required this.pool});
+  const _PlanetPage({
+    required this.novel,
+    required this.pool,
+    required this.active,
+  });
 
   final Novel novel;
   final List<Inspiration> pool;
+  final bool active;
 
   @override
   ConsumerState<_PlanetPage> createState() => _PlanetPageState();
 }
 
 class _PlanetPageState extends ConsumerState<_PlanetPage>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   /// 当前缩放倍率（下发到 3D 场景做镜头推进，不是位图放大）
   double _zoom = 1;
 
@@ -269,6 +279,9 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
   final _planetKey = GlobalKey();
 
   bool get _zoomed => _zoom > kPlanetTitleHideZoom;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -389,6 +402,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final novel = widget.novel;
     final count = ref.watch(creativeCountProvider(novel.id)).value ?? 0;
     final use3D = ref.watch(advanced3DProvider);
@@ -423,6 +437,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
               zoom: _zoom,
               yaw: _spin.yaw,
               pitch: _spin.pitch,
+              autoPrewarm: widget.active,
             ),
           ),
         );

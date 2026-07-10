@@ -28,6 +28,7 @@ const params = new URLSearchParams(location.search);
 const planetName = params.get('planet') || 'earth';
 let spinRevPerSec = parseFloat(params.get('spin') || '0.008');
 const stageScale = Math.max(1, parseFloat(params.get('stage') || '1'));
+let autoPrewarmEnabled = params.get('autoPrewarm') !== '0';
 
 // ---------- 渲染器：透明底叠在 Flutter 星空之上 ----------
 const renderer = new THREE.WebGLRenderer({
@@ -263,9 +264,10 @@ const lodSrc = useMid ? cfg.mapMid : cfg.mapHi;
 // 缩回 lodZoomOut 以下不立刻收尾，而是延迟降档/释放，避免手势中来回重配画布。
 const lodPrewarmZoom = 1.06, lodZoomIn = 1.35, lodZoomOut = 1.15;
 const lodSettleDelayMs = 700, lodDisposeDelayMs = 8000;
+const initialPrewarmDelayMs = 1200;
 const baseTex = planetMat.map; // 常态贴图常驻，永不释放
 let hiTex = null, hiLoading = false, hiPrewarmRequested = false;
-let lodSettleTimer = 0, lodDisposeTimer = 0;
+let lodSettleTimer = 0, lodDisposeTimer = 0, initialPrewarmTimer = 0;
 
 function runWhenIdle(task) {
   if ('requestIdleCallback' in window) {
@@ -324,6 +326,16 @@ function prewarmHiTexture() {
   if (hiPrewarmRequested || hiTex || !lodSrc || lodSrc === cfg.map) return;
   hiPrewarmRequested = true;
   runWhenIdle(function () { ensureHiTexture(); });
+}
+
+function scheduleInitialScenePrewarm() {
+  if (!autoPrewarmEnabled || initialPrewarmTimer || hiTex || hiLoading) return;
+  initialPrewarmTimer = setTimeout(function () {
+    initialPrewarmTimer = 0;
+    if (!autoPrewarmEnabled) return;
+    prewarmHiTexture();
+    prewarmPixelRatioBoost();
+  }, initialPrewarmDelayMs);
 }
 
 // 解码放到主线程之外（createImageBitmap），避免大图解码时整页卡住
@@ -413,6 +425,11 @@ window.setZoom = function (z) {
   applyLod();
 };
 
+window.setAutoPrewarm = function (on) {
+  autoPrewarmEnabled = !!on;
+  if (autoPrewarmEnabled) scheduleInitialScenePrewarm();
+};
+
 // 拖动转星球（地球仪手感）：Flutter 下发累计的偏航/俯仰角（弧度，绝对值）。
 // 支点承载用户转动，星球/云层各自的自转照常叠加在其之上。
 let yawTarget = 0, pitchTarget = 0;
@@ -432,6 +449,7 @@ window.addEventListener('message', function (e) {
   if (!m || typeof m !== 'object') return;
   if (typeof m.zoom === 'number') window.setZoom(m.zoom);
   if (typeof m.spin === 'number') window.setSpin(m.spin);
+  if (typeof m.autoPrewarm === 'number') window.setAutoPrewarm(m.autoPrewarm > 0);
   if (typeof m.yaw === 'number' && typeof m.pitch === 'number') {
     window.setRotation(m.yaw, m.pitch);
   }
@@ -474,6 +492,7 @@ function animate() {
 }
 updateFraming();
 animate();
+setTimeout(scheduleInitialScenePrewarm, 0);
 
 window.addEventListener('resize', updateFraming);
 

@@ -21,6 +21,7 @@ class PlanetScene extends StatefulWidget {
     this.zoom = 1,
     this.yaw = 0,
     this.pitch = 0,
+    this.autoPrewarm = true,
   });
 
   /// 行星纹理名（earth/mars/jupiter/venus/saturn）
@@ -41,6 +42,9 @@ class PlanetScene extends StatefulWidget {
   /// 拖动转星球的累计偏航/俯仰角（弧度，地球仪手感）
   final double yaw;
   final double pitch;
+
+  /// 是否允许当前场景在加载后主动预热高清 LOD；相邻预构建页会关闭它以节省显存。
+  final bool autoPrewarm;
 
   @override
   State<PlanetScene> createState() => _PlanetSceneState();
@@ -64,6 +68,7 @@ class _PlanetSceneState extends State<PlanetScene> {
             'assets/assets/planet_scene/index.html'
             '?planet=${widget.planet}&spin=${widget.spin}'
             '&stage=${widget.stageScale}'
+            '&autoPrewarm=${widget.autoPrewarm ? 1 : 0}'
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%'
@@ -82,6 +87,9 @@ class _PlanetSceneState extends State<PlanetScene> {
     }
     if (old.yaw != widget.yaw || old.pitch != widget.pitch) {
       _post({'yaw': widget.yaw, 'pitch': widget.pitch});
+    }
+    if (old.autoPrewarm != widget.autoPrewarm) {
+      _post({'autoPrewarm': widget.autoPrewarm ? 1 : 0});
     }
   }
 
