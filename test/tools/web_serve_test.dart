@@ -28,6 +28,17 @@ void main() {
     expect(src, contains("'Cache-Control', 'no-store'"));
   });
 
+  test('web/index.html 必须让双指手势落到 Flutter，而不是被浏览器吃掉', () {
+    final html = File('web/index.html').readAsStringSync();
+    // 缺 viewport meta 时手机浏览器把双指当"页面缩放"，星球捏合永远收不到手势
+    expect(html, contains('name="viewport"'));
+    expect(html, contains('width=device-width'));
+    // iOS Safari 无视 user-scalable=no，必须显式拦截它的双指手势事件
+    expect(html, contains('gesturestart'));
+    expect(html, contains('e.touches.length > 1'));
+    expect(html, contains('touch-action: none'));
+  });
+
   test('ps1 会自测局域网地址并打印当前 IP（IP 随所连 WiFi 变化）', () {
     final src = servePs1.readAsStringSync();
     expect(src, contains('http://\${ip}:\$Port'));

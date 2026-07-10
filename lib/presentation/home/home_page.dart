@@ -49,6 +49,10 @@ const kPlanetSceneMaxZoom = kPlanetSceneStageScale;
 /// 放大超过此倍率即隐藏书名（避免压在放大的星球上）
 const kPlanetTitleHideZoom = 1.06;
 
+/// 捏合增益：手指张开比例的幂次。整屏最多张开约 1.6 倍，
+/// 直接 1:1 映射够不到 3 倍上限、捏合"使不上劲"
+const kPinchGain = 2.6;
+
 /// 星球放大/捏合期间锁住 PageView：双指缩放不会误翻页
 /// （沿用魔毯 carpetDragging 的全局 ValueNotifier 惯例）
 final planetZoomLock = ValueNotifier<bool>(false);
@@ -249,6 +253,11 @@ class _PlanetPageState extends ConsumerState<_PlanetPage> {
     planetZoomLock.value = _pointers.length >= 2 || _zoom > 1.001;
   }
 
+  void _resetZoom() {
+    setState(() => _zoom = 1);
+    _syncPageLock();
+  }
+
   void _onPointerDown(PointerDownEvent e) {
     _pointers[e.pointer] = e.position;
     if (_pointers.length == 2) {
@@ -265,16 +274,22 @@ class _PlanetPageState extends ConsumerState<_PlanetPage> {
     if (_pointers.length < 2 || _pinchStartDist <= 0) return;
     final p = _pointers.values.toList();
     final dist = (p[0] - p[1]).distance;
-    final next = (_pinchStartZoom * dist / _pinchStartDist).clamp(
-      1.0,
-      kPlanetSceneMaxZoom,
-    );
-    if ((next - _zoom).abs() > 0.001) setState(() => _zoom = next);
+    // 手指张开比例带增益：整屏只能张开约 1.6 倍，直接映射够不到 3 倍上限，
+    // 捏合会"使不上劲"。取幂放大手感（1.6^2.6 ≈ 3.4，够到顶且不突兀）
+    final raw = dist / _pinchStartDist;
+    final gained = math.pow(raw, kPinchGain).toDouble();
+    final next = (_pinchStartZoom * gained).clamp(1.0, kPlanetSceneMaxZoom);
+    if ((next - _zoom).abs() > 0.002) setState(() => _zoom = next);
   }
 
   void _onPointerUp(PointerEvent e) {
     _pointers.remove(e.pointer);
     if (_pointers.length < 2) _pinchStartDist = 0;
+    // 松手后接近原始大小就吸附回 1，避免停在 1.02 这种尴尬位（书名一直藏着）
+    if (_pointers.isEmpty && _zoom > 1 && _zoom < kPlanetTitleHideZoom) {
+      _resetZoom();
+      return;
+    }
     _syncPageLock();
   }
 
@@ -328,16 +343,19 @@ class _PlanetPageState extends ConsumerState<_PlanetPage> {
             );
     }
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Listener(
-          // 双指捏合 → 镜头推进（Listener 不进手势竞技场，不夺走点击/长按）
-          onPointerDown: _onPointerDown,
-          onPointerMove: _onPointerMove,
-          onPointerUp: _onPointerUp,
-          onPointerCancel: _onPointerUp,
-          child: GestureDetector(
+    // 捏合监听盖住整页而非只盖星球：
+    // 星球是平台视图（WebView/iframe），指针能否穿透它取决于宿主实现；
+    // 提到整页后屏幕任意处双指都能缩放，也更好用
+    return Listener(
+      onPointerDown: _onPointerDown,
+      onPointerMove: _onPointerMove,
+      onPointerUp: _onPointerUp,
+      onPointerCancel: _onPointerUp,
+      behavior: HitTestBehavior.translucent,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          GestureDetector(
             key: Key('星球_${novel.id}'),
             behavior: HitTestBehavior.opaque,
             // 点星球 → 进入该小说的大纲页（铅笔树）；放大态下先还原
@@ -345,8 +363,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage> {
                 ? null
                 : () {
                     if (_zoomed) {
-                      setState(() => _zoom = 1);
-                      _syncPageLock();
+                      _resetZoom();
                       return;
                     }
                     Navigator.of(context).push(
@@ -370,29 +387,29 @@ class _PlanetPageState extends ConsumerState<_PlanetPage> {
                     child: planetBody(),
                   ),
           ),
-        ),
-        const SizedBox(height: 28),
-        // 书名（楷体白字）：单击可重命名；放大星球时淡出让位
-        AnimatedOpacity(
-          duration: const Duration(milliseconds: 200),
-          opacity: _zoomed ? 0 : 1,
-          child: IgnorePointer(
-            ignoring: _zoomed,
-            child: GestureDetector(
-              key: Key('书名_${novel.id}'),
-              onTap: () => _renameNovel(context, ref),
-              child: Text(
-                novel.title,
-                style: const TextStyle(
-                  fontFamily: 'LXGWWenKai',
-                  fontSize: 18,
-                  color: Colors.white,
+          const SizedBox(height: 28),
+          // 书名（楷体白字）：单击可重命名；放大星球时淡出让位
+          AnimatedOpacity(
+            duration: const Duration(milliseconds: 200),
+            opacity: _zoomed ? 0 : 1,
+            child: IgnorePointer(
+              ignoring: _zoomed,
+              child: GestureDetector(
+                key: Key('书名_${novel.id}'),
+                onTap: () => _renameNovel(context, ref),
+                child: Text(
+                  novel.title,
+                  style: const TextStyle(
+                    fontFamily: 'LXGWWenKai',
+                    fontSize: 18,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

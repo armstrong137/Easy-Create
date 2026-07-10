@@ -102,6 +102,45 @@ void main() {
     expect(saved.single.planet, 'earth', reason: '第 1 颗星球分配 earth 纹理');
   });
 
+  testWidgets('双指捏合放大星球：锁住翻页、书名让位；松手回到原大小则恢复', (tester) async {
+    addTearDown(() => planetZoomLock.value = false);
+    await pumpApp(tester, novels: [fakeNovel(1, '被放大的星球')]);
+
+    expect(planetZoomLock.value, isFalse);
+
+    // 两指同时按下屏幕，向两侧张开 → 捏合放大
+    final center = tester.getCenter(find.byKey(const Key('星球_1')));
+    final f1 = await tester.startGesture(center - const Offset(40, 0));
+    final f2 = await tester.startGesture(center + const Offset(40, 0));
+    await tester.pump();
+    expect(planetZoomLock.value, isTrue, reason: '双指按下即锁 PageView，防误翻页');
+
+    await f1.moveBy(const Offset(-70, 0));
+    await f2.moveBy(const Offset(70, 0));
+    await tester.pump();
+
+    // 书名淡出让位（放大态）
+    final title = tester.widget<AnimatedOpacity>(
+      find
+          .ancestor(
+            of: find.byKey(const Key('书名_1')),
+            matching: find.byType(AnimatedOpacity),
+          )
+          .first,
+    );
+    expect(title.opacity, 0, reason: '放大后书名应淡出');
+
+    // 收回到起始间距后松手：回到原大小，解锁翻页、书名归位
+    await f1.moveBy(const Offset(70, 0));
+    await f2.moveBy(const Offset(-70, 0));
+    await tester.pump();
+    await f1.up();
+    await f2.up();
+    await tester.pumpAndSettle();
+
+    expect(planetZoomLock.value, isFalse, reason: '松手复位后应解锁翻页');
+  });
+
   testWidgets('星球命名框：未输入时提示语居中（左对齐显得空落）', (tester) async {
     await pumpApp(tester);
 

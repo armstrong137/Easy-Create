@@ -20,11 +20,22 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
 
+  <!-- 缺了 viewport 的话，手机浏览器会把双指当成"页面缩放"吃掉，
+       星球的捏合缩放永远收不到手势 -->
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="novel_app">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+    /* 手势全部交给 Flutter，浏览器不做滚动/缩放 */
+    body { touch-action: none; overscroll-behavior: none; }
+  </style>
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
@@ -41,6 +52,20 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <script>
+    // iOS Safari 无视 user-scalable=no，必须显式拦截：
+    // gesturestart/gesturechange 是 Safari 的双指缩放；多指 touchmove 同理。
+    // 拦掉之后双指事件才会落到 Flutter，由星球场景做镜头推进。
+    // 单指 touchmove 不拦，魔毯列表等仍可正常滚动。
+    for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
+      document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
+    }
+    document.addEventListener('touchmove', (e) => {
+      if (e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
+    // 双击缩放（iOS 的 300ms 双击放大页面）
+    document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
