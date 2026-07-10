@@ -64,6 +64,28 @@ void main() {
     expect(sceneHtml, isNot(contains('controls.')));
   });
 
+  test('拖动转星球：支点承载转角，云层与土星环同挂支点', () {
+    expect(sceneHtml, contains('window.setRotation'));
+    expect(sceneHtml, contains('pivot.add(planet)'));
+    expect(
+      sceneHtml,
+      contains('pivot.add(clouds)'),
+      reason: '云层不挂支点则拖动时与地表脱节',
+    );
+    expect(
+      sceneHtml,
+      contains('pivot.add(ring)'),
+      reason: '土星环不挂支点则拖动时与赤道脱节',
+    );
+    expect(sceneHtml, contains('maxPitch'), reason: '俯仰须钳制，不许翻过极点');
+    // 两端桥都要下发转角
+    expect(ioWrapper, contains('setRotation('));
+    expect(webWrapper, contains("'yaw'"));
+    // Flutter 侧：拖球面转星球，拖球外留给 PageView 翻页
+    expect(homePage, contains('_rotating'));
+    expect(homePage, contains('kMaxPitch'));
+  });
+
   test('放大态：书名与环绕文字让位、PageView 锁定防误翻页', () {
     expect(homePage, contains('kPlanetTitleHideZoom'));
     expect(homePage, contains('planetZoomLock'));

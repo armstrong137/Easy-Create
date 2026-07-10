@@ -119,10 +119,15 @@ if (cfg.specular) {
 } else {
   matOpts.specular = new THREE.Color(0x000000); // 非地球：无镜面，哑光地表
 }
+// 支点：承载用户拖动产生的转动（自转仍由星球/云层各自绕 y 轴累加）。
+// 太阳光在世界坐标，故转动星球时昼夜分界随之移动，符合"地球仪"直觉。
+const pivot = new THREE.Group();
+scene.add(pivot);
+
 // 128 段：放大后球体轮廓与晨昏线仍平滑（64 段近距可见多边形棱）
 const planetMat = new THREE.MeshPhongMaterial(matOpts);
 const planet = new THREE.Mesh(new THREE.SphereGeometry(1, 128, 128), planetMat);
-scene.add(planet);
+pivot.add(planet);
 
 // ---------- 夜光层（仅地球）：背阳面城市灯光 ----------
 if (cfg.night) {
@@ -159,7 +164,7 @@ if (cfg.clouds) {
       blending: THREE.AdditiveBlending, transparent: true, opacity: 0.55, depthWrite: false,
     })
   );
-  scene.add(clouds);
+  pivot.add(clouds); // 随支点一起被拖动，否则云层与地表脱节
 }
 
 // ---------- 大气临边辉光：颜色/强度按星球配置 ----------
@@ -210,7 +215,7 @@ if (cfg.ring) {
   }));
   ring.rotation.x = Math.PI / 2 - 0.42; // 倾角 ~24°
   ring.rotation.y = 0.18;
-  scene.add(ring);
+  pivot.add(ring); // 环随星球一同被拖动（环面与赤道共面）
 }
 
 // 取景距离：土星按环外径框，普通星球按大气壳框。
@@ -275,6 +280,15 @@ window.setZoom = function (z) {
   }
 };
 
+// 拖动转星球（地球仪手感）：Flutter 下发累计的偏航/俯仰角（弧度，绝对值）。
+// 支点承载用户转动，星球/云层各自的自转照常叠加在其之上。
+let yawTarget = 0, pitchTarget = 0;
+const maxPitch = Math.PI / 2 * 0.92; // 别转到极点翻面
+window.setRotation = function (yaw, pitch) {
+  yawTarget = yaw;
+  pitchTarget = Math.max(-maxPitch, Math.min(maxPitch, pitch));
+};
+
 let paused = false;
 window.pauseRender = function () { paused = true; };
 window.resumeRender = function () { paused = false; requestAnimationFrame(animate); };
@@ -285,6 +299,9 @@ window.addEventListener('message', function (e) {
   if (!m || typeof m !== 'object') return;
   if (typeof m.zoom === 'number') window.setZoom(m.zoom);
   if (typeof m.spin === 'number') window.setSpin(m.spin);
+  if (typeof m.yaw === 'number' && typeof m.pitch === 'number') {
+    window.setRotation(m.yaw, m.pitch);
+  }
 });
 
 // ---------- 渲染循环 ----------
@@ -300,6 +317,10 @@ function animate() {
   const w = spinRevPerSec * Math.PI * 2 * dt;
   planet.rotation.y += w;
   if (clouds) clouds.rotation.y += w * 1.18 + 0.00006; // 云层略快于地表
+  // 用户拖动的转角平滑趋近（跟手但不生硬）
+  const kRot = Math.min(1, dt * 14);
+  pivot.rotation.y += (yawTarget - pivot.rotation.y) * kRot;
+  pivot.rotation.x += (pitchTarget - pivot.rotation.x) * kRot;
   // 镜头距离平滑趋近目标倍率（指数阻尼，跟手且不抖）
   if (Math.abs(zoomTarget - zoom) > 0.0005) {
     zoom += (zoomTarget - zoom) * Math.min(1, dt * 12);

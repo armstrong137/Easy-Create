@@ -102,6 +102,36 @@ void main() {
     expect(saved.single.planet, 'earth', reason: '第 1 颗星球分配 earth 纹理');
   });
 
+  testWidgets('拖球面转星球（不翻页）；拖球外仍可左右滑切换星球', (tester) async {
+    addTearDown(() => planetZoomLock.value = false);
+    await pumpApp(
+      tester,
+      novels: [fakeNovel(1, '第一颗'), fakeNovel(2, '第二颗', planet: 'mars')],
+    );
+    expect(find.text('第一颗'), findsOneWidget);
+
+    // ① 手指落在球面上横拖：转星球，PageView 被锁住，不切页
+    final center = tester.getCenter(find.byKey(const Key('星球_1')));
+    final onPlanet = await tester.startGesture(center);
+    await tester.pump();
+    expect(planetZoomLock.value, isTrue, reason: '拖球面时锁住翻页');
+    await onPlanet.moveBy(const Offset(-220, 0));
+    await tester.pump();
+    await onPlanet.up();
+    await tester.pumpAndSettle();
+
+    expect(find.text('第一颗'), findsOneWidget, reason: '拖球面只转星球，不该翻页');
+    expect(planetZoomLock.value, isFalse, reason: '松手后解锁');
+
+    // ② 手指落在球外（屏幕左缘）横拖：正常翻页到下一颗星球
+    final size = tester.getSize(find.byType(HomePage));
+    final outside = Offset(16, size.height / 2);
+    await tester.dragFrom(outside, const Offset(-400, 0));
+    await tester.pumpAndSettle();
+
+    expect(find.text('第二颗'), findsOneWidget, reason: '球外横拖应切换星球');
+  });
+
   testWidgets('双指捏合放大星球：锁住翻页、书名让位；松手回到原大小则恢复', (tester) async {
     addTearDown(() => planetZoomLock.value = false);
     await pumpApp(tester, novels: [fakeNovel(1, '被放大的星球')]);

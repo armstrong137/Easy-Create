@@ -19,6 +19,8 @@ class PlanetScene extends StatefulWidget {
     required this.diameter,
     this.stageScale = 1,
     this.zoom = 1,
+    this.yaw = 0,
+    this.pitch = 0,
   });
 
   /// 行星纹理名（earth/mars/jupiter/venus/saturn）
@@ -35,6 +37,10 @@ class PlanetScene extends StatefulWidget {
 
   /// 缩放倍率：postMessage 下发到场景做**镜头推进**（放大后依然清晰且居中）
   final double zoom;
+
+  /// 拖动转星球的累计偏航/俯仰角（弧度，地球仪手感）
+  final double yaw;
+  final double pitch;
 
   @override
   State<PlanetScene> createState() => _PlanetSceneState();
@@ -66,14 +72,17 @@ class _PlanetSceneState extends State<PlanetScene> {
   @override
   void didUpdateWidget(PlanetScene old) {
     super.didUpdateWidget(old);
+    // iframe 同源，postMessage 直达场景（其 message 监听调 setZoom/setRotation）
     if (old.zoom != widget.zoom) {
-      // iframe 同源，postMessage 直达场景（其 message 监听调 setZoom）
-      _iframe?.contentWindow?.postMessage(
-        {'zoom': widget.zoom}.jsify(),
-        '*'.toJS,
-      );
+      _post({'zoom': widget.zoom});
+    }
+    if (old.yaw != widget.yaw || old.pitch != widget.pitch) {
+      _post({'yaw': widget.yaw, 'pitch': widget.pitch});
     }
   }
+
+  void _post(Map<String, double> msg) =>
+      _iframe?.contentWindow?.postMessage(msg.jsify(), '*'.toJS);
 
   @override
   Widget build(BuildContext context) {

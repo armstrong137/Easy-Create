@@ -19,6 +19,8 @@ class PlanetScene extends ConsumerStatefulWidget {
     required this.diameter,
     this.stageScale = 1,
     this.zoom = 1,
+    this.yaw = 0,
+    this.pitch = 0,
   });
 
   /// 行星纹理名（earth/mars/jupiter/venus/saturn）
@@ -35,6 +37,10 @@ class PlanetScene extends ConsumerStatefulWidget {
 
   /// 缩放倍率：下发到场景做**镜头推进**（重新渲染，放大后依然清晰且居中）
   final double zoom;
+
+  /// 拖动转星球的累计偏航/俯仰角（弧度，地球仪手感）
+  final double yaw;
+  final double pitch;
 
   @override
   ConsumerState<PlanetScene> createState() => _PlanetSceneState();
@@ -93,6 +99,10 @@ class _PlanetSceneState extends ConsumerState<PlanetScene> {
     // 捏合缩放 → 镜头推进（场景侧自带阻尼平滑）
     if (old.zoom != widget.zoom) {
       _web?.runJavaScript('setZoom(${widget.zoom})');
+    }
+    // 拖动 → 转星球（场景侧同样带阻尼）
+    if (old.yaw != widget.yaw || old.pitch != widget.pitch) {
+      _web?.runJavaScript('setRotation(${widget.yaw}, ${widget.pitch})');
     }
   }
 

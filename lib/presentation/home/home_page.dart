@@ -53,6 +53,9 @@ const kPlanetTitleHideZoom = 1.06;
 /// 直接 1:1 映射够不到 3 倍上限、捏合"使不上劲"
 const kPinchGain = 2.6;
 
+/// 拖动转星球的俯仰上限（弧度）：别转到极点翻面
+const kMaxPitch = math.pi / 2 * 0.92;
+
 /// 星球放大/捏合期间锁住 PageView：双指缩放不会误翻页
 /// （沿用魔毯 carpetDragging 的全局 ValueNotifier 惯例）
 final planetZoomLock = ValueNotifier<bool>(false);
@@ -241,16 +244,27 @@ class _PlanetPageState extends ConsumerState<_PlanetPage> {
   /// 当前缩放倍率（下发到 3D 场景做镜头推进，不是位图放大）
   double _zoom = 1;
 
+  /// 拖动转星球的累计角度（弧度，地球仪手感）
+  double _yaw = 0;
+  double _pitch = 0;
+
   /// 双指跟踪：指针位置、捏合起始两指间距与起始倍率
   final _pointers = <int, Offset>{};
   double _pinchStartDist = 0;
   double _pinchStartZoom = 1;
 
+  /// 单指落在星球上 → 本次拖动用于转星球（而非翻页切星球）
+  bool _rotating = false;
+
+  /// 星球画面区域（用于判断手指是否落在球上）
+  final _planetKey = GlobalKey();
+
   bool get _zoomed => _zoom > kPlanetTitleHideZoom;
 
   void _syncPageLock() {
-    // 双指捏合或已放大时锁住 PageView，避免误翻页
-    planetZoomLock.value = _pointers.length >= 2 || _zoom > 1.001;
+    // 捏合、转星球、已放大时都锁住 PageView，避免误翻页
+    planetZoomLock.value =
+        _pointers.length >= 2 || _rotating || _zoom > 1.001;
   }
 
   void _resetZoom() {
@@ -258,9 +272,25 @@ class _PlanetPageState extends ConsumerState<_PlanetPage> {
     _syncPageLock();
   }
 
+  /// 星球当前的视觉半径（放大后变大）；返回 null 表示还没布局
+  ({Offset center, double radius})? _planetCircle() {
+    final box = _planetKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return null;
+    return (
+      center: box.localToGlobal(box.size.center(Offset.zero)),
+      radius: box.size.shortestSide / 2 * _zoom,
+    );
+  }
+
   void _onPointerDown(PointerDownEvent e) {
     _pointers[e.pointer] = e.position;
-    if (_pointers.length == 2) {
+    if (_pointers.length == 1) {
+      // 手指落在球面上才接管拖动（落在球外留给 PageView 翻页）
+      final circle = _planetCircle();
+      _rotating =
+          circle != null && (e.position - circle.center).distance <= circle.radius;
+    } else if (_pointers.length == 2) {
+      _rotating = false; // 双指优先给缩放
       final p = _pointers.values.toList();
       _pinchStartDist = (p[0] - p[1]).distance;
       _pinchStartZoom = _zoom;
@@ -270,7 +300,22 @@ class _PlanetPageState extends ConsumerState<_PlanetPage> {
 
   void _onPointerMove(PointerMoveEvent e) {
     if (!_pointers.containsKey(e.pointer)) return;
+    final prev = _pointers[e.pointer]!;
     _pointers[e.pointer] = e.position;
+
+    // 单指拖球面 → 转星球。位移除以球半径即为转过的弧度（贴合手指的自然手感），
+    // 放大时同样的位移对应更小的转角，便于细看某个区域
+    if (_rotating && _pointers.length == 1) {
+      final circle = _planetCircle();
+      if (circle == null) return;
+      final d = e.position - prev;
+      setState(() {
+        _yaw += d.dx / circle.radius;
+        _pitch = (_pitch + d.dy / circle.radius).clamp(-kMaxPitch, kMaxPitch);
+      });
+      return;
+    }
+
     if (_pointers.length < 2 || _pinchStartDist <= 0) return;
     final p = _pointers.values.toList();
     final dist = (p[0] - p[1]).distance;
@@ -285,6 +330,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage> {
   void _onPointerUp(PointerEvent e) {
     _pointers.remove(e.pointer);
     if (_pointers.length < 2) _pinchStartDist = 0;
+    if (_pointers.isEmpty) _rotating = false;
     // 松手后接近原始大小就吸附回 1，避免停在 1.02 这种尴尬位（书名一直藏着）
     if (_pointers.isEmpty && _zoom > 1 && _zoom < kPlanetTitleHideZoom) {
       _resetZoom();
@@ -316,6 +362,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage> {
         // 放大时星球在画布内铺开不被方形边裁。OverflowBox 使其只溢出绘制、
         // 不撑大布局与命中区（否则会盖住魔毯球与速记按钮）。
         return SizedBox.square(
+          key: _planetKey,
           dimension: sceneDiameter,
           child: OverflowBox(
             maxWidth: sceneDiameter * kPlanetSceneStageScale,
@@ -326,21 +373,27 @@ class _PlanetPageState extends ConsumerState<_PlanetPage> {
               diameter: sceneDiameter * kPlanetSceneStageScale,
               stageScale: kPlanetSceneStageScale,
               zoom: _zoom,
+              yaw: _yaw,
+              pitch: _pitch,
             ),
           ),
         );
       }
-      return novel.planet == 'saturn'
-          ? SaturnView(
-              assets: assets!,
-              spin: planetSpin(count),
-              diameter: diameter,
-            )
-          : PlanetView(
-              assets: assets!,
-              spin: planetSpin(count),
-              diameter: diameter,
-            );
+      return SizedBox.square(
+        key: _planetKey,
+        dimension: diameter,
+        child: novel.planet == 'saturn'
+            ? SaturnView(
+                assets: assets!,
+                spin: planetSpin(count),
+                diameter: diameter,
+              )
+            : PlanetView(
+                assets: assets!,
+                spin: planetSpin(count),
+                diameter: diameter,
+              ),
+      );
     }
 
     // 捏合监听盖住整页而非只盖星球：
@@ -375,7 +428,8 @@ class _PlanetPageState extends ConsumerState<_PlanetPage> {
                   },
             onLongPress: () => _confirmDeleteNovel(context, ref),
             child: !ready
-                ? SizedBox.square(dimension: diameter)
+                // 占位也要带 key：否则星球未就绪时"手指是否在球上"恒为否
+                ? SizedBox.square(key: _planetKey, dimension: diameter)
                 : OrbitingInspirations(
                     // 环绕取"最近几条"：魔毯池已改为旧→新/手动序，
                     // 这里单独按创建时间倒序取最新（轨道显示灵感原文）
