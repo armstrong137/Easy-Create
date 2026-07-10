@@ -39,11 +39,19 @@ final planetAssetsProvider = FutureProvider.family<PlanetShaderAssets, String>(
 /// 可选行星纹理（新建星球按当前数量轮换分配）
 const kPlanetTextures = ['earth', 'mars', 'jupiter', 'venus', 'saturn'];
 
-/// 3D 星球透明舞台倍率：初始视觉大小不变，放大时有足够空间不露方形裁切边。
+/// 3D 星球透明舞台倍率：画布放大同时镜头等比拉远，
+/// 初始视觉大小不变，放大时星球有空间铺开而不撞画布方形边缘。
 const kPlanetSceneStageScale = 3.0;
 
-/// 3D 星球由 Flutter 外层接管缩放，避免放大原生 WebView/iframe 命中区域挡住魔毯。
-const kPlanetSceneMaxScale = 12.0;
+/// 星球最大放大倍率（受舞台倍率约束：超过就会露出画布方边）
+const kPlanetSceneMaxZoom = kPlanetSceneStageScale;
+
+/// 放大超过此倍率即隐藏书名（避免压在放大的星球上）
+const kPlanetTitleHideZoom = 1.06;
+
+/// 星球放大/捏合期间锁住 PageView：双指缩放不会误翻页
+/// （沿用魔毯 carpetDragging 的全局 ValueNotifier 惯例）
+final planetZoomLock = ValueNotifier<bool>(false);
 
 /// 首页｜创作宇宙：一颗星球 = 一部小说，左右滑切换
 class HomePage extends ConsumerStatefulWidget {
@@ -128,12 +136,20 @@ class _HomePageState extends ConsumerState<HomePage> {
             )
           else
             // 一页一星球，左右滑切换小说
-            PageView.builder(
-              controller: _pageController,
-              itemCount: novels.length,
-              onPageChanged: (i) => setState(() => _currentPage = i),
-              itemBuilder: (context, i) =>
-                  _PlanetPage(novel: novels[i], pool: pool),
+            ValueListenableBuilder<bool>(
+              valueListenable: planetZoomLock,
+              builder: (context, locked, _) => PageView.builder(
+                controller: _pageController,
+                itemCount: novels.length,
+                // 捏合放大星球期间禁翻页（否则双指会被识别成滑动换书）
+                physics: locked ? const NeverScrollableScrollPhysics() : null,
+                onPageChanged: (i) => setState(() => _currentPage = i),
+                // ClipRect：放大的星球画布只在本页内铺开，
+                // 不会溢出到相邻星球页造成"两颗星球重影"
+                itemBuilder: (context, i) => ClipRect(
+                  child: _PlanetPage(novel: novels[i], pool: pool),
+                ),
+              ),
             ),
           // 左上角设置入口（齿轮）：进设置页改速记按钮左右侧
           SafeArea(
@@ -207,14 +223,64 @@ class _HomePageState extends ConsumerState<HomePage> {
 }
 
 /// 单颗星球页：星球 + 环绕灵感 + 书名，点星球进大纲页
-class _PlanetPage extends ConsumerWidget {
+class _PlanetPage extends ConsumerStatefulWidget {
   const _PlanetPage({required this.novel, required this.pool});
 
   final Novel novel;
   final List<Inspiration> pool;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_PlanetPage> createState() => _PlanetPageState();
+}
+
+class _PlanetPageState extends ConsumerState<_PlanetPage> {
+  /// 当前缩放倍率（下发到 3D 场景做镜头推进，不是位图放大）
+  double _zoom = 1;
+
+  /// 双指跟踪：指针位置、捏合起始两指间距与起始倍率
+  final _pointers = <int, Offset>{};
+  double _pinchStartDist = 0;
+  double _pinchStartZoom = 1;
+
+  bool get _zoomed => _zoom > kPlanetTitleHideZoom;
+
+  void _syncPageLock() {
+    // 双指捏合或已放大时锁住 PageView，避免误翻页
+    planetZoomLock.value = _pointers.length >= 2 || _zoom > 1.001;
+  }
+
+  void _onPointerDown(PointerDownEvent e) {
+    _pointers[e.pointer] = e.position;
+    if (_pointers.length == 2) {
+      final p = _pointers.values.toList();
+      _pinchStartDist = (p[0] - p[1]).distance;
+      _pinchStartZoom = _zoom;
+    }
+    _syncPageLock();
+  }
+
+  void _onPointerMove(PointerMoveEvent e) {
+    if (!_pointers.containsKey(e.pointer)) return;
+    _pointers[e.pointer] = e.position;
+    if (_pointers.length < 2 || _pinchStartDist <= 0) return;
+    final p = _pointers.values.toList();
+    final dist = (p[0] - p[1]).distance;
+    final next = (_pinchStartZoom * dist / _pinchStartDist).clamp(
+      1.0,
+      kPlanetSceneMaxZoom,
+    );
+    if ((next - _zoom).abs() > 0.001) setState(() => _zoom = next);
+  }
+
+  void _onPointerUp(PointerEvent e) {
+    _pointers.remove(e.pointer);
+    if (_pointers.length < 2) _pinchStartDist = 0;
+    _syncPageLock();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final novel = widget.novel;
     final count = ref.watch(creativeCountProvider(novel.id)).value ?? 0;
     final use3D = ref.watch(advanced3DProvider);
     // 3D 场景不依赖 shader 资源；旧路径（测试/低端回退）仍需等待加载
@@ -227,24 +293,24 @@ class _PlanetPage extends ConsumerWidget {
     // 星球本体：真实 3D 场景（阶段八 P2-1）或旧 FragmentShader（回退）
     Widget planetBody() {
       if (use3D) {
+        // 土星的 3D 环带在场景内渲染，加宽画幅给环留位
         final sceneDiameter = novel.planet == 'saturn'
             ? diameter * 1.4
             : diameter;
+        // 舞台：画布放到 stage 倍（镜头同步拉远、初始视觉不变），
+        // 放大时星球在画布内铺开不被方形边裁。OverflowBox 使其只溢出绘制、
+        // 不撑大布局与命中区（否则会盖住魔毯球与速记按钮）。
         return SizedBox.square(
           dimension: sceneDiameter,
-          child: InteractiveViewer(
-            clipBehavior: Clip.none,
-            minScale: 1,
-            maxScale: kPlanetSceneMaxScale,
-            boundaryMargin: EdgeInsets.all(
-              sceneDiameter * kPlanetSceneStageScale,
-            ),
+          child: OverflowBox(
+            maxWidth: sceneDiameter * kPlanetSceneStageScale,
+            maxHeight: sceneDiameter * kPlanetSceneStageScale,
             child: PlanetScene(
               planet: novel.planet,
               spin: planetSpin(count),
-              // 土星的 3D 环带在场景内渲染，加宽画幅给环留位。
-              // 原生视图保持原尺寸，避免透明命中区域盖住首页按钮。
-              diameter: sceneDiameter,
+              diameter: sceneDiameter * kPlanetSceneStageScale,
+              stageScale: kPlanetSceneStageScale,
+              zoom: _zoom,
             ),
           ),
         );
@@ -265,41 +331,64 @@ class _PlanetPage extends ConsumerWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        GestureDetector(
-          key: Key('星球_${novel.id}'),
-          behavior: HitTestBehavior.opaque,
-          // 点星球 → 进入该小说的大纲页（铅笔树）
-          onTap: !ready
-              ? null
-              : () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        OutlinePage(novelId: novel.id, title: novel.title),
+        Listener(
+          // 双指捏合 → 镜头推进（Listener 不进手势竞技场，不夺走点击/长按）
+          onPointerDown: _onPointerDown,
+          onPointerMove: _onPointerMove,
+          onPointerUp: _onPointerUp,
+          onPointerCancel: _onPointerUp,
+          child: GestureDetector(
+            key: Key('星球_${novel.id}'),
+            behavior: HitTestBehavior.opaque,
+            // 点星球 → 进入该小说的大纲页（铅笔树）；放大态下先还原
+            onTap: !ready
+                ? null
+                : () {
+                    if (_zoomed) {
+                      setState(() => _zoom = 1);
+                      _syncPageLock();
+                      return;
+                    }
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            OutlinePage(novelId: novel.id, title: novel.title),
+                      ),
+                    );
+                  },
+            onLongPress: () => _confirmDeleteNovel(context, ref),
+            child: !ready
+                ? SizedBox.square(dimension: diameter)
+                : OrbitingInspirations(
+                    // 环绕取"最近几条"：魔毯池已改为旧→新/手动序，
+                    // 这里单独按创建时间倒序取最新（轨道显示灵感原文）
+                    items: [...widget.pool]
+                      ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
+                    orbitWidth: diameter * 1.5,
+                    // 放大态下环绕文字淡出，避免压在放大的星球上
+                    fade: _zoomed,
+                    child: planetBody(),
                   ),
-                ),
-          onLongPress: () => _confirmDeleteNovel(context, ref),
-          child: !ready
-              ? SizedBox.square(dimension: diameter)
-              : OrbitingInspirations(
-                  // 环绕取"最近几条"：魔毯池已改为旧→新/手动序，
-                  // 这里单独按创建时间倒序取最新（轨道显示灵感原文）
-                  items: [...pool]
-                    ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
-                  orbitWidth: diameter * 1.5,
-                  child: planetBody(),
-                ),
+          ),
         ),
         const SizedBox(height: 28),
-        // 书名（楷体白字）：单击可重命名（2026-07-03 用户需求）
-        GestureDetector(
-          key: Key('书名_${novel.id}'),
-          onTap: () => _renameNovel(context, ref),
-          child: Text(
-            novel.title,
-            style: const TextStyle(
-              fontFamily: 'LXGWWenKai',
-              fontSize: 18,
-              color: Colors.white,
+        // 书名（楷体白字）：单击可重命名；放大星球时淡出让位
+        AnimatedOpacity(
+          duration: const Duration(milliseconds: 200),
+          opacity: _zoomed ? 0 : 1,
+          child: IgnorePointer(
+            ignoring: _zoomed,
+            child: GestureDetector(
+              key: Key('书名_${novel.id}'),
+              onTap: () => _renameNovel(context, ref),
+              child: Text(
+                novel.title,
+                style: const TextStyle(
+                  fontFamily: 'LXGWWenKai',
+                  fontSize: 18,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ),
         ),
@@ -315,7 +404,7 @@ class _PlanetPage extends ConsumerWidget {
         content: Padding(
           padding: const EdgeInsets.only(top: 10),
           child: Text(
-            '「${novel.title}」的大纲会被剪掉，挂在小节里的灵感会回到魔毯。',
+            '「${widget.novel.title}」的大纲会被剪掉，挂在小节里的灵感会回到魔毯。',
             style: _dlgStyle(size: 14, color: const Color(0xFF4A3A28)),
           ),
         ),
@@ -335,7 +424,7 @@ class _PlanetPage extends ConsumerWidget {
     );
 
     if (confirmed == true) {
-      await ref.read(novelRepositoryProvider).deleteNovel(novel.id);
+      await ref.read(novelRepositoryProvider).deleteNovel(widget.novel.id);
     }
   }
 
@@ -346,13 +435,13 @@ class _PlanetPage extends ConsumerWidget {
       heading: '重命名这颗星球',
       hint: '新名字',
       confirm: '保存',
-      initial: novel.title,
+      initial: widget.novel.title,
       fieldKey: const Key('书名重命名输入框'),
       confirmKey: const Key('书名重命名确认按钮'),
     );
     final title = newTitle?.trim() ?? '';
-    if (title.isEmpty || title == novel.title) return;
-    await ref.read(novelRepositoryProvider).renameNovel(novel.id, title);
+    if (title.isEmpty || title == widget.novel.title) return;
+    await ref.read(novelRepositoryProvider).renameNovel(widget.novel.id, title);
   }
 }
 

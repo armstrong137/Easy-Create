@@ -2,10 +2,12 @@
 <!--
   首页正式 3D 星球场景（阶段八 P2-1，three.js r147 离线打包）
   - 透明背景：星空仍由 Flutter 层（四档银河图）负责，本场景只渲染星球
-  - URL 参数初始化：?planet=earth&spin=0.008（避免加载时序竞态）
-  - Flutter → JS：setSpin(转/秒)、pauseRender()、resumeRender()
+  - URL 参数初始化：?planet=earth&spin=0.008&stage=3（避免加载时序竞态）
+  - Flutter → JS：setSpin(转/秒)、setZoom(倍率)、pauseRender()、resumeRender()
+    （移动端 runJavaScript 直调；Web 端 iframe postMessage，见底部 message 监听）
   - JS → Flutter：SceneBridge 通道上报 {ready, fps}
-  - 手势在本层处理：拖拽旋转 + 双指缩放交给 OrbitControls
+  - 手势全部在 Flutter 层处理（本层 pointer 透明）：缩放经 setZoom 做**镜头推进**，
+    而非位图放大——放大后重新渲染，多近都清晰，且镜头恒沿视线故星球始终居中
 -->
 <html lang="zh">
 <head>
@@ -18,7 +20,6 @@
 </head>
 <body>
 <script src="three.min.js"></script>
-<script src="OrbitControls.js"></script>
 <script>
 'use strict';
 
@@ -38,7 +39,8 @@ const renderer = new THREE.WebGLRenderer({
   powerPreference: 'high-performance',
 });
 renderer.setClearColor(0x000000, 0);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+// 放大后要求"极其高清"：设备像素比不再封 1.75（iPhone 3x 全用上）
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 3));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputEncoding = THREE.sRGBEncoding;
 document.body.appendChild(renderer.domElement);
@@ -64,6 +66,8 @@ scene.add(new THREE.AmbientLight(0x334455, 0.42));
 const PLANETS = {
   earth: {
     map: 'textures/earth_day_4096.jpg',
+    // 放大到 lodZoom 倍时换 8K 地表（LOD，按需加载不拖慢首屏）
+    mapHi: 'textures/earth_day_8192.jpg',
     normal: 'textures/earth_normal_2048.jpg',
     specular: 'textures/earth_specular_2048.jpg',
     clouds: 'textures/earth_clouds_2048.jpg',
@@ -98,7 +102,9 @@ if (cfg.specular) {
 } else {
   matOpts.specular = new THREE.Color(0x000000); // 非地球：无镜面，哑光地表
 }
-const planet = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), new THREE.MeshPhongMaterial(matOpts));
+// 128 段：放大后球体轮廓与晨昏线仍平滑（64 段近距可见多边形棱）
+const planetMat = new THREE.MeshPhongMaterial(matOpts);
+const planet = new THREE.Mesh(new THREE.SphereGeometry(1, 128, 128), planetMat);
 scene.add(planet);
 
 // ---------- 夜光层（仅地球）：背阳面城市灯光 ----------
@@ -205,27 +211,48 @@ if (cfg.ring) {
   scene.add(ring);
 }
 
-// 取景距离：土星按环外径框，普通星球按大气壳框
+// 取景距离：土星按环外径框，普通星球按大气壳框。
+// 舞台（stage>1）把画布放大同时把镜头等比拉远：初始视觉大小不变，
+// 但放大时星球有空间铺开而不会撞到画布方形边缘被裁。
 const frameRadius = cfg.ring ? ringOuter * 0.94 : 1.09;
 const d0 = fitDistance(frameRadius, stageScale * 1.02);
 camera.position.set(0, 0, d0);
 camera.lookAt(0, 0, 0);
 
-// ---------- 手势：拖拽旋转 + 双指缩放 ----------
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.08;
-controls.enablePan = false;
-controls.minDistance = d0 / (stageScale * 0.92);
-controls.maxDistance = d0 * 1.55;
-controls.rotateSpeed = 0.62;
-controls.zoomSpeed = 0.72;
-
 // ---------- Flutter 控制接口 ----------
 window.setSpin = function (revPerSec) { spinRevPerSec = revPerSec; };
+
+// 缩放 = 镜头沿视线推进（dolly），不是位图放大：
+// 场景按新距离重新渲染，多近都清晰；镜头恒过原点故星球始终居中。
+let zoom = 1, zoomTarget = 1, hiRequested = false;
+const lodZoom = 1.35; // 超过此倍率换 8K 地表
+window.setZoom = function (z) {
+  zoomTarget = Math.max(1, z);
+  if (!hiRequested && cfg.mapHi && zoomTarget >= lodZoom) {
+    hiRequested = true;
+    // 按需加载高清地表，成功才替换（失败静默留用 4K）
+    loader.load(cfg.mapHi, function (tex) {
+      tex.encoding = THREE.sRGBEncoding;
+      tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      tex.generateMipmaps = false;          // 8K mipmap 省 33% 显存
+      tex.minFilter = THREE.LinearFilter;
+      planetMat.map = tex;
+      planetMat.needsUpdate = true;
+    });
+  }
+};
+
 let paused = false;
 window.pauseRender = function () { paused = true; };
 window.resumeRender = function () { paused = false; requestAnimationFrame(animate); };
+
+// Web 端（iframe 跨文档）经 postMessage 调同一组接口
+window.addEventListener('message', function (e) {
+  const m = e.data;
+  if (!m || typeof m !== 'object') return;
+  if (typeof m.zoom === 'number') window.setZoom(m.zoom);
+  if (typeof m.spin === 'number') window.setSpin(m.spin);
+});
 
 // ---------- 渲染循环 ----------
 let last = performance.now(), frames = 0, lastPost = last, notified = false;
@@ -238,7 +265,11 @@ function animate() {
   const w = spinRevPerSec * Math.PI * 2 * dt;
   planet.rotation.y += w;
   if (clouds) clouds.rotation.y += w * 1.18 + 0.00006; // 云层略快于地表
-  controls.update();
+  // 镜头距离平滑趋近目标倍率（指数阻尼，跟手且不抖）
+  if (Math.abs(zoomTarget - zoom) > 0.0005) {
+    zoom += (zoomTarget - zoom) * Math.min(1, dt * 12);
+    camera.position.z = d0 / zoom;
+  }
   renderer.render(scene, camera);
   frames++;
   if (now - lastPost > 1000) {
@@ -258,7 +289,6 @@ window.addEventListener('resize', function () {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  controls.update();
 });
 </script>
 </body>

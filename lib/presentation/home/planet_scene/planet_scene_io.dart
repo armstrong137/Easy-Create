@@ -18,6 +18,7 @@ class PlanetScene extends ConsumerStatefulWidget {
     required this.spin,
     required this.diameter,
     this.stageScale = 1,
+    this.zoom = 1,
   });
 
   /// 行星纹理名（earth/mars/jupiter/venus/saturn）
@@ -31,6 +32,9 @@ class PlanetScene extends ConsumerStatefulWidget {
 
   /// 透明舞台倍率：>1 时初始视觉大小不变，但放大空间更大。
   final double stageScale;
+
+  /// 缩放倍率：下发到场景做**镜头推进**（重新渲染，放大后依然清晰且居中）
+  final double zoom;
 
   @override
   ConsumerState<PlanetScene> createState() => _PlanetSceneState();
@@ -82,6 +86,10 @@ class _PlanetSceneState extends ConsumerState<PlanetScene> {
     // 创作能量变化 → 转速经桥下发（星球纹理不会变，novel.planet 不可变）
     if (old.spin != widget.spin) {
       _web?.runJavaScript('setSpin(${widget.spin})');
+    }
+    // 捏合缩放 → 镜头推进（场景侧自带阻尼平滑）
+    if (old.zoom != widget.zoom) {
+      _web?.runJavaScript('setZoom(${widget.zoom})');
     }
   }
 

@@ -18,6 +18,7 @@ class OrbitingInspirations extends StatefulWidget {
     required this.items,
     required this.orbitWidth,
     required this.child,
+    this.fade = false,
   });
 
   /// 魔毯灵感（新的在前），内部只取前 maxItems 条
@@ -28,6 +29,9 @@ class OrbitingInspirations extends StatefulWidget {
 
   /// 被环绕的星球
   final Widget child;
+
+  /// 淡出环绕文字（星球放大观察时让位，不喧宾夺主）
+  final bool fade;
 
   /// 最多环绕几条（假设值，待终审调优）
   static const maxItems = 5;
@@ -95,14 +99,16 @@ class _OrbitingInspirationsState extends State<OrbitingInspirations>
         // 前后文字层各自包一层 Stack，外层恒为 3 个 children：
         // 文字跨前后边界时（back/front 条数变化）星球 child 的树位置不变，
         // 否则其 State 每次被销毁重建（自转相位重置；3D WebView 场景永远加载不完）
+        Widget layer(List<Widget> texts) => AnimatedOpacity(
+          duration: const Duration(milliseconds: 200),
+          opacity: widget.fade ? 0 : 1,
+          child: Stack(alignment: Alignment.center, children: texts),
+        );
+
         return Stack(
           alignment: Alignment.center,
           clipBehavior: Clip.none,
-          children: [
-            Stack(alignment: Alignment.center, children: back),
-            widget.child,
-            Stack(alignment: Alignment.center, children: front),
-          ],
+          children: [layer(back), widget.child, layer(front)],
         );
       },
     );
