@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -422,6 +423,13 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
     final diameter = MediaQuery.sizeOf(context).width * 0.62;
     final ready = use3D || assets != null;
 
+    // Web 端：本路由被新页面覆盖时必须摘除星球 platform view——
+    // CanvasKit 的 overlay 合成在 platform view 驻留于非当前路由时
+    // 会丢掉所有 canvas（进大纲页整页白屏，CDP 实证 canvases:0）。
+    // 摘除还顺带满足"不可见页面暂停渲染"（iframe 销毁即停）。
+    final routeCurrent = ModalRoute.of(context)?.isCurrent ?? true;
+    final showScene = use3D && (!kIsWeb || routeCurrent);
+
     // 星球本体：真实 3D 场景（阶段八 P2-1）或旧 FragmentShader（回退）
     Widget planetBody() {
       if (use3D) {
@@ -429,6 +437,10 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
         final sceneDiameter = novel.planet == 'saturn'
             ? diameter * 1.4
             : diameter;
+        if (!showScene) {
+          // 摘除期占位：保持布局与命中区尺寸（pop 回来场景重建）
+          return SizedBox.square(key: _planetKey, dimension: sceneDiameter);
+        }
         // 舞台：画布放到 stage 倍（镜头同步拉远、初始视觉不变），
         // 放大时星球在画布内铺开不被方形边裁。OverflowBox 使其只溢出绘制、
         // 不撑大布局与命中区（否则会盖住魔毯球与速记按钮）。

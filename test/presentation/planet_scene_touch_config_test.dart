@@ -15,6 +15,14 @@ void main() {
   ).readAsStringSync();
   final sceneHtml = File('assets/planet_scene/index.html').readAsStringSync();
 
+  test('Web 端路由被覆盖时摘除星球 platform view（进大纲整页白屏的回归）', () {
+    // CanvasKit 的 overlay 合成在 platform view 驻留于非当前路由时会
+    // 丢掉所有 canvas（CDP 实证 canvases:0 → 整页白）；摘除即恢复，
+    // 顺带满足清单 §12.2"不可见页面暂停渲染"
+    expect(homePage, contains('ModalRoute.of(context)?.isCurrent'));
+    expect(homePage, contains('!kIsWeb || routeCurrent'));
+  });
+
   test('Web 端 iframe viewType 必须每实例唯一（工厂闭包捕获旧 State 的回归）', () {
     // Flutter web 对同名 viewType 的重复注册会被忽略：PageView 滑页重建后
     // 新 State 的工厂不生效，iframe 被写进旧 State → postMessage 全部打空，
@@ -33,11 +41,17 @@ void main() {
     expect(ps1, contains('场景自检失败'), reason: '自检失败必须让脚本报错，不能静默放行');
   });
 
-  test('原生视图不吃点击：iframe 透明区与 WebView 均不接手势', () {
+  test('原生视图不吃点击：DOM 层与 Flutter 层两道都必须放行', () {
     expect(
       webWrapper,
       contains("pointerEvents = 'none'"),
-      reason: 'iframe 的透明区域不能吃掉首页与灵感魔毯的点击',
+      reason: 'DOM 层：iframe 的透明区域不能吃掉 DOM 事件',
+    );
+    expect(
+      webWrapper,
+      contains('IgnorePointer'),
+      reason: 'Flutter 层：platform view 会在手势竞技场赢走所有手势，'
+          '漏包则"点星球进大纲"在 web 上永远不触发（CDP 探针实证过）',
     );
     expect(
       ioWrapper,

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:novel_app/core/creative_energy.dart';
@@ -8,6 +10,21 @@ import 'package:novel_app/presentation/home/starfield.dart';
 /// 注意：动态层是无限 Ticker——本文件只用定点 pump，严禁 pumpAndSettle
 /// （会等无限动画结束而挂死，项目老教训）。
 void main() {
+  test('星云 shader 已注册且被星空引用（动态宇宙的主体）', () {
+    expect(File('shaders/nebula.frag').existsSync(), isTrue);
+    expect(
+      File('pubspec.yaml').readAsStringSync(),
+      contains('shaders/nebula.frag'),
+      reason: '未注册则 FragmentProgram.fromAsset 运行时抛错，回退照片',
+    );
+    final src = File('lib/presentation/home/starfield.dart').readAsStringSync();
+    expect(src, contains("FragmentProgram.fromAsset('shaders/nebula.frag')"));
+    // 星云形态演变的核心：domain-warp 的 warp 向量含时间项
+    final glsl = File('shaders/nebula.frag').readAsStringSync();
+    expect(glsl, contains('uEnergy'), reason: '创作能量必须联动星云');
+    expect(glsl, contains('fbm'), reason: '分形噪声是星云质感的基础');
+  });
+
   testWidgets('animated=false（测试/低端回退）：只有静态照片，无动态层', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

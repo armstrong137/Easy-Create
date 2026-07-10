@@ -101,7 +101,13 @@ class _PlanetSceneState extends State<PlanetScene> {
   Widget build(BuildContext context) {
     return SizedBox.square(
       dimension: widget.diameter,
-      child: HtmlElementView(viewType: _viewType),
+      // IgnorePointer 必不可少：platform view 会在 Flutter 手势竞技场里
+      // 赢走所有手势——iframe 的 pointer-events:none 只管 DOM 层，
+      // 不包这层则"点星球进大纲"在 web 上永远不触发（真实回归，
+      // 已用 CDP 探针实证：书名可点、星球区域不可点）
+      child: IgnorePointer(
+        child: HtmlElementView(viewType: _viewType),
+      ),
     );
   }
 }

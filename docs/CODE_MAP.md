@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-10 15:32:25　对应提交：2ef1c41 之后的工作区状态
+> 生成时间：2026-07-10 16:42:14　对应提交：f99cd54 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,26 +12,26 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     101
-  Nodes:     3,881
-  Edges:     18,576
-  DB Size:   19.34 MB
+  Files:     102
+  Nodes:     3,898
+  Edges:     18,600
+  DB Size:   19.47 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,502
-  function        1,348
-  class           446
-  import          294
-  constant        170
-  file            93
+  method          1,505
+  function        1,352
+  class           448
+  import          300
+  constant        171
+  file            94
   variable        14
   type_alias      12
   namespace       2
 
 Files by Language:
-  dart            63
+  dart            64
   javascript      10
   kotlin          8
   xml             6
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (101 files):
+Project Structure (102 files):
 
 |-- .agents
 |   `-- skills
@@ -159,12 +159,12 @@ Project Structure (101 files):
 |   |   |   |   |-- planet_scene_web.dart (dart, 12 symbols)
 |   |   |   |   |-- planet_scene.dart (dart, 6 symbols)
 |   |   |   |   `-- scene_server.dart (dart, 11 symbols)
-|   |   |   |-- home_page.dart (dart, 58 symbols)
+|   |   |   |-- home_page.dart (dart, 59 symbols)
 |   |   |   |-- orbiting_inspirations.dart (dart, 16 symbols)
 |   |   |   |-- planet_view.dart (dart, 19 symbols)
 |   |   |   |-- saturn_rings_painter.dart (dart, 12 symbols)
 |   |   |   |-- starfield_motion.dart (dart, 7 symbols)
-|   |   |   `-- starfield.dart (dart, 25 symbols)
+|   |   |   `-- starfield.dart (dart, 30 symbols)
 |   |   |-- outline
 |   |   |   |-- label_layout.dart (dart, 12 symbols)
 |   |   |   |-- magic_carpet.dart (dart, 51 symbols)
@@ -188,6 +188,7 @@ Project Structure (101 files):
 |   |       `-- soft_toast.dart (dart, 11 symbols)
 |   `-- main.dart (dart, 14 symbols)
 |-- scripts
+|   |-- e2e_probe.dart (dart, 11 symbols)
 |   `-- serve_web.dart (dart, 4 symbols)
 |-- test
 |   |-- core
@@ -207,7 +208,7 @@ Project Structure (101 files):
 |   |   |-- quick_capture_test.dart (dart, 16 symbols)
 |   |   |-- section_page_test.dart (dart, 24 symbols)
 |   |   |-- starfield_motion_test.dart (dart, 6 symbols)
-|   |   |-- starfield_test.dart (dart, 6 symbols)
+|   |   |-- starfield_test.dart (dart, 7 symbols)
 |   |   `-- voice_capture_test.dart (dart, 22 symbols)
 |   `-- tools
 |       `-- web_serve_test.dart (dart, 6 symbols)
