@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-09 21:38:49　对应提交：ddeca88 之后的工作区状态
+> 生成时间：2026-07-09 21:52:53　对应提交：fb1ad13 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,26 +12,26 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     94
-  Nodes:     3,807
-  Edges:     18,374
+  Files:     96
+  Nodes:     3,816
+  Edges:     18,389
   DB Size:   19.11 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,478
-  function        1,336
+  function        1,339
   class           440
-  import          274
-  constant        165
-  file            86
+  import          277
+  constant        166
+  file            88
   variable        14
   type_alias      12
   namespace       2
 
 Files by Language:
-  dart            56
+  dart            58
   javascript      10
   kotlin          8
   xml             6
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (94 files):
+Project Structure (96 files):
 
 |-- .agents
 |   `-- skills
@@ -185,6 +185,8 @@ Project Structure (94 files):
 |   |       |   `-- voice_capture_sheet.dart (dart, 16 symbols)
 |   |       `-- soft_toast.dart (dart, 11 symbols)
 |   `-- main.dart (dart, 14 symbols)
+|-- scripts
+|   `-- serve_web.dart (dart, 4 symbols)
 |-- test
 |   |-- core
 |   |   |-- chinese_numbers_test.dart (dart, 4 symbols)
@@ -192,16 +194,18 @@ Project Structure (94 files):
 |   |-- data
 |   |   |-- app_database_config_test.dart (dart, 4 symbols)
 |   |   `-- repositories_test.dart (dart, 9 symbols)
-|   `-- presentation
-|       |-- home_page_test.dart (dart, 20 symbols)
-|       |-- magic_carpet_test.dart (dart, 15 symbols)
-|       |-- magic_tree_model_test.dart (dart, 13 symbols)
-|       |-- orbiting_inspirations_test.dart (dart, 10 symbols)
-|       |-- outline_page_test.dart (dart, 23 symbols)
-|       |-- planet_scene_touch_config_test.dart (dart, 4 symbols)
-|       |-- quick_capture_test.dart (dart, 16 symbols)
-|       |-- section_page_test.dart (dart, 24 symbols)
-|       `-- voice_capture_test.dart (dart, 22 symbols)
+|   |-- presentation
+|   |   |-- home_page_test.dart (dart, 20 symbols)
+|   |   |-- magic_carpet_test.dart (dart, 15 symbols)
+|   |   |-- magic_tree_model_test.dart (dart, 13 symbols)
+|   |   |-- orbiting_inspirations_test.dart (dart, 10 symbols)
+|   |   |-- outline_page_test.dart (dart, 23 symbols)
+|   |   |-- planet_scene_touch_config_test.dart (dart, 4 symbols)
+|   |   |-- quick_capture_test.dart (dart, 16 symbols)
+|   |   |-- section_page_test.dart (dart, 24 symbols)
+|   |   `-- voice_capture_test.dart (dart, 22 symbols)
+|   `-- tools
+|       `-- web_serve_test.dart (dart, 6 symbols)
 |-- tool
 |   |-- crop_sprite.dart (dart, 4 symbols)
 |   |-- knockout_bg.dart (dart, 4 symbols)

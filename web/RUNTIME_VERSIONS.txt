@@ -1,0 +1,9 @@
+# drift Web 运行时版本锁（test/tools/web_serve_test.dart 校验它与 pubspec.lock 一致）
+# 升级 drift / sqlite3 依赖后，必须按下面的命令重新下载这两个文件，否则
+# 网页版数据库会在运行时静默失败（表现：新建星球"诞生不了"）。
+#
+#   Invoke-WebRequest -Uri "https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-<sqlite3>/sqlite3.wasm" -OutFile web\sqlite3.wasm
+#   Invoke-WebRequest -Uri "https://github.com/simolus3/drift/releases/download/drift-<drift>/drift_worker.js" -OutFile web\drift_worker.js
+
+sqlite3 = 3.3.4
+drift = 2.34.0
