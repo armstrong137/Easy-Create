@@ -86,11 +86,46 @@ void main() {
     );
   });
 
-  test('Web 端贴图路径正确：iframe 相对 assets/assets/planet_scene/ 上跳一级', () {
+  test('五颗星球都有高清 LOD 与源图（CC-BY solarsystemscope）', () {
+    for (final p in ['mars', 'venus', 'jupiter', 'saturn']) {
+      expect(sceneHtml, contains('textures/${p}_2048.jpg'));
+      expect(sceneHtml, contains('textures/${p}_hi.jpg'));
+      expect(
+        File('assets/planet_scene/textures/${p}_2048.jpg').existsSync(),
+        isTrue,
+      );
+      expect(
+        File('assets/planet_scene/textures/${p}_hi.jpg').existsSync(),
+        isTrue,
+      );
+    }
+    // 场景纹理全部自带，不再借道回环服务去取主 App 的 2K 旧贴图
+    expect(sceneHtml, isNot(contains('apptex')));
+    expect(webWrapper, isNot(contains('apptex')));
+  });
+
+  test('取景随视口重算：WebView/iframe 首帧 0×0 不会把镜头距离算成 NaN', () {
+    // d0 只在加载时算一次 + 首帧 0×0 → aspect NaN → 镜头 NaN → 场景永远空白
+    expect(sceneHtml, contains('function updateFraming'));
+    expect(sceneHtml, contains('if (!w || !h'), reason: '零尺寸时必须跳过取景计算');
+    expect(sceneHtml, contains("addEventListener('resize', updateFraming)"));
     expect(
-      webWrapper,
-      contains("apptex=../textures/"),
-      reason: '上跳两级会指向 assets/textures/（不存在）→ 非地球星球全黑',
+      sceneHtml,
+      contains('let d0 = 0'),
+      reason: 'd0 须可重算（const 意味着只算一次）',
+    );
+  });
+
+  test('土星环用真实环带贴图（含卡西尼缝），UV 按实际内径重映射', () {
+    expect(sceneHtml, contains('textures/saturn_ring.png'));
+    expect(
+      File('assets/planet_scene/textures/saturn_ring.png').existsSync(),
+      isTrue,
+    );
+    expect(
+      sceneHtml,
+      contains('(v.length() - ringInner) / (ringOuter - ringInner)'),
+      reason: 'UV 内径写死会让环纹整体错位',
     );
   });
 }

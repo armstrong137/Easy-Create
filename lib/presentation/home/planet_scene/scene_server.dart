@@ -13,8 +13,7 @@ class SceneServer {
 
   /// 白名单前缀 → rootBundle 资产根（防目录穿越，只暴露场景所需资产）
   static const _routes = {
-    '/app-textures/': 'assets/textures/', // 五颗星球 albedo（复用主 App 既有纹理）
-    '/': 'assets/planet_scene/', // 场景页、three.js、地球多层纹理
+    '/': 'assets/planet_scene/', // 场景页、three.js、五星球分层纹理
   };
 
   /// 启动（幂等），返回端口号

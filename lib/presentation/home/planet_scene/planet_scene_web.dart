@@ -9,7 +9,6 @@ import 'package:web/web.dart' as web;
 /// 与移动端 PlanetScene 同名同接口（planet_scene.dart 条件导出分发）：
 /// - iframe 指向打包进 web 构建的 assets/planet_scene/index.html（同源，无 CORS）
 /// - iframe 不接收触摸事件；点击进大纲、魔毯点击、双指缩放都交给 Flutter 外层
-/// - 五颗球 albedo 走 apptex 相对路径参数（移动端为回环服务的 /app-textures/）
 /// - Web 体验版转速取初始值（能量档位变化不动态跟随，正式端在移动 App）
 class PlanetScene extends StatefulWidget {
   const PlanetScene({
@@ -53,7 +52,7 @@ class _PlanetSceneState extends State<PlanetScene> {
         ..src =
             'assets/assets/planet_scene/index.html'
             '?planet=${widget.planet}&spin=${widget.spin}'
-            '&stage=${widget.stageScale}&apptex=../textures/'
+            '&stage=${widget.stageScale}'
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%'
