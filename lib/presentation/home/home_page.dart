@@ -133,7 +133,11 @@ class _HomePageState extends ConsumerState<HomePage> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Starfield(brightness: starBrightness(currentCount)),
+          // 动态层跟随高级效果开关：测试/低端机回退纯静态照片
+          Starfield(
+            brightness: starBrightness(currentCount),
+            animated: ref.watch(advanced3DProvider),
+          ),
           if (novels.isEmpty)
             // 空宇宙：邀请创建第一颗星球
             const Center(
