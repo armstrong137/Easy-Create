@@ -331,8 +331,13 @@ async function ensureHiTexture() {
   if (hiTex || hiLoading || !lodSrc || lodSrc === cfg.map) return;
   hiLoading = true;
   try {
-    const bitmap = await createImageBitmap(await (await fetch(lodSrc)).blob());
+    // 常态贴图走 TextureLoader，WebGL 上传时会翻转 Y；ImageBitmap 路径会忽略
+    // Texture.flipY，所以必须在解码阶段翻转，避免 LOD 换档时地表朝向跳变。
+    const bitmap = await createImageBitmap(await (await fetch(lodSrc)).blob(), {
+      imageOrientation: 'flipY',
+    });
     const tex = new THREE.Texture(bitmap);
+    tex.flipY = false;
     tex.encoding = THREE.sRGBEncoding;
     tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
     tex.generateMipmaps = false; // 大图 mipmap 再多吃 33% 显存

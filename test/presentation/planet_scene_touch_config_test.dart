@@ -213,6 +213,19 @@ void main() {
     );
   });
 
+  test('LOD 高清贴图与常态贴图保持同一 UV 朝向，缩放换档不能让大陆跳变', () {
+    expect(
+      sceneHtml,
+      contains("imageOrientation: 'flipY'"),
+      reason: '常态贴图由 TextureLoader 上传时会翻转 Y；ImageBitmap 必须在解码时显式翻转，否则换档会像刷新到另一面',
+    );
+    expect(
+      sceneHtml,
+      contains('tex.flipY = false'),
+      reason: 'ImageBitmap 已在解码阶段完成翻转，纹理对象不能再依赖被浏览器忽略的 flipY',
+    );
+  });
+
   test('五颗星球都有高清 LOD 与源图（CC-BY solarsystemscope）', () {
     for (final p in ['mars', 'venus', 'jupiter', 'saturn']) {
       expect(sceneHtml, contains('textures/${p}_2048.jpg'));
