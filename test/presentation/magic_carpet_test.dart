@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -79,6 +80,29 @@ void main() {
     expect(find.textContaining('灵感魔毯 · 1'), findsOneWidget);
   });
 
+  testWidgets('黑色星空背景下标题有浅色背板，文字不糊进背景', (tester) async {
+    await pumpCarpet(tester, [fake(1, '深夜的旋律')]);
+
+    await tester.tap(find.byKey(const Key('魔毯小球')));
+    await tester.pumpAndSettle();
+
+    final box = tester.widget<DecoratedBox>(find.byKey(const Key('魔毯标题背板')));
+    final decoration = box.decoration as BoxDecoration;
+    expect(decoration.color, const Color(0xEFFFFDF6));
+    expect(decoration.borderRadius, isNotNull);
+  });
+
+  test('展开态不能用整面板 opaque 命中层挡住首页星球点击', () {
+    final src = File(
+      'lib/presentation/outline/magic_carpet.dart',
+    ).readAsStringSync();
+    expect(
+      src,
+      isNot(contains('behavior: HitTestBehavior.opaque')),
+      reason: '透明区域应露出并放过底层星球点击；收起请点右上角 X',
+    );
+  });
+
   testWidgets('展开态整体高度足够容纳大尺寸魔毯横幅', (tester) async {
     await pumpCarpet(tester, [fake(1, '深夜的旋律')]);
 
@@ -142,7 +166,11 @@ void main() {
     final first = tester.getTopLeft(find.text('第一条'));
     final third = tester.getTopLeft(find.text('第三条'));
     expect(first.dy, lessThan(third.dy), reason: '池序第一条在列表最上');
-    expect(find.byKey(const Key('魔毯排序把手_1')), findsOneWidget, reason: '每行有排序把手');
+    expect(
+      find.byKey(const Key('魔毯排序把手_1')),
+      findsOneWidget,
+      reason: '每行有排序把手',
+    );
   });
 
   testWidgets('拖拽中外部收起魔毯会清理拖拽态', (tester) async {

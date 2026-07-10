@@ -37,9 +37,11 @@ class _SnapToCardPhysics extends ScrollPhysics {
     // 先按父物理惯性模拟出落点（3 秒足够任何 fling 停稳），再吸附最近卡槽
     final sim = super.createBallisticSimulation(position, velocity);
     final end = sim?.x(3.0) ?? position.pixels;
-    final target = ((end / kCarpetItemHeight).roundToDouble() *
-            kCarpetItemHeight)
-        .clamp(position.minScrollExtent, position.maxScrollExtent);
+    final target =
+        ((end / kCarpetItemHeight).roundToDouble() * kCarpetItemHeight).clamp(
+          position.minScrollExtent,
+          position.maxScrollExtent,
+        );
     if ((target - position.pixels).abs() < toleranceFor(position).distance) {
       return null;
     }
@@ -379,9 +381,7 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
       if (_optimisticPool != null) setState(() => _optimisticPool = null);
     });
     final pool =
-        _optimisticPool ??
-        ref.watch(inspirationPoolProvider).value ??
-        const [];
+        _optimisticPool ?? ref.watch(inspirationPoolProvider).value ?? const [];
     final screen = MediaQuery.sizeOf(context);
     final width = screen.width * 0.86;
     // 列表可用空间 = 屏高 - 顶部安全区与留白 - 横幅 - 标题 - 底部留白：
@@ -482,168 +482,179 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
   Widget _panelBody(List<Inspiration> pool, double width, double height) {
     // 透明浮层：不再有实底面板。魔毯图透明四周、灵感卡之间的空隙，
     // 都直接透出后面一层的背景（用户定稿：有内容置顶、空处显背景）。
-    // 透明 Material 供 Text/InkWell 用；外层 GestureDetector 空处轻点收起。
+    // 透明 Material 供 Text/InkWell 用；透明空白处不再整面板吃点击，
+    // 避免首页星球被展开魔毯挡住。收起请点右上角 X。
     return Material(
       type: MaterialType.transparency,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque, // 吸收空处轻点（不painting → 背景照样透出）
-        onTap: () => _toggle(false),
-        child: SizedBox(
-          width: width,
-          height: height,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 魔毯横幅：逐帧展开动画（contain → 两侧透出背景）
-              SizedBox(
-                height: _bannerHeight,
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: AnimatedBuilder(
-                        animation: _unroll,
-                        builder: (context, _) {
-                          final t = Curves.easeInOut.transform(_unroll.value);
-                          final frame = 1 + (t * 8).round();
-                          return Image.asset(
-                            'assets/textures/carpet_frame_$frame.png',
-                            fit: BoxFit.contain,
-                            gaplessPlayback: true,
-                            filterQuality: FilterQuality.medium,
-                          );
-                        },
-                      ),
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 魔毯横幅：逐帧展开动画（contain → 两侧透出背景）
+            SizedBox(
+              height: _bannerHeight,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: AnimatedBuilder(
+                      animation: _unroll,
+                      builder: (context, _) {
+                        final t = Curves.easeInOut.transform(_unroll.value);
+                        final frame = 1 + (t * 8).round();
+                        return Image.asset(
+                          'assets/textures/carpet_frame_$frame.png',
+                          fit: BoxFit.contain,
+                          gaplessPlayback: true,
+                          filterQuality: FilterQuality.medium,
+                        );
+                      },
                     ),
-                    Positioned(
-                      top: 0,
-                      right: 0,
-                      child: IconButton(
-                        key: const Key('魔毯收起按钮'),
-                        icon: const Icon(
-                          CupertinoIcons.xmark_circle_fill,
-                          color: Color(0xE63A2A18),
-                          size: 26,
-                          shadows: _floatShadow,
-                        ),
-                        onPressed: () => _toggle(false),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // 标题（浮字带白晕，任何背景上可读；定高参与面板总高计算）
-              SizedBox(
-                height: _titleHeight,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      '灵感魔毯 · ${pool.length}',
-                      style: const TextStyle(
-                        fontFamily: 'LXGWWenKai',
-                        color: _ink,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                  ),
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: IconButton(
+                      key: const Key('魔毯收起按钮'),
+                      icon: const Icon(
+                        CupertinoIcons.xmark_circle_fill,
+                        color: Color(0xE63A2A18),
+                        size: 26,
                         shadows: _floatShadow,
+                      ),
+                      onPressed: () => _toggle(false),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // 标题：浅色背板压住星空噪点，黑色背景下也清楚。
+            SizedBox(
+              height: _titleHeight,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: DecoratedBox(
+                    key: const Key('魔毯标题背板'),
+                    decoration: BoxDecoration(
+                      color: const Color(0xEFFFFDF6),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: const Color(0x55C9A050)),
+                      boxShadow: const [
+                        BoxShadow(color: Color(0x66000000), blurRadius: 8),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      child: Text(
+                        '灵感魔毯 · ${pool.length}',
+                        style: const TextStyle(
+                          fontFamily: 'LXGWWenKai',
+                          color: _ink,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-              // 灵感列表（卡片不透明→可读；卡间与列表未占满处透出背景）
-              Expanded(
-                child: pool.isEmpty
-                    ? const Center(
-                        child: Text(
-                          '魔毯空空如也\n随时速记一条灵感吧',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontFamily: 'LXGWWenKai',
-                            color: _ink,
-                            fontSize: 13,
-                            height: 1.6,
-                            fontWeight: FontWeight.w600,
-                            shadows: _floatShadow,
-                          ),
+            ),
+            // 灵感列表（卡片不透明→可读；卡间与列表未占满处透出背景）
+            Expanded(
+              child: pool.isEmpty
+                  ? const Center(
+                      child: Text(
+                        '魔毯空空如也\n随时速记一条灵感吧',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'LXGWWenKai',
+                          color: _ink,
+                          fontSize: 13,
+                          height: 1.6,
+                          fontWeight: FontWeight.w600,
+                          shadows: _floatShadow,
                         ),
-                      )
-                    : NotificationListener<ScrollEndNotification>(
-                        onNotification: _snapAfterScroll,
-                        // 可重排列表：右侧把手拖动重排（长按卡片本体仍是拖上树）
-                        child: ReorderableListView.builder(
-                          scrollController: _listScroll,
-                          padding: const EdgeInsets.fromLTRB(12, 2, 12, 12),
-                          // 固定槽高 + 整卡吸附：静止时不出现被拦腰截断的卡
-                          physics: const _SnapToCardPhysics(),
-                          buildDefaultDragHandles: false,
-                          // 拖动替身透明底（默认 Material 灰底会遮星空背景）
-                          proxyDecorator: (child, index, animation) => Material(
-                            type: MaterialType.transparency,
-                            child: child,
-                          ),
-                          onReorderStart: (_) {
-                            _reordering = true;
-                            HapticFeedback.selectionClick();
-                          },
-                          onReorderEnd: (_) {
-                            // 重排的自动滚动可能停在半卡位，结束后补吸附
-                            _reordering = false;
-                            _scheduleSnapToSlot();
-                          },
-                          // onReorderItem 已自动修正移除位后的 newIndex。
-                          // 先乐观更新本地顺序（拖完什么样就是什么样），再落库
-                          onReorderItem: (oldIndex, newIndex) {
-                            final list = [...pool];
-                            list.insert(newIndex, list.removeAt(oldIndex));
-                            setState(() => _optimisticPool = list);
-                            ref
-                                .read(inspirationRepositoryProvider)
-                                .reorderCards(
-                                  list.map((e) => e.id).toList(),
-                                );
-                          },
-                          itemCount: pool.length,
-                          itemBuilder: (context, i) => SizedBox(
-                            key: Key('魔毯行_${pool[i].id}'),
-                            height: kCarpetItemHeight,
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: CarpetItem(
-                                    inspiration: pool[i],
-                                    onDragStarted: () {
-                                      setState(() => _dragging = true);
-                                      carpetDragging.value = pool[i];
-                                    },
-                                    onDragEnd: _finishDrag,
+                      ),
+                    )
+                  : NotificationListener<ScrollEndNotification>(
+                      onNotification: _snapAfterScroll,
+                      // 可重排列表：右侧把手拖动重排（长按卡片本体仍是拖上树）
+                      child: ReorderableListView.builder(
+                        scrollController: _listScroll,
+                        padding: const EdgeInsets.fromLTRB(12, 2, 12, 12),
+                        // 固定槽高 + 整卡吸附：静止时不出现被拦腰截断的卡
+                        physics: const _SnapToCardPhysics(),
+                        buildDefaultDragHandles: false,
+                        // 拖动替身透明底（默认 Material 灰底会遮星空背景）
+                        proxyDecorator: (child, index, animation) => Material(
+                          type: MaterialType.transparency,
+                          child: child,
+                        ),
+                        onReorderStart: (_) {
+                          _reordering = true;
+                          HapticFeedback.selectionClick();
+                        },
+                        onReorderEnd: (_) {
+                          // 重排的自动滚动可能停在半卡位，结束后补吸附
+                          _reordering = false;
+                          _scheduleSnapToSlot();
+                        },
+                        // onReorderItem 已自动修正移除位后的 newIndex。
+                        // 先乐观更新本地顺序（拖完什么样就是什么样），再落库
+                        onReorderItem: (oldIndex, newIndex) {
+                          final list = [...pool];
+                          list.insert(newIndex, list.removeAt(oldIndex));
+                          setState(() => _optimisticPool = list);
+                          ref
+                              .read(inspirationRepositoryProvider)
+                              .reorderCards(list.map((e) => e.id).toList());
+                        },
+                        itemCount: pool.length,
+                        itemBuilder: (context, i) => SizedBox(
+                          key: Key('魔毯行_${pool[i].id}'),
+                          height: kCarpetItemHeight,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: CarpetItem(
+                                  inspiration: pool[i],
+                                  onDragStarted: () {
+                                    setState(() => _dragging = true);
+                                    carpetDragging.value = pool[i];
+                                  },
+                                  onDragEnd: _finishDrag,
+                                ),
+                              ),
+                              // 排序把手：按住直接拖动重排
+                              ReorderableDragStartListener(
+                                index: i,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(
+                                    left: 6,
+                                    bottom: 7,
+                                  ),
+                                  child: Icon(
+                                    CupertinoIcons.line_horizontal_3,
+                                    key: Key('魔毯排序把手_${pool[i].id}'),
+                                    size: 18,
+                                    color: const Color(0xE63A2A18),
+                                    shadows: _floatShadow,
                                   ),
                                 ),
-                                // 排序把手：按住直接拖动重排
-                                ReorderableDragStartListener(
-                                  index: i,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(
-                                      left: 6,
-                                      bottom: 7,
-                                    ),
-                                    child: Icon(
-                                      CupertinoIcons.line_horizontal_3,
-                                      key: Key('魔毯排序把手_${pool[i].id}'),
-                                      size: 18,
-                                      color: const Color(0xE63A2A18),
-                                      shadows: _floatShadow,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-              ),
-            ],
-          ),
+                    ),
+            ),
+          ],
         ),
       ),
     );

@@ -107,6 +107,14 @@ void main() {
     expect(homePage, contains('fade: _zoomed'));
   });
 
+  test('放大态点击星球仍进入魔树，不把第一次点击消耗成复位', () {
+    expect(
+      homePage,
+      isNot(contains('if (_zoomed)')),
+      reason: '用户点击地球应直接进入魔树；缩放复位不应吞掉这次点击',
+    );
+  });
+
   test('星球画布不跨页：每页 ClipRect，杜绝相邻星球重影', () {
     expect(homePage, contains('ClipRect'));
   });

@@ -480,14 +480,11 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
           GestureDetector(
             key: Key('星球_${novel.id}'),
             behavior: HitTestBehavior.opaque,
-            // 点星球 → 进入该小说的大纲页（铅笔树）；放大态下先还原
+            // 点星球 → 进入该小说的大纲页（铅笔树）。放大态也直接进入，
+            // 避免用户点击地球时被"复位缩放"吞掉第一次点击。
             onTap: !ready
                 ? null
                 : () {
-                    if (_zoomed) {
-                      _resetZoom();
-                      return;
-                    }
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) =>
