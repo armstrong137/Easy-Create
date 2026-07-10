@@ -30,11 +30,7 @@ void main() {
     expect(sceneHtml, contains('SELFTEST_FAIL'));
     final ps1 = File('scripts/serve_web.ps1').readAsStringSync();
     expect(ps1, contains('selftest=1'));
-    expect(
-      ps1,
-      contains('场景自检失败'),
-      reason: '自检失败必须让脚本报错，不能静默放行',
-    );
+    expect(ps1, contains('场景自检失败'), reason: '自检失败必须让脚本报错，不能静默放行');
   });
 
   test('原生视图不吃点击：iframe 透明区与 WebView 均不接手势', () {
@@ -89,16 +85,8 @@ void main() {
   test('拖动转星球：支点承载转角，云层与土星环同挂支点', () {
     expect(sceneHtml, contains('window.setRotation'));
     expect(sceneHtml, contains('pivot.add(planet)'));
-    expect(
-      sceneHtml,
-      contains('pivot.add(clouds)'),
-      reason: '云层不挂支点则拖动时与地表脱节',
-    );
-    expect(
-      sceneHtml,
-      contains('pivot.add(ring)'),
-      reason: '土星环不挂支点则拖动时与赤道脱节',
-    );
+    expect(sceneHtml, contains('pivot.add(clouds)'), reason: '云层不挂支点则拖动时与地表脱节');
+    expect(sceneHtml, contains('pivot.add(ring)'), reason: '土星环不挂支点则拖动时与赤道脱节');
     expect(sceneHtml, contains('maxPitch'), reason: '俯仰须钳制，不许翻过极点');
     // 两端桥都要下发转角
     expect(ioWrapper, contains('setRotation('));
@@ -109,11 +97,7 @@ void main() {
     // 甩手惯性接线（滑行行为本身由 test/core/spin_inertia_test.dart 覆盖）
     expect(homePage, contains('SpinInertia'));
     expect(homePage, contains('_glideTicker'));
-    expect(
-      homePage,
-      contains('_spin.grab()'),
-      reason: '按下须抓停滑行中的星球',
-    );
+    expect(homePage, contains('_spin.grab()'), reason: '按下须抓停滑行中的星球');
   });
 
   test('放大态：书名与环绕文字让位、PageView 锁定防误翻页', () {
@@ -152,17 +136,25 @@ void main() {
     expect(ioWrapper, contains('lod=mid'));
   });
 
+  test('Web 体验版启用最高地表档，最大缩放时增强地表细节感', () {
+    expect(
+      webWrapper,
+      contains('lod=hi'),
+      reason: '用户用 iPhone Safari 测 Web 版时应能体验最高地表细节',
+    );
+    expect(sceneHtml, contains('applySurfaceDetail'));
+    expect(sceneHtml, contains('detailZoomFull'));
+    expect(sceneHtml, contains('normalScale.set'));
+    expect(sceneHtml, contains('planetMat.shininess'));
+  });
+
   test('放大时像素比拉满设备、缩回降档省电（触屏常态 2.5）', () {
     expect(sceneHtml, contains('isMobileLike ? 2.5 : 3'));
     expect(sceneHtml, contains('setPixelRatioBoost'));
   });
 
   test('LOD 迟滞切换：缩回释放高清纹理、常态贴图常驻、解码不阻塞主线程', () {
-    expect(
-      sceneHtml,
-      contains('lodZoomOut'),
-      reason: '无迟滞会在阈值附近来回抖动、反复加载大图',
-    );
+    expect(sceneHtml, contains('lodZoomOut'), reason: '无迟滞会在阈值附近来回抖动、反复加载大图');
     expect(
       sceneHtml,
       contains('hiTex.dispose()'),
@@ -173,11 +165,7 @@ void main() {
       contains('const baseTex'),
       reason: '常态贴图须常驻（带 mipmap，缩小观看不闪砂）',
     );
-    expect(
-      sceneHtml,
-      contains('createImageBitmap'),
-      reason: '主线程解码大图会整页卡住',
-    );
+    expect(sceneHtml, contains('createImageBitmap'), reason: '主线程解码大图会整页卡住');
   });
 
   test('LOD 调度避开手势热路径：空闲预热、GPU 预热、缩回延迟收尾', () {
@@ -246,11 +234,25 @@ void main() {
     expect(homePage, contains('super.build(context)'));
   });
 
+  test('删除前一颗星球后不能复用旧 3D 场景状态', () {
+    expect(
+      homePage,
+      contains("'planet-page-\${novels[i].id}-\${novels[i].planet}'"),
+      reason: 'PageView 删除前一页后会按下标复用 State；必须用小说身份给页面定 key',
+    );
+    expect(
+      homePage,
+      contains("ValueKey('planet-scene-\${novel.id}-\${novel.planet}')"),
+      reason: '3D 场景初始化时绑定 planet；小说切换后不能沿用旧 iframe/WebView',
+    );
+  });
+
   test('LOD 高清贴图与常态贴图保持同一 UV 朝向，缩放换档不能让大陆跳变', () {
     expect(
       sceneHtml,
       contains("imageOrientation: 'flipY'"),
-      reason: '常态贴图由 TextureLoader 上传时会翻转 Y；ImageBitmap 必须在解码时显式翻转，否则换档会像刷新到另一面',
+      reason:
+          '常态贴图由 TextureLoader 上传时会翻转 Y；ImageBitmap 必须在解码时显式翻转，否则换档会像刷新到另一面',
     );
     expect(
       sceneHtml,
@@ -282,11 +284,7 @@ void main() {
     expect(sceneHtml, contains('function updateFraming'));
     expect(sceneHtml, contains('if (!w || !h'), reason: '零尺寸时必须跳过取景计算');
     expect(sceneHtml, contains("addEventListener('resize', updateFraming)"));
-    expect(
-      sceneHtml,
-      contains('let d0 = 0'),
-      reason: 'd0 须可重算（const 意味着只算一次）',
-    );
+    expect(sceneHtml, contains('let d0 = 0'), reason: 'd0 须可重算（const 意味着只算一次）');
   });
 
   test('土星环用真实环带贴图（含卡西尼缝），UV 按实际内径重映射', () {

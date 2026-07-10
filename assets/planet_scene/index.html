@@ -132,6 +132,9 @@ scene.add(pivot);
 
 // 128 段：放大后球体轮廓与晨昏线仍平滑（64 段近距可见多边形棱）
 const planetMat = new THREE.MeshPhongMaterial(matOpts);
+const detailBaseNormalScale = cfg.normal && planetMat.normalScale ? planetMat.normalScale.x : 0;
+const detailBaseShininess = planetMat.shininess;
+const detailZoomStart = 1.35, detailZoomFull = 2.85;
 const planet = new THREE.Mesh(new THREE.SphereGeometry(1, 128, 128), planetMat);
 pivot.add(planet);
 
@@ -252,6 +255,17 @@ window.setSpin = function (revPerSec) { spinRevPerSec = revPerSec; };
 // 缩放 = 镜头沿视线推进（dolly），不是位图放大：
 // 场景按新距离重新渲染，多近都清晰；镜头恒过原点故星球始终居中。
 let zoom = 1, zoomTarget = 1;
+
+function applySurfaceDetail() {
+  const t = Math.max(0, Math.min(1, (zoomTarget - detailZoomStart) / (detailZoomFull - detailZoomStart)));
+  if (cfg.normal && planetMat.normalScale) {
+    const s = detailBaseNormalScale * (1 + t * 0.55);
+    planetMat.normalScale.set(s, s);
+  }
+  if (cfg.specular) {
+    planetMat.shininess = detailBaseShininess + t * 18;
+  }
+}
 
 // 放大档：手机取 mapMid（6144），桌面取 mapHi（源图上限）。
 // ?lod=mid|hi 显式指定（移动端 App 壳直接下发，不依赖浏览器嗅探）；
@@ -375,6 +389,7 @@ function setPixelRatioBoost(on) {
 }
 
 function applyLod() {
+  applySurfaceDetail();
   if (zoomTarget >= lodPrewarmZoom) {
     prewarmHiTexture();
     prewarmPixelRatioBoost();

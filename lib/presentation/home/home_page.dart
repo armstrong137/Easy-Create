@@ -158,6 +158,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                 // 不会溢出到相邻星球页造成"两颗星球重影"
                 itemBuilder: (context, i) => ClipRect(
                   child: _PlanetPage(
+                    key: ValueKey(
+                      'planet-page-${novels[i].id}-${novels[i].planet}',
+                    ),
                     novel: novels[i],
                     pool: pool,
                     active: i == _currentPage,
@@ -239,6 +242,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 /// 单颗星球页：星球 + 环绕灵感 + 书名，点星球进大纲页
 class _PlanetPage extends ConsumerStatefulWidget {
   const _PlanetPage({
+    super.key,
     required this.novel,
     required this.pool,
     required this.active,
@@ -338,7 +342,8 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
       // 手指落在球面上才接管拖动（落在球外留给 PageView 翻页）
       final circle = _planetCircle();
       _rotating =
-          circle != null && (e.position - circle.center).distance <= circle.radius;
+          circle != null &&
+          (e.position - circle.center).distance <= circle.radius;
       if (_rotating) {
         // 按住即抓停滑行中的星球
         _spin.grab();
@@ -430,6 +435,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
             maxWidth: sceneDiameter * kPlanetSceneStageScale,
             maxHeight: sceneDiameter * kPlanetSceneStageScale,
             child: PlanetScene(
+              key: ValueKey('planet-scene-${novel.id}-${novel.planet}'),
               planet: novel.planet,
               spin: planetSpin(count),
               diameter: sceneDiameter * kPlanetSceneStageScale,

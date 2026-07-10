@@ -9,7 +9,7 @@ import 'package:web/web.dart' as web;
 /// 与移动端 PlanetScene 同名同接口（planet_scene.dart 条件导出分发）：
 /// - iframe 指向打包进 web 构建的 assets/planet_scene/index.html（同源，无 CORS）
 /// - iframe 不接收触摸事件；点击进大纲、魔毯点击、双指缩放都交给 Flutter 外层
-/// - 不传 lod：由场景按指针类型自选放大档（手机浏览器降到 4096，桌面用源图上限）
+/// - Web 体验版显式下发 lod=hi，让手机 Safari 也能试最高细节；App 壳仍用 lod=mid
 /// - Web 体验版转速取初始值（能量档位变化不动态跟随，正式端在移动 App）
 class PlanetScene extends StatefulWidget {
   const PlanetScene({
@@ -68,6 +68,7 @@ class _PlanetSceneState extends State<PlanetScene> {
             'assets/assets/planet_scene/index.html'
             '?planet=${widget.planet}&spin=${widget.spin}'
             '&stage=${widget.stageScale}'
+            '&lod=hi'
             '&autoPrewarm=${widget.autoPrewarm ? 1 : 0}'
         ..style.border = 'none'
         ..style.width = '100%'
