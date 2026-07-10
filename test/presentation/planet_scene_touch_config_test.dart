@@ -15,6 +15,28 @@ void main() {
   ).readAsStringSync();
   final sceneHtml = File('assets/planet_scene/index.html').readAsStringSync();
 
+  test('Web 端 iframe viewType 必须每实例唯一（工厂闭包捕获旧 State 的回归）', () {
+    // Flutter web 对同名 viewType 的重复注册会被忽略：PageView 滑页重建后
+    // 新 State 的工厂不生效，iframe 被写进旧 State → postMessage 全部打空，
+    // 表现为"多星球滑页后缩放/旋转全失效"（真实发生过）
+    expect(webWrapper, contains('_instanceSeq'));
+    expect(webWrapper, contains(r'${++_instanceSeq}'));
+  });
+
+  test('场景页自带 selftest：serve_web.ps1 每次构建后无头跑核心链路', () {
+    // 覆盖"改完代码后星球放不大/转不动"这类只有真机才暴露的回归
+    expect(sceneHtml, contains("params.get('selftest')"));
+    expect(sceneHtml, contains('SELFTEST_PASS'));
+    expect(sceneHtml, contains('SELFTEST_FAIL'));
+    final ps1 = File('scripts/serve_web.ps1').readAsStringSync();
+    expect(ps1, contains('selftest=1'));
+    expect(
+      ps1,
+      contains('场景自检失败'),
+      reason: '自检失败必须让脚本报错，不能静默放行',
+    );
+  });
+
   test('原生视图不吃点击：iframe 透明区与 WebView 均不接手势', () {
     expect(
       webWrapper,

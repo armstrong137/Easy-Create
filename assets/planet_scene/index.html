@@ -388,6 +388,28 @@ updateFraming();
 animate();
 
 window.addEventListener('resize', updateFraming);
+
+// ---------- 自检（?selftest=1）：serve_web.ps1 每次构建后用无头浏览器跑 ----------
+// 真实调用一遍核心链路（缩放/postMessage 旋转/LOD 换档），结果写进 <title>，
+// 防止"改完代码后缩放/旋转悄悄失效"这类回归溜到手机上才被发现
+if (params.get('selftest') === '1') {
+  setTimeout(async function () {
+    const fails = [];
+    try {
+      const z0 = camera.position.z;
+      window.setZoom(2);
+      await new Promise(function (r) { setTimeout(r, 700); });
+      if (!(camera.position.z < z0 * 0.75)) fails.push('zoom');
+      if (!(hiTex || hiLoading)) fails.push('lod');
+      window.postMessage({ yaw: 0.8, pitch: 0.2 }, '*');
+      await new Promise(function (r) { setTimeout(r, 700); });
+      if (Math.abs(pivot.rotation.y - 0.8) > 0.2) fails.push('rotate');
+    } catch (e) {
+      fails.push('error:' + e.message);
+    }
+    document.title = fails.length ? 'SELFTEST_FAIL:' + fails.join('+') : 'SELFTEST_PASS';
+  }, 1200);
+}
 </script>
 </body>
 </html>

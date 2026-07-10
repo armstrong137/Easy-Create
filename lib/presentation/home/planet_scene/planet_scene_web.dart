@@ -47,13 +47,17 @@ class PlanetScene extends StatefulWidget {
 }
 
 class _PlanetSceneState extends State<PlanetScene> {
-  late final String _viewType = '星球场景_${widget.planet}';
+  /// viewType 必须**每个实例唯一**：Flutter web 对同名 viewType 的重复注册
+  /// 会被忽略——PageView 滑动销毁重建页面后，新 State 注册的工厂不生效，
+  /// 旧工厂闭包把 iframe 写进旧 State → 新 State 的 _iframe 恒为 null，
+  /// 缩放/旋转 postMessage 全部打空（真实回归：多星球滑页后手势失效）
+  static int _instanceSeq = 0;
+  late final String _viewType = '星球场景_${widget.planet}_${++_instanceSeq}';
   web.HTMLIFrameElement? _iframe;
 
   @override
   void initState() {
     super.initState();
-    // 每颗星球注册一次 iframe 工厂（重复注册同名 viewType 会被忽略/覆盖，无害）
     ui_web.platformViewRegistry.registerViewFactory(_viewType, (_) {
       final iframe = web.HTMLIFrameElement()
         ..src =

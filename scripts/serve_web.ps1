@@ -65,6 +65,34 @@ if (-not $ok) { throw "服务未起来，见日志 $log" }
 try { $null = Invoke-WebRequest "http://${ip}:$Port/" -TimeoutSec 8 -UseBasicParsing }
 catch { Write-Host "！局域网地址不通，多半是防火墙拦了入站" -ForegroundColor Red }
 
+# 5.5 场景功能自检（无头浏览器真实跑一遍缩放/旋转/LOD 链路）：
+# 防止"改完代码后星球放不大/转不动"这类回归溜到手机上才被发现
+$edge = @(
+    "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+    "C:\Program Files\Microsoft\Edge\Application\msedge.exe"
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+if ($edge) {
+    Write-Host "==> 场景功能自检（无头浏览器）…" -ForegroundColor Cyan
+    $sceneUrl = "http://127.0.0.1:$Port/assets/assets/planet_scene/index.html?selftest=1" +
+        "&planet=earth&spin=0&stage=1&lod=mid"
+    # virtual-time-budget：快进页面里的定时器，等自检写完 <title> 再 dump。
+    # 独立临时 profile：默认 profile 会命中 HTTP 缓存，测到旧构建（实测踩过）。
+    # 经 cmd 包一层丢弃 stderr：PS5.1 在 EAP=Stop 下会把原生程序的任意
+    # stderr 输出包装成终止性错误（Edge 启动时总打几行无害日志）
+    $profile = Join-Path $env:TEMP "easycreate_selftest_profile"
+    if (Test-Path $profile) { Remove-Item $profile -Recurse -Force -Confirm:$false -ErrorAction SilentlyContinue }
+    $dom = (cmd /c "`"$edge`" --headless=new --disable-gpu --no-first-run --user-data-dir=`"$profile`" --virtual-time-budget=9000 --dump-dom `"$sceneUrl`" 2>nul") | Out-String
+    if ($dom -match 'SELFTEST_PASS') {
+        Write-Host "==> 场景自检 PASS（缩放 / postMessage 旋转 / LOD 换档）" -ForegroundColor Green
+    } elseif ($dom -match 'SELFTEST_FAIL:([^<]+)') {
+        throw "场景自检失败: $($Matches[1]) —— 缩放/旋转/换档有回归，禁止交给手机测试"
+    } else {
+        Write-Host "！场景自检无结论（无头浏览器未返回 title），请手动验证" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "！未找到 Edge，跳过场景自检" -ForegroundColor Yellow
+}
+
 # 6. 报地址（IP 会随所连 WiFi/热点变化，每次以本行输出为准）
 $net = (Get-NetConnectionProfile | Select-Object -First 1).Name
 Write-Host ""
