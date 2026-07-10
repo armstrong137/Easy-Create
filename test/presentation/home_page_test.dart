@@ -132,6 +132,10 @@ void main() {
     expect(find.text('第二颗'), findsOneWidget, reason: '球外横拖应切换星球');
   });
 
+  // 惯性本身由 test/core/spin_inertia_test.dart 覆盖（滑行/衰减/钳制/停止）。
+  // 这里不写"甩手后仍在重绘"的断言：hasScheduledFrame 会被其他重绘触发，
+  // 去掉惯性它照样通过（已做变异验证），是个假测试。
+
   testWidgets('双指捏合放大星球：锁住翻页、书名让位；松手回到原大小则恢复', (tester) async {
     addTearDown(() => planetZoomLock.value = false);
     await pumpApp(tester, novels: [fakeNovel(1, '被放大的星球')]);

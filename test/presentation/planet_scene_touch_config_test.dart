@@ -84,6 +84,14 @@ void main() {
     // Flutter 侧：拖球面转星球，拖球外留给 PageView 翻页
     expect(homePage, contains('_rotating'));
     expect(homePage, contains('kMaxPitch'));
+    // 甩手惯性接线（滑行行为本身由 test/core/spin_inertia_test.dart 覆盖）
+    expect(homePage, contains('SpinInertia'));
+    expect(homePage, contains('_glideTicker'));
+    expect(
+      homePage,
+      contains('_spin.grab()'),
+      reason: '按下须抓停滑行中的星球',
+    );
   });
 
   test('放大态：书名与环绕文字让位、PageView 锁定防误翻页', () {

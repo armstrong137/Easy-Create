@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-09 22:40:43　对应提交：8bc7bcd 之后的工作区状态
+> 生成时间：2026-07-09 23:06:39　对应提交：2bff07e 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,26 +12,26 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     96
-  Nodes:     3,821
-  Edges:     18,409
-  DB Size:   19.11 MB
+  Files:     98
+  Nodes:     3,842
+  Edges:     18,471
+  DB Size:   19.17 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,481
-  function        1,339
-  class           440
-  import          277
+  method          1,491
+  function        1,341
+  class           441
+  import          283
   constant        168
-  file            88
+  file            90
   variable        14
   type_alias      12
   namespace       2
 
 Files by Language:
-  dart            58
+  dart            60
   javascript      10
   kotlin          8
   xml             6
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (96 files):
+Project Structure (98 files):
 
 |-- .agents
 |   `-- skills
@@ -138,7 +138,8 @@ Project Structure (96 files):
 |   |   |-- app_keys.dart (dart, 4 symbols)
 |   |   |-- carpet_constants.dart (dart, 8 symbols)
 |   |   |-- chinese_numbers.dart (dart, 5 symbols)
-|   |   `-- creative_energy.dart (dart, 11 symbols)
+|   |   |-- creative_energy.dart (dart, 11 symbols)
+|   |   `-- spin_inertia.dart (dart, 9 symbols)
 |   |-- data
 |   |   |-- database
 |   |   |   |-- app_database.dart (dart, 9 symbols)
@@ -158,7 +159,7 @@ Project Structure (96 files):
 |   |   |   |   |-- planet_scene_web.dart (dart, 12 symbols)
 |   |   |   |   |-- planet_scene.dart (dart, 6 symbols)
 |   |   |   |   `-- scene_server.dart (dart, 11 symbols)
-|   |   |   |-- home_page.dart (dart, 51 symbols)
+|   |   |   |-- home_page.dart (dart, 57 symbols)
 |   |   |   |-- orbiting_inspirations.dart (dart, 16 symbols)
 |   |   |   |-- planet_view.dart (dart, 19 symbols)
 |   |   |   |-- saturn_rings_painter.dart (dart, 12 symbols)
@@ -190,7 +191,8 @@ Project Structure (96 files):
 |-- test
 |   |-- core
 |   |   |-- chinese_numbers_test.dart (dart, 4 symbols)
-|   |   `-- creative_energy_test.dart (dart, 4 symbols)
+|   |   |-- creative_energy_test.dart (dart, 4 symbols)
+|   |   `-- spin_inertia_test.dart (dart, 7 symbols)
 |   |-- data
 |   |   |-- app_database_config_test.dart (dart, 4 symbols)
 |   |   `-- repositories_test.dart (dart, 9 symbols)

@@ -2,9 +2,11 @@ import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/creative_energy.dart';
+import '../../core/spin_inertia.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import '../outline/outline_page.dart';
@@ -240,13 +242,20 @@ class _PlanetPage extends ConsumerStatefulWidget {
   ConsumerState<_PlanetPage> createState() => _PlanetPageState();
 }
 
-class _PlanetPageState extends ConsumerState<_PlanetPage> {
+class _PlanetPageState extends ConsumerState<_PlanetPage>
+    with SingleTickerProviderStateMixin {
   /// 当前缩放倍率（下发到 3D 场景做镜头推进，不是位图放大）
   double _zoom = 1;
 
-  /// 拖动转星球的累计角度（弧度，地球仪手感）
-  double _yaw = 0;
-  double _pitch = 0;
+  /// 拖动转星球的角度与松手后的惯性滑行（地球仪手感）
+  final _spin = SpinInertia(maxPitch: kMaxPitch);
+  // 必须在 initState 建：late final 会拖到 dispose 时才首次创建，
+  // 那时 widget 树正在拆除，createTicker 会断言失败
+  late final Ticker _glideTicker;
+  Duration _lastGlideTs = Duration.zero;
+
+  /// 上一次拖动事件的时间戳（用于估计角速度）
+  Duration _lastMoveTs = Duration.zero;
 
   /// 双指跟踪：指针位置、捏合起始两指间距与起始倍率
   final _pointers = <int, Offset>{};
@@ -261,10 +270,38 @@ class _PlanetPageState extends ConsumerState<_PlanetPage> {
 
   bool get _zoomed => _zoom > kPlanetTitleHideZoom;
 
+  @override
+  void initState() {
+    super.initState();
+    _glideTicker = createTicker(_onGlideTick);
+  }
+
+  @override
+  void dispose() {
+    _glideTicker.dispose();
+    super.dispose();
+  }
+
+  /// 惯性滑行：每帧推进角度，停下即关掉 Ticker（不可见时不烧 CPU）
+  void _onGlideTick(Duration elapsed) {
+    final dt = (elapsed - _lastGlideTs).inMicroseconds / 1e6;
+    _lastGlideTs = elapsed;
+    if (dt <= 0) return;
+    final stillGliding = _spin.tick(dt);
+    setState(() {});
+    if (!stillGliding) _glideTicker.stop();
+  }
+
+  void _startGlide() {
+    _spin.release();
+    if (!_spin.gliding || _glideTicker.isActive) return;
+    _lastGlideTs = Duration.zero;
+    _glideTicker.start();
+  }
+
   void _syncPageLock() {
     // 捏合、转星球、已放大时都锁住 PageView，避免误翻页
-    planetZoomLock.value =
-        _pointers.length >= 2 || _rotating || _zoom > 1.001;
+    planetZoomLock.value = _pointers.length >= 2 || _rotating || _zoom > 1.001;
   }
 
   void _resetZoom() {
@@ -289,6 +326,12 @@ class _PlanetPageState extends ConsumerState<_PlanetPage> {
       final circle = _planetCircle();
       _rotating =
           circle != null && (e.position - circle.center).distance <= circle.radius;
+      if (_rotating) {
+        // 按住即抓停滑行中的星球
+        _spin.grab();
+        _glideTicker.stop();
+        _lastMoveTs = e.timeStamp;
+      }
     } else if (_pointers.length == 2) {
       _rotating = false; // 双指优先给缩放
       final p = _pointers.values.toList();
@@ -309,9 +352,10 @@ class _PlanetPageState extends ConsumerState<_PlanetPage> {
       final circle = _planetCircle();
       if (circle == null) return;
       final d = e.position - prev;
+      final dt = (e.timeStamp - _lastMoveTs).inMicroseconds / 1e6;
+      _lastMoveTs = e.timeStamp;
       setState(() {
-        _yaw += d.dx / circle.radius;
-        _pitch = (_pitch + d.dy / circle.radius).clamp(-kMaxPitch, kMaxPitch);
+        _spin.dragBy(d.dx / circle.radius, d.dy / circle.radius, dt);
       });
       return;
     }
@@ -330,7 +374,11 @@ class _PlanetPageState extends ConsumerState<_PlanetPage> {
   void _onPointerUp(PointerEvent e) {
     _pointers.remove(e.pointer);
     if (_pointers.length < 2) _pinchStartDist = 0;
-    if (_pointers.isEmpty) _rotating = false;
+    if (_pointers.isEmpty) {
+      // 甩手松开 → 星球带着惯性继续滑行一段
+      if (_rotating) _startGlide();
+      _rotating = false;
+    }
     // 松手后接近原始大小就吸附回 1，避免停在 1.02 这种尴尬位（书名一直藏着）
     if (_pointers.isEmpty && _zoom > 1 && _zoom < kPlanetTitleHideZoom) {
       _resetZoom();
@@ -373,8 +421,8 @@ class _PlanetPageState extends ConsumerState<_PlanetPage> {
               diameter: sceneDiameter * kPlanetSceneStageScale,
               stageScale: kPlanetSceneStageScale,
               zoom: _zoom,
-              yaw: _yaw,
-              pitch: _pitch,
+              yaw: _spin.yaw,
+              pitch: _spin.pitch,
             ),
           ),
         );
