@@ -78,11 +78,40 @@ void main() {
   test('高清：8K 地表 LOD + 高像素比 + 128 段球体', () {
     expect(sceneHtml, contains('earth_day_8192.jpg'));
     expect(sceneHtml, contains('lodZoom'));
-    expect(sceneHtml, contains('devicePixelRatio, 3'));
     expect(sceneHtml, contains('SphereGeometry(1, 128, 128)'));
     expect(
       File('assets/planet_scene/textures/earth_day_8192.jpg').existsSync(),
       isTrue,
+    );
+  });
+
+  test('移动端放大档封顶 4096：8192 单张纹理约 134MB，iPhone 会卡死', () {
+    // 每颗球都要有 mapMid（手机档），且不得指向 8192 贴图
+    for (final p in ['mars', 'venus']) {
+      expect(sceneHtml, contains('textures/${p}_4096.jpg'));
+      expect(
+        File('assets/planet_scene/textures/${p}_4096.jpg').existsSync(),
+        isTrue,
+      );
+    }
+    expect(sceneHtml, contains('mapMid'));
+    expect(sceneHtml, contains("lodParam === 'mid'"));
+    // 移动端 App 壳显式下发 lod=mid，不依赖浏览器嗅探
+    expect(ioWrapper, contains('lod=mid'));
+    // 像素比在触屏设备上降档
+    expect(sceneHtml, contains('isMobileLike ? 2.5 : 3'));
+  });
+
+  test('换入放大档必须释放旧纹理，且解码不阻塞主线程', () {
+    expect(
+      sceneHtml,
+      contains('old.dispose()'),
+      reason: '不释放旧贴图则两张同时占显存 → 放大即卡死',
+    );
+    expect(
+      sceneHtml,
+      contains('createImageBitmap'),
+      reason: '主线程解码大图会整页卡住',
     );
   });
 

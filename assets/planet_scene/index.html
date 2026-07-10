@@ -36,8 +36,9 @@ const renderer = new THREE.WebGLRenderer({
   powerPreference: 'high-performance',
 });
 renderer.setClearColor(0x000000, 0);
-// 放大后要求"极其高清"：设备像素比不再封 1.75（iPhone 3x 全用上）
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 3));
+// 手机（触屏）显存吃紧：像素比封 2.5；桌面放开到 3
+const isMobileLike = window.matchMedia('(pointer: coarse)').matches;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobileLike ? 2.5 : 3));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputEncoding = THREE.sRGBEncoding;
 document.body.appendChild(renderer.domElement);
@@ -59,11 +60,13 @@ sun.position.copy(sunDir);
 scene.add(sun);
 scene.add(new THREE.AmbientLight(0x334455, 0.42));
 
-// ---------- 星球材质组配置（earth 全五层，其余用户素材 albedo + 各自大气色） ----------
+// ---------- 星球材质组配置 ----------
+// LOD 三档：map 常态 / mapMid 手机放大档（≤4096）/ mapHi 桌面放大档（源图上限）
+// 手机不能上 8192：单张纹理占显存 8192×4096×4B ≈ 134MB，iPhone Safari 直接卡死。
 const PLANETS = {
   earth: {
     map: 'textures/earth_day_4096.jpg',
-    // 放大到 lodZoom 倍时换 8K 地表（LOD，按需加载不拖慢首屏）
+    mapMid: 'textures/earth_day_4096.jpg', // 已是 4096，手机无需再换
     mapHi: 'textures/earth_day_8192.jpg',
     normal: 'textures/earth_normal_2048.jpg',
     specular: 'textures/earth_specular_2048.jpg',
@@ -71,21 +74,25 @@ const PLANETS = {
     night: 'textures/2k_earth_nightmap.jpg',
     atmosColor: [0.32, 0.54, 1.0], atmosStrength: 1.5,
   },
-  // 其余四球：常态 2K、放大时换各自源图原生上限（火星/金星 8K，气态巨行星 4K）
   mars: {
-    map: 'textures/mars_2048.jpg', mapHi: 'textures/mars_hi.jpg',
+    map: 'textures/mars_2048.jpg',
+    mapMid: 'textures/mars_4096.jpg', mapHi: 'textures/mars_hi.jpg',
     atmosColor: [1.0, 0.45, 0.25], atmosStrength: 0.7,
   },
   jupiter: {
-    map: 'textures/jupiter_2048.jpg', mapHi: 'textures/jupiter_hi.jpg',
+    // 源图原生上限即 4096，手机/桌面同档
+    map: 'textures/jupiter_2048.jpg',
+    mapMid: 'textures/jupiter_hi.jpg', mapHi: 'textures/jupiter_hi.jpg',
     atmosColor: [0.95, 0.80, 0.58], atmosStrength: 0.6,
   },
   venus: {
-    map: 'textures/venus_2048.jpg', mapHi: 'textures/venus_hi.jpg',
+    map: 'textures/venus_2048.jpg',
+    mapMid: 'textures/venus_4096.jpg', mapHi: 'textures/venus_hi.jpg',
     atmosColor: [1.0, 0.85, 0.55], atmosStrength: 1.1,
   },
   saturn: {
-    map: 'textures/saturn_2048.jpg', mapHi: 'textures/saturn_hi.jpg',
+    map: 'textures/saturn_2048.jpg',
+    mapMid: 'textures/saturn_hi.jpg', mapHi: 'textures/saturn_hi.jpg',
     atmosColor: [0.95, 0.85, 0.62], atmosStrength: 0.6, ring: true,
   },
 };
@@ -234,20 +241,37 @@ window.setSpin = function (revPerSec) { spinRevPerSec = revPerSec; };
 // 缩放 = 镜头沿视线推进（dolly），不是位图放大：
 // 场景按新距离重新渲染，多近都清晰；镜头恒过原点故星球始终居中。
 let zoom = 1, zoomTarget = 1, hiRequested = false;
-const lodZoom = 1.35; // 超过此倍率换 8K 地表
+const lodZoom = 1.35; // 超过此倍率换入放大档地表
+
+// 放大档：手机取 mapMid（≤4096），桌面取 mapHi（源图上限）。
+// ?lod=mid|hi 显式指定（移动端 App 壳直接下发，不依赖浏览器嗅探）；
+// 缺省时按指针类型判断（Web 版在手机浏览器打开也能自动降档）
+const lodParam = params.get('lod');
+const useMid = lodParam ? lodParam === 'mid' : isMobileLike;
+const lodSrc = useMid ? cfg.mapMid : cfg.mapHi;
+
+// 解码放到主线程之外（createImageBitmap），避免大图解码时整页卡住；
+// 换入后立刻释放旧纹理，否则两张贴图同时占显存 → iPhone 卡死
+async function loadLodTexture(src) {
+  const bitmap = await createImageBitmap(await (await fetch(src)).blob());
+  const tex = new THREE.Texture(bitmap);
+  tex.encoding = THREE.sRGBEncoding;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  tex.generateMipmaps = false; // 大图 mipmap 再多吃 33% 显存
+  tex.minFilter = THREE.LinearFilter;
+  tex.needsUpdate = true;
+  const old = planetMat.map;
+  planetMat.map = tex;
+  planetMat.needsUpdate = true;
+  if (old) old.dispose();
+}
+
 window.setZoom = function (z) {
   zoomTarget = Math.max(1, z);
-  if (!hiRequested && cfg.mapHi && zoomTarget >= lodZoom) {
+  if (!hiRequested && lodSrc && lodSrc !== cfg.map && zoomTarget >= lodZoom) {
     hiRequested = true;
-    // 按需加载高清地表，成功才替换（失败静默留用 4K）
-    loader.load(cfg.mapHi, function (tex) {
-      tex.encoding = THREE.sRGBEncoding;
-      tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-      tex.generateMipmaps = false;          // 8K mipmap 省 33% 显存
-      tex.minFilter = THREE.LinearFilter;
-      planetMat.map = tex;
-      planetMat.needsUpdate = true;
-    });
+    // 失败静默留用常态贴图，不影响交互
+    loadLodTexture(lodSrc).catch(function () {});
   }
 };
 

@@ -102,6 +102,19 @@ void main() {
     expect(saved.single.planet, 'earth', reason: '第 1 颗星球分配 earth 纹理');
   });
 
+  testWidgets('星球命名框：未输入时提示语居中（左对齐显得空落）', (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.byKey(const Key('创建新星球标题')));
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<CupertinoTextField>(
+      find.byKey(const Key('新星球书名输入框')),
+    );
+    expect(field.textAlign, TextAlign.center);
+    expect(field.placeholder, '这部小说叫什么？');
+  });
+
   testWidgets('创建新星球成功后自动切到新星球页', (tester) async {
     await db
         .into(db.novels)

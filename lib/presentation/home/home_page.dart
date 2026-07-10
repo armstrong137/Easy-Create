@@ -524,6 +524,8 @@ Future<String?> _promptText({
                           controller: controller,
                           autofocus: true,
                           placeholder: hint,
+                          // 提示语与输入内容都居中（左对齐时未输入的框显得空落）
+                          textAlign: TextAlign.center,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
                             vertical: 13,
