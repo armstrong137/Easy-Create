@@ -106,7 +106,10 @@ void main() {
     addTearDown(() => planetZoomLock.value = false);
     await pumpApp(
       tester,
-      novels: [fakeNovel(1, '第一颗'), fakeNovel(2, '第二颗', planet: 'mars')],
+      novels: [
+        fakeNovel(1, '第一颗'),
+        fakeNovel(2, '第二颗', planet: 'mars'),
+      ],
     );
     expect(find.text('第一颗'), findsOneWidget);
 
@@ -195,6 +198,28 @@ void main() {
       lessThan(40),
       reason: '无键盘时弹窗应垂直居中',
     );
+  });
+
+  testWidgets('星球命名框：键盘弹起时不贴状态栏，保持手机友好宽度', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.view.viewInsets = const FakeViewPadding(bottom: 330);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetViewInsets);
+
+    await pumpApp(tester);
+
+    await tester.tap(find.byKey(const Key('创建新星球标题')));
+    await tester.pumpAndSettle();
+
+    final card = tester.getRect(find.byKey(const Key('星球名称弹窗卡片')));
+    expect(
+      card.top,
+      greaterThanOrEqualTo(72),
+      reason: 'iPhone Safari 键盘弹起后，弹窗不能被顶到状态栏下面',
+    );
+    expect(card.width, lessThanOrEqualTo(310), reason: '手机上弹窗不应显得过宽');
   });
 
   testWidgets('创建新星球成功后自动切到新星球页', (tester) async {

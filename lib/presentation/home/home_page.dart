@@ -613,134 +613,130 @@ Future<String?> _promptText({
     transitionDuration: const Duration(milliseconds: 160),
     pageBuilder: (dialogContext, animation, secondaryAnimation) {
       final media = MediaQuery.of(dialogContext);
-      final width = math.min(media.size.width - 48, 330.0);
+      final width = math.min(media.size.width - 48, 310.0);
+      final keyboardOpen = media.viewInsets.bottom > 0;
+      final topGap = math.max(media.padding.top + 24, 72.0);
+      final bottomGap = keyboardOpen
+          ? media.viewInsets.bottom + 16
+          : math.max(media.padding.bottom + 24, 24.0);
       return Material(
         type: MaterialType.transparency,
         child: AnimatedPadding(
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOutCubic,
-          padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
-          child: SafeArea(
-            // 居中于键盘上方的可视区（viewInsets 已把键盘高度让出来）；
-            // 顶对齐会把弹窗钉在状态栏下面，太靠上
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Container(
-                  key: const Key('星球名称弹窗卡片'),
-                  width: width,
-                  decoration: BoxDecoration(
-                    color: const Color(0xF8FFFDF8),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.78),
+          padding: EdgeInsets.fromLTRB(24, topGap, 24, bottomGap),
+          child: Align(
+            // iPhone Safari 聚焦输入框时会自行滚动画布；键盘态下固定上边距，
+            // 防止弹窗被顶到状态栏下面。无键盘时仍保持近似居中。
+            alignment: keyboardOpen ? Alignment.topCenter : Alignment.center,
+            child: Container(
+              key: const Key('星球名称弹窗卡片'),
+              width: width,
+              decoration: BoxDecoration(
+                color: const Color(0xF8FFFDF8),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.78)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.18),
+                    blurRadius: 24,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 20, 22, 12),
+                    child: Text(
+                      heading,
+                      textAlign: TextAlign.center,
+                      style: _dlgStyle(
+                        size: 20,
+                        weight: FontWeight.w600,
+                        color: const Color(0xFF3D332A),
+                      ),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.18),
-                        blurRadius: 24,
-                        offset: const Offset(0, 12),
-                      ),
-                    ],
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(22, 20, 22, 12),
-                        child: Text(
-                          heading,
-                          textAlign: TextAlign.center,
-                          style: _dlgStyle(
-                            size: 20,
-                            weight: FontWeight.w600,
-                            color: const Color(0xFF3D332A),
-                          ),
-                        ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                    child: CupertinoTextField(
+                      key: fieldKey,
+                      controller: controller,
+                      autofocus: true,
+                      placeholder: hint,
+                      // 提示语与输入内容都居中（左对齐时未输入的框显得空落）
+                      textAlign: TextAlign.center,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 13,
                       ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-                        child: CupertinoTextField(
-                          key: fieldKey,
-                          controller: controller,
-                          autofocus: true,
-                          placeholder: hint,
-                          // 提示语与输入内容都居中（左对齐时未输入的框显得空落）
-                          textAlign: TextAlign.center,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 13,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.92),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFFE3D8C7)),
-                          ),
-                          style: _dlgStyle(
-                            size: 16,
-                            color: const Color(0xFF1A1A1A),
-                          ),
-                          placeholderStyle: _dlgStyle(
-                            size: 16,
-                            color: const Color(0x993D332A),
-                          ),
-                          onSubmitted: (v) =>
-                              Navigator.of(dialogContext).pop(v),
-                        ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.92),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFE3D8C7)),
                       ),
-                      DecoratedBox(
-                        decoration: const BoxDecoration(
-                          border: Border(
-                            top: BorderSide(color: Color(0x1F3D332A)),
-                          ),
-                        ),
-                        child: SizedBox(
-                          height: 54,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: CupertinoButton(
-                                  padding: EdgeInsets.zero,
-                                  onPressed: () =>
-                                      Navigator.of(dialogContext).pop(),
-                                  child: Text(
-                                    '取消',
-                                    style: _dlgStyle(
-                                      size: 18,
-                                      color: const Color(0xFF8C4A63),
-                                    ),
-                                  ),
+                      style: _dlgStyle(
+                        size: 16,
+                        color: const Color(0xFF1A1A1A),
+                      ),
+                      placeholderStyle: _dlgStyle(
+                        size: 16,
+                        color: const Color(0x993D332A),
+                      ),
+                      onSubmitted: (v) => Navigator.of(dialogContext).pop(v),
+                    ),
+                  ),
+                  DecoratedBox(
+                    decoration: const BoxDecoration(
+                      border: Border(top: BorderSide(color: Color(0x1F3D332A))),
+                    ),
+                    child: SizedBox(
+                      height: 54,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: CupertinoButton(
+                              padding: EdgeInsets.zero,
+                              onPressed: () =>
+                                  Navigator.of(dialogContext).pop(),
+                              child: Text(
+                                '取消',
+                                style: _dlgStyle(
+                                  size: 18,
+                                  color: const Color(0xFF8C4A63),
                                 ),
                               ),
-                              const VerticalDivider(
-                                width: 1,
-                                thickness: 1,
-                                color: Color(0x1F3D332A),
-                              ),
-                              Expanded(
-                                child: CupertinoButton(
-                                  key: confirmKey,
-                                  padding: EdgeInsets.zero,
-                                  onPressed: () => Navigator.of(
-                                    dialogContext,
-                                  ).pop(controller.text),
-                                  child: Text(
-                                    confirm,
-                                    style: _dlgStyle(
-                                      size: 18,
-                                      weight: FontWeight.w600,
-                                      color: const Color(0xFF8C4A63),
-                                    ),
-                                  ),
+                            ),
+                          ),
+                          const VerticalDivider(
+                            width: 1,
+                            thickness: 1,
+                            color: Color(0x1F3D332A),
+                          ),
+                          Expanded(
+                            child: CupertinoButton(
+                              key: confirmKey,
+                              padding: EdgeInsets.zero,
+                              onPressed: () => Navigator.of(
+                                dialogContext,
+                              ).pop(controller.text),
+                              child: Text(
+                                confirm,
+                                style: _dlgStyle(
+                                  size: 18,
+                                  weight: FontWeight.w600,
+                                  color: const Color(0xFF8C4A63),
                                 ),
                               ),
-                            ],
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ),

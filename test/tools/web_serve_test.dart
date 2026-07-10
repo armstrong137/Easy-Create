@@ -39,6 +39,18 @@ void main() {
     expect(html, contains('touch-action: none'));
   });
 
+  test('iPhone Safari 聚焦输入框时页面不能被浏览器自动滚到状态栏下面', () {
+    final html = File('web/index.html').readAsStringSync();
+    expect(
+      html,
+      contains('position: fixed'),
+      reason: 'iOS Safari 聚焦输入框会滚动页面；根节点必须固定住 Flutter 画布',
+    );
+    expect(html, contains('visualViewport'));
+    expect(html, contains('focusin'));
+    expect(html, contains('window.scrollTo(0, 0)'));
+  });
+
   test('ps1 会自测局域网地址并打印当前 IP（IP 随所连 WiFi 变化）', () {
     final src = servePs1.readAsStringSync();
     expect(src, contains('http://\${ip}:\$Port'));
@@ -84,7 +96,8 @@ void main() {
       expect(
         pinned['sqlite3'],
         versionOf('sqlite3'),
-        reason: 'web/sqlite3.wasm 版本与 pubspec.lock 的 sqlite3 不一致，'
+        reason:
+            'web/sqlite3.wasm 版本与 pubspec.lock 的 sqlite3 不一致，'
             '请按 web/RUNTIME_VERSIONS.txt 里的下载命令更新',
       );
       expect(

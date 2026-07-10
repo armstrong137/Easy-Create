@@ -32,7 +32,15 @@
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <style>
-    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      position: fixed;
+      inset: 0;
+    }
     /* 手势全部交给 Flutter，浏览器不做滚动/缩放 */
     body { touch-action: none; overscroll-behavior: none; }
   </style>
@@ -65,6 +73,15 @@
     }, { passive: false });
     // 双击缩放（iOS 的 300ms 双击放大页面）
     document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
+
+    // iPhone Safari 聚焦输入框时会尝试滚动页面，把 Flutter 画布顶到状态栏下。
+    // 根节点已 fixed，这里再在键盘/焦点变化后把页面位置钉回原点。
+    const keepFlutterViewportPinned = () => window.scrollTo(0, 0);
+    window.addEventListener('focusin', () => setTimeout(keepFlutterViewportPinned, 0));
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', keepFlutterViewportPinned);
+      window.visualViewport.addEventListener('scroll', keepFlutterViewportPinned);
+    }
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
