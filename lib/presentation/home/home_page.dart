@@ -296,6 +296,9 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
   /// 3D 场景首帧是否已就绪（未就绪/重建期间显示光晕替身，避免空白）
   bool _sceneReady = false;
 
+  /// Web 端上一帧低清透明快照：从魔树返回时 iframe 会重建，用它遮住冷启动空白。
+  String? _sceneSnapshot;
+
   /// 星球画面区域（用于判断手指是否落在球上）
   final _planetKey = GlobalKey();
 
@@ -463,7 +466,10 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
         final standIn = AnimatedOpacity(
           duration: const Duration(milliseconds: 350),
           opacity: _sceneReady && showScene ? 0 : 1,
-          child: _PlanetStandIn(diameter: diameter),
+          child: _PlanetStandIn(
+            diameter: sceneDiameter,
+            snapshotDataUrl: _sceneSnapshot,
+          ),
         );
         if (!showScene) {
           // 摘除期：只留替身，保持布局与命中区尺寸
@@ -499,6 +505,11 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
                   onReady: () {
                     if (mounted && !_sceneReady) {
                       setState(() => _sceneReady = true);
+                    }
+                  },
+                  onSnapshot: (snapshot) {
+                    if (mounted && snapshot != _sceneSnapshot) {
+                      setState(() => _sceneSnapshot = snapshot);
                     }
                   },
                 ),
@@ -644,12 +655,30 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
 /// 星球替身：加载/重建期间的"深空显形"光晕轮廓（纯渐变，零资源开销）。
 /// 观感是一颗尚未聚焦的暗星球：深蓝球体核心 + 大气蓝辉边缘。
 class _PlanetStandIn extends StatelessWidget {
-  const _PlanetStandIn({required this.diameter});
+  const _PlanetStandIn({required this.diameter, this.snapshotDataUrl});
 
   final double diameter;
+  final String? snapshotDataUrl;
 
   @override
   Widget build(BuildContext context) {
+    final snapshot = snapshotDataUrl;
+    if (snapshot != null) {
+      return IgnorePointer(
+        child: OverflowBox(
+          maxWidth: diameter * kPlanetSceneStageScale,
+          maxHeight: diameter * kPlanetSceneStageScale,
+          child: Image.network(
+            snapshot,
+            width: diameter * kPlanetSceneStageScale,
+            height: diameter * kPlanetSceneStageScale,
+            fit: BoxFit.fill,
+            filterQuality: FilterQuality.medium,
+            gaplessPlayback: true,
+          ),
+        ),
+      );
+    }
     return IgnorePointer(
       child: Container(
         width: diameter,

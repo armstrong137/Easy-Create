@@ -470,6 +470,29 @@ window.addEventListener('message', function (e) {
   }
 });
 
+function sendSnapshot() {
+  if (window.parent === window) return;
+  try {
+    const source = renderer.domElement;
+    if (!source.width || !source.height) return;
+    const maxSide = 480;
+    const scale = Math.min(1, maxSide / Math.max(source.width, source.height));
+    const w = Math.max(1, Math.round(source.width * scale));
+    const h = Math.max(1, Math.round(source.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext('2d').drawImage(source, 0, 0, w, h);
+    window.parent.postMessage(
+      'sceneSnapshot:' + (params.get('token') || '') + ':' +
+        canvas.toDataURL('image/png'),
+      '*'
+    );
+  } catch (e) {
+    // WebGL 画布若被浏览器保护为不可读，快照兜底静默放弃，不影响真实场景渲染。
+  }
+}
+
 // ---------- 渲染循环 ----------
 let last = performance.now(), frames = 0, lastPost = last, notified = false;
 function animate() {
@@ -504,6 +527,9 @@ function animate() {
     if (window.parent !== window) {
       // 带回宿主下发的 token：同页多颗星球时各自只认自己的就绪信号
       window.parent.postMessage('sceneReady:' + (params.get('token') || ''), '*');
+      // 就绪即拍第一张快照，之后周期更新
+      sendSnapshot();
+      setInterval(sendSnapshot, 5000);
     }
   }
   if (now - lastPost > 1000) {

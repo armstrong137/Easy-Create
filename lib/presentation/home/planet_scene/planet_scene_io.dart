@@ -23,6 +23,7 @@ class PlanetScene extends ConsumerStatefulWidget {
     this.pitch = 0,
     this.autoPrewarm = true,
     this.onReady,
+    this.onSnapshot,
   });
 
   /// 行星纹理名（earth/mars/jupiter/venus/saturn）
@@ -51,6 +52,9 @@ class PlanetScene extends ConsumerStatefulWidget {
 
   /// 场景首帧渲染完成（宿主用它淡出加载期的星球替身）
   final VoidCallback? onReady;
+
+  /// Web 端 iframe 返回的场景快照；移动端 WebView 暂不使用，保留同名接口。
+  final ValueChanged<String>? onSnapshot;
 
   @override
   ConsumerState<PlanetScene> createState() => _PlanetSceneState();

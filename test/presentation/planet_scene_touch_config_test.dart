@@ -23,12 +23,24 @@ void main() {
   });
 
   test('场景首帧就绪信号：宿主用星球替身盖住加载/重建期（返回空白的修复）', () {
-    expect(sceneHtml, contains('sceneReady:'), reason: 'iframe 经 parent.postMessage 上报');
+    expect(
+      sceneHtml,
+      contains('sceneReady:'),
+      reason: 'iframe 经 parent.postMessage 上报',
+    );
     expect(webWrapper, contains('&token='), reason: '多实例 token 区分');
     expect(webWrapper, contains('sceneReady:\$_seq'));
     expect(ioWrapper, contains('"ready":true'));
     expect(homePage, contains('_PlanetStandIn'), reason: '光晕替身');
     expect(homePage, contains('_sceneReady'));
+  });
+
+  test('返回首页时用上一帧星球快照兜底，不能调用未定义的 sendSnapshot', () {
+    expect(sceneHtml, contains('function sendSnapshot'));
+    expect(sceneHtml, contains("toDataURL('image/png')"));
+    expect(webWrapper, contains('sceneSnapshot:\$_seq'));
+    expect(homePage, contains('_sceneSnapshot'));
+    expect(homePage, contains('Image.network'));
   });
 
   test('Web 端路由被覆盖时摘除星球 platform view（进大纲整页白屏的回归）', () {
@@ -44,11 +56,7 @@ void main() {
     // 新 State 的工厂不生效，iframe 被写进旧 State → postMessage 全部打空，
     // 表现为"多星球滑页后缩放/旋转全失效"（真实发生过）
     expect(webWrapper, contains('++_instanceSeq'));
-    expect(
-      webWrapper,
-      contains(r'_$_seq'),
-      reason: 'viewType 须带实例序号',
-    );
+    expect(webWrapper, contains(r'_$_seq'), reason: 'viewType 须带实例序号');
   });
 
   test('场景页自带 selftest：serve_web.ps1 每次构建后无头跑核心链路', () {
@@ -70,7 +78,8 @@ void main() {
     expect(
       webWrapper,
       contains('IgnorePointer'),
-      reason: 'Flutter 层：platform view 会在手势竞技场赢走所有手势，'
+      reason:
+          'Flutter 层：platform view 会在手势竞技场赢走所有手势，'
           '漏包则"点星球进大纲"在 web 上永远不触发（CDP 探针实证过）',
     );
     expect(

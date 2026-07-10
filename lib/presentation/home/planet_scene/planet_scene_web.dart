@@ -24,6 +24,7 @@ class PlanetScene extends StatefulWidget {
     this.pitch = 0,
     this.autoPrewarm = true,
     this.onReady,
+    this.onSnapshot,
   });
 
   /// 行星纹理名（earth/mars/jupiter/venus/saturn）
@@ -51,6 +52,9 @@ class PlanetScene extends StatefulWidget {
   /// 场景首帧渲染完成（宿主用它淡出加载期的星球替身）
   final VoidCallback? onReady;
 
+  /// 场景低清透明快照（宿主返回首页/重建 iframe 时用来兜底，避免露出空白）。
+  final ValueChanged<String>? onSnapshot;
+
   @override
   State<PlanetScene> createState() => _PlanetSceneState();
 }
@@ -68,9 +72,15 @@ class _PlanetSceneState extends State<PlanetScene> {
   /// 场景就绪监听（token 匹配本实例，多颗星球互不串扰）
   late final JSFunction _onMessage = ((web.MessageEvent e) {
     final data = e.data;
-    if (data.isA<JSString>() &&
-        (data as JSString).toDart == 'sceneReady:$_seq') {
+    if (!data.isA<JSString>()) return;
+    final text = (data as JSString).toDart;
+    if (text == 'sceneReady:$_seq') {
       widget.onReady?.call();
+      return;
+    }
+    final snapshotPrefix = 'sceneSnapshot:$_seq:';
+    if (text.startsWith(snapshotPrefix)) {
+      widget.onSnapshot?.call(text.substring(snapshotPrefix.length));
     }
   }).toJS;
 
@@ -127,9 +137,7 @@ class _PlanetSceneState extends State<PlanetScene> {
       // 赢走所有手势——iframe 的 pointer-events:none 只管 DOM 层，
       // 不包这层则"点星球进大纲"在 web 上永远不触发（真实回归，
       // 已用 CDP 探针实证：书名可点、星球区域不可点）
-      child: IgnorePointer(
-        child: HtmlElementView(viewType: _viewType),
-      ),
+      child: IgnorePointer(child: HtmlElementView(viewType: _viewType)),
     );
   }
 }
