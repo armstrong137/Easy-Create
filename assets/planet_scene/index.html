@@ -36,9 +36,13 @@ const renderer = new THREE.WebGLRenderer({
   powerPreference: 'high-performance',
 });
 renderer.setClearColor(0x000000, 0);
-// 手机（触屏）显存吃紧：像素比封 2.5；桌面放开到 3
+// 手机（触屏）常态像素比封 2.5 省电；放大观察时拉满设备像素比（极致清晰），
+// 缩回后降回。桌面恒为 3。
 const isMobileLike = window.matchMedia('(pointer: coarse)').matches;
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobileLike ? 2.5 : 3));
+const prIdle = Math.min(window.devicePixelRatio, isMobileLike ? 2.5 : 3);
+const prZoomed = Math.min(window.devicePixelRatio, 3);
+let prCurrent = prIdle;
+renderer.setPixelRatio(prIdle);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputEncoding = THREE.sRGBEncoding;
 document.body.appendChild(renderer.domElement);
@@ -61,12 +65,13 @@ scene.add(sun);
 scene.add(new THREE.AmbientLight(0x334455, 0.42));
 
 // ---------- 星球材质组配置 ----------
-// LOD 三档：map 常态 / mapMid 手机放大档（≤4096）/ mapHi 桌面放大档（源图上限）
-// 手机不能上 8192：单张纹理占显存 8192×4096×4B ≈ 134MB，iPhone Safari 直接卡死。
+// LOD 三档：map 常态 / mapMid 手机放大档（6144，显存约 75MB）/
+// mapHi 桌面放大档（源图上限）。手机不能上 8192：单张纹理
+// 8192×4096×4B ≈ 134MB，iPhone Safari 直接卡死。
 const PLANETS = {
   earth: {
     map: 'textures/earth_day_4096.jpg',
-    mapMid: 'textures/earth_day_4096.jpg', // 已是 4096，手机无需再换
+    mapMid: 'textures/earth_day_6144.jpg',
     mapHi: 'textures/earth_day_8192.jpg',
     normal: 'textures/earth_normal_2048.jpg',
     specular: 'textures/earth_specular_2048.jpg',
@@ -76,7 +81,7 @@ const PLANETS = {
   },
   mars: {
     map: 'textures/mars_2048.jpg',
-    mapMid: 'textures/mars_4096.jpg', mapHi: 'textures/mars_hi.jpg',
+    mapMid: 'textures/mars_6144.jpg', mapHi: 'textures/mars_hi.jpg',
     atmosColor: [1.0, 0.45, 0.25], atmosStrength: 0.7,
   },
   jupiter: {
@@ -87,7 +92,7 @@ const PLANETS = {
   },
   venus: {
     map: 'textures/venus_2048.jpg',
-    mapMid: 'textures/venus_4096.jpg', mapHi: 'textures/venus_hi.jpg',
+    mapMid: 'textures/venus_6144.jpg', mapHi: 'textures/venus_hi.jpg',
     atmosColor: [1.0, 0.85, 0.55], atmosStrength: 1.1,
   },
   saturn: {
@@ -245,39 +250,79 @@ window.setSpin = function (revPerSec) { spinRevPerSec = revPerSec; };
 
 // 缩放 = 镜头沿视线推进（dolly），不是位图放大：
 // 场景按新距离重新渲染，多近都清晰；镜头恒过原点故星球始终居中。
-let zoom = 1, zoomTarget = 1, hiRequested = false;
-const lodZoom = 1.35; // 超过此倍率换入放大档地表
+let zoom = 1, zoomTarget = 1;
 
-// 放大档：手机取 mapMid（≤4096），桌面取 mapHi（源图上限）。
+// 放大档：手机取 mapMid（6144），桌面取 mapHi（源图上限）。
 // ?lod=mid|hi 显式指定（移动端 App 壳直接下发，不依赖浏览器嗅探）；
 // 缺省时按指针类型判断（Web 版在手机浏览器打开也能自动降档）
 const lodParam = params.get('lod');
 const useMid = lodParam ? lodParam === 'mid' : isMobileLike;
 const lodSrc = useMid ? cfg.mapMid : cfg.mapHi;
 
-// 解码放到主线程之外（createImageBitmap），避免大图解码时整页卡住；
-// 换入后立刻释放旧纹理，否则两张贴图同时占显存 → iPhone 卡死
-async function loadLodTexture(src) {
-  const bitmap = await createImageBitmap(await (await fetch(src)).blob());
-  const tex = new THREE.Texture(bitmap);
-  tex.encoding = THREE.sRGBEncoding;
-  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  tex.generateMipmaps = false; // 大图 mipmap 再多吃 33% 显存
-  tex.minFilter = THREE.LinearFilter;
-  tex.needsUpdate = true;
-  const old = planetMat.map;
-  planetMat.map = tex;
-  planetMat.needsUpdate = true;
-  if (old) old.dispose();
+// LOD 迟滞切换：放大过 lodZoomIn 换高清档，缩回 lodZoomOut 以下换回常态档并
+// 释放高清纹理（手机显存友好；常态档带 mipmap，缩小观看不闪砂）。
+// 迟滞区间避免在阈值附近来回抖动导致反复加载。
+const lodZoomIn = 1.35, lodZoomOut = 1.15;
+const baseTex = planetMat.map; // 常态贴图常驻，永不释放
+let hiTex = null, hiLoading = false;
+
+// 解码放到主线程之外（createImageBitmap），避免大图解码时整页卡住
+async function ensureHiTexture() {
+  if (hiTex || hiLoading || !lodSrc || lodSrc === cfg.map) return;
+  hiLoading = true;
+  try {
+    const bitmap = await createImageBitmap(await (await fetch(lodSrc)).blob());
+    const tex = new THREE.Texture(bitmap);
+    tex.encoding = THREE.sRGBEncoding;
+    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    tex.generateMipmaps = false; // 大图 mipmap 再多吃 33% 显存
+    tex.minFilter = THREE.LinearFilter;
+    tex.needsUpdate = true;
+    hiTex = tex;
+    applyLod(); // 加载完成时可能已缩回，交由 applyLod 决定用不用
+  } catch (e) {
+    // 失败静默留用常态贴图，不影响交互
+  } finally {
+    hiLoading = false;
+  }
+}
+
+// 放大时渲染像素比拉满设备（极致清晰），缩回降回常态档省电
+function setPixelRatioBoost(on) {
+  const target = on ? prZoomed : prIdle;
+  if (target === prCurrent) return;
+  prCurrent = target;
+  renderer.setPixelRatio(target);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function applyLod() {
+  if (zoomTarget >= lodZoomIn) {
+    setPixelRatioBoost(true);
+    if (hiTex) {
+      if (planetMat.map !== hiTex) {
+        planetMat.map = hiTex;
+        planetMat.needsUpdate = true;
+      }
+    } else {
+      ensureHiTexture();
+    }
+  } else if (zoomTarget <= lodZoomOut) {
+    setPixelRatioBoost(false);
+    if (planetMat.map !== baseTex) {
+      planetMat.map = baseTex;
+      planetMat.needsUpdate = true;
+    }
+    if (hiTex) {
+      hiTex.dispose(); // 缩回即释放高清档显存（重新放大会再取，走 HTTP 缓存）
+      hiTex = null;
+    }
+  }
 }
 
 window.setZoom = function (z) {
   zoomTarget = Math.max(1, z);
-  if (!hiRequested && lodSrc && lodSrc !== cfg.map && zoomTarget >= lodZoom) {
-    hiRequested = true;
-    // 失败静默留用常态贴图，不影响交互
-    loadLodTexture(lodSrc).catch(function () {});
-  }
+  applyLod();
 };
 
 // 拖动转星球（地球仪手感）：Flutter 下发累计的偏航/俯仰角（弧度，绝对值）。

@@ -600,10 +600,11 @@ Future<String?> _promptText({
           curve: Curves.easeOutCubic,
           padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
           child: SafeArea(
-            child: Align(
-              alignment: Alignment.topCenter,
+            // 居中于键盘上方的可视区（viewInsets 已把键盘高度让出来）；
+            // 顶对齐会把弹窗钉在状态栏下面，太靠上
+            child: Center(
               child: Padding(
-                padding: const EdgeInsets.only(top: 34),
+                padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Container(
                   key: const Key('星球名称弹窗卡片'),
                   width: width,

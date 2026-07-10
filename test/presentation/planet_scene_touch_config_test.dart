@@ -115,12 +115,12 @@ void main() {
     );
   });
 
-  test('移动端放大档封顶 4096：8192 单张纹理约 134MB，iPhone 会卡死', () {
-    // 每颗球都要有 mapMid（手机档），且不得指向 8192 贴图
-    for (final p in ['mars', 'venus']) {
-      expect(sceneHtml, contains('textures/${p}_4096.jpg'));
+  test('移动端放大档 6144（约 75MB）：8192 单张纹理约 134MB，iPhone 会卡死', () {
+    // 手机档 mapMid 指向 6144 贴图（地球/火星/金星；气态行星源图上限 4096）
+    for (final p in ['earth_day', 'mars', 'venus']) {
+      expect(sceneHtml, contains('textures/${p}_6144.jpg'));
       expect(
-        File('assets/planet_scene/textures/${p}_4096.jpg').existsSync(),
+        File('assets/planet_scene/textures/${p}_6144.jpg').existsSync(),
         isTrue,
       );
     }
@@ -128,15 +128,28 @@ void main() {
     expect(sceneHtml, contains("lodParam === 'mid'"));
     // 移动端 App 壳显式下发 lod=mid，不依赖浏览器嗅探
     expect(ioWrapper, contains('lod=mid'));
-    // 像素比在触屏设备上降档
-    expect(sceneHtml, contains('isMobileLike ? 2.5 : 3'));
   });
 
-  test('换入放大档必须释放旧纹理，且解码不阻塞主线程', () {
+  test('放大时像素比拉满设备、缩回降档省电（触屏常态 2.5）', () {
+    expect(sceneHtml, contains('isMobileLike ? 2.5 : 3'));
+    expect(sceneHtml, contains('setPixelRatioBoost'));
+  });
+
+  test('LOD 迟滞切换：缩回释放高清纹理、常态贴图常驻、解码不阻塞主线程', () {
     expect(
       sceneHtml,
-      contains('old.dispose()'),
-      reason: '不释放旧贴图则两张同时占显存 → 放大即卡死',
+      contains('lodZoomOut'),
+      reason: '无迟滞会在阈值附近来回抖动、反复加载大图',
+    );
+    expect(
+      sceneHtml,
+      contains('hiTex.dispose()'),
+      reason: '缩回不释放高清贴图则显存长期高占用 → iPhone 卡死',
+    );
+    expect(
+      sceneHtml,
+      contains('const baseTex'),
+      reason: '常态贴图须常驻（带 mipmap，缩小观看不闪砂）',
     );
     expect(
       sceneHtml,

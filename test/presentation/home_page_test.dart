@@ -186,6 +186,15 @@ void main() {
     );
     expect(field.textAlign, TextAlign.center);
     expect(field.placeholder, '这部小说叫什么？');
+
+    // 弹窗卡片垂直居中（原顶对齐钉在状态栏下，太靠上——用户反馈）
+    final card = tester.getRect(find.byKey(const Key('星球名称弹窗卡片')));
+    final screen = tester.getSize(find.byType(HomePage));
+    expect(
+      (card.center.dy - screen.height / 2).abs(),
+      lessThan(40),
+      reason: '无键盘时弹窗应垂直居中',
+    );
   });
 
   testWidgets('创建新星球成功后自动切到新星球页', (tester) async {
