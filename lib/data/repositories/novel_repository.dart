@@ -254,6 +254,21 @@ class NovelRepository {
     return query.watchSingle().map((row) => row.read<int>('total'));
   }
 
+  /// 全局创作量：**所有星球**的章数 + 节数 + 灵感总数（含魔毯中的）。
+  /// 驱动宇宙背景的演化速度（用户定稿：写得越多宇宙演变越"快进"）。
+  Stream<int> watchGlobalCreativeCount() {
+    final query = _db.customSelect(
+      '''
+      SELECT
+        (SELECT COUNT(*) FROM chapters)
+        + (SELECT COUNT(*) FROM sections)
+        + (SELECT COUNT(*) FROM inspirations) AS total
+      ''',
+      readsFrom: {_db.chapters, _db.sections, _db.inspirations},
+    );
+    return query.watchSingle().map((row) => row.read<int>('total'));
+  }
+
   // ---------- 内部工具 ----------
 
   /// 查某表（可加条件）当前最大 sort_order，空表返回 -1

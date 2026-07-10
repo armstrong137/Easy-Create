@@ -9,7 +9,8 @@ import 'package:web/web.dart' as web;
 /// 与移动端 PlanetScene 同名同接口（planet_scene.dart 条件导出分发）：
 /// - iframe 指向打包进 web 构建的 assets/planet_scene/index.html（同源，无 CORS）
 /// - iframe 不接收触摸事件；点击进大纲、魔毯点击、双指缩放都交给 Flutter 外层
-/// - Web 体验版显式下发 lod=hi，让手机 Safari 也能试最高细节；App 壳仍用 lod=mid
+/// - lod 不显式下发，由场景按指针类型自选：手机浏览器 mid(6144)、桌面 hi——
+///   曾强制 lod=hi 导致 iPhone 首次换档上传 8192(约134MB) 明显掉帧
 /// - Web 体验版转速取初始值（能量档位变化不动态跟随，正式端在移动 App）
 class PlanetScene extends StatefulWidget {
   const PlanetScene({
@@ -22,6 +23,7 @@ class PlanetScene extends StatefulWidget {
     this.yaw = 0,
     this.pitch = 0,
     this.autoPrewarm = true,
+    this.onReady,
   });
 
   /// 行星纹理名（earth/mars/jupiter/venus/saturn）
@@ -46,6 +48,9 @@ class PlanetScene extends StatefulWidget {
   /// 是否允许当前场景在加载后主动预热高清 LOD；相邻预构建页会关闭它以节省显存。
   final bool autoPrewarm;
 
+  /// 场景首帧渲染完成（宿主用它淡出加载期的星球替身）
+  final VoidCallback? onReady;
+
   @override
   State<PlanetScene> createState() => _PlanetSceneState();
 }
@@ -56,20 +61,31 @@ class _PlanetSceneState extends State<PlanetScene> {
   /// 旧工厂闭包把 iframe 写进旧 State → 新 State 的 _iframe 恒为 null，
   /// 缩放/旋转 postMessage 全部打空（真实回归：多星球滑页后手势失效）
   static int _instanceSeq = 0;
-  late final String _viewType = '星球场景_${widget.planet}_${++_instanceSeq}';
+  late final int _seq = ++_instanceSeq;
+  late final String _viewType = '星球场景_${widget.planet}_$_seq';
   web.HTMLIFrameElement? _iframe;
+
+  /// 场景就绪监听（token 匹配本实例，多颗星球互不串扰）
+  late final JSFunction _onMessage = ((web.MessageEvent e) {
+    final data = e.data;
+    if (data.isA<JSString>() &&
+        (data as JSString).toDart == 'sceneReady:$_seq') {
+      widget.onReady?.call();
+    }
+  }).toJS;
 
   @override
   void initState() {
     super.initState();
+    web.window.addEventListener('message', _onMessage);
     ui_web.platformViewRegistry.registerViewFactory(_viewType, (_) {
       final iframe = web.HTMLIFrameElement()
         ..src =
             'assets/assets/planet_scene/index.html'
             '?planet=${widget.planet}&spin=${widget.spin}'
             '&stage=${widget.stageScale}'
-            '&lod=hi'
             '&autoPrewarm=${widget.autoPrewarm ? 1 : 0}'
+            '&token=$_seq'
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%'
@@ -77,6 +93,12 @@ class _PlanetSceneState extends State<PlanetScene> {
       _iframe = iframe;
       return iframe;
     });
+  }
+
+  @override
+  void dispose() {
+    web.window.removeEventListener('message', _onMessage);
+    super.dispose();
   }
 
   @override

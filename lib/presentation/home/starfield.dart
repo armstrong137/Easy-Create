@@ -13,10 +13,19 @@ import 'starfield_motion.dart';
 /// 创作能量联动：当前小说的灵感/章节越多，[brightness] 越高——
 /// 星云更亮、星场更密、（回退照片也切更亮档）。
 class Starfield extends StatelessWidget {
-  const Starfield({super.key, required this.brightness, this.animated = true});
+  const Starfield({
+    super.key,
+    required this.brightness,
+    this.animated = true,
+    this.evolveSpeed = 1,
+  });
 
   /// 全局星光亮度，由 core/creative_energy.starBrightness() 计算
   final double brightness;
+
+  /// 宇宙演化速度倍率（core/creative_energy.nebulaEvolveSpeed，
+  /// 全局章+节+灵感总量驱动：写得越多宇宙演变越"快进"）
+  final double evolveSpeed;
 
   /// 动态层开关：测试环境/低端机回退纯静态照片
   /// （无限 Ticker 会让 widget 测试的 pumpAndSettle 挂死——项目教训）
@@ -48,7 +57,7 @@ class Starfield extends StatelessWidget {
             height: double.infinity,
           ),
         ),
-        if (animated) _NebulaLayer(energy: _t),
+        if (animated) _NebulaLayer(energy: _t, evolve: evolveSpeed),
         if (animated) _MeteorLayer(brightness: _t),
       ],
     );
@@ -60,10 +69,13 @@ final _nebulaProgram = ui.FragmentProgram.fromAsset('shaders/nebula.frag');
 
 /// 动态宇宙层：分形星云持续演变（nebula.frag），Ticker 驱动 uTime
 class _NebulaLayer extends StatefulWidget {
-  const _NebulaLayer({required this.energy});
+  const _NebulaLayer({required this.energy, required this.evolve});
 
   /// 归一化创作能量 0~1（星云亮度/星场密度）
   final double energy;
+
+  /// 演化速度倍率
+  final double evolve;
 
   @override
   State<_NebulaLayer> createState() => _NebulaLayerState();
@@ -73,6 +85,10 @@ class _NebulaLayerState extends State<_NebulaLayer>
     with SingleTickerProviderStateMixin {
   final _elapsed = ValueNotifier<double>(0);
   late final Ticker _ticker;
+
+  /// 管线预热：首帧只画 1×1（触发 GPU program 编译），下一帧再铺全屏。
+  /// 直接全屏首帧会因编译卡一下（用户反馈"刚进去背景卡一下"）
+  bool _warmed = false;
 
   @override
   void initState() {
@@ -97,15 +113,28 @@ class _NebulaLayerState extends State<_NebulaLayer>
         final program = snap.data;
         // 未就绪/失败：留照片底（下层），不占位
         if (program == null) return const SizedBox.shrink();
-        return IgnorePointer(
-          child: CustomPaint(
-            key: const Key('星云演化层'),
-            painter: _NebulaPainter(
-              shader: program.fragmentShader(),
-              elapsed: _elapsed,
-              energy: widget.energy,
+        final painter = _NebulaPainter(
+          shader: program.fragmentShader(),
+          elapsed: _elapsed,
+          energy: widget.energy,
+          evolve: widget.evolve,
+        );
+        if (!_warmed) {
+          // 预热帧渲染后立即切全屏（照片底还在，无视觉缺口）
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _warmed = true);
+          });
+          return Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: 1,
+              height: 1,
+              child: CustomPaint(painter: painter),
             ),
-          ),
+          );
+        }
+        return IgnorePointer(
+          child: CustomPaint(key: const Key('星云演化层'), painter: painter),
         );
       },
     );
@@ -117,26 +146,32 @@ class _NebulaPainter extends CustomPainter {
     required this.shader,
     required this.elapsed,
     required this.energy,
+    required this.evolve,
   }) : super(repaint: elapsed);
 
   final ui.FragmentShader shader;
   final ValueNotifier<double> elapsed;
   final double energy;
+  final double evolve;
 
   @override
   void paint(Canvas canvas, Size size) {
-    // uniform 顺序与 nebula.frag 声明一致：uSize, uTime, uEnergy
+    // uniform 顺序与 nebula.frag 声明一致：uSize, uTime, uEnergy, uEvolve
     shader
       ..setFloat(0, size.width)
       ..setFloat(1, size.height)
       ..setFloat(2, elapsed.value)
-      ..setFloat(3, energy);
+      ..setFloat(3, energy)
+      ..setFloat(4, evolve);
     canvas.drawRect(Offset.zero & size, Paint()..shader = shader);
   }
 
   @override
   bool shouldRepaint(_NebulaPainter old) =>
-      old.energy != energy || old.elapsed != elapsed || old.shader != shader;
+      old.energy != energy ||
+      old.evolve != evolve ||
+      old.elapsed != elapsed ||
+      old.shader != shader;
 }
 
 /// 流星层：低频流星划过（调度逻辑见 starfield_motion.dart），叠在星云之上

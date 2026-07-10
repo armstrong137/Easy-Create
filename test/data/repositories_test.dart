@@ -136,6 +136,30 @@ void main() {
     });
   });
 
+  group('全局创作量（宇宙演化速度数据源）', () {
+    test('所有星球的章+节+灵感总数（含魔毯中的灵感）', () async {
+      expect(await novelRepo.watchGlobalCreativeCount().first, 0);
+
+      // 两本小说：共 2 章 + 1 节
+      final n1 = await novelRepo.createNovel(title: '甲', planet: 'earth');
+      final n2 = await novelRepo.createNovel(title: '乙', planet: 'mars');
+      final c1 = await novelRepo.createChapter(novelId: n1.id, title: '一');
+      await novelRepo.createChapter(novelId: n2.id, title: '一');
+      final s1 = await novelRepo.createSection(chapterId: c1.id, title: '节');
+
+      // 灵感：1 条挂小节 + 1 条留在魔毯（全局口径都计入）
+      final a = await inspirationRepo.addInspiration('挂靠的');
+      await inspirationRepo.assignToSection(a.id, s1.id);
+      await inspirationRepo.addInspiration('魔毯里的');
+
+      expect(
+        await novelRepo.watchGlobalCreativeCount().first,
+        2 + 1 + 2,
+        reason: '2 章 + 1 节 + 2 灵感（跨小说、含魔毯）',
+      );
+    });
+  });
+
   group('卡堆重排序（阶段六·3）', () {
     test('reorderCards 按新顺序重写 card_order', () async {
       final sectionId = await createSectionChain();

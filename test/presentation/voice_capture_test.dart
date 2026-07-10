@@ -63,6 +63,7 @@ void main() {
           // 首页三路数据一律 override（真 drift 流/真 IO 会挂死）
           novelsProvider.overrideWith((ref) => Stream.value(const [])),
           inspirationPoolProvider.overrideWith((ref) => Stream.value(const [])),
+          globalCreativeCountProvider.overrideWith((ref) => Stream.value(0)),
           planetAssetsProvider.overrideWith(
             (ref, planet) => Completer<PlanetShaderAssets>().future,
           ),

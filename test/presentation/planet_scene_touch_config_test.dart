@@ -15,6 +15,22 @@ void main() {
   ).readAsStringSync();
   final sceneHtml = File('assets/planet_scene/index.html').readAsStringSync();
 
+  test('Web 端不得强制 lod=hi：iPhone 首次换档上传 8192(约134MB) 明显掉帧', () {
+    // 只匹配 URL 参数形态（&lod=hi），不误伤解释历史的注释
+    expect(webWrapper, isNot(contains('&lod=hi')));
+    // 移动 App 壳仍显式 mid
+    expect(ioWrapper, contains('lod=mid'));
+  });
+
+  test('场景首帧就绪信号：宿主用星球替身盖住加载/重建期（返回空白的修复）', () {
+    expect(sceneHtml, contains('sceneReady:'), reason: 'iframe 经 parent.postMessage 上报');
+    expect(webWrapper, contains('&token='), reason: '多实例 token 区分');
+    expect(webWrapper, contains('sceneReady:\$_seq'));
+    expect(ioWrapper, contains('"ready":true'));
+    expect(homePage, contains('_PlanetStandIn'), reason: '光晕替身');
+    expect(homePage, contains('_sceneReady'));
+  });
+
   test('Web 端路由被覆盖时摘除星球 platform view（进大纲整页白屏的回归）', () {
     // CanvasKit 的 overlay 合成在 platform view 驻留于非当前路由时会
     // 丢掉所有 canvas（CDP 实证 canvases:0 → 整页白）；摘除即恢复，
@@ -27,8 +43,12 @@ void main() {
     // Flutter web 对同名 viewType 的重复注册会被忽略：PageView 滑页重建后
     // 新 State 的工厂不生效，iframe 被写进旧 State → postMessage 全部打空，
     // 表现为"多星球滑页后缩放/旋转全失效"（真实发生过）
-    expect(webWrapper, contains('_instanceSeq'));
-    expect(webWrapper, contains(r'${++_instanceSeq}'));
+    expect(webWrapper, contains('++_instanceSeq'));
+    expect(
+      webWrapper,
+      contains(r'_$_seq'),
+      reason: 'viewType 须带实例序号',
+    );
   });
 
   test('场景页自带 selftest：serve_web.ps1 每次构建后无头跑核心链路', () {

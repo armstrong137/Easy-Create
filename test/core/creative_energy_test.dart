@@ -36,4 +36,17 @@ void main() {
       expect(planetSpin(100000), lessThanOrEqualTo(kPlanetSpinMax));
     });
   });
+
+  group('宇宙演化速度 nebulaEvolveSpeed（全局创作量驱动）', () {
+    test('空宇宙冷寂缓慢（下限）', () {
+      expect(nebulaEvolveSpeed(0), kNebulaEvolveMin);
+      expect(nebulaEvolveSpeed(-3), kNebulaEvolveMin, reason: '防御负数');
+    });
+
+    test('随全局创作量单调加快且封顶（越写宇宙演变越快进）', () {
+      expect(nebulaEvolveSpeed(20), greaterThan(nebulaEvolveSpeed(1)));
+      expect(nebulaEvolveSpeed(200), greaterThan(nebulaEvolveSpeed(20)));
+      expect(nebulaEvolveSpeed(1000000), lessThanOrEqualTo(kNebulaEvolveMax));
+    });
+  });
 }

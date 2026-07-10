@@ -34,6 +34,11 @@ final creativeCountProvider = StreamProvider.family<int, int>(
       ref.watch(novelRepositoryProvider).watchCreativeCount(novelId),
 );
 
+/// 全局创作量（所有星球的章+节+灵感总数），驱动宇宙背景演化速度
+final globalCreativeCountProvider = StreamProvider<int>(
+  (ref) => ref.watch(novelRepositoryProvider).watchGlobalCreativeCount(),
+);
+
 /// 星球 shader 资源（按行星纹理名缓存，如 'earth'）
 final planetAssetsProvider = FutureProvider.family<PlanetShaderAssets, String>(
   (ref, planet) => PlanetShaderAssets.load(planet),
@@ -134,10 +139,14 @@ class _HomePageState extends ConsumerState<HomePage> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 动态层跟随高级效果开关：测试/低端机回退纯静态照片
+          // 动态层跟随高级效果开关：测试/低端机回退纯静态照片。
+          // 演化速度随全局创作量（所有星球的章+节+灵感）：越写越"快进"
           Starfield(
             brightness: starBrightness(currentCount),
             animated: ref.watch(advanced3DProvider),
+            evolveSpeed: nebulaEvolveSpeed(
+              ref.watch(globalCreativeCountProvider).value ?? 0,
+            ),
           ),
           if (novels.isEmpty)
             // 空宇宙：邀请创建第一颗星球
@@ -283,6 +292,9 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
 
   /// 单指落在星球上 → 本次拖动用于转星球（而非翻页切星球）
   bool _rotating = false;
+
+  /// 3D 场景首帧是否已就绪（未就绪/重建期间显示光晕替身，避免空白）
+  bool _sceneReady = false;
 
   /// 星球画面区域（用于判断手指是否落在球上）
   final _planetKey = GlobalKey();
@@ -430,6 +442,15 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
     final routeCurrent = ModalRoute.of(context)?.isCurrent ?? true;
     final showScene = use3D && (!kIsWeb || routeCurrent);
 
+    // 摘除期间把就绪标记复位：pop 回来场景重建（约 1 秒），
+    // 此间由光晕替身盖住，场景首帧 onReady 后再淡出
+    if (!showScene && _sceneReady) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_sceneReady) return;
+        if (mounted) setState(() => _sceneReady = false);
+      });
+    }
+
     // 星球本体：真实 3D 场景（阶段八 P2-1）或旧 FragmentShader（回退）
     Widget planetBody() {
       if (use3D) {
@@ -437,9 +458,20 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
         final sceneDiameter = novel.planet == 'saturn'
             ? diameter * 1.4
             : diameter;
+        // 替身：星球从深空"显形"的光晕轮廓——场景加载/重建期间占位，
+        // 首帧就绪后淡出（比空白/突现柔和得多）
+        final standIn = AnimatedOpacity(
+          duration: const Duration(milliseconds: 350),
+          opacity: _sceneReady && showScene ? 0 : 1,
+          child: _PlanetStandIn(diameter: diameter),
+        );
         if (!showScene) {
-          // 摘除期占位：保持布局与命中区尺寸（pop 回来场景重建）
-          return SizedBox.square(key: _planetKey, dimension: sceneDiameter);
+          // 摘除期：只留替身，保持布局与命中区尺寸
+          return SizedBox.square(
+            key: _planetKey,
+            dimension: sceneDiameter,
+            child: Center(child: standIn),
+          );
         }
         // 舞台：画布放到 stage 倍（镜头同步拉远、初始视觉不变），
         // 放大时星球在画布内铺开不被方形边裁。OverflowBox 使其只溢出绘制、
@@ -447,20 +479,31 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
         return SizedBox.square(
           key: _planetKey,
           dimension: sceneDiameter,
-          child: OverflowBox(
-            maxWidth: sceneDiameter * kPlanetSceneStageScale,
-            maxHeight: sceneDiameter * kPlanetSceneStageScale,
-            child: PlanetScene(
-              key: ValueKey('planet-scene-${novel.id}-${novel.planet}'),
-              planet: novel.planet,
-              spin: planetSpin(count),
-              diameter: sceneDiameter * kPlanetSceneStageScale,
-              stageScale: kPlanetSceneStageScale,
-              zoom: _zoom,
-              yaw: _spin.yaw,
-              pitch: _spin.pitch,
-              autoPrewarm: widget.active,
-            ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              standIn,
+              OverflowBox(
+                maxWidth: sceneDiameter * kPlanetSceneStageScale,
+                maxHeight: sceneDiameter * kPlanetSceneStageScale,
+                child: PlanetScene(
+                  key: ValueKey('planet-scene-${novel.id}-${novel.planet}'),
+                  planet: novel.planet,
+                  spin: planetSpin(count),
+                  diameter: sceneDiameter * kPlanetSceneStageScale,
+                  stageScale: kPlanetSceneStageScale,
+                  zoom: _zoom,
+                  yaw: _spin.yaw,
+                  pitch: _spin.pitch,
+                  autoPrewarm: widget.active,
+                  onReady: () {
+                    if (mounted && !_sceneReady) {
+                      setState(() => _sceneReady = true);
+                    }
+                  },
+                ),
+              ),
+            ],
           ),
         );
       }
@@ -595,6 +638,36 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
     final title = newTitle?.trim() ?? '';
     if (title.isEmpty || title == widget.novel.title) return;
     await ref.read(novelRepositoryProvider).renameNovel(widget.novel.id, title);
+  }
+}
+
+/// 星球替身：加载/重建期间的"深空显形"光晕轮廓（纯渐变，零资源开销）。
+/// 观感是一颗尚未聚焦的暗星球：深蓝球体核心 + 大气蓝辉边缘。
+class _PlanetStandIn extends StatelessWidget {
+  const _PlanetStandIn({required this.diameter});
+
+  final double diameter;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: diameter,
+        height: diameter,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [
+              Color(0xFF0E1B33), // 球心暗蓝
+              Color(0xFF13264A),
+              Color(0x80385C9E), // 临边大气辉
+              Color(0x00000000),
+            ],
+            stops: [0.0, 0.62, 0.88, 1.0],
+          ),
+        ),
+      ),
+    );
   }
 }
 

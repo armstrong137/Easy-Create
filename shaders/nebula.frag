@@ -14,6 +14,7 @@ precision highp float;
 uniform vec2 uSize;    // 画布尺寸（逻辑像素）
 uniform float uTime;   // 秒
 uniform float uEnergy; // 创作能量 0~1
+uniform float uEvolve; // 演化速度倍率（全局创作量驱动，越写越"快进"）
 
 out vec4 fragColor;
 
@@ -65,7 +66,8 @@ float starLayer(vec2 p, float density, float seedShift, float t) {
 void main() {
   vec2 frag = FlutterFragCoord().xy;
   vec2 p = (frag - 0.5 * uSize) / uSize.y; // 居中、按高归一
-  float t = uTime * 0.018; // 演化基准速度（"快进的宇宙"，但不喧闹）
+  // 演化速度 = 基准 × 全局创作量倍率（空宇宙冷寂缓慢，创作旺盛时快进）
+  float t = uTime * 0.018 * uEvolve;
 
   // ---------- 两级 domain warp：星云形态持续重组 ----------
   vec2 q = vec2(

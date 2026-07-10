@@ -36,6 +36,7 @@ void main() {
           // shader/纹理是真实 IO 也会挂（2026-07-02 教训）
           novelsProvider.overrideWith((ref) => Stream.value(const [])),
           inspirationPoolProvider.overrideWith((ref) => Stream.value(const [])),
+          globalCreativeCountProvider.overrideWith((ref) => Stream.value(0)),
           planetAssetsProvider.overrideWith(
             (ref, planet) => Completer<PlanetShaderAssets>().future,
           ),

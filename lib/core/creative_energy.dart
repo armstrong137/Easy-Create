@@ -42,3 +42,22 @@ double planetSpin(int count) {
   final t = 1 - math.exp(-count / _spinTau);
   return kPlanetSpinBase + (kPlanetSpinMax - kPlanetSpinBase) * t;
 }
+
+/// 宇宙演化速度下限（空宇宙：冷寂缓慢）
+const double kNebulaEvolveMin = 0.6;
+
+/// 宇宙演化速度上限（创作旺盛：宇宙演变"快进"，但不喧闹）
+const double kNebulaEvolveMax = 2.4;
+
+/// 演化饱和常数：约 60 条全局创作量到达上限的 63%
+const double _evolveTau = 60;
+
+/// 全局创作量 [count]（**所有星球**的章数+节数+灵感总数）→ 星云演化速度倍率
+///
+/// 用户定稿（2026-07-10）：宇宙背景的演变快慢与全库创作量正相关——
+/// 写得越多，宇宙演化越"快进"。
+double nebulaEvolveSpeed(int count) {
+  if (count <= 0) return kNebulaEvolveMin;
+  final t = 1 - math.exp(-count / _evolveTau);
+  return kNebulaEvolveMin + (kNebulaEvolveMax - kNebulaEvolveMin) * t;
+}

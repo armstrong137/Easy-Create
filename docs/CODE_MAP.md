@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-10 16:42:14　对应提交：f99cd54 之后的工作区状态
+> 生成时间：2026-07-10 17:29:43　对应提交：06758bb 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,18 +13,18 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     102
-  Nodes:     3,898
-  Edges:     18,600
-  DB Size:   19.47 MB
+  Nodes:     3,907
+  Edges:     18,635
+  DB Size:   19.59 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,505
-  function        1,352
-  class           448
+  method          1,508
+  function        1,353
+  class           449
   import          300
-  constant        171
+  constant        175
   file            94
   variable        14
   type_alias      12
@@ -138,7 +138,7 @@ Project Structure (102 files):
 |   |   |-- app_keys.dart (dart, 4 symbols)
 |   |   |-- carpet_constants.dart (dart, 8 symbols)
 |   |   |-- chinese_numbers.dart (dart, 5 symbols)
-|   |   |-- creative_energy.dart (dart, 11 symbols)
+|   |   |-- creative_energy.dart (dart, 15 symbols)
 |   |   `-- spin_inertia.dart (dart, 9 symbols)
 |   |-- data
 |   |   |-- database
@@ -147,7 +147,7 @@ Project Structure (102 files):
 |   |   |   `-- tables.dart (dart, 26 symbols)
 |   |   |-- repositories
 |   |   |   |-- inspiration_repository.dart (dart, 15 symbols)
-|   |   |   `-- novel_repository.dart (dart, 23 symbols)
+|   |   |   `-- novel_repository.dart (dart, 24 symbols)
 |   |   `-- providers.dart (dart, 8 symbols)
 |   |-- domain
 |   |   `-- entities
@@ -156,10 +156,10 @@ Project Structure (102 files):
 |   |   |-- home
 |   |   |   |-- planet_scene
 |   |   |   |   |-- planet_scene_io.dart (dart, 12 symbols)
-|   |   |   |   |-- planet_scene_web.dart (dart, 12 symbols)
+|   |   |   |   |-- planet_scene_web.dart (dart, 13 symbols)
 |   |   |   |   |-- planet_scene.dart (dart, 6 symbols)
 |   |   |   |   `-- scene_server.dart (dart, 11 symbols)
-|   |   |   |-- home_page.dart (dart, 59 symbols)
+|   |   |   |-- home_page.dart (dart, 62 symbols)
 |   |   |   |-- orbiting_inspirations.dart (dart, 16 symbols)
 |   |   |   |-- planet_view.dart (dart, 19 symbols)
 |   |   |   |-- saturn_rings_painter.dart (dart, 12 symbols)

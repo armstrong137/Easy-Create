@@ -57,6 +57,9 @@ void main() {
           creativeCountProvider.overrideWith(
             (ref, novelId) => Stream.value(creativeCount),
           ),
+          globalCreativeCountProvider.overrideWith(
+            (ref) => Stream.value(creativeCount),
+          ),
           planetAssetsProvider.overrideWith(
             (ref, planet) => Completer<PlanetShaderAssets>().future,
           ),

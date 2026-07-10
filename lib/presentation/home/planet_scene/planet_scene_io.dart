@@ -22,6 +22,7 @@ class PlanetScene extends ConsumerStatefulWidget {
     this.yaw = 0,
     this.pitch = 0,
     this.autoPrewarm = true,
+    this.onReady,
   });
 
   /// 行星纹理名（earth/mars/jupiter/venus/saturn）
@@ -47,6 +48,9 @@ class PlanetScene extends ConsumerStatefulWidget {
   ///
   /// 首页会预构建相邻页来减少切星球卡顿；相邻页只暖基础场景，避免多颗星球同时抢高清显存。
   final bool autoPrewarm;
+
+  /// 场景首帧渲染完成（宿主用它淡出加载期的星球替身）
+  final VoidCallback? onReady;
 
   @override
   ConsumerState<PlanetScene> createState() => _PlanetSceneState();
@@ -78,8 +82,11 @@ class _PlanetSceneState extends ConsumerState<PlanetScene> {
       )
       ..addJavaScriptChannel(
         'SceneBridge',
-        onMessageReceived: (_) {
-          // FPS 遥测通道（真机验收时读取；此处不驱动 UI）
+        onMessageReceived: (msg) {
+          // 首帧就绪信号（其余为 FPS 遥测，真机验收时读取）
+          if (msg.message.contains('"ready":true')) {
+            widget.onReady?.call();
+          }
         },
       )
       ..loadRequest(

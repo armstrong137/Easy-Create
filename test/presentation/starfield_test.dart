@@ -23,6 +23,11 @@ void main() {
     final glsl = File('shaders/nebula.frag').readAsStringSync();
     expect(glsl, contains('uEnergy'), reason: '创作能量必须联动星云');
     expect(glsl, contains('fbm'), reason: '分形噪声是星云质感的基础');
+    // 演化速度随全局创作量（用户定稿 2026-07-10）
+    expect(glsl, contains('uEvolve'));
+    expect(src, contains('setFloat(4, evolve)'), reason: 'uEvolve 必须真的下发');
+    // 首帧 1×1 预热管线：直接全屏首帧会因 GPU program 编译卡一下
+    expect(src, contains('_warmed'));
   });
 
   testWidgets('animated=false（测试/低端回退）：只有静态照片，无动态层', (tester) async {

@@ -494,13 +494,23 @@ function animate() {
   }
   renderer.render(scene, camera);
   frames++;
+  // 首帧真实渲染后立刻通知宿主"场景就绪"：宿主用它把加载期的
+  // 星球替身淡出（返回首页时 iframe 重建约 1 秒，替身盖住空白期）
+  if (!notified && lastW > 0) {
+    notified = true;
+    if (window.SceneBridge) {
+      SceneBridge.postMessage(JSON.stringify({ ready: true }));
+    }
+    if (window.parent !== window) {
+      // 带回宿主下发的 token：同页多颗星球时各自只认自己的就绪信号
+      window.parent.postMessage('sceneReady:' + (params.get('token') || ''), '*');
+    }
+  }
   if (now - lastPost > 1000) {
     if (window.SceneBridge) {
       SceneBridge.postMessage(JSON.stringify({
-        ready: !notified ? true : undefined,
         fps: Math.round(frames * 1000 / (now - lastPost)),
       }));
-      notified = true;
     }
     frames = 0; lastPost = now;
   }
