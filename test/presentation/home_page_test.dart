@@ -76,6 +76,17 @@ void main() {
     final starfield = tester.widget<Starfield>(find.byType(Starfield));
     expect(starfield.brightness, kStarBrightnessMin);
     expect(find.textContaining('点亮第一颗星球'), findsOneWidget);
+
+    // 字体与全 App 统一：中文用霞鹜文楷，"Create Something" 用品牌衬线斜体
+    final invite = tester.widget<Text>(
+      find.textContaining('点亮第一颗星球'),
+    );
+    expect(invite.textSpan?.style?.fontFamily, 'LXGWWenKai');
+    final brandSpan = (invite.textSpan! as TextSpan).children!
+        .whereType<TextSpan>()
+        .firstWhere((s) => s.text == 'Create Something');
+    expect(brandSpan.style?.fontFamily, 'EasyCreateBrand');
+    expect(brandSpan.style?.fontStyle, FontStyle.italic);
   });
 
   testWidgets('有小说且有创作量：星空亮于下限，显示书名', (tester) async {

@@ -222,12 +222,33 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
           ),
           if (novels.isEmpty)
-            // 空宇宙：邀请创建第一颗星球
-            const Center(
-              child: Text(
-                '宇宙一片寂静\n点上方 Create Something 点亮第一颗星球',
+            // 空宇宙：邀请创建第一颗星球。字体与全 App 统一——
+            // 中文用霞鹜文楷（正文体），"Create Something" 用品牌衬线斜体
+            Center(
+              child: Text.rich(
+                const TextSpan(
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 14,
+                    fontFamily: 'LXGWWenKai',
+                    height: 1.6,
+                  ),
+                  children: [
+                    TextSpan(text: '宇宙一片寂静\n点上方 '),
+                    TextSpan(
+                      // 与顶部品牌标题同字体（EasyCreateBrand 斜体），
+                      // 只借字形，颜色/字号继承本句样式
+                      text: 'Create Something',
+                      style: TextStyle(
+                        fontFamily: 'EasyCreateBrand',
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    TextSpan(text: ' 点亮第一颗星球'),
+                  ],
+                ),
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white54, fontSize: 14),
               ),
             )
           else
