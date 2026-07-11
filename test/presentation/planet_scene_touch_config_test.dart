@@ -43,15 +43,28 @@ void main() {
     expect(homePage, contains('Image.network'));
   });
 
-  test('首页首次进入与从魔树返回时有整屏宇宙封面，遮住场景恢复前的空白', () {
+  test('启动封面：Easy Create 标题 + 动态星云背景，事件驱动揭开', () {
     expect(homePage, contains('_HomeLoadingCover'));
-    expect(homePage, contains('_showCoverFor'));
-    expect(homePage, contains('_lastRouteCurrent'));
+    expect(homePage, contains("'Easy Create'"), reason: '封面标题为品牌名');
     expect(
       homePage,
-      contains('routeCurrent && !_lastRouteCurrent'),
-      reason: '从大纲页返回首页的一瞬间要重新短暂显示整屏封面',
+      contains('NebulaBackground'),
+      reason: '封面背景须是动态星云（顺带完成 shader 预热）',
     );
+    // 事件驱动：等星球场景首帧（planetSceneReadyTick）才揭开，
+    // 拍脑袋定时揭开会正撞上场景初始化 → 揭开瞬间卡顿（用户实测）
+    expect(homePage, contains('planetSceneReadyTick'));
+    expect(homePage, contains('_coverMinDone'));
+    expect(homePage, contains('_maybeRevealCover'));
+    // 兜底：场景异常也不能永远盖着
+    expect(homePage, contains('_coverMaxTimer'));
+    // 揭开后彻底摘除（封面星云停渲染省电）
+    expect(homePage, contains('_coverGone'));
+  });
+
+  test('从魔树返回首页不再显示封面（快照替身已兜住重建期）', () {
+    expect(homePage, isNot(contains('_lastRouteCurrent')));
+    expect(homePage, isNot(contains('_showCoverFor')));
   });
 
   test('Web 端路由被覆盖时摘除星球 platform view（进大纲整页白屏的回归）', () {

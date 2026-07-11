@@ -361,35 +361,44 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     }
   }
 
-  /// 极简自绘头部（替代 Material AppBar）
+  /// 极简自绘头部（替代 Material AppBar）。
+  /// 标题用 Stack 相对**整屏**居中（Row+Expanded 会因左箭头/右留白
+  /// 不对称而偏移，用户反馈"名字要左右居中"）；两侧对称避让魔毯球。
   Widget _header(BuildContext context) => SizedBox(
     height: 52,
-    child: Row(
+    child: Stack(
       children: [
-        GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onTap: () => Navigator.of(context).maybePop(),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 14),
-            child: Icon(CupertinoIcons.back, color: _ink, size: 26),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            widget.title,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontFamily: 'LXGWWenKai',
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-              color: _ink,
+        Positioned.fill(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 104),
+              child: Text(
+                widget.title,
+                key: const Key('大纲页书名'),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: 'LXGWWenKai',
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: _ink,
+                ),
+              ),
             ),
           ),
         ),
-        // 右侧留白避让右上角全局魔毯球（92 球宽 + 12 边距），标题不钻到球下
-        const SizedBox(width: 104),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () => Navigator.of(context).maybePop(),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 14),
+              child: Icon(CupertinoIcons.back, color: _ink, size: 26),
+            ),
+          ),
+        ),
       ],
     ),
   );

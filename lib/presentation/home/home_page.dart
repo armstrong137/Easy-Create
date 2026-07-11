@@ -69,6 +69,9 @@ const kMaxPitch = math.pi / 2 * 0.92;
 /// （沿用魔毯 carpetDragging 的全局 ValueNotifier 惯例）
 final planetZoomLock = ValueNotifier<bool>(false);
 
+/// 任一星球场景出首帧就 +1：启动封面等它揭开（事件驱动，不再拍脑袋定时）
+final planetSceneReadyTick = ValueNotifier<int>(0);
+
 /// 首页｜创作宇宙：一颗星球 = 一部小说，左右滑切换
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -84,22 +87,55 @@ class _HomePageState extends ConsumerState<HomePage> {
   int _currentPage = 0;
 
   int? _pendingNovelId;
+
+  /// 启动封面：事件驱动揭开——等星球场景真正就绪（而非拍脑袋定时），
+  /// 封面期间 iframe 初始化/贴图上传/星云编译全部做完，揭开即流畅。
+  /// 只在冷启动出现一次；从魔树页返回不再盖（快照替身已兜住重建期）。
   bool _coverVisible = true;
-  bool _lastRouteCurrent = true;
-  Timer? _coverTimer;
+  bool _coverGone = false; // 淡出动画结束后彻底摘除（星云层停渲染省电）
+  bool _coverMinDone = false; // 最短展示时长已到（避免一闪而过）
+  Timer? _coverMinTimer;
+  Timer? _coverMaxTimer;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
-    _showCoverFor(const Duration(milliseconds: 1600));
+    planetSceneReadyTick.addListener(_onSceneReadyTick);
+    // 最短 900ms：给封面一个体面的亮相；最长 4s：场景异常也不能永远盖着
+    _coverMinTimer = Timer(const Duration(milliseconds: 900), () {
+      _coverMinDone = true;
+      _maybeRevealCover();
+    });
+    _coverMaxTimer = Timer(const Duration(seconds: 4), _revealCover);
   }
 
   @override
   void dispose() {
-    _coverTimer?.cancel();
+    planetSceneReadyTick.removeListener(_onSceneReadyTick);
+    _coverMinTimer?.cancel();
+    _coverMaxTimer?.cancel();
     _pageController.dispose();
     super.dispose();
+  }
+
+  void _onSceneReadyTick() => _maybeRevealCover();
+
+  /// 就绪条件：小说列表已加载，且（空宇宙 或 任一星球场景已出首帧）
+  void _maybeRevealCover() {
+    if (!_coverVisible || !_coverMinDone || !mounted) return;
+    final novelsAsync = ref.read(novelsProvider);
+    if (!novelsAsync.hasValue) return;
+    final sceneOk =
+        (novelsAsync.value?.isEmpty ?? false) ||
+        planetSceneReadyTick.value > 0;
+    if (sceneOk) _revealCover();
+  }
+
+  void _revealCover() {
+    if (!mounted || !_coverVisible) return;
+    _coverMaxTimer?.cancel();
+    setState(() => _coverVisible = false);
   }
 
   /// 点击标题创建新星球：输入书名，纹理按现有数量轮换分配
@@ -129,10 +165,13 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final novels = ref.watch(novelsProvider).value ?? const [];
+    final novelsAsync = ref.watch(novelsProvider);
+    final novels = novelsAsync.value ?? const <Novel>[];
     final pool = ref.watch(inspirationPoolProvider).value ?? const [];
-    final routeCurrent = ModalRoute.of(context)?.isCurrent ?? true;
-    _syncReturnCover(routeCurrent);
+    // 小说列表加载完成也可能是揭开封面的最后一块拼图（空宇宙场景）
+    if (_coverVisible && novelsAsync.hasValue) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRevealCover());
+    }
 
     // 当前星球的创作量 → 星空亮度（无星球时最暗）
     final currentNovel = novels.isEmpty
@@ -240,29 +279,19 @@ class _HomePageState extends ConsumerState<HomePage> {
               ),
             ),
           ),
-          _HomeLoadingCover(visible: _coverVisible),
+          // 淡出结束即彻底摘除（封面的星云层停渲染，不再烧 GPU）
+          if (!_coverGone)
+            _HomeLoadingCover(
+              visible: _coverVisible,
+              // 测试/低端回退静态背景（星云无限 Ticker 会挂死 pumpAndSettle）
+              animated: ref.watch(advanced3DProvider),
+              onHidden: () {
+                if (mounted) setState(() => _coverGone = true);
+              },
+            ),
         ],
       ),
     );
-  }
-
-  void _syncReturnCover(bool routeCurrent) {
-    if (routeCurrent && !_lastRouteCurrent) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _showCoverFor(const Duration(milliseconds: 1100));
-      });
-    }
-    _lastRouteCurrent = routeCurrent;
-  }
-
-  void _showCoverFor(Duration duration) {
-    _coverTimer?.cancel();
-    if (mounted && !_coverVisible) {
-      setState(() => _coverVisible = true);
-    }
-    _coverTimer = Timer(duration, () {
-      if (mounted) setState(() => _coverVisible = false);
-    });
   }
 
   void _scheduleCreatedNovelJump(List<Novel> novels) {
@@ -281,46 +310,78 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 }
 
+/// 启动封面：璀璨的动态星云宇宙 + "Easy Create" 品牌标题。
+/// 背景直接复用 NebulaBackground（高能量档=璀璨），封面期间顺带完成
+/// 星云 shader 管线预热——进入首页后星云层零编译成本。
 class _HomeLoadingCover extends StatelessWidget {
-  const _HomeLoadingCover({required this.visible});
+  const _HomeLoadingCover({
+    required this.visible,
+    required this.animated,
+    required this.onHidden,
+  });
 
   final bool visible;
+
+  /// 动态星云开关（测试/低端回退静态银河照片）
+  final bool animated;
+
+  /// 淡出动画结束（宿主借此把封面整个摘除，停掉其星云渲染）
+  final VoidCallback onHidden;
 
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
       child: AnimatedOpacity(
-        duration: const Duration(milliseconds: 320),
+        duration: const Duration(milliseconds: 420),
         curve: Curves.easeOutCubic,
         opacity: visible ? 1 : 0,
+        onEnd: () {
+          if (!visible) onHidden();
+        },
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.asset('assets/textures/starfield_1.jpg', fit: BoxFit.cover),
+            const ColoredBox(color: Color(0xFF02040B)),
+            // 璀璨动态宇宙：高能量+快演化档（同一 shader，观感即"活的宇宙"）；
+            // 封面期间顺带完成星云管线预热
+            if (animated)
+              const NebulaBackground(energy: 0.9, evolve: 1.7)
+            else
+              Image.asset('assets/textures/starfield_4.jpg', fit: BoxFit.cover),
+            // 中央轻微聚光，托住标题
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: RadialGradient(
-                  center: Alignment(0, -0.22),
-                  radius: 0.82,
-                  colors: [
-                    Color(0x552C5C9A),
-                    Color(0xD902040B),
-                    Color(0xFF02040B),
-                  ],
-                  stops: [0.0, 0.58, 1.0],
+                  center: Alignment(0, -0.1),
+                  radius: 0.9,
+                  colors: [Color(0x00000000), Color(0x8802040B)],
+                  stops: [0.55, 1.0],
                 ),
               ),
             ),
-            const Center(
-              child: Text(
-                'Create Something',
-                style: TextStyle(
-                  color: Color(0xEFFFFFFF),
-                  fontSize: 30,
-                  fontFamily: 'serif',
-                  fontStyle: FontStyle.italic,
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Text(
+                  'Easy Create',
+                  style: TextStyle(
+                    color: Color(0xF5FFFFFF),
+                    fontSize: 34,
+                    fontFamily: 'serif',
+                    fontStyle: FontStyle.italic,
+                    letterSpacing: 1.2,
+                  ),
                 ),
-              ),
+                SizedBox(height: 14),
+                Text(
+                  '正在点亮你的宇宙…',
+                  style: TextStyle(
+                    color: Color(0x8FFFFFFF),
+                    fontSize: 13,
+                    fontFamily: 'LXGWWenKai',
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -582,6 +643,8 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
                     if (mounted && !_sceneReady) {
                       setState(() => _sceneReady = true);
                     }
+                    // 通知启动封面：星球场景已出首帧，可以揭开了
+                    planetSceneReadyTick.value++;
                   },
                   onSnapshot: (snapshot) {
                     if (mounted && snapshot != _sceneSnapshot) {

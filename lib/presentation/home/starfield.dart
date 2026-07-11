@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -57,7 +57,7 @@ class Starfield extends StatelessWidget {
             height: double.infinity,
           ),
         ),
-        if (animated) _NebulaLayer(energy: _t, evolve: evolveSpeed),
+        if (animated) NebulaBackground(energy: _t, evolve: evolveSpeed),
         if (animated) _MeteorLayer(brightness: _t),
       ],
     );
@@ -67,9 +67,15 @@ class Starfield extends StatelessWidget {
 /// 星云 shader 程序（全局加载一次，热身后常驻）
 final _nebulaProgram = ui.FragmentProgram.fromAsset('shaders/nebula.frag');
 
-/// 动态宇宙层：分形星云持续演变（nebula.frag），Ticker 驱动 uTime
-class _NebulaLayer extends StatefulWidget {
-  const _NebulaLayer({required this.energy, required this.evolve});
+/// 动态宇宙层：分形星云持续演变（nebula.frag），Ticker 驱动 uTime。
+/// 公开供启动封面复用——封面期间即完成 shader 管线预热，
+/// 进入首页后星云层零编译成本。
+class NebulaBackground extends StatefulWidget {
+  const NebulaBackground({
+    super.key,
+    required this.energy,
+    required this.evolve,
+  });
 
   /// 归一化创作能量 0~1（星云亮度/星场密度）
   final double energy;
@@ -78,10 +84,10 @@ class _NebulaLayer extends StatefulWidget {
   final double evolve;
 
   @override
-  State<_NebulaLayer> createState() => _NebulaLayerState();
+  State<NebulaBackground> createState() => _NebulaBackgroundState();
 }
 
-class _NebulaLayerState extends State<_NebulaLayer>
+class _NebulaBackgroundState extends State<NebulaBackground>
     with SingleTickerProviderStateMixin {
   final _elapsed = ValueNotifier<double>(0);
   late final Ticker _ticker;

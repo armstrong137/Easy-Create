@@ -111,6 +111,22 @@ void main() {
     expect(find.byType(Image), findsWidgets, reason: '魔树树干素材');
   });
 
+  testWidgets('书名左右居中且加粗（不受左箭头/右留白不对称影响）', (tester) async {
+    await pumpOutline(tester, const []);
+
+    final titleFinder = find.byKey(const Key('大纲页书名'));
+    final title = tester.widget<Text>(titleFinder);
+    expect(title.style?.fontWeight, FontWeight.w700, reason: '书名须加粗');
+
+    final center = tester.getCenter(titleFinder);
+    final screen = tester.getSize(find.byType(OutlinePage));
+    expect(
+      (center.dx - screen.width / 2).abs(),
+      lessThan(1.0),
+      reason: '书名中心须与屏幕中线重合（Row+Expanded 布局会偏移）',
+    );
+  });
+
   testWidgets('点左空白：首章命名"引子"落库并播放生长动画', (tester) async {
     await seedNovel();
     await pumpOutline(tester, const []);
