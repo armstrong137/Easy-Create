@@ -55,7 +55,7 @@ void main() {
     final html = File('web/index.html').readAsStringSync();
     expect(html, contains('id="app_boot_cover"'));
     expect(html, contains('flutter-first-frame'));
-    expect(html, contains('assets/assets/textures/starfield_1.jpg'));
+    expect(html, contains('assets/assets/textures/starfield_4.jpg'));
     expect(html, contains('app_boot_cover_hidden'));
   });
 

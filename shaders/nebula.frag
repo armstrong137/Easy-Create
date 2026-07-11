@@ -36,12 +36,13 @@ float vnoise(vec2 p) {
   return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
-// 5 阶分形噪声（旋转矩阵去轴向纹理）
+// 4 阶分形噪声：移动端全屏 shader 长期运行，5 阶在高像素比下会明显抢 GPU。
+const int kFbmOctaves = 4;
 float fbm(vec2 p) {
   float v = 0.0;
   float amp = 0.5;
   mat2 rot = mat2(1.6, 1.2, -1.2, 1.6);
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < kFbmOctaves; i++) {
     v += amp * vnoise(p);
     p = rot * p;
     amp *= 0.55;

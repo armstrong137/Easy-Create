@@ -1,4 +1,4 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -67,9 +67,10 @@ class Starfield extends StatelessWidget {
 /// 星云 shader 程序（全局加载一次，热身后常驻）
 final _nebulaProgram = ui.FragmentProgram.fromAsset('shaders/nebula.frag');
 
+/// 星云层限到约 30fps：它是全屏 shader，长期满帧会和 3D 星球抢 GPU。
+const kNebulaFrameInterval = Duration(milliseconds: 33);
+
 /// 动态宇宙层：分形星云持续演变（nebula.frag），Ticker 驱动 uTime。
-/// 公开供启动封面复用——封面期间即完成 shader 管线预热，
-/// 进入首页后星云层零编译成本。
 class NebulaBackground extends StatefulWidget {
   const NebulaBackground({
     super.key,
@@ -91,6 +92,7 @@ class _NebulaBackgroundState extends State<NebulaBackground>
     with SingleTickerProviderStateMixin {
   final _elapsed = ValueNotifier<double>(0);
   late final Ticker _ticker;
+  Duration _lastTick = Duration.zero;
 
   /// 管线预热：首帧只画 1×1（触发 GPU program 编译），下一帧再铺全屏。
   /// 直接全屏首帧会因编译卡一下（用户反馈"刚进去背景卡一下"）
@@ -99,9 +101,11 @@ class _NebulaBackgroundState extends State<NebulaBackground>
   @override
   void initState() {
     super.initState();
-    _ticker = createTicker(
-      (e) => _elapsed.value = e.inMicroseconds / 1e6,
-    )..start();
+    _ticker = createTicker((e) {
+      if (e - _lastTick < kNebulaFrameInterval) return;
+      _lastTick = e;
+      _elapsed.value = e.inMicroseconds / 1e6;
+    })..start();
   }
 
   @override
@@ -199,9 +203,8 @@ class _MeteorLayerState extends State<_MeteorLayer>
   @override
   void initState() {
     super.initState();
-    _ticker = createTicker(
-      (e) => _elapsed.value = e.inMicroseconds / 1e6,
-    )..start();
+    _ticker = createTicker((e) => _elapsed.value = e.inMicroseconds / 1e6)
+      ..start();
   }
 
   @override

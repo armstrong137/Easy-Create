@@ -43,13 +43,13 @@ void main() {
     expect(homePage, contains('Image.network'));
   });
 
-  test('启动封面：Easy Create 标题 + 动态星云背景，事件驱动揭开', () {
+  test('启动封面：Easy Create 标题 + 静态同款封面，事件驱动揭开', () {
     expect(homePage, contains('_HomeLoadingCover'));
     expect(homePage, contains("'Easy Create'"), reason: '封面标题为品牌名');
     expect(
       homePage,
-      contains('NebulaBackground'),
-      reason: '封面背景须是动态星云（顺带完成 shader 预热）',
+      contains("Image.asset('assets/textures/starfield_4.jpg'"),
+      reason: '启动遮挡不能再依赖动态星云 shader，否则慢机仍会看到后台加载/卡顿',
     );
     // 事件驱动：等星球场景首帧（planetSceneReadyTick）才揭开，
     // 拍脑袋定时揭开会正撞上场景初始化 → 揭开瞬间卡顿（用户实测）
@@ -71,6 +71,11 @@ void main() {
     final bootHtml = File('web/index.html').readAsStringSync();
     expect(bootHtml, contains('Easy Create'), reason: '标题须与 Flutter 封面一致');
     expect(bootHtml, contains('正在点亮你的宇宙'));
+    expect(
+      bootHtml,
+      contains('starfield_4.jpg'),
+      reason: 'HTML 与 Flutter 封面共用同一张图',
+    );
     expect(bootHtml, contains('flutter-first-frame'), reason: 'Flutter 首帧后交接');
     expect(
       bootHtml,

@@ -127,8 +127,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final novelsAsync = ref.read(novelsProvider);
     if (!novelsAsync.hasValue) return;
     final sceneOk =
-        (novelsAsync.value?.isEmpty ?? false) ||
-        planetSceneReadyTick.value > 0;
+        (novelsAsync.value?.isEmpty ?? false) || planetSceneReadyTick.value > 0;
     if (sceneOk) _revealCover();
   }
 
@@ -292,8 +291,6 @@ class _HomePageState extends ConsumerState<HomePage> {
           if (!_coverGone)
             _HomeLoadingCover(
               visible: _coverVisible,
-              // 测试/低端回退静态背景（星云无限 Ticker 会挂死 pumpAndSettle）
-              animated: ref.watch(advanced3DProvider),
               onHidden: () {
                 if (mounted) setState(() => _coverGone = true);
               },
@@ -319,20 +316,13 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 }
 
-/// 启动封面：璀璨的动态星云宇宙 + "Easy Create" 品牌标题。
-/// 背景直接复用 NebulaBackground（高能量档=璀璨），封面期间顺带完成
-/// 星云 shader 管线预热——进入首页后星云层零编译成本。
+/// 启动封面：静态深空照片 + "Easy Create" 品牌标题。
+/// 这里不能再复用动态星云 shader：慢设备上封面本身会参与 GPU 争抢，
+/// 反而把后台加载过程暴露给用户。
 class _HomeLoadingCover extends StatelessWidget {
-  const _HomeLoadingCover({
-    required this.visible,
-    required this.animated,
-    required this.onHidden,
-  });
+  const _HomeLoadingCover({required this.visible, required this.onHidden});
 
   final bool visible;
-
-  /// 动态星云开关（测试/低端回退静态银河照片）
-  final bool animated;
 
   /// 淡出动画结束（宿主借此把封面整个摘除，停掉其星云渲染）
   final VoidCallback onHidden;
@@ -366,12 +356,7 @@ class _HomeLoadingCover extends StatelessWidget {
                 ),
               ),
             ),
-            // 璀璨动态宇宙：高能量+快演化档（同一 shader，观感即"活的宇宙"）；
-            // 封面期间顺带完成星云管线预热
-            if (animated)
-              const NebulaBackground(energy: 0.9, evolve: 1.7)
-            else
-              Image.asset('assets/textures/starfield_4.jpg', fit: BoxFit.cover),
+            Image.asset('assets/textures/starfield_4.jpg', fit: BoxFit.cover),
             // 中央轻微聚光，托住标题
             const DecoratedBox(
               decoration: BoxDecoration(

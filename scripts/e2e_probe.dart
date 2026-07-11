@@ -107,6 +107,12 @@ Future<void> main(List<String> args) async {
     case 'text':
       await send('Input.insertText', {'text': args[1]});
       stdout.writeln('typed');
+    case 'throttle':
+      // 模拟手机：CPU 降速 N 倍（复现真机加载时序/卡顿）
+      await send('Emulation.setCPUThrottlingRate', {
+        'rate': double.parse(args[1]),
+      });
+      stdout.writeln('cpu throttle x${args[1]}');
     case 'eval':
       final r = await send('Runtime.evaluate', {
         'expression': args[1],
