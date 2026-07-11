@@ -58,6 +58,9 @@ const kPlanetSceneMaxZoom = kPlanetSceneStageScale;
 /// 放大超过此倍率即隐藏书名（避免压在放大的星球上）
 const kPlanetTitleHideZoom = 1.06;
 
+/// 顶部创建标题只在星球完全回到最小态时出现，避免拖动/捏合起手时闪烁。
+const kPlanetCreateTitleShowZoom = 1.001;
+
 /// 捏合增益：手指张开比例的幂次。整屏最多张开约 1.6 倍，
 /// 直接 1:1 映射够不到 3 倍上限、捏合"使不上劲"
 const kPinchGain = 2.6;
@@ -68,6 +71,9 @@ const kMaxPitch = math.pi / 2 * 0.92;
 /// 星球放大/捏合期间锁住 PageView：双指缩放不会误翻页
 /// （沿用魔毯 carpetDragging 的全局 ValueNotifier 惯例）
 final planetZoomLock = ValueNotifier<bool>(false);
+
+/// 顶部 Create Something 的显示状态：只跟随当前星球是否最小化，不跟随拖动锁页。
+final planetCreateTitleVisible = ValueNotifier<bool>(true);
 
 /// 任一星球场景出首帧就 +1：启动封面等它揭开（事件驱动，不再拍脑袋定时）
 final planetSceneReadyTick = ValueNotifier<int>(0);
@@ -102,6 +108,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   void initState() {
     super.initState();
     _pageController = PageController();
+    planetCreateTitleVisible.value = true;
     _coverStartReadyTick = planetSceneReadyTick.value;
     planetSceneReadyTick.addListener(_onSceneReadyTick);
     // 最短 900ms：给封面一个体面的亮相；最长 4s：场景异常也不能永远盖着
@@ -279,25 +286,20 @@ class _HomePageState extends ConsumerState<HomePage> {
               // padding 放在 GestureDetector 外，热区只裹文字（点击命中稳定）
               child: Padding(
                 padding: const EdgeInsets.only(top: 100),
-                // 放大观察星球时标题淡出让位（planetZoomLock 在捏合/放大态为真）
+                // 只在当前星球完全最小化时显示；拖动旋转/双指刚按下不再误闪。
                 child: ValueListenableBuilder<bool>(
-                  valueListenable: planetZoomLock,
-                  builder: (context, zoomed, child) => AnimatedOpacity(
+                  valueListenable: planetCreateTitleVisible,
+                  builder: (context, visible, child) => AnimatedOpacity(
                     duration: const Duration(milliseconds: 200),
-                    opacity: zoomed ? 0 : 1,
-                    child: IgnorePointer(ignoring: zoomed, child: child),
+                    opacity: visible ? 1 : 0,
+                    child: IgnorePointer(ignoring: !visible, child: child),
                   ),
                   child: GestureDetector(
                     key: const Key('创建新星球标题'),
                     onTap: _createNovel,
-                    child: const Text(
+                    child: Text(
                       'Create Something',
-                      style: TextStyle(
-                        fontSize: 26,
-                        color: Colors.white,
-                        fontFamily: 'serif',
-                        fontStyle: FontStyle.italic,
-                      ),
+                      style: _brandTitleStyle(fontSize: 26),
                     ),
                   ),
                 ),
@@ -376,19 +378,13 @@ class _HomeLoadingCover extends StatelessWidget {
             ),
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
+              children: [
                 Text(
                   'Easy Create',
-                  style: TextStyle(
-                    color: Color(0xF5FFFFFF),
-                    fontSize: 34,
-                    fontFamily: 'serif',
-                    fontStyle: FontStyle.italic,
-                    letterSpacing: 1.2,
-                  ),
+                  style: _brandTitleStyle(fontSize: 34, letterSpacing: 1.2),
                 ),
-                SizedBox(height: 14),
-                Text(
+                const SizedBox(height: 14),
+                const Text(
                   '正在点亮你的宇宙…',
                   style: TextStyle(
                     color: Color(0x8FFFFFFF),
@@ -454,6 +450,8 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
   /// Web 端上一帧低清透明快照：从魔树返回时 iframe 会重建，用它遮住冷启动空白。
   String? _sceneSnapshot;
 
+  Completer<void>? _snapshotCompleter;
+
   /// 星球画面区域（用于判断手指是否落在球上）
   final _planetKey = GlobalKey();
 
@@ -466,10 +464,25 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
   void initState() {
     super.initState();
     _glideTicker = createTicker(_onGlideTick);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncCreateTitleVisibility();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _PlanetPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.active != widget.active && widget.active) {
+      _syncCreateTitleVisibility();
+    }
   }
 
   @override
   void dispose() {
+    final snapshotCompleter = _snapshotCompleter;
+    if (snapshotCompleter != null && !snapshotCompleter.isCompleted) {
+      snapshotCompleter.complete();
+    }
     _glideTicker.dispose();
     super.dispose();
   }
@@ -496,8 +509,14 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
     planetZoomLock.value = _pointers.length >= 2 || _rotating || _zoom > 1.001;
   }
 
+  void _syncCreateTitleVisibility() {
+    if (!widget.active) return;
+    planetCreateTitleVisible.value = _zoom <= kPlanetCreateTitleShowZoom;
+  }
+
   void _resetZoom() {
     setState(() => _zoom = 1);
+    _syncCreateTitleVisibility();
     _syncPageLock();
   }
 
@@ -561,7 +580,10 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
     final raw = dist / _pinchStartDist;
     final gained = math.pow(raw, kPinchGain).toDouble();
     final next = (_pinchStartZoom * gained).clamp(1.0, kPlanetSceneMaxZoom);
-    if ((next - _zoom).abs() > 0.002) setState(() => _zoom = next);
+    if ((next - _zoom).abs() > 0.002) {
+      setState(() => _zoom = next);
+      _syncCreateTitleVisibility();
+    }
   }
 
   void _onPointerUp(PointerEvent e) {
@@ -577,7 +599,32 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
       _resetZoom();
       return;
     }
+    _syncCreateTitleVisibility();
     _syncPageLock();
+  }
+
+  Future<void> _awaitSnapshotBeforeRoute() async {
+    if (!mounted || !ref.read(advanced3DProvider)) return;
+    final completer = Completer<void>();
+    _snapshotCompleter = completer;
+    setState(() => _snapshotReq++);
+    await completer.future.timeout(
+      const Duration(milliseconds: 90),
+      onTimeout: () {},
+    );
+    if (identical(_snapshotCompleter, completer)) {
+      _snapshotCompleter = null;
+    }
+  }
+
+  Future<void> _openOutline(Novel novel) async {
+    await _awaitSnapshotBeforeRoute();
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => OutlinePage(novelId: novel.id, title: novel.title),
+      ),
+    );
   }
 
   @override
@@ -623,6 +670,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
           opacity: _sceneReady && showScene ? 0 : 1,
           child: _PlanetStandIn(
             diameter: sceneDiameter,
+            planet: novel.planet,
             snapshotDataUrl: _sceneSnapshot,
           ),
         );
@@ -672,6 +720,10 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
                     if (mounted && snapshot != _sceneSnapshot) {
                       setState(() => _sceneSnapshot = snapshot);
                     }
+                    final completer = _snapshotCompleter;
+                    if (completer != null && !completer.isCompleted) {
+                      completer.complete();
+                    }
                   },
                 ),
               ),
@@ -713,19 +765,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
             behavior: HitTestBehavior.opaque,
             // 点星球 → 进入该小说的大纲页（铅笔树）。放大态也直接进入，
             // 避免用户点击地球时被"复位缩放"吞掉第一次点击。
-            onTap: !ready
-                ? null
-                : () {
-                    // 进大纲前让场景回传一帧最新快照：返回时替身显示的
-                    // 就是"刚才那颗星球的定格"，无缝衔接
-                    setState(() => _snapshotReq++);
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            OutlinePage(novelId: novel.id, title: novel.title),
-                      ),
-                    );
-                  },
+            onTap: !ready ? null : () => _openOutline(novel),
             onLongPress: () => _confirmDeleteNovel(context, ref),
             child: !ready
                 // 占位也要带 key：否则星球未就绪时"手指是否在球上"恒为否
@@ -819,9 +859,14 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
 /// 星球替身：加载/重建期间的"深空显形"光晕轮廓（纯渐变，零资源开销）。
 /// 观感是一颗尚未聚焦的暗星球：深蓝球体核心 + 大气蓝辉边缘。
 class _PlanetStandIn extends StatelessWidget {
-  const _PlanetStandIn({required this.diameter, this.snapshotDataUrl});
+  const _PlanetStandIn({
+    required this.diameter,
+    required this.planet,
+    this.snapshotDataUrl,
+  });
 
   final double diameter;
+  final String planet;
   final String? snapshotDataUrl;
 
   @override
@@ -844,25 +889,60 @@ class _PlanetStandIn extends StatelessWidget {
       );
     }
     return IgnorePointer(
-      child: Container(
-        width: diameter,
-        height: diameter,
+      child: DecoratedBox(
         decoration: const BoxDecoration(
           shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [
-              Color(0xFF0E1B33), // 球心暗蓝
-              Color(0xFF13264A),
-              Color(0x80385C9E), // 临边大气辉
-              Color(0x00000000),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x665D9DFF),
+              blurRadius: 32,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: ClipOval(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.asset(
+                'assets/textures/$planet.jpg',
+                width: diameter,
+                height: diameter,
+                fit: BoxFit.cover,
+                filterQuality: FilterQuality.medium,
+              ),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: Alignment(-0.35, -0.42),
+                    radius: 0.95,
+                    colors: [
+                      Color(0x66FFFFFF),
+                      Color(0x183A6FD1),
+                      Color(0x8C020713),
+                    ],
+                    stops: [0.0, 0.58, 1.0],
+                  ),
+                ),
+              ),
             ],
-            stops: [0.0, 0.62, 0.88, 1.0],
           ),
         ),
       ),
     );
   }
 }
+
+TextStyle _brandTitleStyle({
+  required double fontSize,
+  double letterSpacing = 1.0,
+}) => TextStyle(
+  color: const Color(0xF5FFFFFF),
+  fontSize: fontSize,
+  fontFamily: 'serif',
+  fontStyle: FontStyle.italic,
+  letterSpacing: letterSpacing,
+);
 
 /// 楷体文字（弹窗共用）
 TextStyle _dlgStyle({double size = 17, FontWeight? weight, Color? color}) =>

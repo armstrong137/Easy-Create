@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-11 10:14:03　对应提交：a48e379 之后的工作区状态
+> 生成时间：2026-07-11 10:43:51　对应提交：c3ebdc2 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,26 +12,26 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     102
-  Nodes:     3,916
-  Edges:     18,667
-  DB Size:   19.75 MB
+  Files:     103
+  Nodes:     3,927
+  Edges:     18,694
+  DB Size:   19.82 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,513
-  function        1,353
+  method          1,517
+  function        1,355
   class           450
-  import          301
-  constant        177
-  file            94
+  import          303
+  constant        179
+  file            95
   variable        14
   type_alias      12
   namespace       2
 
 Files by Language:
-  dart            64
+  dart            65
   javascript      10
   kotlin          8
   xml             6
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (102 files):
+Project Structure (103 files):
 
 |-- .agents
 |   `-- skills
@@ -159,7 +159,7 @@ Project Structure (102 files):
 |   |   |   |   |-- planet_scene_web.dart (dart, 13 symbols)
 |   |   |   |   |-- planet_scene.dart (dart, 6 symbols)
 |   |   |   |   `-- scene_server.dart (dart, 11 symbols)
-|   |   |   |-- home_page.dart (dart, 70 symbols)
+|   |   |   |-- home_page.dart (dart, 77 symbols)
 |   |   |   |-- orbiting_inspirations.dart (dart, 16 symbols)
 |   |   |   |-- planet_view.dart (dart, 19 symbols)
 |   |   |   |-- saturn_rings_painter.dart (dart, 12 symbols)
@@ -199,6 +199,7 @@ Project Structure (102 files):
 |   |   |-- app_database_config_test.dart (dart, 4 symbols)
 |   |   `-- repositories_test.dart (dart, 9 symbols)
 |   |-- presentation
+|   |   |-- home_loading_regression_test.dart (dart, 4 symbols)
 |   |   |-- home_page_test.dart (dart, 20 symbols)
 |   |   |-- magic_carpet_test.dart (dart, 16 symbols)
 |   |   |-- magic_tree_model_test.dart (dart, 13 symbols)
