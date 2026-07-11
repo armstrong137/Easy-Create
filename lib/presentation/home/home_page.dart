@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
@@ -83,15 +84,20 @@ class _HomePageState extends ConsumerState<HomePage> {
   int _currentPage = 0;
 
   int? _pendingNovelId;
+  bool _coverVisible = true;
+  bool _lastRouteCurrent = true;
+  Timer? _coverTimer;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
+    _showCoverFor(const Duration(milliseconds: 1600));
   }
 
   @override
   void dispose() {
+    _coverTimer?.cancel();
     _pageController.dispose();
     super.dispose();
   }
@@ -125,6 +131,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget build(BuildContext context) {
     final novels = ref.watch(novelsProvider).value ?? const [];
     final pool = ref.watch(inspirationPoolProvider).value ?? const [];
+    final routeCurrent = ModalRoute.of(context)?.isCurrent ?? true;
+    _syncReturnCover(routeCurrent);
 
     // 当前星球的创作量 → 星空亮度（无星球时最暗）
     final currentNovel = novels.isEmpty
@@ -232,9 +240,29 @@ class _HomePageState extends ConsumerState<HomePage> {
               ),
             ),
           ),
+          _HomeLoadingCover(visible: _coverVisible),
         ],
       ),
     );
+  }
+
+  void _syncReturnCover(bool routeCurrent) {
+    if (routeCurrent && !_lastRouteCurrent) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showCoverFor(const Duration(milliseconds: 1100));
+      });
+    }
+    _lastRouteCurrent = routeCurrent;
+  }
+
+  void _showCoverFor(Duration duration) {
+    _coverTimer?.cancel();
+    if (mounted && !_coverVisible) {
+      setState(() => _coverVisible = true);
+    }
+    _coverTimer = Timer(duration, () {
+      if (mounted) setState(() => _coverVisible = false);
+    });
   }
 
   void _scheduleCreatedNovelJump(List<Novel> novels) {
@@ -250,6 +278,54 @@ class _HomePageState extends ConsumerState<HomePage> {
       if (!_pageController.hasClients) return;
       _pageController.jumpToPage(target);
     });
+  }
+}
+
+class _HomeLoadingCover extends StatelessWidget {
+  const _HomeLoadingCover({required this.visible});
+
+  final bool visible;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+        opacity: visible ? 1 : 0,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset('assets/textures/starfield_1.jpg', fit: BoxFit.cover),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment(0, -0.22),
+                  radius: 0.82,
+                  colors: [
+                    Color(0x552C5C9A),
+                    Color(0xD902040B),
+                    Color(0xFF02040B),
+                  ],
+                  stops: [0.0, 0.58, 1.0],
+                ),
+              ),
+            ),
+            const Center(
+              child: Text(
+                'Create Something',
+                style: TextStyle(
+                  color: Color(0xEFFFFFFF),
+                  fontSize: 30,
+                  fontFamily: 'serif',
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

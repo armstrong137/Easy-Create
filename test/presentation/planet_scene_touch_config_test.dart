@@ -43,6 +43,17 @@ void main() {
     expect(homePage, contains('Image.network'));
   });
 
+  test('首页首次进入与从魔树返回时有整屏宇宙封面，遮住场景恢复前的空白', () {
+    expect(homePage, contains('_HomeLoadingCover'));
+    expect(homePage, contains('_showCoverFor'));
+    expect(homePage, contains('_lastRouteCurrent'));
+    expect(
+      homePage,
+      contains('routeCurrent && !_lastRouteCurrent'),
+      reason: '从大纲页返回首页的一瞬间要重新短暂显示整屏封面',
+    );
+  });
+
   test('Web 端路由被覆盖时摘除星球 platform view（进大纲整页白屏的回归）', () {
     // CanvasKit 的 overlay 合成在 platform view 驻留于非当前路由时会
     // 丢掉所有 canvas（CDP 实证 canvases:0 → 整页白）；摘除即恢复，

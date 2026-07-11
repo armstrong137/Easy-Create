@@ -51,6 +51,14 @@ void main() {
     expect(html, contains('window.scrollTo(0, 0)'));
   });
 
+  test('Web 首屏必须有原生宇宙封面，避免用户看到 Flutter/CanvasKit 后台加载空白', () {
+    final html = File('web/index.html').readAsStringSync();
+    expect(html, contains('id="app_boot_cover"'));
+    expect(html, contains('flutter-first-frame'));
+    expect(html, contains('assets/assets/textures/starfield_1.jpg'));
+    expect(html, contains('app_boot_cover_hidden'));
+  });
+
   test('ps1 会自测局域网地址并打印当前 IP（IP 随所连 WiFi 变化）', () {
     final src = servePs1.readAsStringSync();
     expect(src, contains('http://\${ip}:\$Port'));
