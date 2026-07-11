@@ -16,6 +16,17 @@ void main() {
     expect(homePage, isNot(contains('Color(0xFF0E1B33)')));
   });
 
+  test('stand-in sits ABOVE the scene so fresh iframe never flashes black', () {
+    // 返回大纲后 iframe 新建，three.js 出图前是黑的；替身必须在场景之上
+    // 才能盖住黑帧（回来黑一秒的根因）。用 Stack 子序验证：
+    // PlanetScene 先出现、standIn 后出现（后者在上层）。
+    final scenePos = homePage.indexOf('child: PlanetScene(');
+    final standInPos = homePage.lastIndexOf('standIn,');
+    expect(scenePos, greaterThan(0));
+    expect(standInPos, greaterThan(scenePos),
+        reason: 'standIn 必须排在 PlanetScene 之后（Stack 上层）');
+  });
+
   test('brand title style is shared by boot cover and create title', () {
     expect(homePage, contains('_brandTitleStyle'));
     expect(homePage, contains('_brandTitleStyle(fontSize: 34'));

@@ -716,8 +716,10 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
           dimension: sceneDiameter,
           child: Stack(
             alignment: Alignment.center,
+            // 替身必须在场景**之上**：从大纲返回时 iframe 是新建的，
+            // three.js 出图前那一秒是黑/暗的，若替身在下会被黑 iframe 盖住
+            //（用户实测"回来黑一秒"）。放到上层，就绪后再淡出露出真景。
             children: [
-              standIn,
               OverflowBox(
                 maxWidth: sceneDiameter * kPlanetSceneStageScale,
                 maxHeight: sceneDiameter * kPlanetSceneStageScale,
@@ -753,6 +755,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
                   },
                 ),
               ),
+              standIn,
             ],
           ),
         );
