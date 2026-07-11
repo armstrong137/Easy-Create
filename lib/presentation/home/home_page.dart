@@ -263,16 +263,25 @@ class _HomePageState extends ConsumerState<HomePage> {
               // padding 放在 GestureDetector 外，热区只裹文字（点击命中稳定）
               child: Padding(
                 padding: const EdgeInsets.only(top: 100),
-                child: GestureDetector(
-                  key: const Key('创建新星球标题'),
-                  onTap: _createNovel,
-                  child: const Text(
-                    'Create Something',
-                    style: TextStyle(
-                      fontSize: 26,
-                      color: Colors.white,
-                      fontFamily: 'serif',
-                      fontStyle: FontStyle.italic,
+                // 放大观察星球时标题淡出让位（planetZoomLock 在捏合/放大态为真）
+                child: ValueListenableBuilder<bool>(
+                  valueListenable: planetZoomLock,
+                  builder: (context, zoomed, child) => AnimatedOpacity(
+                    duration: const Duration(milliseconds: 200),
+                    opacity: zoomed ? 0 : 1,
+                    child: IgnorePointer(ignoring: zoomed, child: child),
+                  ),
+                  child: GestureDetector(
+                    key: const Key('创建新星球标题'),
+                    onTap: _createNovel,
+                    child: const Text(
+                      'Create Something',
+                      style: TextStyle(
+                        fontSize: 26,
+                        color: Colors.white,
+                        fontFamily: 'serif',
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
                   ),
                 ),
@@ -341,7 +350,22 @@ class _HomeLoadingCover extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            const ColoredBox(color: Color(0xFF02040B)),
+            // 深空底渐变与 web/index.html 的 HTML 启动屏完全同款：
+            // 引擎交接（HTML 封面 → 本封面）瞬间无明暗跳变，观感一段式
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment(0, -0.4),
+                  radius: 1.2,
+                  colors: [
+                    Color(0xFF0B1230),
+                    Color(0xFF060A1D),
+                    Color(0xFF02040B),
+                  ],
+                  stops: [0.0, 0.45, 1.0],
+                ),
+              ),
+            ),
             // 璀璨动态宇宙：高能量+快演化档（同一 shader，观感即"活的宇宙"）；
             // 封面期间顺带完成星云管线预热
             if (animated)
@@ -432,6 +456,9 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
 
   /// 3D 场景首帧是否已就绪（未就绪/重建期间显示光晕替身，避免空白）
   bool _sceneReady = false;
+
+  /// 快照请求序号：进大纲前 +1 让场景回传最新一帧（供返回时替身用）
+  int _snapshotReq = 0;
 
   /// Web 端上一帧低清透明快照：从魔树返回时 iframe 会重建，用它遮住冷启动空白。
   String? _sceneSnapshot;
@@ -639,6 +666,10 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
                   yaw: _spin.yaw,
                   pitch: _spin.pitch,
                   autoPrewarm: widget.active,
+                  // 非当前页暂停场景渲染：滑过的页被 keepAlive 后 iframe
+                  // 仍在后台渲染，多球常驻会越用越卡（用户实测）
+                  active: widget.active,
+                  snapshotRequestId: _snapshotReq,
                   onReady: () {
                     if (mounted && !_sceneReady) {
                       setState(() => _sceneReady = true);
@@ -694,6 +725,9 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
             onTap: !ready
                 ? null
                 : () {
+                    // 进大纲前让场景回传一帧最新快照：返回时替身显示的
+                    // 就是"刚才那颗星球的定格"，无缝衔接
+                    setState(() => _snapshotReq++);
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) =>

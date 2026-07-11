@@ -170,6 +170,17 @@ void main() {
     );
     expect(title.opacity, 0, reason: '放大后书名应淡出');
 
+    // 顶部 Create Something 标题也让位（放大观察时不压星球——用户反馈）
+    final appTitle = tester.widget<AnimatedOpacity>(
+      find
+          .ancestor(
+            of: find.byKey(const Key('创建新星球标题')),
+            matching: find.byType(AnimatedOpacity),
+          )
+          .first,
+    );
+    expect(appTitle.opacity, 0, reason: '放大后顶部标题应淡出');
+
     // 收回到起始间距后松手：回到原大小，解锁翻页、书名归位
     await f1.moveBy(const Offset(70, 0));
     await f2.moveBy(const Offset(-70, 0));

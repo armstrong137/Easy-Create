@@ -44,24 +44,46 @@
     }
     /* 手势全部交给 Flutter，浏览器不做滚动/缩放 */
     body { touch-action: none; overscroll-behavior: none; }
+    /* HTML 启动屏：与 Flutter 侧 Easy Create 封面同款视觉——
+       标题/副标题/深空底完全一致，引擎交接时用户看不出换了画面（一段式） */
     #app_boot_cover {
       position: fixed;
       inset: 0;
       z-index: 2147483647;
-      display: grid;
-      place-items: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       pointer-events: none;
-      color: rgba(255, 255, 255, 0.92);
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: 30px;
-      font-style: italic;
-      letter-spacing: 0;
       background:
-        radial-gradient(circle at 50% 34%, rgba(80, 110, 170, 0.34), transparent 34%),
-        linear-gradient(180deg, rgba(2, 4, 11, 0.12), rgba(2, 4, 11, 0.82)),
-        url("assets/assets/textures/starfield_1.jpg") center / cover no-repeat;
+        radial-gradient(120% 90% at 50% 30%,
+          #0B1230 0%, #060A1D 45%, #02040B 100%);
       opacity: 1;
       transition: opacity 360ms ease;
+    }
+    #app_boot_cover h1 {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.96);
+      font: italic 34px Georgia, "Times New Roman", serif;
+      font-weight: normal;
+      letter-spacing: 1.2px;
+    }
+    #app_boot_cover p {
+      margin: 14px 0 0;
+      color: rgba(255, 255, 255, 0.56);
+      font-size: 13px;
+      font-family: system-ui, sans-serif;
+    }
+    /* 呼吸星点：加载期画面"活着"，且与 Flutter 星云的星点气质衔接 */
+    #app_boot_cover i {
+      position: absolute;
+      border-radius: 50%;
+      background: #fff;
+      animation: boot_tw 2.6s ease-in-out infinite;
+    }
+    @keyframes boot_tw {
+      0%, 100% { opacity: 0.12; }
+      50% { opacity: 0.8; }
     }
     #app_boot_cover.app_boot_cover_hidden {
       opacity: 0;
@@ -75,7 +97,15 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
-  <div id="app_boot_cover" aria-hidden="true">Create Something</div>
+  <div id="app_boot_cover" aria-hidden="true">
+    <i style="width:2px;height:2px;left:18%;top:22%"></i>
+    <i style="width:3px;height:3px;left:74%;top:14%;animation-delay:.6s"></i>
+    <i style="width:2px;height:2px;left:62%;top:70%;animation-delay:1.2s"></i>
+    <i style="width:2px;height:2px;left:30%;top:78%;animation-delay:1.8s"></i>
+    <i style="width:3px;height:3px;left:86%;top:46%;animation-delay:.9s"></i>
+    <h1>Easy Create</h1>
+    <p>正在点亮你的宇宙…</p>
+  </div>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader

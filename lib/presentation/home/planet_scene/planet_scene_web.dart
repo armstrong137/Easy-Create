@@ -23,6 +23,8 @@ class PlanetScene extends StatefulWidget {
     this.yaw = 0,
     this.pitch = 0,
     this.autoPrewarm = true,
+    this.active = true,
+    this.snapshotRequestId = 0,
     this.onReady,
     this.onSnapshot,
   });
@@ -48,6 +50,14 @@ class PlanetScene extends StatefulWidget {
 
   /// 是否允许当前场景在加载后主动预热高清 LOD；相邻预构建页会关闭它以节省显存。
   final bool autoPrewarm;
+
+  /// 是否为当前可见页：非当前页暂停场景渲染——滑过的页被 keepAlive 后
+  /// iframe 仍在后台 rAF 渲染，多球常驻会越用越卡（用户实测）
+  final bool active;
+
+  /// 快照请求序号：+1 即让场景回传一张最新快照（进大纲前调用，
+  /// 供返回时替身用；不做周期快照——PNG 编码在主线程是固定 jank 源）
+  final int snapshotRequestId;
 
   /// 场景首帧渲染完成（宿主用它淡出加载期的星球替身）
   final VoidCallback? onReady;
@@ -123,6 +133,12 @@ class _PlanetSceneState extends State<PlanetScene> {
     }
     if (old.autoPrewarm != widget.autoPrewarm) {
       _post({'autoPrewarm': widget.autoPrewarm ? 1 : 0});
+    }
+    if (old.active != widget.active) {
+      _post({'render': widget.active ? 1 : 0});
+    }
+    if (old.snapshotRequestId != widget.snapshotRequestId) {
+      _post({'snapshot': 1});
     }
   }
 

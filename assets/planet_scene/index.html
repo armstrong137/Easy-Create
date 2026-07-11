@@ -468,6 +468,13 @@ window.addEventListener('message', function (e) {
   if (typeof m.yaw === 'number' && typeof m.pitch === 'number') {
     window.setRotation(m.yaw, m.pitch);
   }
+  // 宿主请求式快照（进大纲前拍一张，供返回时替身用）
+  if (typeof m.snapshot === 'number') sendSnapshot();
+  // 非当前星球页暂停渲染：滑过的页被 keepAlive 后 iframe 仍在后台
+  // rAF 渲染，多球常驻会越用越卡（用户实测"一段时间后变卡"）
+  if (typeof m.render === 'number') {
+    if (m.render > 0) { window.resumeRender(); } else { window.pauseRender(); }
+  }
 });
 
 function sendSnapshot() {
@@ -527,9 +534,10 @@ function animate() {
     if (window.parent !== window) {
       // 带回宿主下发的 token：同页多颗星球时各自只认自己的就绪信号
       window.parent.postMessage('sceneReady:' + (params.get('token') || ''), '*');
-      // 就绪即拍第一张快照，之后周期更新
+      // 就绪拍一张兜底快照。不做周期快照：toDataURL 的 PNG 编码在
+      // 主线程（约 20-50ms），每 5 秒一次固定 jank（用户实测"会变卡"）；
+      // 之后由宿主在进大纲前请求最新一张（message.snapshot）
       sendSnapshot();
-      setInterval(sendSnapshot, 5000);
     }
   }
   if (now - lastPost > 1000) {

@@ -22,6 +22,8 @@ class PlanetScene extends ConsumerStatefulWidget {
     this.yaw = 0,
     this.pitch = 0,
     this.autoPrewarm = true,
+    this.active = true,
+    this.snapshotRequestId = 0,
     this.onReady,
     this.onSnapshot,
   });
@@ -49,6 +51,12 @@ class PlanetScene extends ConsumerStatefulWidget {
   ///
   /// 首页会预构建相邻页来减少切星球卡顿；相邻页只暖基础场景，避免多颗星球同时抢高清显存。
   final bool autoPrewarm;
+
+  /// 是否为当前可见页：非当前页暂停场景渲染（多球常驻越用越卡）
+  final bool active;
+
+  /// 快照请求序号（移动端不摘除场景，暂无实际动作，保留同名接口）
+  final int snapshotRequestId;
 
   /// 场景首帧渲染完成（宿主用它淡出加载期的星球替身）
   final VoidCallback? onReady;
@@ -124,6 +132,12 @@ class _PlanetSceneState extends ConsumerState<PlanetScene> {
     }
     if (old.autoPrewarm != widget.autoPrewarm) {
       _web?.runJavaScript('setAutoPrewarm(${widget.autoPrewarm})');
+    }
+    // 非当前页暂停渲染（多球常驻越用越卡）
+    if (old.active != widget.active) {
+      _web?.runJavaScript(
+        widget.active ? 'resumeRender()' : 'pauseRender()',
+      );
     }
   }
 

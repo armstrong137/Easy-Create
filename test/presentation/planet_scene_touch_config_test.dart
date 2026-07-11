@@ -67,6 +67,29 @@ void main() {
     expect(homePage, isNot(contains('_showCoverFor')));
   });
 
+  test('HTML 启动屏与 Flutter 封面同款（消掉"两段式"观感）', () {
+    final bootHtml = File('web/index.html').readAsStringSync();
+    expect(bootHtml, contains('Easy Create'), reason: '标题须与 Flutter 封面一致');
+    expect(bootHtml, contains('正在点亮你的宇宙'));
+    expect(bootHtml, contains('flutter-first-frame'), reason: 'Flutter 首帧后交接');
+    expect(
+      bootHtml,
+      isNot(contains('Create Something')),
+      reason: '旧文案会让两段封面内容跳变',
+    );
+  });
+
+  test('性能护栏：不做周期快照、非当前页暂停渲染', () {
+    // toDataURL 的 PNG 编码在主线程，周期快照是固定 jank 源（用户实测"会变卡"）
+    expect(sceneHtml, isNot(contains('setInterval(sendSnapshot')));
+    expect(sceneHtml, contains('m.snapshot'), reason: '快照改为宿主请求式');
+    // 滑过的页 keepAlive 后 iframe 仍后台渲染，多球常驻越用越卡
+    expect(sceneHtml, contains('m.render'), reason: '渲染暂停通道');
+    expect(homePage, contains('active: widget.active'));
+    expect(homePage, contains('_snapshotReq++'), reason: '进大纲前拍最新快照');
+    expect(ioWrapper, contains("'pauseRender()'"));
+  });
+
   test('Web 端路由被覆盖时摘除星球 platform view（进大纲整页白屏的回归）', () {
     // CanvasKit 的 overlay 合成在 platform view 驻留于非当前路由时会
     // 丢掉所有 canvas（CDP 实证 canvases:0 → 整页白）；摘除即恢复，
