@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/carpet_constants.dart';
+import '../../core/inspiration_font.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart' show inspirationRepositoryProvider;
 import '../home/home_page.dart' show inspirationPoolProvider;
@@ -706,8 +707,12 @@ class CarpetItem extends StatelessWidget {
             inspiration.content,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontFamily: 'LXGWWenKai',
+            style: TextStyle(
+              fontFamily: inspirationFontFamily(inspiration.content) ??
+                  'LXGWWenKai',
+              fontStyle: inspirationIsBrand(inspiration.content)
+                  ? FontStyle.italic
+                  : FontStyle.normal,
               color: _ink,
               fontSize: 13,
             ),
@@ -742,8 +747,12 @@ class CarpetItem extends StatelessWidget {
         inspiration.content,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          fontFamily: 'LXGWWenKai',
+        style: TextStyle(
+          fontFamily:
+              inspirationFontFamily(inspiration.content) ?? 'LXGWWenKai',
+          fontStyle: inspirationIsBrand(inspiration.content)
+              ? FontStyle.italic
+              : FontStyle.normal,
           color: _ink,
           fontSize: 13,
           height: 1.35,

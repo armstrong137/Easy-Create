@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-11 16:07:34　对应提交：a2c8b7e 之后的工作区状态
+> 生成时间：2026-07-11 16:36:09　对应提交：b572964 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,26 +12,26 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     103
-  Nodes:     3,929
-  Edges:     18,697
-  DB Size:   19.87 MB
+  Files:     105
+  Nodes:     3,942
+  Edges:     18,745
+  DB Size:   19.97 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,517
-  function        1,355
+  function        1,360
   class           450
-  import          304
-  constant        180
-  file            95
+  import          311
+  constant        179
+  file            97
   variable        14
   type_alias      12
   namespace       2
 
 Files by Language:
-  dart            65
+  dart            67
   javascript      10
   kotlin          8
   xml             6
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (103 files):
+Project Structure (105 files):
 
 |-- .agents
 |   `-- skills
@@ -139,6 +139,7 @@ Project Structure (103 files):
 |   |   |-- carpet_constants.dart (dart, 8 symbols)
 |   |   |-- chinese_numbers.dart (dart, 5 symbols)
 |   |   |-- creative_energy.dart (dart, 15 symbols)
+|   |   |-- inspiration_font.dart (dart, 5 symbols)
 |   |   `-- spin_inertia.dart (dart, 9 symbols)
 |   |-- data
 |   |   |-- database
@@ -167,13 +168,13 @@ Project Structure (103 files):
 |   |   |   `-- starfield.dart (dart, 31 symbols)
 |   |   |-- outline
 |   |   |   |-- label_layout.dart (dart, 12 symbols)
-|   |   |   |-- magic_carpet.dart (dart, 51 symbols)
+|   |   |   |-- magic_carpet.dart (dart, 52 symbols)
 |   |   |   |-- magic_tree_model.dart (dart, 34 symbols)
-|   |   |   `-- outline_page.dart (dart, 53 symbols)
+|   |   |   `-- outline_page.dart (dart, 54 symbols)
 |   |   |-- section
-|   |   |   |-- card_deck_sheet.dart (dart, 18 symbols)
+|   |   |   |-- card_deck_sheet.dart (dart, 19 symbols)
 |   |   |   |-- card_editor_page.dart (dart, 15 symbols)
-|   |   |   |-- inspiration_card.dart (dart, 10 symbols)
+|   |   |   |-- inspiration_card.dart (dart, 11 symbols)
 |   |   |   `-- section_page.dart (dart, 28 symbols)
 |   |   |-- settings
 |   |   |   `-- settings_page.dart (dart, 14 symbols)
@@ -194,6 +195,7 @@ Project Structure (103 files):
 |   |-- core
 |   |   |-- chinese_numbers_test.dart (dart, 4 symbols)
 |   |   |-- creative_energy_test.dart (dart, 4 symbols)
+|   |   |-- inspiration_font_test.dart (dart, 4 symbols)
 |   |   `-- spin_inertia_test.dart (dart, 7 symbols)
 |   |-- data
 |   |   |-- app_database_config_test.dart (dart, 4 symbols)

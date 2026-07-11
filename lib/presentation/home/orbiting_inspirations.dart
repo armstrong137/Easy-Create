@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../core/inspiration_font.dart';
 import '../../data/database/app_database.dart';
 
 /// 环绕星球飞行的灵感文字（2.5D 椭圆轨道）
@@ -115,21 +116,23 @@ class _OrbitingInspirationsState extends State<OrbitingInspirations>
   }
 }
 
-/// 单条环绕文字：加粗黑楷体 + 细白描边（可读性方案，待终审），超长省略
+/// 单条环绕文字：中文黑楷体 / 英文品牌斜体 + 细白描边，超长省略
 class _OrbitText extends StatelessWidget {
   const _OrbitText({required this.content});
 
   final String content;
 
-  static const _style = TextStyle(
-    fontFamily: 'LXGWWenKai',
-    fontSize: 15,
-    fontWeight: FontWeight.w500,
-    height: 1.2,
-  );
-
   @override
   Widget build(BuildContext context) {
+    // 英文灵感用品牌斜体，与首页标题同款；中文落楷体
+    final brand = inspirationIsBrand(content);
+    final style = TextStyle(
+      fontFamily: brand ? 'EasyCreateBrand' : 'LXGWWenKai',
+      fontStyle: brand ? FontStyle.italic : FontStyle.normal,
+      fontSize: 15,
+      fontWeight: brand ? FontWeight.w600 : FontWeight.w500,
+      height: 1.2,
+    );
     return ConstrainedBox(
       // 文字不宽于轨道中央星球，比例和谐、避免喧宾夺主
       constraints: const BoxConstraints(maxWidth: 150),
@@ -140,7 +143,7 @@ class _OrbitText extends StatelessWidget {
             content,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: _style.copyWith(
+            style: style.copyWith(
               foreground: Paint()
                 ..style = PaintingStyle.stroke
                 ..strokeWidth = 2
@@ -152,7 +155,7 @@ class _OrbitText extends StatelessWidget {
             content,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: _style.copyWith(color: Colors.black),
+            style: style.copyWith(color: Colors.black),
           ),
         ],
       ),

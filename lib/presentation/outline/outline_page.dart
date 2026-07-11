@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/inspiration_font.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import '../../domain/entities/outline_chapter.dart';
@@ -546,11 +547,14 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       // 行高留 1.3，避免楷体字底被容器裁掉（用户反馈"部分内容被遮住"）
-      style: const TextStyle(
-        fontFamily: 'LXGWWenKai',
+      style: TextStyle(
+        fontFamily: inspirationFontFamily(n.content) ?? 'LXGWWenKai',
+        fontStyle: inspirationIsBrand(n.content)
+            ? FontStyle.italic
+            : FontStyle.normal,
         fontSize: 11,
         height: 1.3,
-        color: Color(0xCC3A2A18),
+        color: const Color(0xCC3A2A18),
       ),
     ),
   );
@@ -571,8 +575,11 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
         n.content,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          fontFamily: 'LXGWWenKai',
+        style: TextStyle(
+          fontFamily: inspirationFontFamily(n.content) ?? 'LXGWWenKai',
+          fontStyle: inspirationIsBrand(n.content)
+              ? FontStyle.italic
+              : FontStyle.normal,
           fontSize: 12,
           color: _ink,
         ),
