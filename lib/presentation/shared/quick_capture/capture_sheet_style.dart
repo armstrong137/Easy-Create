@@ -18,6 +18,9 @@ const captureInk = Color(0xFF3A2A18);
 /// 金色描边/点缀
 const captureGold = Color(0xFFC9A050);
 
+/// 速记弹层遮罩：只轻微压暗背景，避免输入时星球被压成黑色。
+const kCaptureSheetBarrierColor = Color(0x2E000000);
+
 /// 弹层楷体文字样式
 TextStyle captureText({
   double size = 16,

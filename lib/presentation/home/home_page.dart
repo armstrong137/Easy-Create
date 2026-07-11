@@ -13,6 +13,8 @@ import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import '../outline/outline_page.dart';
 import '../settings/settings_page.dart';
+import '../shared/quick_capture/quick_capture_layer.dart'
+    show captureSheetOpenProvider;
 import 'orbiting_inspirations.dart';
 import 'planet_scene/planet_scene.dart';
 import 'planet_view.dart';
@@ -187,8 +189,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     final novelsAsync = ref.watch(novelsProvider);
     final novels = novelsAsync.value ?? const <Novel>[];
     final pool = ref.watch(inspirationPoolProvider).value ?? const [];
+    final popupOpen = ref.watch(captureSheetOpenProvider);
     final routeCurrent = ModalRoute.of(context)?.isCurrent ?? true;
-    if (!routeCurrent && !_coverGone) {
+    if (!routeCurrent && !popupOpen && !_coverGone) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _dropStartupCover());
     }
     // 小说列表加载完成也可能是揭开封面的最后一块拼图（空宇宙场景）
@@ -644,12 +647,14 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
     // CanvasKit 的 overlay 合成在 platform view 驻留于非当前路由时
     // 会丢掉所有 canvas（进大纲页整页白屏，CDP 实证 canvases:0）。
     // 摘除还顺带满足"不可见页面暂停渲染"（iframe 销毁即停）。
+    // 速记输入层是 PopupRoute，不是真正离开首页；此时保留场景，避免星球被卸成黑色。
+    final popupOpen = ref.watch(captureSheetOpenProvider);
     final routeCurrent = ModalRoute.of(context)?.isCurrent ?? true;
-    final showScene = use3D && (!kIsWeb || routeCurrent);
+    final showScene = use3D && (!kIsWeb || routeCurrent || popupOpen);
 
     // 摘除期间把就绪标记复位：pop 回来场景重建（约 1 秒），
     // 此间由光晕替身盖住，场景首帧 onReady 后再淡出
-    if (!showScene && _sceneReady) {
+    if (!showScene && !popupOpen && _sceneReady) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && !_sceneReady) return;
         if (mounted) setState(() => _sceneReady = false);
@@ -939,7 +944,8 @@ TextStyle _brandTitleStyle({
 }) => TextStyle(
   color: const Color(0xF5FFFFFF),
   fontSize: fontSize,
-  fontFamily: 'serif',
+  fontFamily: 'EasyCreateBrand',
+  fontWeight: FontWeight.w600,
   fontStyle: FontStyle.italic,
   letterSpacing: letterSpacing,
 );

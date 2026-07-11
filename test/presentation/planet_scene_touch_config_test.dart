@@ -67,7 +67,7 @@ void main() {
     expect(homePage, isNot(contains('_lastRouteCurrent')));
     expect(homePage, isNot(contains('_showCoverFor')));
     expect(homePage, contains('_dropStartupCover'));
-    expect(homePage, contains('!routeCurrent && !_coverGone'));
+    expect(homePage, contains('!routeCurrent && !popupOpen && !_coverGone'));
   });
 
   test('HTML 启动屏与 Flutter 封面同款（消掉"两段式"观感）', () {

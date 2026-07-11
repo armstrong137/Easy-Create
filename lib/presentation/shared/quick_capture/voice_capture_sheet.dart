@@ -11,6 +11,7 @@ Future<void> showVoiceCaptureSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
+    barrierColor: kCaptureSheetBarrierColor,
     backgroundColor: Colors.transparent, // 透出羊皮纸圆角外壳
     builder: (_) => const _VoiceCaptureSheet(),
   );

@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-11 10:43:51　对应提交：c3ebdc2 之后的工作区状态
+> 生成时间：2026-07-11 11:13:46　对应提交：850ab8c 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,8 +13,8 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     103
-  Nodes:     3,927
-  Edges:     18,694
+  Nodes:     3,929
+  Edges:     18,697
   DB Size:   19.82 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
@@ -23,8 +23,8 @@ Nodes by Kind:
   method          1,517
   function        1,355
   class           450
-  import          303
-  constant        179
+  import          304
+  constant        180
   file            95
   variable        14
   type_alias      12
@@ -159,7 +159,7 @@ Project Structure (103 files):
 |   |   |   |   |-- planet_scene_web.dart (dart, 13 symbols)
 |   |   |   |   |-- planet_scene.dart (dart, 6 symbols)
 |   |   |   |   `-- scene_server.dart (dart, 11 symbols)
-|   |   |   |-- home_page.dart (dart, 77 symbols)
+|   |   |   |-- home_page.dart (dart, 78 symbols)
 |   |   |   |-- orbiting_inspirations.dart (dart, 16 symbols)
 |   |   |   |-- planet_view.dart (dart, 19 symbols)
 |   |   |   |-- saturn_rings_painter.dart (dart, 12 symbols)
@@ -180,7 +180,7 @@ Project Structure (103 files):
 |   |   `-- shared
 |   |       |-- quick_capture
 |   |       |   |-- capture_button_prefs.dart (dart, 9 symbols)
-|   |       |   |-- capture_sheet_style.dart (dart, 11 symbols)
+|   |       |   |-- capture_sheet_style.dart (dart, 12 symbols)
 |   |       |   |-- quick_capture_layer.dart (dart, 27 symbols)
 |   |       |   |-- speech_service.dart (dart, 9 symbols)
 |   |       |   |-- text_capture_sheet.dart (dart, 12 symbols)

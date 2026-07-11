@@ -20,6 +20,13 @@ void main() {
     expect(homePage, contains('_brandTitleStyle'));
     expect(homePage, contains('_brandTitleStyle(fontSize: 34'));
     expect(homePage, contains('_brandTitleStyle(fontSize: 26'));
+    expect(homePage, contains("fontFamily: 'EasyCreateBrand'"));
+    expect(homePage, isNot(contains("fontFamily: 'serif'")));
+    expect(
+      File('assets/fonts/CormorantGaramond-SemiBoldItalic.ttf').existsSync(),
+      isTrue,
+    );
+    expect(File('assets/fonts/CormorantGaramond-OFL.txt').existsSync(), isTrue);
   });
 
   test('create title visibility follows min zoom instead of page lock', () {
@@ -27,5 +34,23 @@ void main() {
     expect(homePage, contains('_syncCreateTitleVisibility'));
     expect(homePage, contains('planetCreateTitleVisible.value = _zoom <='));
     expect(homePage, contains('valueListenable: planetCreateTitleVisible'));
+  });
+
+  test('quick capture popup keeps web planet scene mounted', () {
+    expect(homePage, contains('captureSheetOpenProvider'));
+    expect(homePage, contains('routeCurrent || popupOpen'));
+    expect(homePage, contains('!showScene && !popupOpen && _sceneReady'));
+  });
+
+  test('quick capture sheets keep the planet readable behind input', () {
+    final textSheet = File(
+      'lib/presentation/shared/quick_capture/text_capture_sheet.dart',
+    ).readAsStringSync();
+    final voiceSheet = File(
+      'lib/presentation/shared/quick_capture/voice_capture_sheet.dart',
+    ).readAsStringSync();
+
+    expect(textSheet, contains('barrierColor: kCaptureSheetBarrierColor'));
+    expect(voiceSheet, contains('barrierColor: kCaptureSheetBarrierColor'));
   });
 }
