@@ -94,6 +94,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   bool _coverVisible = true;
   bool _coverGone = false; // 淡出动画结束后彻底摘除（星云层停渲染省电）
   bool _coverMinDone = false; // 最短展示时长已到（避免一闪而过）
+  int _coverStartReadyTick = 0; // 只认本次首页启动之后的场景就绪信号
   Timer? _coverMinTimer;
   Timer? _coverMaxTimer;
 
@@ -101,6 +102,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   void initState() {
     super.initState();
     _pageController = PageController();
+    _coverStartReadyTick = planetSceneReadyTick.value;
     planetSceneReadyTick.addListener(_onSceneReadyTick);
     // 最短 900ms：给封面一个体面的亮相；最长 4s：场景异常也不能永远盖着
     _coverMinTimer = Timer(const Duration(milliseconds: 900), () {
@@ -121,13 +123,14 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   void _onSceneReadyTick() => _maybeRevealCover();
 
-  /// 就绪条件：小说列表已加载，且（空宇宙 或 任一星球场景已出首帧）
+  /// 就绪条件：小说列表已加载，且（空宇宙 或 本次启动后的星球场景已出首帧）
   void _maybeRevealCover() {
     if (!_coverVisible || !_coverMinDone || !mounted) return;
     final novelsAsync = ref.read(novelsProvider);
     if (!novelsAsync.hasValue) return;
     final sceneOk =
-        (novelsAsync.value?.isEmpty ?? false) || planetSceneReadyTick.value > 0;
+        (novelsAsync.value?.isEmpty ?? false) ||
+        planetSceneReadyTick.value > _coverStartReadyTick;
     if (sceneOk) _revealCover();
   }
 
@@ -135,6 +138,16 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (!mounted || !_coverVisible) return;
     _coverMaxTimer?.cancel();
     setState(() => _coverVisible = false);
+  }
+
+  void _dropStartupCover() {
+    if (!mounted || _coverGone) return;
+    _coverMinTimer?.cancel();
+    _coverMaxTimer?.cancel();
+    setState(() {
+      _coverVisible = false;
+      _coverGone = true;
+    });
   }
 
   /// 点击标题创建新星球：输入书名，纹理按现有数量轮换分配
@@ -167,6 +180,10 @@ class _HomePageState extends ConsumerState<HomePage> {
     final novelsAsync = ref.watch(novelsProvider);
     final novels = novelsAsync.value ?? const <Novel>[];
     final pool = ref.watch(inspirationPoolProvider).value ?? const [];
+    final routeCurrent = ModalRoute.of(context)?.isCurrent ?? true;
+    if (!routeCurrent && !_coverGone) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _dropStartupCover());
+    }
     // 小说列表加载完成也可能是揭开封面的最后一块拼图（空宇宙场景）
     if (_coverVisible && novelsAsync.hasValue) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRevealCover());
@@ -340,31 +357,20 @@ class _HomeLoadingCover extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 深空底渐变与 web/index.html 的 HTML 启动屏完全同款：
-            // 引擎交接（HTML 封面 → 本封面）瞬间无明暗跳变，观感一段式
+            Image.asset('assets/textures/starfield_4.jpg', fit: BoxFit.cover),
+            // 与 web/index.html 的 HTML 启动屏同款遮罩：
+            // 引擎交接（HTML 封面 → Flutter 画面）瞬间无明暗跳变，观感一段式
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: RadialGradient(
                   center: Alignment(0, -0.4),
                   radius: 1.2,
                   colors: [
-                    Color(0xFF0B1230),
-                    Color(0xFF060A1D),
-                    Color(0xFF02040B),
+                    Color(0x480B1230),
+                    Color(0x85060A1D),
+                    Color(0xD102040B),
                   ],
                   stops: [0.0, 0.45, 1.0],
-                ),
-              ),
-            ),
-            Image.asset('assets/textures/starfield_4.jpg', fit: BoxFit.cover),
-            // 中央轻微聚光，托住标题
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment(0, -0.1),
-                  radius: 0.9,
-                  colors: [Color(0x00000000), Color(0x8802040B)],
-                  stops: [0.55, 1.0],
                 ),
               ),
             ),

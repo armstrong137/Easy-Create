@@ -54,6 +54,7 @@ void main() {
     // 事件驱动：等星球场景首帧（planetSceneReadyTick）才揭开，
     // 拍脑袋定时揭开会正撞上场景初始化 → 揭开瞬间卡顿（用户实测）
     expect(homePage, contains('planetSceneReadyTick'));
+    expect(homePage, contains('_coverStartReadyTick'));
     expect(homePage, contains('_coverMinDone'));
     expect(homePage, contains('_maybeRevealCover'));
     // 兜底：场景异常也不能永远盖着
@@ -65,6 +66,8 @@ void main() {
   test('从魔树返回首页不再显示封面（快照替身已兜住重建期）', () {
     expect(homePage, isNot(contains('_lastRouteCurrent')));
     expect(homePage, isNot(contains('_showCoverFor')));
+    expect(homePage, contains('_dropStartupCover'));
+    expect(homePage, contains('!routeCurrent && !_coverGone'));
   });
 
   test('HTML 启动屏与 Flutter 封面同款（消掉"两段式"观感）', () {
@@ -77,6 +80,16 @@ void main() {
       reason: 'HTML 与 Flutter 封面共用同一张图',
     );
     expect(bootHtml, contains('flutter-first-frame'), reason: 'Flutter 首帧后交接');
+    expect(
+      bootHtml,
+      contains('bootMinVisibleMs'),
+      reason: 'HTML 封面要多盖住 Flutter/场景启动期，不能第一帧就退造成两段式',
+    );
+    expect(
+      bootHtml,
+      contains('bootMaxVisibleMs'),
+      reason: '场景异常时仍要兜底消失，不能永久遮住',
+    );
     expect(
       bootHtml,
       isNot(contains('Create Something')),
@@ -308,7 +321,12 @@ void main() {
     expect(
       sceneHtml,
       contains('initialPrewarmDelayMs'),
-      reason: '当前页稳定 1~2 秒后要主动预热，而不是等用户第一次捏合才加载高清贴图',
+      reason: '当前页要主动预热，而不是等用户第一次捏合才加载高清贴图',
+    );
+    expect(
+      sceneHtml,
+      contains('const initialPrewarmDelayMs = 300'),
+      reason: '预热要挪到启动封面遮挡期内，避免用户看到旋转一秒后卡一下',
     );
     expect(
       sceneHtml,

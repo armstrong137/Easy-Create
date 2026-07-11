@@ -278,7 +278,7 @@ const lodSrc = useMid ? cfg.mapMid : cfg.mapHi;
 // 缩回 lodZoomOut 以下不立刻收尾，而是延迟降档/释放，避免手势中来回重配画布。
 const lodPrewarmZoom = 1.06, lodZoomIn = 1.35, lodZoomOut = 1.15;
 const lodSettleDelayMs = 700, lodDisposeDelayMs = 8000;
-const initialPrewarmDelayMs = 1200;
+const initialPrewarmDelayMs = 300;
 const baseTex = planetMat.map; // 常态贴图常驻，永不释放
 let hiTex = null, hiLoading = false, hiPrewarmRequested = false;
 let lodSettleTimer = 0, lodDisposeTimer = 0, initialPrewarmTimer = 0;

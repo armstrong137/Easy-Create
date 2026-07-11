@@ -123,12 +123,20 @@
       window.visualViewport.addEventListener('resize', keepFlutterViewportPinned);
       window.visualViewport.addEventListener('scroll', keepFlutterViewportPinned);
     }
-    window.addEventListener('flutter-first-frame', () => {
+    const bootMinVisibleMs = 2200;
+    const bootMaxVisibleMs = 5200;
+    let bootHideTimer = 0;
+    const hideBootCover = () => {
       const cover = document.getElementById('app_boot_cover');
       if (!cover) return;
       cover.classList.add('app_boot_cover_hidden');
       setTimeout(() => cover.remove(), 420);
+    };
+    window.addEventListener('flutter-first-frame', () => {
+      clearTimeout(bootHideTimer);
+      bootHideTimer = setTimeout(hideBootCover, bootMinVisibleMs);
     });
+    bootHideTimer = setTimeout(hideBootCover, bootMaxVisibleMs);
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
