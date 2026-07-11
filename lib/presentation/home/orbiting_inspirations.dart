@@ -13,7 +13,7 @@ import '../../data/database/app_database.dart';
 /// - 遮挡：组件分两层渲染，后层文字 → [child]（星球）→ 前层文字
 ///
 /// 只展示最近 [maxItems] 条（定稿"最近几条"，具体条数待阶段七终审）。
-class OrbitingInspirations extends StatefulWidget {
+class OrbitingInspirations extends StatelessWidget {
   const OrbitingInspirations({
     super.key,
     required this.items,
@@ -37,90 +37,61 @@ class OrbitingInspirations extends StatefulWidget {
   /// 最多环绕几条（假设值，待终审调优）
   static const maxItems = 5;
 
-  /// 公转一圈的时长
-  static const orbitPeriod = Duration(seconds: 36);
-
-  @override
-  State<OrbitingInspirations> createState() => _OrbitingInspirationsState();
-}
-
-class _OrbitingInspirationsState extends State<OrbitingInspirations>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: OrbitingInspirations.orbitPeriod,
-  )..repeat();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final items = widget.items.take(OrbitingInspirations.maxItems).toList();
+    final visibleItems = items.take(OrbitingInspirations.maxItems).toList();
 
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        final phase = _controller.value * 2 * math.pi;
+    // 计算每条灵感的静态轨道位置，按 z 分前后两层。
+    // 这里不再常驻 60fps 公转动画：3D 星球 iframe 与 Flutter 共用主线程，
+    // 环绕文字逐帧重绘会挤掉星球帧，灵感从 0 变有时尤其明显。
+    final back = <Widget>[];
+    final front = <Widget>[];
+    for (var i = 0; i < visibleItems.length; i++) {
+      final theta = -math.pi / 6 + i * 2 * math.pi / visibleItems.length;
+      final x = math.cos(theta); // [-1,1] 横向
+      final z = math.sin(theta); // [-1,1] 前后（>0 在前）
 
-        // 计算每条灵感的轨道位置，按 z 分前后两层
-        final back = <Widget>[];
-        final front = <Widget>[];
-        for (var i = 0; i < items.length; i++) {
-          // 均匀分布相位，随时间公转
-          final theta = phase + i * 2 * math.pi / items.length;
-          final x = math.cos(theta); // [-1,1] 横向
-          final z = math.sin(theta); // [-1,1] 前后（>0 在前）
+      final depth = (z + 1) / 2; // 0=最远 1=最近
+      final scale = 0.72 + 0.38 * depth; // 近大远小
+      final opacity = 0.25 + 0.75 * depth; // 近实远虚
 
-          final depth = (z + 1) / 2; // 0=最远 1=最近
-          final scale = 0.72 + 0.38 * depth; // 近大远小
-          final opacity = 0.25 + 0.75 * depth; // 近实远虚
+      final text = Transform.translate(
+        offset: Offset(
+          x * orbitWidth / 2,
+          // 轨道纵向微倾斜：远端略高、近端略低，增强三维感
+          -z * orbitWidth * 0.10,
+        ),
+        child: Transform.scale(
+          scale: scale,
+          child: _OrbitText(content: visibleItems[i].content, opacity: opacity),
+        ),
+      );
 
-          final text = Transform.translate(
-            offset: Offset(
-              x * widget.orbitWidth / 2,
-              // 轨道纵向微倾斜：远端略高、近端略低，增强三维感
-              -z * widget.orbitWidth * 0.10,
-            ),
-            child: Transform.scale(
-              scale: scale,
-              child: Opacity(
-                opacity: opacity,
-                child: _OrbitText(content: items[i].content),
-              ),
-            ),
-          );
+      (z > 0 ? front : back).add(text);
+    }
 
-          (z > 0 ? front : back).add(text);
-        }
+    // 前后文字层各自包一层 Stack，外层恒为 3 个 children：
+    // 文字跨前后边界时（back/front 条数变化）星球 child 的树位置不变。
+    Widget layer(List<Widget> texts) => AnimatedOpacity(
+      duration: const Duration(milliseconds: 200),
+      opacity: fade ? 0 : 1,
+      child: Stack(alignment: Alignment.center, children: texts),
+    );
 
-        // 前后文字层各自包一层 Stack，外层恒为 3 个 children：
-        // 文字跨前后边界时（back/front 条数变化）星球 child 的树位置不变，
-        // 否则其 State 每次被销毁重建（自转相位重置；3D WebView 场景永远加载不完）
-        Widget layer(List<Widget> texts) => AnimatedOpacity(
-          duration: const Duration(milliseconds: 200),
-          opacity: widget.fade ? 0 : 1,
-          child: Stack(alignment: Alignment.center, children: texts),
-        );
-
-        return Stack(
-          alignment: Alignment.center,
-          clipBehavior: Clip.none,
-          children: [layer(back), widget.child, layer(front)],
-        );
-      },
+    return Stack(
+      alignment: Alignment.center,
+      clipBehavior: Clip.none,
+      children: [layer(back), child, layer(front)],
     );
   }
 }
 
-/// 单条环绕文字：中文黑楷体 / 英文品牌斜体 + 细白描边，超长省略
+/// 单条环绕文字：中文黑楷体 / 英文品牌斜体 + 轻量白色阴影轮廓，超长省略
 class _OrbitText extends StatelessWidget {
-  const _OrbitText({required this.content});
+  const _OrbitText({required this.content, required this.opacity});
 
   final String content;
+  final double opacity;
 
   @override
   Widget build(BuildContext context) {
@@ -132,32 +103,26 @@ class _OrbitText extends StatelessWidget {
       fontSize: 15,
       fontWeight: brand ? FontWeight.w600 : FontWeight.w500,
       height: 1.2,
+      color: Colors.black.withValues(alpha: opacity),
+      shadows: [
+        Shadow(
+          color: Colors.white.withValues(alpha: opacity * 0.90),
+          blurRadius: 2,
+        ),
+        Shadow(
+          color: Colors.white.withValues(alpha: opacity * 0.55),
+          blurRadius: 5,
+        ),
+      ],
     );
     return ConstrainedBox(
       // 文字不宽于轨道中央星球，比例和谐、避免喧宾夺主
       constraints: const BoxConstraints(maxWidth: 150),
-      child: Stack(
-        children: [
-          // 底层：细白描边（在暗星空与亮星球上都保证轮廓）
-          Text(
-            content,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: style.copyWith(
-              foreground: Paint()
-                ..style = PaintingStyle.stroke
-                ..strokeWidth = 2
-                ..color = Colors.white,
-            ),
-          ),
-          // 上层：纯黑字身
-          Text(
-            content,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: style.copyWith(color: Colors.black),
-          ),
-        ],
+      child: Text(
+        content,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: style,
       ),
     );
   }

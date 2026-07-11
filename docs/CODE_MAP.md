@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-11 17:25:31　对应提交：479bf36 之后的工作区状态
+> 生成时间：2026-07-11 18:08:59　对应提交：83aecbe 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,18 +13,18 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     105
-  Nodes:     3,942
-  Edges:     18,745
+  Nodes:     3,940
+  Edges:     18,743
   DB Size:   19.97 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,517
+  method          1,516
   function        1,360
-  class           450
-  import          311
-  constant        179
+  class           449
+  import          312
+  constant        178
   file            97
   variable        14
   type_alias      12
@@ -160,8 +160,8 @@ Project Structure (105 files):
 |   |   |   |   |-- planet_scene_web.dart (dart, 13 symbols)
 |   |   |   |   |-- planet_scene.dart (dart, 6 symbols)
 |   |   |   |   `-- scene_server.dart (dart, 11 symbols)
-|   |   |   |-- home_page.dart (dart, 78 symbols)
-|   |   |   |-- orbiting_inspirations.dart (dart, 16 symbols)
+|   |   |   |-- home_page.dart (dart, 79 symbols)
+|   |   |   |-- orbiting_inspirations.dart (dart, 12 symbols)
 |   |   |   |-- planet_view.dart (dart, 19 symbols)
 |   |   |   |-- saturn_rings_painter.dart (dart, 12 symbols)
 |   |   |   |-- starfield_motion.dart (dart, 7 symbols)
@@ -205,7 +205,7 @@ Project Structure (105 files):
 |   |   |-- home_page_test.dart (dart, 20 symbols)
 |   |   |-- magic_carpet_test.dart (dart, 16 symbols)
 |   |   |-- magic_tree_model_test.dart (dart, 13 symbols)
-|   |   |-- orbiting_inspirations_test.dart (dart, 10 symbols)
+|   |   |-- orbiting_inspirations_test.dart (dart, 11 symbols)
 |   |   |-- outline_page_test.dart (dart, 23 symbols)
 |   |   |-- planet_scene_touch_config_test.dart (dart, 4 symbols)
 |   |   |-- quick_capture_test.dart (dart, 16 symbols)

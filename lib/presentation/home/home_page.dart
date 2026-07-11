@@ -476,6 +476,9 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
 
   Completer<void>? _snapshotCompleter;
 
+  /// 环绕灵感只需要最近几条；缓存后避免旋转 setState 时每帧复制并排序整个灵感池。
+  List<Inspiration> _cachedOrbitItems = const [];
+
   /// 星球画面区域（用于判断手指是否落在球上）
   final _planetKey = GlobalKey();
 
@@ -488,6 +491,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
   void initState() {
     super.initState();
     _glideTicker = createTicker(_onGlideTick);
+    _refreshCachedOrbitItems();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _syncCreateTitleVisibility();
     });
@@ -496,9 +500,20 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
   @override
   void didUpdateWidget(covariant _PlanetPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.pool, widget.pool)) {
+      _refreshCachedOrbitItems();
+    }
     if (oldWidget.active != widget.active && widget.active) {
       _syncCreateTitleVisibility();
     }
+  }
+
+  void _refreshCachedOrbitItems() {
+    final sorted = List<Inspiration>.of(widget.pool)
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    _cachedOrbitItems = sorted
+        .take(OrbitingInspirations.maxItems)
+        .toList(growable: false);
   }
 
   @override
@@ -800,10 +815,8 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
                 // 占位也要带 key：否则星球未就绪时"手指是否在球上"恒为否
                 ? SizedBox.square(key: _planetKey, dimension: diameter)
                 : OrbitingInspirations(
-                    // 环绕取"最近几条"：魔毯池已改为旧→新/手动序，
-                    // 这里单独按创建时间倒序取最新（轨道显示灵感原文）
-                    items: [...widget.pool]
-                      ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
+                    // 环绕取"最近几条"：缓存按创建时间倒序，旋转 setState 时不再重排全池。
+                    items: _cachedOrbitItems,
                     orbitWidth: diameter * 1.5,
                     // 放大态下环绕文字淡出，避免压在放大的星球上
                     fade: _zoomed,

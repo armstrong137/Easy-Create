@@ -108,6 +108,13 @@ void main() {
     expect(ioWrapper, contains("'pauseRender()'"));
   });
 
+  test('性能护栏：旋转重建路径不再每帧复制排序灵感池', () {
+    expect(homePage, contains('items: _cachedOrbitItems'));
+    expect(homePage, contains('_refreshCachedOrbitItems'));
+    expect(homePage, contains('didUpdateWidget'));
+    expect(homePage, isNot(contains('items: [...widget.pool]')));
+  });
+
   test('Web 端路由被覆盖时摘除星球 platform view（进大纲整页白屏的回归）', () {
     // CanvasKit 的 overlay 合成在 platform view 驻留于非当前路由时会
     // 丢掉所有 canvas（CDP 实证 canvases:0 → 整页白）；摘除即恢复，
