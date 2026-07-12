@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/carpet_constants.dart';
+import '../../core/app_keys.dart';
 import '../../core/inspiration_font.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart' show inspirationRepositoryProvider;
@@ -180,8 +181,15 @@ class _TrashDeleteHostState extends ConsumerState<_TrashDeleteHost> {
     final inspiration = carpetTrashPending.value;
     if (!mounted || inspiration == null || _showing) return;
     _showing = true;
+    final dialogContext = rootNavigatorKey.currentContext;
+    if (dialogContext == null) {
+      carpetTrashPending.value = null;
+      _showing = false;
+      return;
+    }
     final ok = await showCupertinoDialog<bool>(
-      context: context,
+      context: dialogContext,
+      useRootNavigator: true,
       builder: (context) => CupertinoAlertDialog(
         title: const Text(
           '永久删除这条灵感？',
@@ -497,7 +505,7 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
               }
             },
             child: Image.asset(
-              'assets/textures/carpet_ball.png',
+              'assets/textures/carpet_ball_clean.png',
               width: kCarpetBallSize,
               height: kCarpetBallSize,
               fit: BoxFit.contain,

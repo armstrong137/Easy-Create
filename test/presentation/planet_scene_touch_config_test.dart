@@ -35,6 +35,12 @@ void main() {
     expect(homePage, contains('_sceneReady'));
   });
 
+  test('场景就绪必须等待基础地表贴图加载，不能先露黑色空材质球', () {
+    expect(sceneHtml, contains('baseTextureReady'));
+    expect(sceneHtml, contains('srgb(cfg.map, true)'));
+    expect(sceneHtml, contains('if (!baseTextureReady) return;'));
+  });
+
   test('返回首页时用上一帧星球快照兜底，不能调用未定义的 sendSnapshot', () {
     expect(sceneHtml, contains('function sendSnapshot'));
     expect(sceneHtml, contains("toDataURL('image/png')"));
@@ -106,6 +112,32 @@ void main() {
     expect(homePage, contains('active: widget.active'));
     expect(homePage, contains('_snapshotReq++'), reason: '进大纲前拍最新快照');
     expect(ioWrapper, contains("'pauseRender()'"));
+  });
+
+  test('Web 护栏：同一时刻只让当前星球持有 3D iframe', () {
+    expect(
+      homePage,
+      contains('allowImplicitScrolling: false'),
+      reason: 'iPhone Safari 连续滑动时不能预构建相邻 3D iframe，否则多个 WebGL 场景会挤爆页面进程',
+    );
+    expect(
+      homePage,
+      contains('bool get wantKeepAlive => widget.active'),
+      reason: '非当前星球页离屏后要释放 WebGL iframe 和大贴图，不能常驻 keepAlive',
+    );
+    expect(
+      homePage,
+      contains('use3D && widget.active &&'),
+      reason: '非当前页只显示轻量替身图，不创建真实 3D 场景',
+    );
+  });
+
+  test('Web 护栏：销毁 PlanetScene 时主动释放 iframe/WebGL 页面', () {
+    expect(webWrapper, contains("src = 'about:blank'"));
+    expect(webWrapper, contains('_iframe?.remove()'));
+    expect(sceneHtml, contains('function disposeScene()'));
+    expect(sceneHtml, contains('renderer.dispose()'));
+    expect(sceneHtml, contains('cancelAnimationFrame'));
   });
 
   test('性能护栏：旋转重建路径不再每帧复制排序灵感池', () {
@@ -347,18 +379,18 @@ void main() {
     );
   });
 
-  test('切换星球前预构建相邻页，已访问星球页保活，减少第一次切页冷启动卡顿', () {
+  test('切换星球时以内存稳定优先：不预构建相邻 3D iframe', () {
     expect(
       homePage,
-      contains('allowImplicitScrolling: true'),
-      reason: 'PageView 应提前构建相邻页，让左右星球的 WebView/iframe 先启动加载',
+      contains('allowImplicitScrolling: false'),
+      reason: 'iPhone Safari 连续滑动时不能让相邻星球提前持有 WebGL 场景',
     );
     expect(
       homePage,
       contains('AutomaticKeepAliveClientMixin'),
-      reason: '已访问星球页需要保活，避免来回切换时重新创建 3D 场景',
+      reason: '仍保留 keepAlive 机制，但只允许当前页保活',
     );
-    expect(homePage, contains('bool get wantKeepAlive => true'));
+    expect(homePage, contains('bool get wantKeepAlive => widget.active'));
     expect(homePage, contains('super.build(context)'));
   });
 

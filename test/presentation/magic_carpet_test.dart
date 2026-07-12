@@ -5,6 +5,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 
 import 'package:novel_app/core/carpet_constants.dart';
 import 'package:novel_app/data/database/app_database.dart';
@@ -111,8 +112,28 @@ void main() {
     expect(src, contains('carpetTrashPending'));
     expect(src, contains('class _TrashDeleteHost'));
     expect(src, contains('carpetTrashPending.value = widget.inspiration'));
+    expect(src, contains('rootNavigatorKey'));
     expect(src, contains('deleteForever(inspiration.id)'));
     expect(src, isNot(contains('_confirmDelete()')));
+  });
+
+  test('魔毯小球素材必须是真透明背景，不能把灰底阴影带到星空里', () {
+    final file = File('assets/textures/carpet_ball_clean.png');
+    expect(file.existsSync(), isTrue);
+    final image = img.decodePng(file.readAsBytesSync())!;
+    var dirtyBottomPixels = 0;
+    for (var y = (image.height * 0.80).round(); y < image.height; y++) {
+      for (var x = 0; x < image.width; x++) {
+        final p = image.getPixel(x, y);
+        final avg = (p.r + p.g + p.b) / 3;
+        final diff = [p.r, p.g, p.b].reduce((a, b) => a > b ? a : b) -
+            [p.r, p.g, p.b].reduce((a, b) => a < b ? a : b);
+        if (p.a > 24 && avg > 80 && avg < 245 && diff < 35) {
+          dirtyBottomPixels++;
+        }
+      }
+    }
+    expect(dirtyBottomPixels, lessThan(80));
   });
 
   testWidgets('展开态整体高度足够容纳大尺寸魔毯横幅', (tester) async {

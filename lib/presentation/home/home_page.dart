@@ -258,7 +258,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               builder: (context, locked, _) => PageView.builder(
                 controller: _pageController,
                 itemCount: novels.length,
-                allowImplicitScrolling: true,
+                allowImplicitScrolling: false,
                 // 捏合放大星球期间禁翻页（否则双指会被识别成滑动换书）
                 physics: locked ? const NeverScrollableScrollPhysics() : null,
                 onPageChanged: (i) => setState(() => _currentPage = i),
@@ -492,7 +492,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
       _zoom <= kPlanetCreateTitleShowZoom && _pinchStartDist <= 0;
 
   @override
-  bool get wantKeepAlive => true;
+  bool get wantKeepAlive => widget.active;
 
   @override
   void initState() {
@@ -507,10 +507,14 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
   @override
   void didUpdateWidget(covariant _PlanetPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.active != widget.active) {
+      updateKeepAlive();
+    }
     if (!identical(oldWidget.pool, widget.pool)) {
       _refreshCachedOrbitItems();
     }
     if (oldWidget.active != widget.active && widget.active) {
+      _markSceneNotReady();
       _syncCreateTitleVisibility();
     }
   }
@@ -713,7 +717,8 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
     // 速记输入层是 PopupRoute，不是真正离开首页；此时保留场景，避免星球被卸成黑色。
     final popupOpen = ref.watch(captureSheetOpenProvider);
     final routeCurrent = ModalRoute.of(context)?.isCurrent ?? true;
-    final showScene = use3D && (!kIsWeb || routeCurrent || popupOpen);
+    final showScene =
+        use3D && widget.active && (!kIsWeb || routeCurrent || popupOpen);
 
     // 摘除期间把就绪标记复位：pop 回来场景重建（约 1 秒），
     // 此间由光晕替身盖住，场景首帧 onReady 后再淡出

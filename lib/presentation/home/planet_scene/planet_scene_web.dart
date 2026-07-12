@@ -117,6 +117,10 @@ class _PlanetSceneState extends State<PlanetScene> {
 
   @override
   void dispose() {
+    _post({'dispose': 1});
+    _iframe?.src = 'about:blank';
+    _iframe?.remove();
+    _iframe = null;
     web.window.removeEventListener('message', _onMessage);
     super.dispose();
   }
@@ -142,7 +146,7 @@ class _PlanetSceneState extends State<PlanetScene> {
     }
   }
 
-  void _post(Map<String, double> msg) =>
+  void _post(Map<String, num> msg) =>
       _iframe?.contentWindow?.postMessage(msg.jsify(), '*'.toJS);
 
   @override
