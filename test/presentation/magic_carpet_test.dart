@@ -24,6 +24,7 @@ void main() {
 
   tearDown(() {
     carpetDragging.value = null;
+    carpetTrashPending.value = null;
     carpetTucked.value = false;
   });
 
@@ -101,6 +102,17 @@ void main() {
       isNot(contains('behavior: HitTestBehavior.opaque')),
       reason: '透明区域应露出并放过底层星球点击；收起请点右上角 X',
     );
+  });
+
+  test('垃圾桶删除确认由全局宿主托管，拖拽结束也不会丢失删除动作', () {
+    final src = File(
+      'lib/presentation/outline/magic_carpet.dart',
+    ).readAsStringSync();
+    expect(src, contains('carpetTrashPending'));
+    expect(src, contains('class _TrashDeleteHost'));
+    expect(src, contains('carpetTrashPending.value = widget.inspiration'));
+    expect(src, contains('deleteForever(inspiration.id)'));
+    expect(src, isNot(contains('_confirmDelete()')));
   });
 
   testWidgets('展开态整体高度足够容纳大尺寸魔毯横幅', (tester) async {

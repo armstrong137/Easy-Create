@@ -5,88 +5,146 @@ import 'package:flutter/material.dart';
 import '../../core/inspiration_font.dart';
 import '../../data/database/app_database.dart';
 
-/// 环绕星球飞行的灵感文字（2.5D 椭圆轨道）
+/// 环绕星球飞行的灵感文字（轻量 2.5D 卫星轨道）。
 ///
-/// 三维感实现（定稿方案）：
-/// - 文字沿 x-z 平面圆轨道公转，z 决定前后：z>0 在星球前、z<0 在星球后
-/// - 近大远小（缩放）+ 近实远虚（透明度）
-/// - 遮挡：组件分两层渲染，后层文字 → [child]（星球）→ 前层文字
-///
-/// 只展示最近 [maxItems] 条（定稿"最近几条"，具体条数待阶段七终审）。
-class OrbitingInspirations extends StatelessWidget {
+/// 只展示最近 [maxItems] 条：文字会按稳定随机轨道从不同方向绕行，
+/// 且每条灵感固定顺/逆时针方向，避免每次 build 都跳位置。
+class OrbitingInspirations extends StatefulWidget {
   const OrbitingInspirations({
     super.key,
     required this.items,
     required this.orbitWidth,
     required this.child,
+    this.enabled = true,
     this.fade = false,
   });
 
-  /// 魔毯灵感（新的在前），内部只取前 maxItems 条
+  /// 魔毯灵感（新的在前），内部只取前 maxItems 条。
   final List<Inspiration> items;
 
-  /// 轨道横向直径（约星球直径的 1.5 倍，比例和谐）
+  /// 轨道横向直径（约星球直径的 1.5 倍，比例和谐）。
   final double orbitWidth;
 
-  /// 被环绕的星球
+  /// 被环绕的星球。
   final Widget child;
 
-  /// 淡出环绕文字（星球放大观察时让位，不喧宾夺主）
+  /// 是否运行动画。3D 场景未稳定或放大观察时暂停，避免抢首帧。
+  final bool enabled;
+
+  /// 淡出环绕文字（星球放大观察时让位）。
   final bool fade;
 
-  /// 最多环绕几条（假设值，待终审调优）
+  /// 最多环绕几条，避免灵感增多后压垮星球帧率。
   static const maxItems = 5;
 
   @override
-  Widget build(BuildContext context) {
-    final visibleItems = items.take(OrbitingInspirations.maxItems).toList();
+  State<OrbitingInspirations> createState() => _OrbitingInspirationsState();
+}
 
-    // 计算每条灵感的静态轨道位置，按 z 分前后两层。
-    // 这里不再常驻 60fps 公转动画：3D 星球 iframe 与 Flutter 共用主线程，
-    // 环绕文字逐帧重绘会挤掉星球帧，灵感从 0 变有时尤其明显。
-    final back = <Widget>[];
-    final front = <Widget>[];
-    for (var i = 0; i < visibleItems.length; i++) {
-      final theta = -math.pi / 6 + i * 2 * math.pi / visibleItems.length;
-      final x = math.cos(theta); // [-1,1] 横向
-      final z = math.sin(theta); // [-1,1] 前后（>0 在前）
+class _OrbitingInspirationsState extends State<OrbitingInspirations>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
 
-      final depth = (z + 1) / 2; // 0=最远 1=最近
-      final scale = 0.72 + 0.38 * depth; // 近大远小
-      final opacity = 0.25 + 0.75 * depth; // 近实远虚
-
-      final text = Transform.translate(
-        offset: Offset(
-          x * orbitWidth / 2,
-          // 轨道纵向微倾斜：远端略高、近端略低，增强三维感
-          -z * orbitWidth * 0.10,
-        ),
-        child: Transform.scale(
-          scale: scale,
-          child: _OrbitText(content: visibleItems[i].content, opacity: opacity),
-        ),
-      );
-
-      (z > 0 ? front : back).add(text);
-    }
-
-    // 前后文字层各自包一层 Stack，外层恒为 3 个 children：
-    // 文字跨前后边界时（back/front 条数变化）星球 child 的树位置不变。
-    Widget layer(List<Widget> texts) => AnimatedOpacity(
-      duration: const Duration(milliseconds: 200),
-      opacity: fade ? 0 : 1,
-      child: Stack(alignment: Alignment.center, children: texts),
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 46),
     );
+    if (widget.enabled) _controller.repeat();
+  }
 
-    return Stack(
-      alignment: Alignment.center,
-      clipBehavior: Clip.none,
-      children: [layer(back), child, layer(front)],
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant OrbitingInspirations oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.enabled == oldWidget.enabled) return;
+    if (widget.enabled) {
+      _controller.repeat();
+    } else {
+      _controller.stop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleItems = widget.items
+        .take(OrbitingInspirations.maxItems)
+        .toList(growable: false);
+
+    return AnimatedBuilder(
+      animation: _controller,
+      child: widget.child,
+      builder: (context, child) {
+        final back = <Widget>[];
+        final front = <Widget>[];
+        for (var i = 0; i < visibleItems.length; i++) {
+          final item = visibleItems[i];
+          final seed = _orbitSeed(item);
+          final direction = _orbitDirection(seed);
+          final speed = 0.72 + _unit(seed, 17) * 0.56;
+          final phase = _unit(seed, 29) * math.pi * 2;
+          final theta =
+              phase + _controller.value * math.pi * 2 * direction * speed;
+          final x = math.cos(theta);
+          final z = math.sin(theta);
+          final depth = (z + 1) / 2;
+          final scale = 0.70 + 0.36 * depth;
+          final opacity = widget.fade ? 0.0 : 0.30 + 0.70 * depth;
+          final tilt = 0.09 + _unit(seed, 43) * 0.13;
+          final bob = math.sin(theta * 1.7 + phase) * widget.orbitWidth * 0.025;
+
+          final text = RepaintBoundary(
+            child: Transform.translate(
+              offset: Offset(
+                x * widget.orbitWidth * (0.43 + _unit(seed, 61) * 0.10),
+                -z * widget.orbitWidth * tilt + bob,
+              ),
+              child: Transform.scale(
+                scale: scale,
+                child: _OrbitText(content: item.content, opacity: opacity),
+              ),
+            ),
+          );
+
+          (z > 0 ? front : back).add(text);
+        }
+
+        Widget layer(List<Widget> texts) =>
+            Stack(alignment: Alignment.center, children: texts);
+
+        return Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [layer(back), child!, layer(front)],
+        );
+      },
     );
   }
 }
 
-/// 单条环绕文字：中文黑楷体 / 英文品牌斜体 + 轻量白色阴影轮廓，超长省略
+int _orbitSeed(Inspiration item) {
+  var hash = item.id * 1000003 + item.content.length * 9176;
+  for (final code in item.content.codeUnits.take(32)) {
+    hash = 0x1fffffff & (hash * 33 + code);
+  }
+  return hash;
+}
+
+double _orbitDirection(int seed) => seed.isEven ? 1 : -1;
+
+double _unit(int seed, int salt) {
+  final mixed = 0x1fffffff & (seed * 1103515245 + salt * 12345);
+  return mixed / 0x1fffffff;
+}
+
+/// 单条环绕文字：中文黑楷体 / 英文品牌斜体 + 轻量白色阴影轮廓，超长省略。
 class _OrbitText extends StatelessWidget {
   const _OrbitText({required this.content, required this.opacity});
 
@@ -95,7 +153,6 @@ class _OrbitText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 英文灵感用品牌斜体，与首页标题同款；中文落楷体
     final brand = inspirationIsBrand(content);
     final style = TextStyle(
       fontFamily: brand ? 'EasyCreateBrand' : 'LXGWWenKai',
@@ -116,7 +173,6 @@ class _OrbitText extends StatelessWidget {
       ],
     );
     return ConstrainedBox(
-      // 文字不宽于轨道中央星球，比例和谐、避免喧宾夺主
       constraints: const BoxConstraints(maxWidth: 150),
       child: Text(
         content,

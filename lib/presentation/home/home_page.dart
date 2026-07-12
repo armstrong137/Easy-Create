@@ -476,6 +476,10 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
 
   Completer<void>? _snapshotCompleter;
 
+  /// 场景 ready 后再等一小段时间揭开替身：web iframe 首帧 ready 和贴图稳定
+  /// 有时差一个浏览器帧，直接揭开会把黑色球露出来。
+  Timer? _sceneRevealTimer;
+
   /// 环绕灵感只需要最近几条；缓存后避免旋转 setState 时每帧复制并排序整个灵感池。
   List<Inspiration> _cachedOrbitItems = const [];
 
@@ -483,6 +487,9 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
   final _planetKey = GlobalKey();
 
   bool get _zoomed => _zoom > kPlanetTitleHideZoom;
+
+  bool get _canDeleteByLongPress =>
+      _zoom <= kPlanetCreateTitleShowZoom && _pinchStartDist <= 0;
 
   @override
   bool get wantKeepAlive => true;
@@ -522,6 +529,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
     if (snapshotCompleter != null && !snapshotCompleter.isCompleted) {
       snapshotCompleter.complete();
     }
+    _sceneRevealTimer?.cancel();
     _glideTicker.dispose();
     super.dispose();
   }
@@ -656,9 +664,28 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
     }
   }
 
+  void _markSceneNotReady() {
+    _sceneRevealTimer?.cancel();
+    if (!_sceneReady) return;
+    setState(() => _sceneReady = false);
+  }
+
+  void _scheduleSceneReveal() {
+    _sceneRevealTimer?.cancel();
+    _sceneRevealTimer = Timer(const Duration(milliseconds: 220), () {
+      if (!mounted) return;
+      if (!_sceneReady) {
+        setState(() => _sceneReady = true);
+      }
+      // 通知启动封面：星球场景已稳定，可以揭开了。
+      planetSceneReadyTick.value++;
+    });
+  }
+
   Future<void> _openOutline(Novel novel) async {
     await _awaitSnapshotBeforeRoute();
     if (!mounted) return;
+    _markSceneNotReady();
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => OutlinePage(novelId: novel.id, title: novel.title),
@@ -692,8 +719,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
     // 此间由光晕替身盖住，场景首帧 onReady 后再淡出
     if (!showScene && !popupOpen && _sceneReady) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && !_sceneReady) return;
-        if (mounted) setState(() => _sceneReady = false);
+        if (mounted && _sceneReady) _markSceneNotReady();
       });
     }
 
@@ -752,13 +778,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
                   // 仍在后台渲染，多球常驻会越用越卡（用户实测）
                   active: widget.active,
                   snapshotRequestId: _snapshotReq,
-                  onReady: () {
-                    if (mounted && !_sceneReady) {
-                      setState(() => _sceneReady = true);
-                    }
-                    // 通知启动封面：星球场景已出首帧，可以揭开了
-                    planetSceneReadyTick.value++;
-                  },
+                  onReady: _scheduleSceneReveal,
                   onSnapshot: (snapshot) {
                     if (mounted && snapshot != _sceneSnapshot) {
                       setState(() => _sceneSnapshot = snapshot);
@@ -810,7 +830,10 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
             // 点星球 → 进入该小说的大纲页（铅笔树）。放大态也直接进入，
             // 避免用户点击地球时被"复位缩放"吞掉第一次点击。
             onTap: !ready ? null : () => _openOutline(novel),
-            onLongPress: () => _confirmDeleteNovel(context, ref),
+            onLongPress: () {
+              if (!_canDeleteByLongPress) return;
+              _confirmDeleteNovel(context, ref);
+            },
             child: !ready
                 // 占位也要带 key：否则星球未就绪时"手指是否在球上"恒为否
                 ? SizedBox.square(key: _planetKey, dimension: diameter)
@@ -818,6 +841,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
                     // 环绕取"最近几条"：缓存按创建时间倒序，旋转 setState 时不再重排全池。
                     items: _cachedOrbitItems,
                     orbitWidth: diameter * 1.5,
+                    enabled: !_zoomed && (!use3D || _sceneReady),
                     // 放大态下环绕文字淡出，避免压在放大的星球上
                     fade: _zoomed,
                     child: planetBody(),
@@ -961,7 +985,7 @@ class _PlanetStandIn extends StatelessWidget {
                     colors: [
                       Color(0x66FFFFFF),
                       Color(0x183A6FD1),
-                      Color(0x8C020713),
+                      Color(0x3D020713),
                     ],
                     stops: [0.0, 0.58, 1.0],
                   ),

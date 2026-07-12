@@ -20,7 +20,11 @@ void main() {
     cardOrder: 0,
   );
 
-  Future<void> pumpOrbit(WidgetTester tester, List<Inspiration> items) async {
+  Future<void> pumpOrbit(
+    WidgetTester tester,
+    List<Inspiration> items, {
+    bool enabled = true,
+  }) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -28,6 +32,7 @@ void main() {
             child: OrbitingInspirations(
               items: items,
               orbitWidth: 300,
+              enabled: enabled,
               child: const SizedBox.square(dimension: 200, key: Key('星球占位')),
             ),
           ),
@@ -70,9 +75,38 @@ void main() {
     expect(find.text('C'), findsOneWidget);
   });
 
-  test('性能护栏：环绕灵感不再常驻逐帧动画或描边双绘制', () {
-    expect(source, isNot(contains('AnimationController')));
-    expect(source, isNot(contains('..repeat()')));
+  testWidgets('灵感应像卫星一样环绕星球移动', (tester) async {
+    await pumpOrbit(tester, [fake(1, 'A'), fake(2, 'B'), fake(3, 'C')]);
+
+    final before = tester.getCenter(find.text('A'));
+    await tester.pump(const Duration(seconds: 8));
+    final after = tester.getCenter(find.text('A'));
+
+    expect((after - before).distance, greaterThan(4));
+  });
+
+  testWidgets('关闭 enabled 时灵感保持静止，避免抢 3D 首帧', (tester) async {
+    await pumpOrbit(tester, [
+      fake(1, 'A'),
+      fake(2, 'B'),
+      fake(3, 'C'),
+    ], enabled: false);
+
+    final before = tester.getCenter(find.text('A'));
+    await tester.pump(const Duration(seconds: 8));
+    final after = tester.getCenter(find.text('A'));
+
+    expect((after - before).distance, lessThan(0.1));
+  });
+
+  test('性能护栏：环绕灵感只用轻量动画，不再描边或 Opacity 离屏', () {
+    expect(
+      'AnimationController'.allMatches(source).length,
+      lessThanOrEqualTo(2),
+    );
+    expect(source, contains('_controller.repeat()'));
+    expect(source, contains('widget.enabled'));
+    expect(source, contains('_orbitDirection'));
     expect(source, isNot(contains('PaintingStyle.stroke')));
     expect(source, isNot(contains('child: Opacity(')));
   });

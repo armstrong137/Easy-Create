@@ -62,6 +62,12 @@ final magicCarpetKey = GlobalKey<MagicCarpetState>();
 /// 正在从魔毯拖拽的灵感（null=未拖拽）。拖拽时底部浮现垃圾桶可永久删除。
 final carpetDragging = ValueNotifier<Inspiration?>(null);
 
+/// 已投进垃圾桶、等待确认删除的灵感。
+///
+/// 删除确认由全局层托管，而不是由垃圾桶 DragTarget 自己弹窗：拖拽完成后垃圾桶会
+/// 随 carpetDragging 清空而卸载，如果弹窗依赖垃圾桶自身 context，会出现拖进去却删不掉。
+final carpetTrashPending = ValueNotifier<Inspiration?>(null);
+
 /// 魔毯小球是否缩到右边栏（只露一点点）。大纲页章节多时置 true 让路，
 /// 点缩起的小球即恢复完整（用户定稿：章节小节多了自动隐到边栏、点击恢复）。
 final carpetTucked = ValueNotifier<bool>(false);
@@ -132,23 +138,48 @@ class _GlobalCarpet extends ConsumerWidget {
             ),
           ),
         ),
+        const _TrashDeleteHost(),
       ],
     );
   }
 }
 
-/// 永久删除落区：拖拽灵感靠近时放大染红
-class _TrashZone extends ConsumerStatefulWidget {
-  const _TrashZone({required this.inspiration});
-
-  final Inspiration inspiration;
+class _TrashDeleteHost extends ConsumerStatefulWidget {
+  const _TrashDeleteHost();
 
   @override
-  ConsumerState<_TrashZone> createState() => _TrashZoneState();
+  ConsumerState<_TrashDeleteHost> createState() => _TrashDeleteHostState();
 }
 
-class _TrashZoneState extends ConsumerState<_TrashZone> {
-  Future<void> _confirmDelete() async {
+class _TrashDeleteHostState extends ConsumerState<_TrashDeleteHost> {
+  bool _showing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    carpetTrashPending.addListener(_onPendingChanged);
+  }
+
+  @override
+  void dispose() {
+    carpetTrashPending.removeListener(_onPendingChanged);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
+
+  void _onPendingChanged() {
+    if (_showing || carpetTrashPending.value == null) return;
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _confirmPendingDelete(),
+    );
+  }
+
+  Future<void> _confirmPendingDelete() async {
+    final inspiration = carpetTrashPending.value;
+    if (!mounted || inspiration == null || _showing) return;
+    _showing = true;
     final ok = await showCupertinoDialog<bool>(
       context: context,
       builder: (context) => CupertinoAlertDialog(
@@ -162,7 +193,7 @@ class _TrashZoneState extends ConsumerState<_TrashZone> {
         content: Padding(
           padding: const EdgeInsets.only(top: 8),
           child: Text(
-            '「${widget.inspiration.content}」将从魔毯彻底删除，无法恢复。',
+            '「${inspiration.content}」将从魔毯彻底删除，无法恢复。',
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontFamily: 'LXGWWenKai', fontSize: 13),
@@ -185,20 +216,37 @@ class _TrashZoneState extends ConsumerState<_TrashZone> {
         ],
       ),
     );
-    if (ok == true) {
+    if (mounted && ok == true) {
       await ref
           .read(inspirationRepositoryProvider)
-          .deleteForever(widget.inspiration.id);
+          .deleteForever(inspiration.id);
     }
+    if (identical(carpetTrashPending.value, inspiration)) {
+      carpetTrashPending.value = null;
+    }
+    _showing = false;
   }
+}
 
+/// 永久删除落区：拖拽灵感靠近时放大染红
+class _TrashZone extends ConsumerStatefulWidget {
+  const _TrashZone({required this.inspiration});
+
+  final Inspiration inspiration;
+
+  @override
+  ConsumerState<_TrashZone> createState() => _TrashZoneState();
+}
+
+class _TrashZoneState extends ConsumerState<_TrashZone> {
   @override
   Widget build(BuildContext context) {
     return DragTarget<Inspiration>(
       onWillAcceptWithDetails: (d) => d.data.id == widget.inspiration.id,
       onAcceptWithDetails: (_) {
         HapticFeedback.mediumImpact();
-        _confirmDelete();
+        carpetTrashPending.value = widget.inspiration;
+        carpetDragging.value = null;
       },
       builder: (context, candidates, _) {
         final hot = candidates.isNotEmpty;
@@ -708,8 +756,8 @@ class CarpetItem extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontFamily: inspirationFontFamily(inspiration.content) ??
-                  'LXGWWenKai',
+              fontFamily:
+                  inspirationFontFamily(inspiration.content) ?? 'LXGWWenKai',
               fontStyle: inspirationIsBrand(inspiration.content)
                   ? FontStyle.italic
                   : FontStyle.normal,
