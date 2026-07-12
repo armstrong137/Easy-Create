@@ -23,6 +23,7 @@ class PlanetScene extends ConsumerStatefulWidget {
     this.pitch = 0,
     this.autoPrewarm = true,
     this.active = true,
+    this.visible = true,
     this.snapshotRequestId = 0,
     this.onReady,
     this.onSnapshot,
@@ -54,6 +55,10 @@ class PlanetScene extends ConsumerStatefulWidget {
 
   /// 是否为当前可见页：非当前页暂停场景渲染（多球常驻越用越卡）
   final bool active;
+
+  /// 首页路由是否在最顶（未被大纲页覆盖）。移动端 WebView 全程存活、不销毁；
+  /// 覆盖时暂停渲染省电，返回即恢复（接口与 web 端一致）。
+  final bool visible;
 
   /// 快照请求序号（移动端不摘除场景，暂无实际动作，保留同名接口）
   final int snapshotRequestId;
@@ -133,11 +138,11 @@ class _PlanetSceneState extends ConsumerState<PlanetScene> {
     if (old.autoPrewarm != widget.autoPrewarm) {
       _web?.runJavaScript('setAutoPrewarm(${widget.autoPrewarm})');
     }
-    // 非当前页暂停渲染（多球常驻越用越卡）
-    if (old.active != widget.active) {
-      _web?.runJavaScript(
-        widget.active ? 'resumeRender()' : 'pauseRender()',
-      );
+    // 非当前页 或 被大纲页覆盖 → 暂停渲染（多球常驻越用越卡 / 覆盖时省电）
+    final was = old.active && old.visible;
+    final now = widget.active && widget.visible;
+    if (was != now) {
+      _web?.runJavaScript(now ? 'resumeRender()' : 'pauseRender()');
     }
   }
 

@@ -127,7 +127,7 @@ void main() {
     );
     expect(
       homePage,
-      contains('use3D && widget.active &&'),
+      contains('final sceneMounted = use3D && widget.active'),
       reason: '非当前页只显示轻量替身图，不创建真实 3D 场景',
     );
   });
@@ -147,12 +147,21 @@ void main() {
     expect(homePage, isNot(contains('items: [...widget.pool]')));
   });
 
-  test('Web 端路由被覆盖时摘除星球 platform view（进大纲整页白屏的回归）', () {
-    // CanvasKit 的 overlay 合成在 platform view 驻留于非当前路由时会
-    // 丢掉所有 canvas（CDP 实证 canvases:0 → 整页白）；摘除即恢复，
-    // 顺带满足清单 §12.2"不可见页面暂停渲染"
+  test('Web 端路由被覆盖时隐藏+暂停 iframe（不销毁，返回即露活场景）', () {
+    // 彻底方案（2026-07-11）：不再随导航销毁 platform view。进大纲时把 iframe
+    // display:none 让平台视图退出合成——既规避"驻留非当前路由 → CanvasKit 丢
+    // canvas → 大纲整页白"，又保留场景存活，返回即恢复，零重建/黑帧。
     expect(homePage, contains('ModalRoute.of(context)?.isCurrent'));
-    expect(homePage, contains('!kIsWeb || routeCurrent'));
+    // 首页始终挂载场景（sceneMounted 只看 3D 与当前页），可见性交给 visible
+    expect(homePage, contains('final sceneVisible = routeCurrent || popupOpen'));
+    expect(homePage, contains('visible: sceneVisible'));
+    // web 端据 visible 切 display，而非移出树/销毁
+    expect(
+      webWrapper,
+      contains("_iframe?.style.display = widget.visible ? '' : 'none'"),
+    );
+    // 不再依赖 kIsWeb 分支做导航销毁
+    expect(homePage, isNot(contains('!kIsWeb || routeCurrent')));
   });
 
   test('Web 端 iframe viewType 必须每实例唯一（工厂闭包捕获旧 State 的回归）', () {

@@ -24,6 +24,7 @@ class PlanetScene extends StatefulWidget {
     this.pitch = 0,
     this.autoPrewarm = true,
     this.active = true,
+    this.visible = true,
     this.snapshotRequestId = 0,
     this.onReady,
     this.onSnapshot,
@@ -54,6 +55,12 @@ class PlanetScene extends StatefulWidget {
   /// 是否为当前可见页：非当前页暂停场景渲染——滑过的页被 keepAlive 后
   /// iframe 仍在后台 rAF 渲染，多球常驻会越用越卡（用户实测）
   final bool active;
+
+  /// 首页路由是否在最顶（未被大纲页覆盖）。为 false 时把 iframe DOM
+  /// `display:none` 并暂停渲染——**不销毁**：返回时直接恢复，scene 与
+  /// 底图都还在，无重建、无 1 秒加载、无替身黑帧（对齐移动端不销毁的行为）。
+  /// display:none 让平台视图退出合成，规避"驻留非当前路由 → 丢 canvas → 大纲白屏"。
+  final bool visible;
 
   /// 快照请求序号：+1 即让场景回传一张最新快照（进大纲前调用，
   /// 供返回时替身用；不做周期快照——PNG 编码在主线程是固定 jank 源）
@@ -110,11 +117,16 @@ class _PlanetSceneState extends State<PlanetScene> {
         ..style.width = '100%'
         ..style.height = '100%'
         ..style.backgroundColor = 'transparent'
-        ..style.pointerEvents = 'none';
+        ..style.pointerEvents = 'none'
+        // 若创建时首页已被覆盖（罕见），初始即隐藏
+        ..style.display = widget.visible ? '' : 'none';
       _iframe = iframe;
       return iframe;
     });
   }
+
+  /// 有效渲染 = 当前页 且 首页在顶。任一为假即暂停 rAF（省 GPU、不抢主线程）
+  bool get _shouldRender => widget.active && widget.visible;
 
   @override
   void dispose() {
@@ -139,8 +151,14 @@ class _PlanetSceneState extends State<PlanetScene> {
     if (old.autoPrewarm != widget.autoPrewarm) {
       _post({'autoPrewarm': widget.autoPrewarm ? 1 : 0});
     }
-    if (old.active != widget.active) {
-      _post({'render': widget.active ? 1 : 0});
+    // 进/出大纲：切 iframe 显隐（display:none 让平台视图退出合成，规避大纲白屏）
+    if (old.visible != widget.visible) {
+      _iframe?.style.display = widget.visible ? '' : 'none';
+    }
+    // 渲染开关随 active/visible 任一变化更新（暂停时不烧 GPU/不抢主线程）
+    final was = old.active && old.visible;
+    if (was != _shouldRender) {
+      _post({'render': _shouldRender ? 1 : 0});
     }
     if (old.snapshotRequestId != widget.snapshotRequestId) {
       _post({'snapshot': 1});

@@ -28,19 +28,23 @@ void main() {
     );
   });
 
-  test('outline navigation resets scene readiness before route transition', () {
+  test('outline navigation keeps scene alive — no readiness reset before route', () {
+    // 彻底方案（2026-07-11）：进大纲不销毁 iframe、也**不复位** _sceneReady。
+    // iframe 仅被 display:none + 暂停，场景全程存活；返回时 _sceneReady 仍为真
+    //  → 替身恒透明 → 直接露出活场景，零重建、零 1 秒加载、零黑帧。
     final openOutlinePos = homePage.indexOf('Future<void> _openOutline');
-    final resetPos = homePage.indexOf('_markSceneNotReady();', openOutlinePos);
     final pushPos = homePage.indexOf(
       'Navigator.of(context).push',
       openOutlinePos,
     );
-    expect(resetPos, greaterThan(openOutlinePos));
+    final resetPos = homePage.indexOf('_markSceneNotReady();', openOutlinePos);
+    expect(openOutlinePos, greaterThan(0));
     expect(pushPos, greaterThan(openOutlinePos));
+    // push 之前绝不能出现 _markSceneNotReady（否则返回会先露替身/黑帧）
     expect(
-      resetPos,
-      lessThan(pushPos),
-      reason: '进入魔树前就要锁住替身图，返回首帧不能先露出黑色 iframe',
+      resetPos == -1 || resetPos > pushPos,
+      isTrue,
+      reason: '进大纲不复位就绪：场景不销毁，返回即露活场景',
     );
   });
 
@@ -112,7 +116,52 @@ void main() {
   test('quick capture popup keeps web planet scene mounted', () {
     expect(homePage, contains('captureSheetOpenProvider'));
     expect(homePage, contains('routeCurrent || popupOpen'));
-    expect(homePage, contains('!showScene && !popupOpen && _sceneReady'));
+    // 弹层打开时 sceneVisible 仍真 → iframe 不隐藏；只有页面真正卸载才复位就绪
+    expect(homePage, contains('if (!sceneMounted && _sceneReady)'));
+  });
+
+  test('A: web scene is hidden+paused on navigation, not destroyed', () {
+    final web = File(
+      'lib/presentation/home/planet_scene/planet_scene_web.dart',
+    ).readAsStringSync();
+    // 进/出大纲切 iframe display 而非 remove；仅真正卸载才 dispose
+    expect(web, contains("_iframe?.style.display = widget.visible ? '' : 'none'"));
+    expect(
+      web,
+      contains('bool get _shouldRender => widget.active && widget.visible'),
+    );
+    // home 用 sceneVisible（首页在顶或弹层打开）驱动 visible
+    expect(homePage, contains('final sceneVisible = routeCurrent || popupOpen'));
+    expect(homePage, contains('visible: sceneVisible'));
+  });
+
+  test('A: io scene mirrors visible param for pause/resume parity', () {
+    final io = File(
+      'lib/presentation/home/planet_scene/planet_scene_io.dart',
+    ).readAsStringSync();
+    expect(io, contains('final bool visible'));
+    expect(io, contains("now ? 'resumeRender()' : 'pauseRender()'"));
+  });
+
+  test('B: stand-in is a shader sphere, not a flat texture crop', () {
+    // 替身主体是着色器球体（球面投影+光照），消除"2D 贴纸突变"
+    expect(homePage, contains('final standInSphere'));
+    expect(homePage, contains('sphere: standInSphere'));
+    expect(homePage, contains('final base = sphere ?? _gradientSphere()'));
+    // 快照补 frameBuilder：解码完成前透明露底球，杜绝透明缝黑帧
+    expect(homePage, contains('frameBuilder:'));
+    // _PlanetStandIn 内部不再直接贴平面世界地图
+    final standInClass = homePage.substring(
+      homePage.indexOf('class _PlanetStandIn'),
+    );
+    expect(standInClass, isNot(contains("Image.asset('assets/textures/")));
+  });
+
+  test('C: scene reveal has a fallback timer so it never sticks on stand-in', () {
+    expect(homePage, contains('Timer? _sceneFallbackTimer'));
+    expect(homePage, contains('_armSceneRevealFallback'));
+    expect(homePage, contains('if (sceneMounted && !_sceneReady)'));
+    expect(homePage, contains('Duration(milliseconds: 3000)'));
   });
 
   test('quick capture sheets keep the planet readable behind input', () {

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -489,6 +488,10 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
   /// 有时差一个浏览器帧，直接揭开会把黑色球露出来。
   Timer? _sceneRevealTimer;
 
+  /// 兜底揭示：万一新场景永不发 sceneReady（首次加载/切换异常），到点强制
+  /// 揭示替身、放行交互门，避免替身与手势永久卡死（返回路径原本无兜底）。
+  Timer? _sceneFallbackTimer;
+
   /// 环绕灵感只需要最近几条；缓存后避免旋转 setState 时每帧复制并排序整个灵感池。
   List<Inspiration> _cachedOrbitItems = const [];
 
@@ -543,6 +546,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
       snapshotCompleter.complete();
     }
     _sceneRevealTimer?.cancel();
+    _sceneFallbackTimer?.cancel();
     _glideTicker.dispose();
     super.dispose();
   }
@@ -679,11 +683,15 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
 
   void _markSceneNotReady() {
     _sceneRevealTimer?.cancel();
+    _sceneFallbackTimer?.cancel();
+    _sceneFallbackTimer = null;
     if (!_sceneReady) return;
     setState(() => _sceneReady = false);
   }
 
   void _scheduleSceneReveal() {
+    _sceneFallbackTimer?.cancel();
+    _sceneFallbackTimer = null;
     _sceneRevealTimer?.cancel();
     _sceneRevealTimer = Timer(const Duration(milliseconds: 220), () {
       if (!mounted) return;
@@ -695,10 +703,27 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
     });
   }
 
+  /// 场景挂载但迟迟未就绪时启动兜底定时器（幂等：已在计时则跳过）。
+  /// 到点仍未就绪且场景确应在场，则强制揭示，杜绝永久卡在替身/交互禁用态。
+  void _armSceneRevealFallback() {
+    if (_sceneFallbackTimer != null) return;
+    _sceneFallbackTimer = Timer(const Duration(milliseconds: 3000), () {
+      _sceneFallbackTimer = null;
+      if (!mounted || _sceneReady) return;
+      // 仅当场景确应在场（3D 模式且当前页）才强制揭示——卸载态揭示会露空白
+      if (!(ref.read(advanced3DProvider) && widget.active)) return;
+      setState(() => _sceneReady = true);
+      planetSceneReadyTick.value++;
+    });
+  }
+
   Future<void> _openOutline(Novel novel) async {
+    // 进大纲前抓一帧快照，供极端情况下（场景被暂停后仍需替身）兜底遮罩。
     await _awaitSnapshotBeforeRoute();
     if (!mounted) return;
-    _markSceneNotReady();
+    // 关键：**不**复位 _sceneReady。iframe 只是被隐藏+暂停（planet_scene_web），
+    // 场景全程存活；返回时 _sceneReady 仍为真 → 替身恒透明 → 直接露出活场景，
+    // 零重建、零 1 秒加载、零黑帧（旧实现每次导航都拆重建才需要复位+替身）。
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => OutlinePage(novelId: novel.id, title: novel.title),
@@ -712,29 +737,35 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
     final novel = widget.novel;
     final count = ref.watch(creativeCountProvider(novel.id)).value ?? 0;
     final use3D = ref.watch(advanced3DProvider);
-    // 3D 场景不依赖 shader 资源；旧路径（测试/低端回退）仍需等待加载
-    final assets = use3D
-        ? null
-        : ref.watch(planetAssetsProvider(novel.planet)).value;
+    // 着色器资源：非 3D 模式是主体；3D 模式给替身用——首次加载/切换时
+    // 替身显**着色器球体**（球面投影+光照）而非平面裁剪贴图，消除"2D 贴纸突变"。
+    final shaderAssets = ref.watch(planetAssetsProvider(novel.planet)).value;
+    final assets = use3D ? null : shaderAssets;
     final diameter = MediaQuery.sizeOf(context).width * 0.62;
     final ready = use3D || assets != null;
 
-    // Web 端：本路由被新页面覆盖时必须摘除星球 platform view——
-    // CanvasKit 的 overlay 合成在 platform view 驻留于非当前路由时
-    // 会丢掉所有 canvas（进大纲页整页白屏，CDP 实证 canvases:0）。
-    // 摘除还顺带满足"不可见页面暂停渲染"（iframe 销毁即停）。
-    // 速记输入层是 PopupRoute，不是真正离开首页；此时保留场景，避免星球被卸成黑色。
+    // 场景生命周期（彻底方案，2026-07-11）：
+    // - sceneMounted：PlanetScene 是否挂在树中。**不再随路由销毁**——
+    //   进大纲改为把 iframe display:none + 暂停（planet_scene_web），返回即恢复。
+    //   这从根上消除了"返回黑帧 / 2D 贴纸突变 / 重加载"（旧实现每次导航都拆重建）。
+    //   仅当页面真正卸载（swipe 换走 / 非 3D）才移出树。
+    // - sceneVisible：iframe 是否显示+渲染。首页在顶（未被大纲覆盖）时为真；
+    //   速记弹层是 PopupRoute，不算离开首页，仍保持可见。
     final popupOpen = ref.watch(captureSheetOpenProvider);
     final routeCurrent = ModalRoute.of(context)?.isCurrent ?? true;
-    final showScene =
-        use3D && widget.active && (!kIsWeb || routeCurrent || popupOpen);
+    final sceneMounted = use3D && widget.active;
+    final sceneVisible = routeCurrent || popupOpen;
 
-    // 摘除期间把就绪标记复位：pop 回来场景重建（约 1 秒），
-    // 此间由光晕替身盖住，场景首帧 onReady 后再淡出
-    if (!showScene && !popupOpen && _sceneReady) {
+    // 只有页面真正卸载才复位就绪标记（进大纲不复位——scene 未销毁，
+    // 返回时 _sceneReady 仍为真 → 替身早已透明 → 直接露出活场景，零黑帧）
+    if (!sceneMounted && _sceneReady) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _sceneReady) _markSceneNotReady();
       });
+    }
+    // 场景已挂载却仍未就绪：启动兜底定时器，防止 sceneReady 永不到达时永久卡替身
+    if (sceneMounted && !_sceneReady) {
+      _armSceneRevealFallback();
     }
 
     // 星球本体：真实 3D 场景（阶段八 P2-1）或旧 FragmentShader（回退）
@@ -744,19 +775,27 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
         final sceneDiameter = novel.planet == 'saturn'
             ? diameter * 1.4
             : diameter;
-        // 替身：星球从深空"显形"的光晕轮廓——场景加载/重建期间占位，
-        // 首帧就绪后淡出（比空白/突现柔和得多）
+        // 替身：场景加载/首帧前占位，就绪后淡出。返回大纲时 _sceneReady 仍真，
+        // 替身恒透明 → 不介入（活场景已在）。
+        // 着色器球体（静止，spin:0 不烧帧）作为占位主体——像 3D 球而非平面贴纸。
+        final standInSphere = shaderAssets == null
+            ? null
+            : PlanetView(
+                assets: shaderAssets,
+                spin: 0,
+                diameter: sceneDiameter,
+              );
         final standIn = AnimatedOpacity(
           duration: const Duration(milliseconds: 350),
-          opacity: _sceneReady && showScene ? 0 : 1,
+          opacity: _sceneReady ? 0 : 1,
           child: _PlanetStandIn(
             diameter: sceneDiameter,
-            planet: novel.planet,
+            sphere: standInSphere,
             snapshotDataUrl: _sceneSnapshot,
           ),
         );
-        if (!showScene) {
-          // 摘除期：只留替身，保持布局与命中区尺寸
+        if (!sceneMounted) {
+          // 页面卸载期：只留替身，保持布局与命中区尺寸
           return SizedBox.square(
             key: _planetKey,
             dimension: sceneDiameter,
@@ -791,6 +830,8 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
                   // 非当前页暂停场景渲染：滑过的页被 keepAlive 后 iframe
                   // 仍在后台渲染，多球常驻会越用越卡（用户实测）
                   active: widget.active,
+                  // 被大纲页覆盖时隐藏+暂停 iframe（不销毁），返回即恢复
+                  visible: sceneVisible,
                   snapshotRequestId: _snapshotReq,
                   onReady: _scheduleSceneReveal,
                   onSnapshot: (snapshot) {
@@ -936,81 +977,82 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
   }
 }
 
-/// 星球替身：加载/重建期间的"深空显形"光晕轮廓（纯渐变，零资源开销）。
-/// 观感是一颗尚未聚焦的暗星球：深蓝球体核心 + 大气蓝辉边缘。
+/// 星球替身：仅在**真正首次加载/切换**（无活场景可复用）时占位。
+///
+/// 分层（自下而上，均不透明、均非平面裁剪，杜绝"2D 贴纸"与"透明缝黑帧"）：
+/// 1. 底 base = 着色器球体 [sphere]（球面投影+光照，像 3D）；无资源时退到深空渐变球。
+/// 2. 若有低清快照 [snapshotDataUrl]，叠在底之上，**解码完成才淡入**——
+///    解码期间露出底球，绝不出现透明帧让下方黑 iframe 透上来。
 class _PlanetStandIn extends StatelessWidget {
   const _PlanetStandIn({
     required this.diameter,
-    required this.planet,
+    this.sphere,
     this.snapshotDataUrl,
   });
 
   final double diameter;
-  final String planet;
+
+  /// 着色器球体（PlanetView/SaturnView）；null 时用渐变球兜底
+  final Widget? sphere;
   final String? snapshotDataUrl;
 
   @override
   Widget build(BuildContext context) {
+    final base = sphere ?? _gradientSphere();
     final snapshot = snapshotDataUrl;
-    if (snapshot != null) {
-      return IgnorePointer(
-        child: OverflowBox(
-          maxWidth: diameter * kPlanetSceneStageScale,
-          maxHeight: diameter * kPlanetSceneStageScale,
-          child: Image.network(
-            snapshot,
-            width: diameter * kPlanetSceneStageScale,
-            height: diameter * kPlanetSceneStageScale,
-            fit: BoxFit.fill,
-            filterQuality: FilterQuality.medium,
-            gaplessPlayback: true,
-          ),
-        ),
-      );
+    if (snapshot == null) {
+      return IgnorePointer(child: Center(child: base));
     }
     return IgnorePointer(
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Color(0x665D9DFF),
-              blurRadius: 32,
-              spreadRadius: 2,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          base,
+          OverflowBox(
+            maxWidth: diameter * kPlanetSceneStageScale,
+            maxHeight: diameter * kPlanetSceneStageScale,
+            child: Image.network(
+              snapshot,
+              width: diameter * kPlanetSceneStageScale,
+              height: diameter * kPlanetSceneStageScale,
+              fit: BoxFit.fill,
+              filterQuality: FilterQuality.medium,
+              gaplessPlayback: true,
+              // 解码完成前 frame==null → 透明，露出底球；完成后淡入快照
+              frameBuilder: (context, child, frame, wasSync) => AnimatedOpacity(
+                opacity: frame == null ? 0 : 1,
+                duration: const Duration(milliseconds: 120),
+                child: child,
+              ),
             ),
-          ],
-        ),
-        child: ClipOval(
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.asset(
-                'assets/textures/$planet.jpg',
-                width: diameter,
-                height: diameter,
-                fit: BoxFit.cover,
-                filterQuality: FilterQuality.medium,
-              ),
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment(-0.35, -0.42),
-                    radius: 0.95,
-                    colors: [
-                      Color(0x66FFFFFF),
-                      Color(0x183A6FD1),
-                      Color(0x3D020713),
-                    ],
-                    stops: [0.0, 0.58, 1.0],
-                  ),
-                ),
-              ),
-            ],
           ),
-        ),
+        ],
       ),
     );
   }
+
+  /// 无着色器资源时的兜底：深空渐变球（非平面裁剪、不透明）
+  Widget _gradientSphere() => SizedBox.square(
+    dimension: diameter,
+    child: const DecoratedBox(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          center: Alignment(-0.3, -0.35),
+          radius: 0.95,
+          colors: [
+            Color(0xFF2A4A78),
+            Color(0xFF14264A),
+            Color(0xFF060D1E),
+          ],
+          stops: [0.0, 0.6, 1.0],
+        ),
+        boxShadow: [
+          BoxShadow(color: Color(0x665D9DFF), blurRadius: 32, spreadRadius: 2),
+        ],
+      ),
+    ),
+  );
 }
 
 TextStyle _brandTitleStyle({
