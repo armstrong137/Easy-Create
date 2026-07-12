@@ -55,6 +55,27 @@ void main() {
   );
 
   test(
+    'web iframe canvas stays transparent until real textured frame is ready',
+    () {
+      final sceneHtml = File('assets/planet_scene/index.html').readAsStringSync();
+      final webWrapper = File(
+        'lib/presentation/home/planet_scene/planet_scene_web.dart',
+      ).readAsStringSync();
+
+      expect(sceneHtml, contains('canvas { display: block; opacity: 0;'));
+      expect(sceneHtml, contains("renderer.domElement.style.opacity = '1'"));
+      expect(sceneHtml, contains('if (!baseTextureReady) return;'));
+      expect(webWrapper, contains("..style.backgroundColor = 'transparent'"));
+    },
+  );
+
+  test('planet stand-in textures are precached before direct page switching', () {
+    expect(homePage, contains('_precachePlanetStandIns'));
+    expect(homePage, contains('for (final planet in kPlanetTextures)'));
+    expect(homePage, contains("precacheImage(AssetImage('assets/textures/\$planet.jpg')"));
+  });
+
+  test(
     'planet long press delete only works at normal size with one pointer',
     () {
       expect(homePage, contains('_canDeleteByLongPress'));

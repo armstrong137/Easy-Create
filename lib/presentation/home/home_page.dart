@@ -119,6 +119,9 @@ class _HomePageState extends ConsumerState<HomePage> {
       _maybeRevealCover();
     });
     _coverMaxTimer = Timer(const Duration(seconds: 4), _revealCover);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _precachePlanetStandIns();
+    });
   }
 
   @override
@@ -131,6 +134,12 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   void _onSceneReadyTick() => _maybeRevealCover();
+
+  void _precachePlanetStandIns() {
+    for (final planet in kPlanetTextures) {
+      precacheImage(AssetImage('assets/textures/$planet.jpg'), context);
+    }
+  }
 
   /// 就绪条件：小说列表已加载，且（空宇宙 或 本次启动后的星球场景已出首帧）
   void _maybeRevealCover() {

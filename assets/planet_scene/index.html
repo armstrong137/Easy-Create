@@ -15,7 +15,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <style>
   html, body { margin: 0; padding: 0; overflow: hidden; background: transparent; touch-action: none; }
-  canvas { display: block; }
+  canvas { display: block; opacity: 0; transition: opacity 160ms ease-out; }
 </style>
 </head>
 <body>
@@ -548,6 +548,7 @@ function animate() {
   if (!notified && lastW > 0) {
     if (!baseTextureReady) return;
     notified = true;
+    renderer.domElement.style.opacity = '1';
     if (window.SceneBridge) {
       SceneBridge.postMessage(JSON.stringify({ ready: true }));
     }

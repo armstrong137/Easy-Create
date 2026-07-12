@@ -109,6 +109,7 @@ class _PlanetSceneState extends State<PlanetScene> {
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%'
+        ..style.backgroundColor = 'transparent'
         ..style.pointerEvents = 'none';
       _iframe = iframe;
       return iframe;
