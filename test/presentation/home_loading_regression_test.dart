@@ -77,6 +77,10 @@ void main() {
     expect(homePage, contains('_precachePlanetStandIns'));
     expect(homePage, contains('for (final planet in kPlanetTextures)'));
     expect(homePage, contains("precacheImage(AssetImage('assets/textures/\$planet.jpg')"));
+    expect(
+      homePage,
+      contains("AssetImage('assets/planet_scene/standins/\$planet.png')"),
+    );
   });
 
   test(
@@ -143,18 +147,26 @@ void main() {
     expect(io, contains("now ? 'resumeRender()' : 'pauseRender()'"));
   });
 
-  test('B: stand-in is a shader sphere, not a flat texture crop', () {
-    // 替身主体是着色器球体（球面投影+光照），消除"2D 贴纸突变"
-    expect(homePage, contains('final standInSphere'));
-    expect(homePage, contains('sphere: standInSphere'));
-    expect(homePage, contains('final base = sphere ?? _gradientSphere()'));
-    // 快照补 frameBuilder：解码完成前透明露底球，杜绝透明缝黑帧
+  test('B: stand-in uses the pre-rendered real snapshot, not a flat crop', () {
+    // 替身底图是每颗星球的预渲染真身快照（three.js 同款一帧），与真实场景
+    // 视觉一致，消除"平面/简球 → 精球"的 2D 突变（用户录屏残留问题的根治）。
+    expect(homePage, contains('planet: novel.planet'));
+    expect(
+      homePage,
+      contains("'assets/planet_scene/standins/\$planet.png'"),
+    );
+    // 快照补 frameBuilder：解码完成前透明露底快照，杜绝透明缝黑帧
     expect(homePage, contains('frameBuilder:'));
-    // _PlanetStandIn 内部不再直接贴平面世界地图
+    // _PlanetStandIn 内部不再贴平面世界地图裁剪
     final standInClass = homePage.substring(
       homePage.indexOf('class _PlanetStandIn'),
     );
     expect(standInClass, isNot(contains("Image.asset('assets/textures/")));
+    // 预渲染快照要预解码，切星球首帧即出
+    expect(
+      homePage,
+      contains("AssetImage('assets/planet_scene/standins/\$planet.png')"),
+    );
   });
 
   test('C: scene reveal has a fallback timer so it never sticks on stand-in', () {

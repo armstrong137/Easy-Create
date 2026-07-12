@@ -75,6 +75,8 @@ flutter:
     # 3D 星球场景（three.js 页面 + 地球多层纹理，经回环服务供给 WebView）
     - assets/planet_scene/
     - assets/planet_scene/textures/
+    # 各星球的预渲染真身快照（three.js 同款一帧），加载/切换期作替身，消 2D 突变
+    - assets/planet_scene/standins/
 
   # 3D 星球 / 动态宇宙 fragment shader
   shaders:

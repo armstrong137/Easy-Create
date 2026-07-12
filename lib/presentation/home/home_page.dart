@@ -136,7 +136,13 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   void _precachePlanetStandIns() {
     for (final planet in kPlanetTextures) {
+      // 非 3D 回退主体用的等距圆柱贴图
       precacheImage(AssetImage('assets/textures/$planet.jpg'), context);
+      // 3D 加载/切换期替身用的预渲染真身快照——预解码，切星球首帧即出
+      precacheImage(
+        AssetImage('assets/planet_scene/standins/$planet.png'),
+        context,
+      );
     }
   }
 
@@ -739,8 +745,10 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
     final use3D = ref.watch(advanced3DProvider);
     // 着色器资源：非 3D 模式是主体；3D 模式给替身用——首次加载/切换时
     // 替身显**着色器球体**（球面投影+光照）而非平面裁剪贴图，消除"2D 贴纸突变"。
-    final shaderAssets = ref.watch(planetAssetsProvider(novel.planet)).value;
-    final assets = use3D ? null : shaderAssets;
+    // 非 3D 回退才需着色器贴图；3D 模式替身改用预渲染真身快照，不再加载着色器资源
+    final assets = use3D
+        ? null
+        : ref.watch(planetAssetsProvider(novel.planet)).value;
     final diameter = MediaQuery.sizeOf(context).width * 0.62;
     final ready = use3D || assets != null;
 
@@ -777,20 +785,15 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
             : diameter;
         // 替身：场景加载/首帧前占位，就绪后淡出。返回大纲时 _sceneReady 仍真，
         // 替身恒透明 → 不介入（活场景已在）。
-        // 着色器球体（静止，spin:0 不烧帧）作为占位主体——像 3D 球而非平面贴纸。
-        final standInSphere = shaderAssets == null
-            ? null
-            : PlanetView(
-                assets: shaderAssets,
-                spin: 0,
-                diameter: sceneDiameter,
-              );
+        // 占位主体是**该星球的预渲染真身快照**（three.js 同款一帧：大气辉光/
+        // 海面高光/云层），与真实场景视觉一致——诞生/切换加载期不再有
+        // "平面/简球 → 精球"的 2D 突变（用户实测残留问题的根治）。
         final standIn = AnimatedOpacity(
           duration: const Duration(milliseconds: 350),
           opacity: _sceneReady ? 0 : 1,
           child: _PlanetStandIn(
             diameter: sceneDiameter,
-            sphere: standInSphere,
+            planet: novel.planet,
             snapshotDataUrl: _sceneSnapshot,
           ),
         );
@@ -980,54 +983,64 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
 /// 星球替身：仅在**真正首次加载/切换**（无活场景可复用）时占位。
 ///
 /// 分层（自下而上，均不透明、均非平面裁剪，杜绝"2D 贴纸"与"透明缝黑帧"）：
-/// 1. 底 base = 着色器球体 [sphere]（球面投影+光照，像 3D）；无资源时退到深空渐变球。
-/// 2. 若有低清快照 [snapshotDataUrl]，叠在底之上，**解码完成才淡入**——
-///    解码期间露出底球，绝不出现透明帧让下方黑 iframe 透上来。
+/// 1. 底 base = 该星球的**预渲染真身快照** `standins/$planet.png`（three.js 同款
+///    一帧：大气辉光/海面高光/云层，stage=3 同款取景）——与真实场景视觉一致，
+///    加载/切换期不再有"平面/简球 → 精球"的 2D 突变。资源缺失才退到深空渐变球。
+/// 2. 若另有运行时低清快照 [snapshotDataUrl]（更贴合当前角度），叠在底之上，
+///    **解码完成才淡入**，解码期间露出底快照，绝不透出下方黑 iframe。
 class _PlanetStandIn extends StatelessWidget {
   const _PlanetStandIn({
     required this.diameter,
-    this.sphere,
+    required this.planet,
     this.snapshotDataUrl,
   });
 
   final double diameter;
 
-  /// 着色器球体（PlanetView/SaturnView）；null 时用渐变球兜底
-  final Widget? sphere;
+  /// 行星名（earth/mars/venus/jupiter/saturn），决定用哪张预渲染真身快照
+  final String planet;
   final String? snapshotDataUrl;
 
   @override
   Widget build(BuildContext context) {
-    final base = sphere ?? _gradientSphere();
+    final full = diameter * kPlanetSceneStageScale;
+    // 底：预渲染真身快照，取景与 three.js（stage=3）一致，直接铺满同款舞台框
+    final base = Image.asset(
+      'assets/planet_scene/standins/$planet.png',
+      width: full,
+      height: full,
+      fit: BoxFit.fill,
+      filterQuality: FilterQuality.medium,
+      gaplessPlayback: true,
+      errorBuilder: (_, _, _) =>
+          SizedBox.square(dimension: full, child: Center(child: _gradientSphere())),
+    );
     final snapshot = snapshotDataUrl;
-    if (snapshot == null) {
-      return IgnorePointer(child: Center(child: base));
-    }
-    return IgnorePointer(
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          base,
-          OverflowBox(
-            maxWidth: diameter * kPlanetSceneStageScale,
-            maxHeight: diameter * kPlanetSceneStageScale,
-            child: Image.network(
-              snapshot,
-              width: diameter * kPlanetSceneStageScale,
-              height: diameter * kPlanetSceneStageScale,
-              fit: BoxFit.fill,
-              filterQuality: FilterQuality.medium,
-              gaplessPlayback: true,
-              // 解码完成前 frame==null → 透明，露出底球；完成后淡入快照
-              frameBuilder: (context, child, frame, wasSync) => AnimatedOpacity(
-                opacity: frame == null ? 0 : 1,
-                duration: const Duration(milliseconds: 120),
-                child: child,
+    final content = snapshot == null
+        ? base
+        : Stack(
+            alignment: Alignment.center,
+            children: [
+              base,
+              Image.network(
+                snapshot,
+                width: full,
+                height: full,
+                fit: BoxFit.fill,
+                filterQuality: FilterQuality.medium,
+                gaplessPlayback: true,
+                // 解码完成前 frame==null → 透明，露出底快照；完成后淡入
+                frameBuilder: (context, child, frame, wasSync) =>
+                    AnimatedOpacity(
+                      opacity: frame == null ? 0 : 1,
+                      duration: const Duration(milliseconds: 120),
+                      child: child,
+                    ),
               ),
-            ),
-          ),
-        ],
-      ),
+            ],
+          );
+    return IgnorePointer(
+      child: OverflowBox(maxWidth: full, maxHeight: full, child: content),
     );
   }
 
