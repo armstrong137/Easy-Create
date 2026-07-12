@@ -95,6 +95,23 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   int? _pendingNovelId;
 
+  /// 最近看过的星球场景保活集（LRU，末尾最新）：进入过的星球页**不销毁**其
+  /// 3D 场景，只在离开当前页时暂停+隐藏（隐藏而非销毁——对齐进出大纲的做法），
+  /// 切回已看过的星球即刻恢复活场景，**无冷启动窗口 → 无替身 → 无 2D 突变**。
+  /// 上限保护显存：只保活最近 [_kMaxAliveScenes] 颗，更旧的才销毁释放 WebGL。
+  static const _kMaxAliveScenes = 3;
+  final List<int> _aliveNovelIds = [];
+
+  /// 把某颗星球标记为"最近看过"（移到末尾），并把保活集裁到上限内。
+  void _touchAliveScene(int novelId) {
+    _aliveNovelIds
+      ..remove(novelId)
+      ..add(novelId);
+    while (_aliveNovelIds.length > _kMaxAliveScenes) {
+      _aliveNovelIds.removeAt(0);
+    }
+  }
+
   /// 启动封面：事件驱动揭开——等星球场景真正就绪（而非拍脑袋定时），
   /// 封面期间 iframe 初始化/贴图上传/星云编译全部做完，揭开即流畅。
   /// 只在冷启动出现一次；从魔树页返回不再盖（快照替身已兜住重建期）。
@@ -220,6 +237,15 @@ class _HomePageState extends ConsumerState<HomePage> {
     final currentCount = currentNovel == null
         ? 0
         : ref.watch(creativeCountProvider(currentNovel.id)).value ?? 0;
+    // 初始当前页也纳入保活集（onPageChanged 只在切换时触发，起始页需补种）
+    if (currentNovel != null && !_aliveNovelIds.contains(currentNovel.id)) {
+      final seedId = currentNovel.id;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_aliveNovelIds.contains(seedId)) {
+          setState(() => _touchAliveScene(seedId));
+        }
+      });
+    }
     _scheduleCreatedNovelJump(novels);
 
     return Scaffold(
@@ -275,7 +301,14 @@ class _HomePageState extends ConsumerState<HomePage> {
                 allowImplicitScrolling: false,
                 // 捏合放大星球期间禁翻页（否则双指会被识别成滑动换书）
                 physics: locked ? const NeverScrollableScrollPhysics() : null,
-                onPageChanged: (i) => setState(() => _currentPage = i),
+                onPageChanged: (i) => setState(() {
+                  _currentPage = i;
+                  _touchAliveScene(novels[i].id);
+                  // 已删除的小说从保活集剔除，避免白占额度
+                  _aliveNovelIds.retainWhere(
+                    (id) => novels.any((n) => n.id == id),
+                  );
+                }),
                 // ClipRect：放大的星球画布只在本页内铺开，
                 // 不会溢出到相邻星球页造成"两颗星球重影"
                 itemBuilder: (context, i) => ClipRect(
@@ -286,6 +319,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                     novel: novels[i],
                     pool: pool,
                     active: i == _currentPage,
+                    // 当前页 或 最近看过的星球 → 保活场景（不销毁，切回即刻恢复）
+                    keptAlive:
+                        i == _currentPage || _aliveNovelIds.contains(novels[i].id),
                   ),
                 ),
               ),
@@ -446,11 +482,18 @@ class _PlanetPage extends ConsumerStatefulWidget {
     required this.novel,
     required this.pool,
     required this.active,
+    required this.keptAlive,
   });
 
   final Novel novel;
   final List<Inspiration> pool;
+
+  /// 是否为当前正在看的页（决定谁渲染、谁接管星空亮度/手势）
   final bool active;
+
+  /// 是否保活场景：当前页 或 最近看过的星球。为真则场景常驻树中——
+  /// 非当前页只暂停+隐藏 iframe（不销毁），切回即刻恢复，无冷启动窗口。
+  final bool keptAlive;
 
   @override
   ConsumerState<_PlanetPage> createState() => _PlanetPageState();
@@ -510,7 +553,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
       _zoom <= kPlanetCreateTitleShowZoom && _pinchStartDist <= 0;
 
   @override
-  bool get wantKeepAlive => widget.active;
+  bool get wantKeepAlive => widget.keptAlive;
 
   @override
   void initState() {
@@ -525,14 +568,16 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
   @override
   void didUpdateWidget(covariant _PlanetPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.active != widget.active) {
+    if (oldWidget.keptAlive != widget.keptAlive) {
       updateKeepAlive();
     }
     if (!identical(oldWidget.pool, widget.pool)) {
       _refreshCachedOrbitItems();
     }
+    // 切回本页时**不复位** _sceneReady：保活的场景没销毁、就绪标记仍为真，
+    // 替身恒透明 → 直接恢复活场景，无替身、无冷启动窗口（旧实现每次切页
+    // 都重建场景才需要复位+替身）。只同步"创建标题"的显隐即可。
     if (oldWidget.active != widget.active && widget.active) {
-      _markSceneNotReady();
       _syncCreateTitleVisibility();
     }
   }
@@ -752,17 +797,21 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
     final diameter = MediaQuery.sizeOf(context).width * 0.62;
     final ready = use3D || assets != null;
 
-    // 场景生命周期（彻底方案，2026-07-11）：
-    // - sceneMounted：PlanetScene 是否挂在树中。**不再随路由销毁**——
-    //   进大纲改为把 iframe display:none + 暂停（planet_scene_web），返回即恢复。
-    //   这从根上消除了"返回黑帧 / 2D 贴纸突变 / 重加载"（旧实现每次导航都拆重建）。
-    //   仅当页面真正卸载（swipe 换走 / 非 3D）才移出树。
-    // - sceneVisible：iframe 是否显示+渲染。首页在顶（未被大纲覆盖）时为真；
-    //   速记弹层是 PopupRoute，不算离开首页，仍保持可见。
+    // 场景生命周期（彻底方案，2026-07）：
+    // - sceneMounted：PlanetScene 是否挂在树中。保活集内的星球页（当前页 +
+    //   最近看过的几颗，keptAlive）全程挂载、**不销毁**——进大纲、左右滑切页
+    //   都只是把 iframe display:none + 暂停渲染，切回/返回即刻恢复。这从根上消除
+    //   "冷启动窗口 → 替身 → 2D 突变 / 黑帧 / 重加载"。只有被 LRU 挤出保活集
+    //   （太久没看的星球）或非 3D 才真正移出树、销毁 WebGL，控住显存。
+    // - sceneVisible：iframe 是否显示+渲染。仅当前页且首页在顶（未被大纲覆盖）
+    //   时为真；其余保活页 display:none+暂停。速记弹层是 PopupRoute，仍算在顶。
     final popupOpen = ref.watch(captureSheetOpenProvider);
     final routeCurrent = ModalRoute.of(context)?.isCurrent ?? true;
-    final sceneMounted = use3D && widget.active;
-    final sceneVisible = routeCurrent || popupOpen;
+    // 保活集内的页都挂载场景（含非当前页）；非当前页只暂停+隐藏，不销毁。
+    final sceneMounted = use3D && widget.keptAlive;
+    // 只有"当前页 且 首页在顶（未被大纲覆盖）"才渲染+显示；其余保活页
+    // 一律 display:none + 暂停渲染（省 GPU/主线程，仅占显存，由 LRU 上限兜底）。
+    final sceneVisible = widget.active && (routeCurrent || popupOpen);
 
     // 只有页面真正卸载才复位就绪标记（进大纲不复位——scene 未销毁，
     // 返回时 _sceneReady 仍为真 → 替身早已透明 → 直接露出活场景，零黑帧）
@@ -788,9 +837,12 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
         // 占位主体是**该星球的预渲染真身快照**（three.js 同款一帧：大气辉光/
         // 海面高光/云层），与真实场景视觉一致——诞生/切换加载期不再有
         // "平面/简球 → 精球"的 2D 突变（用户实测残留问题的根治）。
+        // 替身只在"活场景像素不可见"时露出——即场景未显示（非当前页/被大纲
+        // 覆盖）或尚未就绪。保活的非当前页 iframe 是 display:none 的，拖动切页
+        // 途中就靠这张预渲染真身快照顶着；落位成当前页即恢复渲染、替身淡出。
         final standIn = AnimatedOpacity(
           duration: const Duration(milliseconds: 350),
-          opacity: _sceneReady ? 0 : 1,
+          opacity: (sceneVisible && _sceneReady) ? 0 : 1,
           child: _PlanetStandIn(
             diameter: sceneDiameter,
             planet: novel.planet,

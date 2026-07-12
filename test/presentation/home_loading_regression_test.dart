@@ -134,8 +134,11 @@ void main() {
       web,
       contains('bool get _shouldRender => widget.active && widget.visible'),
     );
-    // home 用 sceneVisible（首页在顶或弹层打开）驱动 visible
-    expect(homePage, contains('final sceneVisible = routeCurrent || popupOpen'));
+    // home 用 sceneVisible（当前页 且 首页在顶/弹层打开）驱动 visible
+    expect(
+      homePage,
+      contains('final sceneVisible = widget.active && (routeCurrent || popupOpen)'),
+    );
     expect(homePage, contains('visible: sceneVisible'));
   });
 
@@ -145,6 +148,31 @@ void main() {
     ).readAsStringSync();
     expect(io, contains('final bool visible'));
     expect(io, contains("now ? 'resumeRender()' : 'pauseRender()'"));
+  });
+
+  test('D: 最近看过的星球场景保活（LRU 上限），切回无冷启动窗口', () {
+    // 左右滑切星球时，保活集内（当前页 + 最近几颗）的场景常挂载、不销毁，
+    // 切回即刻恢复活场景 → 无替身、无 2D 突变。上限保护显存。
+    expect(homePage, contains('static const _kMaxAliveScenes'));
+    expect(homePage, contains('final List<int> _aliveNovelIds'));
+    expect(homePage, contains('void _touchAliveScene(int novelId)'));
+    // 挂载看 keptAlive（含非当前的最近页），不再只看 active
+    expect(homePage, contains('final sceneMounted = use3D && widget.keptAlive'));
+    expect(homePage, contains('bool get wantKeepAlive => widget.keptAlive'));
+    // itemBuilder 传入 keptAlive：当前页 或 最近看过
+    expect(
+      homePage,
+      contains('i == _currentPage || _aliveNovelIds.contains(novels[i].id)'),
+    );
+    // 切回本页不复位 _sceneReady（保活场景仍就绪 → 替身恒透明）
+    final duStart = homePage.indexOf(
+      'void didUpdateWidget(covariant _PlanetPage',
+    );
+    final duEnd = homePage.indexOf('  @override', duStart + 10);
+    final didUpdate = homePage.substring(duStart, duEnd);
+    expect(didUpdate, isNot(contains('_markSceneNotReady()')));
+    // 替身只在活场景像素不可见时露出（保活页 display:none 途中靠它顶）
+    expect(homePage, contains('(sceneVisible && _sceneReady) ? 0 : 1'));
   });
 
   test('B: stand-in uses the pre-rendered real snapshot, not a flat crop', () {

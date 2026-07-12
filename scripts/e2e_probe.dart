@@ -104,6 +104,36 @@ Future<void> main(List<String> args) async {
         });
       }
       stdout.writeln('tapped $x,$y');
+    case 'swipe':
+      // 拖拽手势：按下→多步移动→抬起（复现 PageView 左右滑切星球）
+      final x0 = double.parse(args[1]), y0 = double.parse(args[2]);
+      final x1 = double.parse(args[3]), y1 = double.parse(args[4]);
+      await send('Input.dispatchMouseEvent', {
+        'type': 'mousePressed',
+        'x': x0,
+        'y': y0,
+        'button': 'left',
+        'clickCount': 1,
+      });
+      const steps = 12;
+      for (var i = 1; i <= steps; i++) {
+        await send('Input.dispatchMouseEvent', {
+          'type': 'mouseMoved',
+          'x': x0 + (x1 - x0) * i / steps,
+          'y': y0 + (y1 - y0) * i / steps,
+          'button': 'left',
+        });
+        // 步间留时差：Flutter 拖动识别器要靠时间差算速度，瞬时突进会被判成无效
+        await Future<void>.delayed(const Duration(milliseconds: 16));
+      }
+      await send('Input.dispatchMouseEvent', {
+        'type': 'mouseReleased',
+        'x': x1,
+        'y': y1,
+        'button': 'left',
+        'clickCount': 1,
+      });
+      stdout.writeln('swiped $x0,$y0 -> $x1,$y1');
     case 'text':
       await send('Input.insertText', {'text': args[1]});
       stdout.writeln('typed');

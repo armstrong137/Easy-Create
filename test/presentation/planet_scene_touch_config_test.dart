@@ -114,21 +114,25 @@ void main() {
     expect(ioWrapper, contains("'pauseRender()'"));
   });
 
-  test('Web 护栏：同一时刻只让当前星球持有 3D iframe', () {
+  test('Web 护栏：保活最近看过的星球场景，但有 LRU 上限护显存', () {
     expect(
       homePage,
       contains('allowImplicitScrolling: false'),
       reason: 'iPhone Safari 连续滑动时不能预构建相邻 3D iframe，否则多个 WebGL 场景会挤爆页面进程',
     );
+    // 保活集有上限：只留最近 N 颗，太久没看的星球才销毁释放 WebGL
     expect(
       homePage,
-      contains('bool get wantKeepAlive => widget.active'),
-      reason: '非当前星球页离屏后要释放 WebGL iframe 和大贴图，不能常驻 keepAlive',
+      contains('static const _kMaxAliveScenes'),
+      reason: '保活的 3D 场景数必须封顶，否则多颗星球常驻会挤爆 iPhone 页面进程',
     );
+    expect(homePage, contains('_aliveNovelIds.removeAt(0)'), reason: '超上限从最旧处淘汰');
+    // keepAlive/挂载看 keptAlive（当前页 + 最近看过），不再只看 active
+    expect(homePage, contains('bool get wantKeepAlive => widget.keptAlive'));
     expect(
       homePage,
-      contains('final sceneMounted = use3D && widget.active'),
-      reason: '非当前页只显示轻量替身图，不创建真实 3D 场景',
+      contains('final sceneMounted = use3D && widget.keptAlive'),
+      reason: '保活集内的页（含非当前）都挂载真实 3D 场景，切回即刻恢复',
     );
   });
 
@@ -152,8 +156,11 @@ void main() {
     // display:none 让平台视图退出合成——既规避"驻留非当前路由 → CanvasKit 丢
     // canvas → 大纲整页白"，又保留场景存活，返回即恢复，零重建/黑帧。
     expect(homePage, contains('ModalRoute.of(context)?.isCurrent'));
-    // 首页始终挂载场景（sceneMounted 只看 3D 与当前页），可见性交给 visible
-    expect(homePage, contains('final sceneVisible = routeCurrent || popupOpen'));
+    // 保活页始终挂载场景，可见性交给 sceneVisible（当前页且首页在顶才显示）
+    expect(
+      homePage,
+      contains('final sceneVisible = widget.active && (routeCurrent || popupOpen)'),
+    );
     expect(homePage, contains('visible: sceneVisible'));
     // web 端据 visible 切 display，而非移出树/销毁
     expect(
@@ -388,18 +395,20 @@ void main() {
     );
   });
 
-  test('切换星球时以内存稳定优先：不预构建相邻 3D iframe', () {
+  test('切换星球：不预构建相邻页，但保活最近看过的（LRU 上限）', () {
     expect(
       homePage,
       contains('allowImplicitScrolling: false'),
-      reason: 'iPhone Safari 连续滑动时不能让相邻星球提前持有 WebGL 场景',
+      reason: 'iPhone Safari 连续滑动时不能让"尚未看过"的相邻星球提前持有 WebGL 场景',
     );
     expect(
       homePage,
       contains('AutomaticKeepAliveClientMixin'),
-      reason: '仍保留 keepAlive 机制，但只允许当前页保活',
+      reason: 'keepAlive 机制保留：保活集内（当前页 + 最近看过）都常驻，切回不重建',
     );
-    expect(homePage, contains('bool get wantKeepAlive => widget.active'));
+    expect(homePage, contains('bool get wantKeepAlive => widget.keptAlive'));
+    // 上限护显存：太久没看的星球淘汰、销毁
+    expect(homePage, contains('static const _kMaxAliveScenes'));
     expect(homePage, contains('super.build(context)'));
   });
 
