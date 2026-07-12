@@ -124,6 +124,9 @@ class _PlanetSceneState extends ConsumerState<PlanetScene> {
   void didUpdateWidget(PlanetScene old) {
     super.didUpdateWidget(old);
     // 创作能量变化 → 转速经桥下发（星球纹理不会变，novel.planet 不可变）
+    if (old.planet != widget.planet) {
+      _web?.runJavaScript("setPlanet('${widget.planet}')");
+    }
     if (old.spin != widget.spin) {
       _web?.runJavaScript('setSpin(${widget.spin})');
     }

@@ -83,7 +83,7 @@ class _PlanetSceneState extends State<PlanetScene> {
   /// 缩放/旋转 postMessage 全部打空（真实回归：多星球滑页后手势失效）
   static int _instanceSeq = 0;
   late final int _seq = ++_instanceSeq;
-  late final String _viewType = '星球场景_${widget.planet}_$_seq';
+  late final String _viewType = '共享星球场景_$_seq';
   web.HTMLIFrameElement? _iframe;
 
   /// 场景就绪监听（token 匹配本实例，多颗星球互不串扰）
@@ -142,6 +142,9 @@ class _PlanetSceneState extends State<PlanetScene> {
   void didUpdateWidget(PlanetScene old) {
     super.didUpdateWidget(old);
     // iframe 同源，postMessage 直达场景（其 message 监听调 setZoom/setRotation）
+    if (old.planet != widget.planet) {
+      _post({'planet': widget.planet});
+    }
     if (old.zoom != widget.zoom) {
       _post({'zoom': widget.zoom});
     }
@@ -165,7 +168,7 @@ class _PlanetSceneState extends State<PlanetScene> {
     }
   }
 
-  void _post(Map<String, num> msg) =>
+  void _post(Map<String, Object?> msg) =>
       _iframe?.contentWindow?.postMessage(msg.jsify(), '*'.toJS);
 
   @override

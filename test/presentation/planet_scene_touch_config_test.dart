@@ -32,7 +32,7 @@ void main() {
     expect(webWrapper, contains('sceneReady:\$_seq'));
     expect(ioWrapper, contains('"ready":true'));
     expect(homePage, contains('_PlanetStandIn'), reason: '光晕替身');
-    expect(homePage, contains('_sceneReady'));
+    expect(homePage, contains('_sharedSceneReady'));
   });
 
   test('场景就绪必须等待基础地表贴图加载，不能先露黑色空材质球', () {
@@ -45,7 +45,7 @@ void main() {
     expect(sceneHtml, contains('function sendSnapshot'));
     expect(sceneHtml, contains("toDataURL('image/png')"));
     expect(webWrapper, contains('sceneSnapshot:\$_seq'));
-    expect(homePage, contains('_sceneSnapshot'));
+    expect(homePage, contains('_sharedSceneSnapshot'));
     expect(homePage, contains('Image.network'));
   });
 
@@ -109,12 +109,12 @@ void main() {
     expect(sceneHtml, contains('m.snapshot'), reason: '快照改为宿主请求式');
     // 滑过的页 keepAlive 后 iframe 仍后台渲染，多球常驻越用越卡
     expect(sceneHtml, contains('m.render'), reason: '渲染暂停通道');
-    expect(homePage, contains('active: widget.active'));
-    expect(homePage, contains('_snapshotReq++'), reason: '进大纲前拍最新快照');
+    expect(homePage, contains('active: true'));
+    expect(homePage, contains('_sharedSnapshotReq++'), reason: '进大纲前拍最新快照');
     expect(ioWrapper, contains("'pauseRender()'"));
   });
 
-  test('Web 护栏：保活最近看过的星球场景，但有 LRU 上限护显存', () {
+  test('Web 护栏：首页只保留一个共享星球场景，禁止多 WebGL 场景保活', () {
     expect(
       homePage,
       contains('allowImplicitScrolling: false'),
@@ -123,15 +123,18 @@ void main() {
     // 保活集有上限：只留最近 N 颗，太久没看的星球才销毁释放 WebGL
     expect(
       homePage,
-      contains('static const _kMaxAliveScenes'),
+      isNot(contains('static const _kMaxAliveScenes')),
       reason: '保活的 3D 场景数必须封顶，否则多颗星球常驻会挤爆 iPhone 页面进程',
     );
-    expect(homePage, contains('_aliveNovelIds.removeAt(0)'), reason: '超上限从最旧处淘汰');
+    expect(homePage, isNot(contains('_aliveNovelIds')));
     // keepAlive/挂载看 keptAlive（当前页 + 最近看过），不再只看 active
-    expect(homePage, contains('bool get wantKeepAlive => widget.keptAlive'));
     expect(
       homePage,
-      contains('final sceneMounted = use3D && widget.keptAlive'),
+      isNot(contains('bool get wantKeepAlive => widget.keptAlive')),
+    );
+    expect(
+      homePage,
+      isNot(contains('final sceneMounted = use3D && widget.keptAlive')),
       reason: '保活集内的页（含非当前）都挂载真实 3D 场景，切回即刻恢复',
     );
   });
@@ -142,6 +145,14 @@ void main() {
     expect(sceneHtml, contains('function disposeScene()'));
     expect(sceneHtml, contains('renderer.dispose()'));
     expect(sceneHtml, contains('cancelAnimationFrame'));
+  });
+
+  test('Web 护栏：共享场景支持切星球消息并处理 WebGL 上下文丢失', () {
+    expect(webWrapper, contains('old.planet != widget.planet'));
+    expect(webWrapper, contains("'planet': widget.planet"));
+    expect(sceneHtml, contains('window.setPlanet'));
+    expect(sceneHtml, contains('webglcontextlost'));
+    expect(sceneHtml, contains('webglcontextrestored'));
   });
 
   test('性能护栏：旋转重建路径不再每帧复制排序灵感池', () {
@@ -157,11 +168,7 @@ void main() {
     // canvas → 大纲整页白"，又保留场景存活，返回即恢复，零重建/黑帧。
     expect(homePage, contains('ModalRoute.of(context)?.isCurrent'));
     // 保活页始终挂载场景，可见性交给 sceneVisible（当前页且首页在顶才显示）
-    expect(
-      homePage,
-      contains('final sceneVisible = widget.active && (routeCurrent || popupOpen)'),
-    );
-    expect(homePage, contains('visible: sceneVisible'));
+    expect(homePage, contains('visible: routeCurrent || popupOpen'));
     // web 端据 visible 切 display，而非移出树/销毁
     expect(
       webWrapper,
@@ -395,7 +402,7 @@ void main() {
     );
   });
 
-  test('切换星球：不预构建相邻页，但保活最近看过的（LRU 上限）', () {
+  test('切换星球：不预构建相邻页，也不保活多颗 WebGL 场景', () {
     expect(
       homePage,
       contains('allowImplicitScrolling: false'),
@@ -403,16 +410,19 @@ void main() {
     );
     expect(
       homePage,
-      contains('AutomaticKeepAliveClientMixin'),
+      isNot(contains('AutomaticKeepAliveClientMixin')),
       reason: 'keepAlive 机制保留：保活集内（当前页 + 最近看过）都常驻，切回不重建',
     );
-    expect(homePage, contains('bool get wantKeepAlive => widget.keptAlive'));
+    expect(
+      homePage,
+      isNot(contains('bool get wantKeepAlive => widget.keptAlive')),
+    );
     // 上限护显存：太久没看的星球淘汰、销毁
-    expect(homePage, contains('static const _kMaxAliveScenes'));
-    expect(homePage, contains('super.build(context)'));
+    expect(homePage, isNot(contains('static const _kMaxAliveScenes')));
+    expect(homePage, contains('_SharedPlanetSceneLayer'));
   });
 
-  test('删除前一颗星球后不能复用旧 3D 场景状态', () {
+  test('删除前一颗星球后仍复用同一个共享 3D 场景容器', () {
     expect(
       homePage,
       contains("'planet-page-\${novels[i].id}-\${novels[i].planet}'"),
@@ -420,8 +430,13 @@ void main() {
     );
     expect(
       homePage,
-      contains("ValueKey('planet-scene-\${novel.id}-\${novel.planet}')"),
-      reason: '3D 场景初始化时绑定 planet；小说切换后不能沿用旧 iframe/WebView',
+      isNot(contains("ValueKey('planet-scene-\${novel.id}-\${novel.planet}')")),
+      reason: '单场景复用时 PlanetScene 不能再按小说/星球建多份 iframe/WebView',
+    );
+    expect(
+      homePage,
+      contains("ValueKey('shared-planet-scene')"),
+      reason: '共享 3D 场景容器保持同一个平台视图实例，切星球只下发参数',
     );
   });
 

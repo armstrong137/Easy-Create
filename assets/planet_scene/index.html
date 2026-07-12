@@ -48,6 +48,17 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputEncoding = THREE.sRGBEncoding;
 document.body.appendChild(renderer.domElement);
 
+renderer.domElement.addEventListener('webglcontextlost', function (e) {
+  e.preventDefault();
+  window.pauseRender();
+  if (window.parent !== window) {
+    window.parent.postMessage('sceneContextLost:' + (params.get('token') || ''), '*');
+  }
+});
+renderer.domElement.addEventListener('webglcontextrestored', function () {
+  location.reload();
+});
+
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
 
@@ -475,10 +486,19 @@ window.resumeRender = function () {
   requestNextFrame();
 };
 
+window.setPlanet = function (nextPlanet) {
+  if (!nextPlanet || nextPlanet === planetName || !PLANETS[nextPlanet]) return;
+  disposeScene();
+  const nextUrl = new URL(location.href);
+  nextUrl.searchParams.set('planet', nextPlanet);
+  location.replace(nextUrl.toString());
+};
+
 // Web 端（iframe 跨文档）经 postMessage 调同一组接口
 window.addEventListener('message', function (e) {
   const m = e.data;
   if (!m || typeof m !== 'object') return;
+  if (typeof m.planet === 'string') window.setPlanet(m.planet);
   if (typeof m.zoom === 'number') window.setZoom(m.zoom);
   if (typeof m.spin === 'number') window.setSpin(m.spin);
   if (typeof m.autoPrewarm === 'number') window.setAutoPrewarm(m.autoPrewarm > 0);

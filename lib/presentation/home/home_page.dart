@@ -95,22 +95,13 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   int? _pendingNovelId;
 
-  /// 最近看过的星球场景保活集（LRU，末尾最新）：进入过的星球页**不销毁**其
-  /// 3D 场景，只在离开当前页时暂停+隐藏（隐藏而非销毁——对齐进出大纲的做法），
-  /// 切回已看过的星球即刻恢复活场景，**无冷启动窗口 → 无替身 → 无 2D 突变**。
-  /// 上限保护显存：只保活最近 [_kMaxAliveScenes] 颗，更旧的才销毁释放 WebGL。
-  static const _kMaxAliveScenes = 3;
-  final List<int> _aliveNovelIds = [];
-
-  /// 把某颗星球标记为"最近看过"（移到末尾），并把保活集裁到上限内。
-  void _touchAliveScene(int novelId) {
-    _aliveNovelIds
-      ..remove(novelId)
-      ..add(novelId);
-    while (_aliveNovelIds.length > _kMaxAliveScenes) {
-      _aliveNovelIds.removeAt(0);
-    }
-  }
+  _SharedPlanetSceneConfig? _sharedSceneConfig;
+  bool _sharedSceneReady = false;
+  String? _sharedSceneSnapshot;
+  int _sharedSnapshotReq = 0;
+  Completer<void>? _sharedSnapshotCompleter;
+  Timer? _sceneRevealTimer;
+  Timer? _sceneFallbackTimer;
 
   /// 启动封面：事件驱动揭开——等星球场景真正就绪（而非拍脑袋定时），
   /// 封面期间 iframe 初始化/贴图上传/星云编译全部做完，揭开即流畅。
@@ -145,6 +136,12 @@ class _HomePageState extends ConsumerState<HomePage> {
     planetSceneReadyTick.removeListener(_onSceneReadyTick);
     _coverMinTimer?.cancel();
     _coverMaxTimer?.cancel();
+    _sceneRevealTimer?.cancel();
+    _sceneFallbackTimer?.cancel();
+    final snapshotCompleter = _sharedSnapshotCompleter;
+    if (snapshotCompleter != null && !snapshotCompleter.isCompleted) {
+      snapshotCompleter.complete();
+    }
     _pageController.dispose();
     super.dispose();
   }
@@ -188,6 +185,78 @@ class _HomePageState extends ConsumerState<HomePage> {
       _coverVisible = false;
       _coverGone = true;
     });
+  }
+
+  void _onSharedSceneConfig(_SharedPlanetSceneConfig config) {
+    if (_sharedSceneConfig == config) return;
+    final planetChanged = _sharedSceneConfig?.planet != config.planet;
+    setState(() {
+      _sharedSceneConfig = config;
+      if (planetChanged) {
+        _sharedSceneReady = false;
+        _sharedSceneSnapshot = null;
+      }
+    });
+    if (!_sharedSceneReady) _armSceneRevealFallback();
+  }
+
+  Future<void> _awaitSnapshotBeforeRoute() async {
+    if (!mounted ||
+        !ref.read(advanced3DProvider) ||
+        _sharedSceneConfig == null) {
+      return;
+    }
+    final completer = Completer<void>();
+    _sharedSnapshotCompleter = completer;
+    setState(() => _sharedSnapshotReq++);
+    await completer.future.timeout(
+      const Duration(milliseconds: 90),
+      onTimeout: () {},
+    );
+    if (identical(_sharedSnapshotCompleter, completer)) {
+      _sharedSnapshotCompleter = null;
+    }
+  }
+
+  void _scheduleSceneReveal() {
+    _sceneFallbackTimer?.cancel();
+    _sceneFallbackTimer = null;
+    _sceneRevealTimer?.cancel();
+    _sceneRevealTimer = Timer(const Duration(milliseconds: 220), () {
+      if (!mounted) return;
+      if (!_sharedSceneReady) {
+        setState(() => _sharedSceneReady = true);
+      }
+      planetSceneReadyTick.value++;
+    });
+  }
+
+  void _markSceneNotReady() {
+    _sceneRevealTimer?.cancel();
+    _sceneFallbackTimer?.cancel();
+    _sceneFallbackTimer = null;
+    if (!_sharedSceneReady) return;
+    setState(() => _sharedSceneReady = false);
+  }
+
+  void _armSceneRevealFallback() {
+    if (_sceneFallbackTimer != null) return;
+    _sceneFallbackTimer = Timer(const Duration(milliseconds: 3000), () {
+      _sceneFallbackTimer = null;
+      if (!mounted || _sharedSceneReady || _sharedSceneConfig == null) return;
+      setState(() => _sharedSceneReady = true);
+      planetSceneReadyTick.value++;
+    });
+  }
+
+  void _handleSharedSceneSnapshot(String snapshot) {
+    if (mounted && snapshot != _sharedSceneSnapshot) {
+      setState(() => _sharedSceneSnapshot = snapshot);
+    }
+    final completer = _sharedSnapshotCompleter;
+    if (completer != null && !completer.isCompleted) {
+      completer.complete();
+    }
   }
 
   /// 点击标题创建新星球：输入书名，纹理按现有数量轮换分配
@@ -237,15 +306,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     final currentCount = currentNovel == null
         ? 0
         : ref.watch(creativeCountProvider(currentNovel.id)).value ?? 0;
-    // 初始当前页也纳入保活集（onPageChanged 只在切换时触发，起始页需补种）
-    if (currentNovel != null && !_aliveNovelIds.contains(currentNovel.id)) {
-      final seedId = currentNovel.id;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && !_aliveNovelIds.contains(seedId)) {
-          setState(() => _touchAliveScene(seedId));
-        }
-      });
-    }
     _scheduleCreatedNovelJump(novels);
 
     return Scaffold(
@@ -261,6 +321,14 @@ class _HomePageState extends ConsumerState<HomePage> {
               ref.watch(globalCreativeCountProvider).value ?? 0,
             ),
           ),
+          if (novels.isNotEmpty && ref.watch(advanced3DProvider))
+            _SharedPlanetSceneLayer(
+              config: _sharedSceneConfig,
+              visible: routeCurrent || popupOpen,
+              snapshotRequestId: _sharedSnapshotReq,
+              onReady: _scheduleSceneReveal,
+              onSnapshot: _handleSharedSceneSnapshot,
+            ),
           if (novels.isEmpty)
             // 空宇宙：邀请创建第一颗星球。字体与全 App 统一——
             // 中文用霞鹜文楷（正文体），"Create Something" 用品牌衬线斜体
@@ -303,11 +371,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 physics: locked ? const NeverScrollableScrollPhysics() : null,
                 onPageChanged: (i) => setState(() {
                   _currentPage = i;
-                  _touchAliveScene(novels[i].id);
-                  // 已删除的小说从保活集剔除，避免白占额度
-                  _aliveNovelIds.retainWhere(
-                    (id) => novels.any((n) => n.id == id),
-                  );
+                  _markSceneNotReady();
                 }),
                 // ClipRect：放大的星球画布只在本页内铺开，
                 // 不会溢出到相邻星球页造成"两颗星球重影"
@@ -319,9 +383,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                     novel: novels[i],
                     pool: pool,
                     active: i == _currentPage,
-                    // 当前页 或 最近看过的星球 → 保活场景（不销毁，切回即刻恢复）
-                    keptAlive:
-                        i == _currentPage || _aliveNovelIds.contains(novels[i].id),
+                    sharedSceneReady: _sharedSceneReady,
+                    sharedSceneSnapshot: _sharedSceneSnapshot,
+                    onSharedSceneConfig: _onSharedSceneConfig,
+                    onRequestSnapshotBeforeRoute: _awaitSnapshotBeforeRoute,
                   ),
                 ),
               ),
@@ -475,6 +540,105 @@ class _HomeLoadingCover extends StatelessWidget {
   }
 }
 
+class _SharedPlanetSceneConfig {
+  const _SharedPlanetSceneConfig({
+    required this.novelId,
+    required this.planet,
+    required this.spin,
+    required this.diameter,
+    required this.stageScale,
+    required this.zoom,
+    required this.yaw,
+    required this.pitch,
+    required this.autoPrewarm,
+  });
+
+  final int novelId;
+  final String planet;
+  final double spin;
+  final double diameter;
+  final double stageScale;
+  final double zoom;
+  final double yaw;
+  final double pitch;
+  final bool autoPrewarm;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _SharedPlanetSceneConfig &&
+      other.novelId == novelId &&
+      other.planet == planet &&
+      other.spin == spin &&
+      other.diameter == diameter &&
+      other.stageScale == stageScale &&
+      other.zoom == zoom &&
+      other.yaw == yaw &&
+      other.pitch == pitch &&
+      other.autoPrewarm == autoPrewarm;
+
+  @override
+  int get hashCode => Object.hash(
+    novelId,
+    planet,
+    spin,
+    diameter,
+    stageScale,
+    zoom,
+    yaw,
+    pitch,
+    autoPrewarm,
+  );
+}
+
+class _SharedPlanetSceneLayer extends StatelessWidget {
+  const _SharedPlanetSceneLayer({
+    required this.config,
+    required this.visible,
+    required this.snapshotRequestId,
+    required this.onReady,
+    required this.onSnapshot,
+  });
+
+  final _SharedPlanetSceneConfig? config;
+  final bool visible;
+  final int snapshotRequestId;
+  final VoidCallback onReady;
+  final ValueChanged<String> onSnapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final config = this.config;
+    if (config == null) return const SizedBox.shrink();
+    return IgnorePointer(
+      child: Center(
+        child: Transform.translate(
+          offset: const Offset(0, -25),
+          child: OverflowBox(
+            maxWidth: config.diameter,
+            maxHeight: config.diameter,
+            child: PlanetScene(
+              key: const ValueKey('shared-planet-scene'),
+              planet: config.planet,
+              spin: config.spin,
+              diameter: config.diameter,
+              stageScale: config.stageScale,
+              zoom: config.zoom,
+              yaw: config.yaw,
+              pitch: config.pitch,
+              autoPrewarm: config.autoPrewarm,
+              active: true,
+              visible: visible,
+              snapshotRequestId: snapshotRequestId,
+              onReady: onReady,
+              onSnapshot: onSnapshot,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// 单颗星球页：星球 + 环绕灵感 + 书名，点星球进大纲页
 class _PlanetPage extends ConsumerStatefulWidget {
   const _PlanetPage({
@@ -482,7 +646,10 @@ class _PlanetPage extends ConsumerStatefulWidget {
     required this.novel,
     required this.pool,
     required this.active,
-    required this.keptAlive,
+    required this.sharedSceneReady,
+    required this.sharedSceneSnapshot,
+    required this.onSharedSceneConfig,
+    required this.onRequestSnapshotBeforeRoute,
   });
 
   final Novel novel;
@@ -493,14 +660,17 @@ class _PlanetPage extends ConsumerStatefulWidget {
 
   /// 是否保活场景：当前页 或 最近看过的星球。为真则场景常驻树中——
   /// 非当前页只暂停+隐藏 iframe（不销毁），切回即刻恢复，无冷启动窗口。
-  final bool keptAlive;
+  final bool sharedSceneReady;
+  final String? sharedSceneSnapshot;
+  final ValueChanged<_SharedPlanetSceneConfig> onSharedSceneConfig;
+  final Future<void> Function() onRequestSnapshotBeforeRoute;
 
   @override
   ConsumerState<_PlanetPage> createState() => _PlanetPageState();
 }
 
 class _PlanetPageState extends ConsumerState<_PlanetPage>
-    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
+    with SingleTickerProviderStateMixin {
   /// 当前缩放倍率（下发到 3D 场景做镜头推进，不是位图放大）
   double _zoom = 1;
 
@@ -522,25 +692,6 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
   /// 单指落在星球上 → 本次拖动用于转星球（而非翻页切星球）
   bool _rotating = false;
 
-  /// 3D 场景首帧是否已就绪（未就绪/重建期间显示光晕替身，避免空白）
-  bool _sceneReady = false;
-
-  /// 快照请求序号：进大纲前 +1 让场景回传最新一帧（供返回时替身用）
-  int _snapshotReq = 0;
-
-  /// Web 端上一帧低清透明快照：从魔树返回时 iframe 会重建，用它遮住冷启动空白。
-  String? _sceneSnapshot;
-
-  Completer<void>? _snapshotCompleter;
-
-  /// 场景 ready 后再等一小段时间揭开替身：web iframe 首帧 ready 和贴图稳定
-  /// 有时差一个浏览器帧，直接揭开会把黑色球露出来。
-  Timer? _sceneRevealTimer;
-
-  /// 兜底揭示：万一新场景永不发 sceneReady（首次加载/切换异常），到点强制
-  /// 揭示替身、放行交互门，避免替身与手势永久卡死（返回路径原本无兜底）。
-  Timer? _sceneFallbackTimer;
-
   /// 环绕灵感只需要最近几条；缓存后避免旋转 setState 时每帧复制并排序整个灵感池。
   List<Inspiration> _cachedOrbitItems = const [];
 
@@ -551,9 +702,6 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
 
   bool get _canDeleteByLongPress =>
       _zoom <= kPlanetCreateTitleShowZoom && _pinchStartDist <= 0;
-
-  @override
-  bool get wantKeepAlive => widget.keptAlive;
 
   @override
   void initState() {
@@ -568,15 +716,9 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
   @override
   void didUpdateWidget(covariant _PlanetPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.keptAlive != widget.keptAlive) {
-      updateKeepAlive();
-    }
     if (!identical(oldWidget.pool, widget.pool)) {
       _refreshCachedOrbitItems();
     }
-    // 切回本页时**不复位** _sceneReady：保活的场景没销毁、就绪标记仍为真，
-    // 替身恒透明 → 直接恢复活场景，无替身、无冷启动窗口（旧实现每次切页
-    // 都重建场景才需要复位+替身）。只同步"创建标题"的显隐即可。
     if (oldWidget.active != widget.active && widget.active) {
       _syncCreateTitleVisibility();
     }
@@ -592,12 +734,6 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
 
   @override
   void dispose() {
-    final snapshotCompleter = _snapshotCompleter;
-    if (snapshotCompleter != null && !snapshotCompleter.isCompleted) {
-      snapshotCompleter.complete();
-    }
-    _sceneRevealTimer?.cancel();
-    _sceneFallbackTimer?.cancel();
     _glideTicker.dispose();
     super.dispose();
   }
@@ -719,53 +855,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
   }
 
   Future<void> _awaitSnapshotBeforeRoute() async {
-    if (!mounted || !ref.read(advanced3DProvider)) return;
-    final completer = Completer<void>();
-    _snapshotCompleter = completer;
-    setState(() => _snapshotReq++);
-    await completer.future.timeout(
-      const Duration(milliseconds: 90),
-      onTimeout: () {},
-    );
-    if (identical(_snapshotCompleter, completer)) {
-      _snapshotCompleter = null;
-    }
-  }
-
-  void _markSceneNotReady() {
-    _sceneRevealTimer?.cancel();
-    _sceneFallbackTimer?.cancel();
-    _sceneFallbackTimer = null;
-    if (!_sceneReady) return;
-    setState(() => _sceneReady = false);
-  }
-
-  void _scheduleSceneReveal() {
-    _sceneFallbackTimer?.cancel();
-    _sceneFallbackTimer = null;
-    _sceneRevealTimer?.cancel();
-    _sceneRevealTimer = Timer(const Duration(milliseconds: 220), () {
-      if (!mounted) return;
-      if (!_sceneReady) {
-        setState(() => _sceneReady = true);
-      }
-      // 通知启动封面：星球场景已稳定，可以揭开了。
-      planetSceneReadyTick.value++;
-    });
-  }
-
-  /// 场景挂载但迟迟未就绪时启动兜底定时器（幂等：已在计时则跳过）。
-  /// 到点仍未就绪且场景确应在场，则强制揭示，杜绝永久卡在替身/交互禁用态。
-  void _armSceneRevealFallback() {
-    if (_sceneFallbackTimer != null) return;
-    _sceneFallbackTimer = Timer(const Duration(milliseconds: 3000), () {
-      _sceneFallbackTimer = null;
-      if (!mounted || _sceneReady) return;
-      // 仅当场景确应在场（3D 模式且当前页）才强制揭示——卸载态揭示会露空白
-      if (!(ref.read(advanced3DProvider) && widget.active)) return;
-      setState(() => _sceneReady = true);
-      planetSceneReadyTick.value++;
-    });
+    await widget.onRequestSnapshotBeforeRoute();
   }
 
   Future<void> _openOutline(Novel novel) async {
@@ -784,7 +874,6 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
     final novel = widget.novel;
     final count = ref.watch(creativeCountProvider(novel.id)).value ?? 0;
     final use3D = ref.watch(advanced3DProvider);
@@ -797,112 +886,43 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
     final diameter = MediaQuery.sizeOf(context).width * 0.62;
     final ready = use3D || assets != null;
 
-    // 场景生命周期（彻底方案，2026-07）：
-    // - sceneMounted：PlanetScene 是否挂在树中。保活集内的星球页（当前页 +
-    //   最近看过的几颗，keptAlive）全程挂载、**不销毁**——进大纲、左右滑切页
-    //   都只是把 iframe display:none + 暂停渲染，切回/返回即刻恢复。这从根上消除
-    //   "冷启动窗口 → 替身 → 2D 突变 / 黑帧 / 重加载"。只有被 LRU 挤出保活集
-    //   （太久没看的星球）或非 3D 才真正移出树、销毁 WebGL，控住显存。
-    // - sceneVisible：iframe 是否显示+渲染。仅当前页且首页在顶（未被大纲覆盖）
-    //   时为真；其余保活页 display:none+暂停。速记弹层是 PopupRoute，仍算在顶。
     final popupOpen = ref.watch(captureSheetOpenProvider);
     final routeCurrent = ModalRoute.of(context)?.isCurrent ?? true;
-    // 保活集内的页都挂载场景（含非当前页）；非当前页只暂停+隐藏，不销毁。
-    final sceneMounted = use3D && widget.keptAlive;
-    // 只有"当前页 且 首页在顶（未被大纲覆盖）"才渲染+显示；其余保活页
-    // 一律 display:none + 暂停渲染（省 GPU/主线程，仅占显存，由 LRU 上限兜底）。
-    final sceneVisible = widget.active && (routeCurrent || popupOpen);
-
-    // 只有页面真正卸载才复位就绪标记（进大纲不复位——scene 未销毁，
-    // 返回时 _sceneReady 仍为真 → 替身早已透明 → 直接露出活场景，零黑帧）
-    if (!sceneMounted && _sceneReady) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _sceneReady) _markSceneNotReady();
-      });
-    }
-    // 场景已挂载却仍未就绪：启动兜底定时器，防止 sceneReady 永不到达时永久卡替身
-    if (sceneMounted && !_sceneReady) {
-      _armSceneRevealFallback();
-    }
-
-    // 星球本体：真实 3D 场景（阶段八 P2-1）或旧 FragmentShader（回退）
     Widget planetBody() {
       if (use3D) {
-        // 土星的 3D 环带在场景内渲染，加宽画幅给环留位
         final sceneDiameter = novel.planet == 'saturn'
             ? diameter * 1.4
             : diameter;
-        // 替身：场景加载/首帧前占位，就绪后淡出。返回大纲时 _sceneReady 仍真，
-        // 替身恒透明 → 不介入（活场景已在）。
-        // 占位主体是**该星球的预渲染真身快照**（three.js 同款一帧：大气辉光/
-        // 海面高光/云层），与真实场景视觉一致——诞生/切换加载期不再有
-        // "平面/简球 → 精球"的 2D 突变（用户实测残留问题的根治）。
-        // 替身只在"活场景像素不可见"时露出——即场景未显示（非当前页/被大纲
-        // 覆盖）或尚未就绪。保活的非当前页 iframe 是 display:none 的，拖动切页
-        // 途中就靠这张预渲染真身快照顶着；落位成当前页即恢复渲染、替身淡出。
+        final sceneVisible = widget.active && (routeCurrent || popupOpen);
+        if (widget.active) {
+          final config = _SharedPlanetSceneConfig(
+            novelId: novel.id,
+            planet: novel.planet,
+            spin: planetSpin(count),
+            diameter: sceneDiameter * kPlanetSceneStageScale,
+            stageScale: kPlanetSceneStageScale,
+            zoom: _zoom,
+            yaw: _spin.yaw,
+            pitch: _spin.pitch,
+            autoPrewarm: true,
+          );
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && widget.active) widget.onSharedSceneConfig(config);
+          });
+        }
         final standIn = AnimatedOpacity(
           duration: const Duration(milliseconds: 350),
-          opacity: (sceneVisible && _sceneReady) ? 0 : 1,
+          opacity: (sceneVisible && widget.sharedSceneReady) ? 0 : 1,
           child: _PlanetStandIn(
             diameter: sceneDiameter,
             planet: novel.planet,
-            snapshotDataUrl: _sceneSnapshot,
+            snapshotDataUrl: widget.sharedSceneSnapshot,
           ),
         );
-        if (!sceneMounted) {
-          // 页面卸载期：只留替身，保持布局与命中区尺寸
-          return SizedBox.square(
-            key: _planetKey,
-            dimension: sceneDiameter,
-            child: Center(child: standIn),
-          );
-        }
-        // 舞台：画布放到 stage 倍（镜头同步拉远、初始视觉不变），
-        // 放大时星球在画布内铺开不被方形边裁。OverflowBox 使其只溢出绘制、
-        // 不撑大布局与命中区（否则会盖住魔毯球与速记按钮）。
         return SizedBox.square(
           key: _planetKey,
           dimension: sceneDiameter,
-          child: Stack(
-            alignment: Alignment.center,
-            // 替身必须在场景**之上**：从大纲返回时 iframe 是新建的，
-            // three.js 出图前那一秒是黑/暗的，若替身在下会被黑 iframe 盖住
-            //（用户实测"回来黑一秒"）。放到上层，就绪后再淡出露出真景。
-            children: [
-              OverflowBox(
-                maxWidth: sceneDiameter * kPlanetSceneStageScale,
-                maxHeight: sceneDiameter * kPlanetSceneStageScale,
-                child: PlanetScene(
-                  key: ValueKey('planet-scene-${novel.id}-${novel.planet}'),
-                  planet: novel.planet,
-                  spin: planetSpin(count),
-                  diameter: sceneDiameter * kPlanetSceneStageScale,
-                  stageScale: kPlanetSceneStageScale,
-                  zoom: _zoom,
-                  yaw: _spin.yaw,
-                  pitch: _spin.pitch,
-                  autoPrewarm: widget.active,
-                  // 非当前页暂停场景渲染：滑过的页被 keepAlive 后 iframe
-                  // 仍在后台渲染，多球常驻会越用越卡（用户实测）
-                  active: widget.active,
-                  // 被大纲页覆盖时隐藏+暂停 iframe（不销毁），返回即恢复
-                  visible: sceneVisible,
-                  snapshotRequestId: _snapshotReq,
-                  onReady: _scheduleSceneReveal,
-                  onSnapshot: (snapshot) {
-                    if (mounted && snapshot != _sceneSnapshot) {
-                      setState(() => _sceneSnapshot = snapshot);
-                    }
-                    final completer = _snapshotCompleter;
-                    if (completer != null && !completer.isCompleted) {
-                      completer.complete();
-                    }
-                  },
-                ),
-              ),
-              standIn,
-            ],
-          ),
+          child: Center(child: standIn),
         );
       }
       return SizedBox.square(
@@ -951,7 +971,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
                     // 环绕取"最近几条"：缓存按创建时间倒序，旋转 setState 时不再重排全池。
                     items: _cachedOrbitItems,
                     orbitWidth: diameter * 1.5,
-                    enabled: !_zoomed && (!use3D || _sceneReady),
+                    enabled: !_zoomed && (!use3D || widget.sharedSceneReady),
                     // 放大态下环绕文字淡出，避免压在放大的星球上
                     fade: _zoomed,
                     child: planetBody(),
@@ -1064,8 +1084,10 @@ class _PlanetStandIn extends StatelessWidget {
       fit: BoxFit.fill,
       filterQuality: FilterQuality.medium,
       gaplessPlayback: true,
-      errorBuilder: (_, _, _) =>
-          SizedBox.square(dimension: full, child: Center(child: _gradientSphere())),
+      errorBuilder: (_, _, _) => SizedBox.square(
+        dimension: full,
+        child: Center(child: _gradientSphere()),
+      ),
     );
     final snapshot = snapshotDataUrl;
     final content = snapshot == null
@@ -1105,11 +1127,7 @@ class _PlanetStandIn extends StatelessWidget {
         gradient: RadialGradient(
           center: Alignment(-0.3, -0.35),
           radius: 0.95,
-          colors: [
-            Color(0xFF2A4A78),
-            Color(0xFF14264A),
-            Color(0xFF060D1E),
-          ],
+          colors: [Color(0xFF2A4A78), Color(0xFF14264A), Color(0xFF060D1E)],
           stops: [0.0, 0.6, 1.0],
         ),
         boxShadow: [

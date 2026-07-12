@@ -10,43 +10,54 @@ void main() {
   test('outline route waits for snapshot and stand-in is not black', () {
     expect(homePage, contains('_openOutline'));
     expect(homePage, contains('_awaitSnapshotBeforeRoute'));
-    expect(homePage, contains('_snapshotCompleter'));
+    expect(homePage, contains('_sharedSnapshotCompleter'));
     expect(homePage, contains('Duration(milliseconds: 90)'));
     expect(homePage, contains('planet: novel.planet'));
     expect(homePage, isNot(contains('Color(0xFF0E1B33)')));
   });
 
-  test('stand-in sits ABOVE the scene so fresh iframe never flashes black', () {
-    // 返回大纲后 iframe 新建，three.js 出图前可能是黑的；替身必须在场景之上。
-    final scenePos = homePage.indexOf('child: PlanetScene(');
-    final standInPos = homePage.lastIndexOf('standIn,');
-    expect(scenePos, greaterThan(0));
-    expect(
-      standInPos,
-      greaterThan(scenePos),
-      reason: 'standIn 必须排在 PlanetScene 之后，位于 Stack 上层',
-    );
-  });
+  test(
+    'shared scene sits behind page stand-in so switching never exposes black',
+    () {
+      // 返回大纲后 iframe 新建，three.js 出图前可能是黑的；替身必须在场景之上。
+      final sharedScenePos = homePage.indexOf('_SharedPlanetSceneLayer(');
+      final pageViewPos = homePage.indexOf('PageView.builder');
+      expect(sharedScenePos, greaterThan(0));
+      expect(
+        pageViewPos,
+        greaterThan(sharedScenePos),
+        reason: '共享 PlanetScene 必须先于 PageView，页面替身才能遮住切换黑帧',
+      );
+      expect(homePage, contains('onSharedSceneConfig'));
+      expect(homePage, contains('sharedSceneReady'));
+    },
+  );
 
-  test('outline navigation keeps scene alive — no readiness reset before route', () {
-    // 彻底方案（2026-07-11）：进大纲不销毁 iframe、也**不复位** _sceneReady。
-    // iframe 仅被 display:none + 暂停，场景全程存活；返回时 _sceneReady 仍为真
-    //  → 替身恒透明 → 直接露出活场景，零重建、零 1 秒加载、零黑帧。
-    final openOutlinePos = homePage.indexOf('Future<void> _openOutline');
-    final pushPos = homePage.indexOf(
-      'Navigator.of(context).push',
-      openOutlinePos,
-    );
-    final resetPos = homePage.indexOf('_markSceneNotReady();', openOutlinePos);
-    expect(openOutlinePos, greaterThan(0));
-    expect(pushPos, greaterThan(openOutlinePos));
-    // push 之前绝不能出现 _markSceneNotReady（否则返回会先露替身/黑帧）
-    expect(
-      resetPos == -1 || resetPos > pushPos,
-      isTrue,
-      reason: '进大纲不复位就绪：场景不销毁，返回即露活场景',
-    );
-  });
+  test(
+    'outline navigation keeps scene alive — no readiness reset before route',
+    () {
+      // 彻底方案（2026-07-11）：进大纲不销毁 iframe、也**不复位** _sceneReady。
+      // iframe 仅被 display:none + 暂停，场景全程存活；返回时 _sceneReady 仍为真
+      //  → 替身恒透明 → 直接露出活场景，零重建、零 1 秒加载、零黑帧。
+      final openOutlinePos = homePage.indexOf('Future<void> _openOutline');
+      final pushPos = homePage.indexOf(
+        'Navigator.of(context).push',
+        openOutlinePos,
+      );
+      final resetPos = homePage.indexOf(
+        '_markSceneNotReady();',
+        openOutlinePos,
+      );
+      expect(openOutlinePos, greaterThan(0));
+      expect(pushPos, greaterThan(openOutlinePos));
+      // push 之前绝不能出现 _markSceneNotReady（否则返回会先露替身/黑帧）
+      expect(
+        resetPos == -1 || resetPos > pushPos,
+        isTrue,
+        reason: '进大纲不复位就绪：场景不销毁，返回即露活场景',
+      );
+    },
+  );
 
   test(
     'scene reveal is delayed after ready so black first frames stay covered',
@@ -61,7 +72,9 @@ void main() {
   test(
     'web iframe canvas stays transparent until real textured frame is ready',
     () {
-      final sceneHtml = File('assets/planet_scene/index.html').readAsStringSync();
+      final sceneHtml = File(
+        'assets/planet_scene/index.html',
+      ).readAsStringSync();
       final webWrapper = File(
         'lib/presentation/home/planet_scene/planet_scene_web.dart',
       ).readAsStringSync();
@@ -73,15 +86,21 @@ void main() {
     },
   );
 
-  test('planet stand-in textures are precached before direct page switching', () {
-    expect(homePage, contains('_precachePlanetStandIns'));
-    expect(homePage, contains('for (final planet in kPlanetTextures)'));
-    expect(homePage, contains("precacheImage(AssetImage('assets/textures/\$planet.jpg')"));
-    expect(
-      homePage,
-      contains("AssetImage('assets/planet_scene/standins/\$planet.png')"),
-    );
-  });
+  test(
+    'planet stand-in textures are precached before direct page switching',
+    () {
+      expect(homePage, contains('_precachePlanetStandIns'));
+      expect(homePage, contains('for (final planet in kPlanetTextures)'));
+      expect(
+        homePage,
+        contains("precacheImage(AssetImage('assets/textures/\$planet.jpg')"),
+      );
+      expect(
+        homePage,
+        contains("AssetImage('assets/planet_scene/standins/\$planet.png')"),
+      );
+    },
+  );
 
   test(
     'planet long press delete only works at normal size with one pointer',
@@ -94,7 +113,10 @@ void main() {
   );
 
   test('orbiting inspirations stay paused until 3D scene is stable', () {
-    expect(homePage, contains('enabled: !_zoomed && (!use3D || _sceneReady)'));
+    expect(
+      homePage,
+      contains('enabled: !_zoomed && (!use3D || widget.sharedSceneReady)'),
+    );
   });
 
   test('brand title style is shared by boot cover and create title', () {
@@ -117,11 +139,10 @@ void main() {
     expect(homePage, contains('valueListenable: planetCreateTitleVisible'));
   });
 
-  test('quick capture popup keeps web planet scene mounted', () {
+  test('quick capture popup keeps shared web planet scene mounted', () {
     expect(homePage, contains('captureSheetOpenProvider'));
     expect(homePage, contains('routeCurrent || popupOpen'));
-    // 弹层打开时 sceneVisible 仍真 → iframe 不隐藏；只有页面真正卸载才复位就绪
-    expect(homePage, contains('if (!sceneMounted && _sceneReady)'));
+    expect(homePage, contains('visible: routeCurrent || popupOpen'));
   });
 
   test('A: web scene is hidden+paused on navigation, not destroyed', () {
@@ -129,17 +150,16 @@ void main() {
       'lib/presentation/home/planet_scene/planet_scene_web.dart',
     ).readAsStringSync();
     // 进/出大纲切 iframe display 而非 remove；仅真正卸载才 dispose
-    expect(web, contains("_iframe?.style.display = widget.visible ? '' : 'none'"));
+    expect(
+      web,
+      contains("_iframe?.style.display = widget.visible ? '' : 'none'"),
+    );
     expect(
       web,
       contains('bool get _shouldRender => widget.active && widget.visible'),
     );
     // home 用 sceneVisible（当前页 且 首页在顶/弹层打开）驱动 visible
-    expect(
-      homePage,
-      contains('final sceneVisible = widget.active && (routeCurrent || popupOpen)'),
-    );
-    expect(homePage, contains('visible: sceneVisible'));
+    expect(homePage, contains('visible: routeCurrent || popupOpen'));
   });
 
   test('A: io scene mirrors visible param for pause/resume parity', () {
@@ -150,39 +170,31 @@ void main() {
     expect(io, contains("now ? 'resumeRender()' : 'pauseRender()'"));
   });
 
-  test('D: 最近看过的星球场景保活（LRU 上限），切回无冷启动窗口', () {
-    // 左右滑切星球时，保活集内（当前页 + 最近几颗）的场景常挂载、不销毁，
-    // 切回即刻恢复活场景 → 无替身、无 2D 突变。上限保护显存。
-    expect(homePage, contains('static const _kMaxAliveScenes'));
-    expect(homePage, contains('final List<int> _aliveNovelIds'));
-    expect(homePage, contains('void _touchAliveScene(int novelId)'));
-    // 挂载看 keptAlive（含非当前的最近页），不再只看 active
-    expect(homePage, contains('final sceneMounted = use3D && widget.keptAlive'));
-    expect(homePage, contains('bool get wantKeepAlive => widget.keptAlive'));
-    // itemBuilder 传入 keptAlive：当前页 或 最近看过
-    expect(
-      homePage,
-      contains('i == _currentPage || _aliveNovelIds.contains(novels[i].id)'),
-    );
-    // 切回本页不复位 _sceneReady（保活场景仍就绪 → 替身恒透明）
-    final duStart = homePage.indexOf(
-      'void didUpdateWidget(covariant _PlanetPage',
-    );
-    final duEnd = homePage.indexOf('  @override', duStart + 10);
-    final didUpdate = homePage.substring(duStart, duEnd);
-    expect(didUpdate, isNot(contains('_markSceneNotReady()')));
-    // 替身只在活场景像素不可见时露出（保活页 display:none 途中靠它顶）
-    expect(homePage, contains('(sceneVisible && _sceneReady) ? 0 : 1'));
-  });
+  test(
+    'D: homepage owns exactly one shared PlanetScene to avoid iOS Safari OOM',
+    () {
+      expect(homePage, contains('_SharedPlanetSceneLayer'));
+      expect(homePage, isNot(contains('static const _kMaxAliveScenes')));
+      expect(homePage, isNot(contains('final List<int> _aliveNovelIds')));
+      expect(homePage, isNot(contains('void _touchAliveScene(int novelId)')));
+      expect(homePage, isNot(contains('widget.keptAlive')));
+
+      final pageViewStart = homePage.indexOf('PageView.builder');
+      final settingsStart = homePage.indexOf('// 左上角设置入口', pageViewStart);
+      final pageViewBlock = homePage.substring(pageViewStart, settingsStart);
+      expect(pageViewBlock, isNot(contains('PlanetScene(')));
+      expect(
+        homePage,
+        contains('(sceneVisible && widget.sharedSceneReady) ? 0 : 1'),
+      );
+    },
+  );
 
   test('B: stand-in uses the pre-rendered real snapshot, not a flat crop', () {
     // 替身底图是每颗星球的预渲染真身快照（three.js 同款一帧），与真实场景
     // 视觉一致，消除"平面/简球 → 精球"的 2D 突变（用户录屏残留问题的根治）。
     expect(homePage, contains('planet: novel.planet'));
-    expect(
-      homePage,
-      contains("'assets/planet_scene/standins/\$planet.png'"),
-    );
+    expect(homePage, contains("'assets/planet_scene/standins/\$planet.png'"));
     // 快照补 frameBuilder：解码完成前透明露底快照，杜绝透明缝黑帧
     expect(homePage, contains('frameBuilder:'));
     // _PlanetStandIn 内部不再贴平面世界地图裁剪
@@ -197,12 +209,18 @@ void main() {
     );
   });
 
-  test('C: scene reveal has a fallback timer so it never sticks on stand-in', () {
-    expect(homePage, contains('Timer? _sceneFallbackTimer'));
-    expect(homePage, contains('_armSceneRevealFallback'));
-    expect(homePage, contains('if (sceneMounted && !_sceneReady)'));
-    expect(homePage, contains('Duration(milliseconds: 3000)'));
-  });
+  test(
+    'C: scene reveal has a fallback timer so it never sticks on stand-in',
+    () {
+      expect(homePage, contains('Timer? _sceneFallbackTimer'));
+      expect(homePage, contains('_armSceneRevealFallback'));
+      expect(
+        homePage,
+        contains('if (!_sharedSceneReady) _armSceneRevealFallback()'),
+      );
+      expect(homePage, contains('Duration(milliseconds: 3000)'));
+    },
+  );
 
   test('quick capture sheets keep the planet readable behind input', () {
     final textSheet = File(
