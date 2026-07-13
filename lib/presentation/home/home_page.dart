@@ -288,10 +288,27 @@ class _HomePageState extends ConsumerState<HomePage> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRevealCover());
     }
 
+    // 删除当前页那颗星球后，PageView 不会回调 onPageChanged，_currentPage 会
+    // 停在越界的旧下标——若仍拿它判 active，剩下的页( i=0 )反而非 active，不会
+    // 把新星球配置发给共享 3D 场景，画面残留删除前那颗（表现为"地球变火星"）。
+    // 故统一 clamp 出安全页码，作为"当前页 / active 判断"的唯一依据，并在越界时
+    // 下一帧把控制器与 _currentPage 一并回正。
+    final safePage = novels.isEmpty
+        ? 0
+        : _currentPage.clamp(0, novels.length - 1);
+    if (_currentPage != safePage) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _currentPage == safePage) return;
+        if (_pageController.hasClients &&
+            _pageController.page?.round() != safePage) {
+          _pageController.jumpToPage(safePage);
+        }
+        setState(() => _currentPage = safePage);
+      });
+    }
+
     // 当前星球的创作量 → 星空亮度（无星球时最暗）
-    final currentNovel = novels.isEmpty
-        ? null
-        : novels[_currentPage.clamp(0, novels.length - 1)];
+    final currentNovel = novels.isEmpty ? null : novels[safePage];
     final currentCount = currentNovel == null
         ? 0
         : ref.watch(creativeCountProvider(currentNovel.id)).value ?? 0;
@@ -370,7 +387,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ),
                     novel: novels[i],
                     pool: pool,
-                    active: i == _currentPage,
+                    // active 用回正后的 safePage：删掉当前页后，剩余页立刻成为
+                    // active 并把新星球配置发给共享场景，杜绝残留删除前那颗。
+                    active: i == safePage,
                     sharedSceneReady: _sharedSceneReady,
                     sharedSceneSnapshot: _sharedSceneSnapshot,
                     onSharedSceneConfig: _onSharedSceneConfig,

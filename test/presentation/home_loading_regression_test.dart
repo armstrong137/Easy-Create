@@ -212,6 +212,30 @@ void main() {
     expect(homePage, isNot(contains('_markSceneNotReady')));
   });
 
+  test('F: 删除当前页星球后用 safePage 判定 active，杜绝残留删除前那颗', () {
+    // 删掉当前页星球后 PageView 不回调 onPageChanged，_currentPage 越界。active
+    // 若仍用 _currentPage，剩余页( i=0 )反而非 active，不会把新星球配置发给共享
+    // 场景，画面残留删除前那颗（"地球变火星"）。故 active 必须用 clamp 出的 safePage。
+    expect(
+      homePage,
+      contains('final safePage = novels.isEmpty'),
+      reason: 'build 里要统一算出安全页码',
+    );
+    expect(homePage, contains('_currentPage.clamp(0, novels.length - 1)'));
+    expect(
+      homePage,
+      contains('active: i == safePage'),
+      reason: 'active 必须用回正后的 safePage，而非可能越界的 _currentPage',
+    );
+    expect(
+      homePage,
+      isNot(contains('active: i == _currentPage')),
+      reason: '越界的 _currentPage 会让删除后剩余页非 active → 残留删除前那颗',
+    );
+    // 越界时下一帧把控制器与状态一并回正
+    expect(homePage, contains('_pageController.jumpToPage(safePage)'));
+  });
+
   test('B: stand-in uses the pre-rendered real snapshot, not a flat crop', () {
     // 替身底图是每颗星球的预渲染真身快照（three.js 同款一帧），与真实场景
     // 视觉一致，消除"平面/简球 → 精球"的 2D 突变（用户录屏残留问题的根治）。

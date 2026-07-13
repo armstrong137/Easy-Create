@@ -104,6 +104,26 @@ Future<void> main(List<String> args) async {
         });
       }
       stdout.writeln('tapped $x,$y');
+    case 'hold':
+      // 长按：按下→保持 ms 毫秒→抬起（复现长按星球弹删除确认）
+      final hx = double.parse(args[1]), hy = double.parse(args[2]);
+      final ms = args.length > 3 ? int.parse(args[3]) : 700;
+      await send('Input.dispatchMouseEvent', {
+        'type': 'mousePressed',
+        'x': hx,
+        'y': hy,
+        'button': 'left',
+        'clickCount': 1,
+      });
+      await Future<void>.delayed(Duration(milliseconds: ms));
+      await send('Input.dispatchMouseEvent', {
+        'type': 'mouseReleased',
+        'x': hx,
+        'y': hy,
+        'button': 'left',
+        'clickCount': 1,
+      });
+      stdout.writeln('held $hx,$hy ${ms}ms');
     case 'swipe':
       // 拖拽手势：按下→多步移动→抬起（复现 PageView 左右滑切星球）
       final x0 = double.parse(args[1]), y0 = double.parse(args[2]);
