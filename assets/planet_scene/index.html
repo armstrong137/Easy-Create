@@ -29,6 +29,7 @@ let planetName = params.get('planet') || 'earth';
 let spinRevPerSec = parseFloat(params.get('spin') || '0.008');
 const stageScale = Math.max(1, parseFloat(params.get('stage') || '1'));
 let autoPrewarmEnabled = params.get('autoPrewarm') !== '0';
+const initialPrewarmPlanets = (params.get('prewarm') || '').split(',').filter(Boolean);
 
 // ---------- 渲染器：透明底叠在 Flutter 星空之上 ----------
 const renderer = new THREE.WebGLRenderer({
@@ -570,7 +571,21 @@ function loadTexAsync(path, srgbFlag) {
     t.anisotropy = renderer.capabilities.getMaxAnisotropy();
   });
 }
-function preloadPlanetTextures(pcfg) {
+const planetTextureCache = new Map();
+const maxPlanetTextureCache = 2;
+
+function planetNameForConfig(pcfg) {
+  return Object.keys(PLANETS).find(function (name) { return PLANETS[name] === pcfg; });
+}
+
+function disposeTextureBundle(bundle) {
+  if (!bundle) return;
+  Object.keys(bundle).forEach(function (key) {
+    if (bundle[key] && bundle[key].dispose) bundle[key].dispose();
+  });
+}
+
+function loadPlanetTextureBundle(pcfg) {
   const keys = ['map'];
   const jobs = [loadTexAsync(pcfg.map, true)];
   if (pcfg.normal) { keys.push('normal'); jobs.push(loadTexAsync(pcfg.normal, false)); }
@@ -584,6 +599,102 @@ function preloadPlanetTextures(pcfg) {
     return out;
   });
 }
+
+function preloadPlanetTextureBundle(name) {
+  if (!name || !PLANETS[name]) return Promise.resolve(null);
+  const cached = planetTextureCache.get(name);
+  if (cached) {
+    cached.lastUsed = performance.now();
+    return cached.promise;
+  }
+  const record = {
+    name: name,
+    bundle: null,
+    lastUsed: performance.now(),
+    promise: null,
+  };
+  record.promise = loadPlanetTextureBundle(PLANETS[name]).then(function (bundle) {
+    if (disposed) {
+      disposeTextureBundle(bundle);
+      return null;
+    }
+    record.bundle = bundle;
+    return bundle;
+  });
+  planetTextureCache.set(name, record);
+  trimPlanetTextureCache([planetName, name]);
+  return record.promise;
+}
+
+function takePlanetTextureBundle(name) {
+  const cached = planetTextureCache.get(name);
+  if (cached) {
+    planetTextureCache.delete(name);
+    return cached.promise;
+  }
+  return preloadPlanetTextureBundle(name).then(function (bundle) {
+    planetTextureCache.delete(name);
+    return bundle;
+  });
+}
+
+function warmPlanetBundleOnGpu(bundle) {
+  if (!bundle || bundle.gpuWarm) return;
+  const textures = Object.keys(bundle).map(function (key) { return bundle[key]; }).filter(Boolean);
+  let index = 0;
+  function warmNext() {
+    if (index >= textures.length || disposed) {
+      bundle.gpuWarm = true;
+      return;
+    }
+    warmTextureOnGpu(textures[index]);
+    index += 1;
+    if (index < textures.length) runWhenIdle(warmNext);
+  }
+  runWhenIdle(warmNext);
+}
+
+function trimPlanetTextureCache(keepNames) {
+  const keep = new Set(keepNames || []);
+  while (planetTextureCache.size > maxPlanetTextureCache) {
+    let oldestKey = null;
+    let oldestTime = Infinity;
+    planetTextureCache.forEach(function (record, key) {
+      if (keep.has(key) || !record.bundle) return;
+      if (record.lastUsed < oldestTime) {
+        oldestTime = record.lastUsed;
+        oldestKey = key;
+      }
+    });
+    if (!oldestKey) return;
+    const removed = planetTextureCache.get(oldestKey);
+    planetTextureCache.delete(oldestKey);
+    disposeTextureBundle(removed && removed.bundle);
+  }
+}
+
+function preloadPlanetTextures(pcfg) {
+  const name = planetNameForConfig(pcfg);
+  return name ? preloadPlanetTextureBundle(name) : loadPlanetTextureBundle(pcfg);
+}
+
+window.prewarmPlanets = function (names) {
+  if (!Array.isArray(names) || disposed) return;
+  const nextNames = names
+    .filter(function (name) { return name && PLANETS[name] && name !== planetName; })
+    .slice(0, maxPlanetTextureCache);
+  const keep = nextNames.concat([planetName]);
+  nextNames.forEach(function (name) {
+    runWhenIdle(function () {
+      preloadPlanetTextureBundle(name).then(function (bundle) {
+        if (disposed || name === planetName) return;
+        warmPlanetBundleOnGpu(bundle);
+        trimPlanetTextureCache(keep);
+      });
+    });
+  });
+  trimPlanetTextureCache(keep);
+};
 
 // 切星球：**原地换贴图**——不销毁 renderer、不换 iframe、不重载页面，全程单
 // canvas/context。旧星球持续渲染 → 新星球全部贴图就绪 → 一次性接管，沿用
@@ -601,7 +712,7 @@ window.setPlanet = function (nextPlanet, state) {
   planetSwapping = true;
   const nextName = nextPlanet;
   const nextCfg = PLANETS[nextName];
-  preloadPlanetTextures(nextCfg).then(function (pre) {
+  takePlanetTextureBundle(nextName).then(function (pre) {
     if (disposed) { planetSwapping = false; return; }
     const old = { planet: planet, nightShell: nightShell, clouds: clouds, ring: ring, baseTex: baseTex };
     // 释放旧 LOD 状态（新星球重建）
@@ -646,6 +757,7 @@ window.addEventListener('message', function (e) {
   if (typeof m.zoom === 'number') window.setZoom(m.zoom);
   if (typeof m.spin === 'number') window.setSpin(m.spin);
   if (typeof m.autoPrewarm === 'number') window.setAutoPrewarm(m.autoPrewarm > 0);
+  if (Array.isArray(m.prewarmPlanets)) window.prewarmPlanets(m.prewarmPlanets);
   if (typeof m.yaw === 'number' && typeof m.pitch === 'number') {
     window.setRotation(m.yaw, m.pitch);
   }
@@ -737,6 +849,9 @@ function animate() {
 updateFraming();
 requestNextFrame();
 setTimeout(scheduleInitialScenePrewarm, 0);
+if (initialPrewarmPlanets.length) {
+  setTimeout(function () { window.prewarmPlanets(initialPrewarmPlanets); }, 600);
+}
 
 window.addEventListener('resize', updateFraming);
 
@@ -749,6 +864,10 @@ function disposeScene() {
     clearTimeout(initialPrewarmTimer);
     initialPrewarmTimer = 0;
   }
+  planetTextureCache.forEach(function (record) {
+    disposeTextureBundle(record.bundle);
+  });
+  planetTextureCache.clear();
   window.removeEventListener('resize', updateFraming);
   if (hiTex) hiTex.dispose();
   if (baseTex) baseTex.dispose();

@@ -1,6 +1,7 @@
 import 'dart:js_interop';
 import 'dart:ui_web' as ui_web;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:web/web.dart' as web;
 
@@ -23,6 +24,7 @@ class PlanetScene extends StatefulWidget {
     this.yaw = 0,
     this.pitch = 0,
     this.autoPrewarm = true,
+    this.prewarmPlanets = const [],
     this.active = true,
     this.visible = true,
     this.snapshotRequestId = 0,
@@ -51,6 +53,8 @@ class PlanetScene extends StatefulWidget {
 
   /// 是否允许当前场景在加载后主动预热高清 LOD；相邻预构建页会关闭它以节省显存。
   final bool autoPrewarm;
+
+  final List<String> prewarmPlanets;
 
   /// 是否为当前可见页：非当前页暂停场景渲染——滑过的页被 keepAlive 后
   /// iframe 仍在后台 rAF 渲染，多球常驻会越用越卡（用户实测）
@@ -113,6 +117,7 @@ class _PlanetSceneState extends State<PlanetScene> {
             '?planet=${widget.planet}&spin=${widget.spin}'
             '&stage=${widget.stageScale}'
             '&autoPrewarm=${widget.autoPrewarm ? 1 : 0}'
+            '&prewarm=${Uri.encodeComponent(widget.prewarmPlanets.join(','))}'
             '&token=$_seq'
         ..style.border = 'none'
         ..style.width = '100%'
@@ -163,6 +168,9 @@ class _PlanetSceneState extends State<PlanetScene> {
     }
     if (old.autoPrewarm != widget.autoPrewarm) {
       _post({'autoPrewarm': widget.autoPrewarm ? 1 : 0});
+    }
+    if (!listEquals(old.prewarmPlanets, widget.prewarmPlanets)) {
+      _post({'prewarmPlanets': widget.prewarmPlanets});
     }
     // 进/出大纲：切 iframe 显隐（display:none 让平台视图退出合成，规避大纲白屏）
     if (old.visible != widget.visible) {

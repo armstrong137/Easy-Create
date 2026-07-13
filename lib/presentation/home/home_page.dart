@@ -92,6 +92,8 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   /// 当前浏览的星球下标（星空亮度跟随它对应的小说）
   int _currentPage = 0;
+  int _visibleStarfieldPage = 0;
+  int? _pendingStarfieldPage;
 
   int? _pendingNovelId;
 
@@ -147,6 +149,19 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   void _onSceneReadyTick() => _maybeRevealCover();
+
+  void _onPlanetSceneReady() {
+    _scheduleSceneReveal();
+    final pending = _pendingStarfieldPage;
+    if (pending != null && pending != _visibleStarfieldPage) {
+      setState(() {
+        _visibleStarfieldPage = pending;
+        _pendingStarfieldPage = null;
+      });
+    } else if (pending != null) {
+      _pendingStarfieldPage = null;
+    }
+  }
 
   void _precachePlanetStandIns() {
     for (final planet in kPlanetTextures) {
@@ -248,6 +263,19 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
+  List<String> _neighborPlanetsFor(List<Novel> novels, int safePage) {
+    if (novels.length <= 1) return const [];
+    final out = <String>[];
+    for (final index in [safePage - 1, safePage + 1]) {
+      if (index < 0 || index >= novels.length) continue;
+      final planet = novels[index].planet;
+      if (planet != novels[safePage].planet && !out.contains(planet)) {
+        out.add(planet);
+      }
+    }
+    return out;
+  }
+
   /// 点击标题创建新星球：输入书名，纹理按现有数量轮换分配
   Future<void> _createNovel() async {
     final title = await _promptText(
@@ -307,11 +335,22 @@ class _HomePageState extends ConsumerState<HomePage> {
       });
     }
 
-    // 当前星球的创作量 → 星空亮度（无星球时最暗）
-    final currentNovel = novels.isEmpty ? null : novels[safePage];
-    final currentCount = currentNovel == null
+    final use3D = ref.watch(advanced3DProvider);
+    final starfieldPage = novels.isEmpty
         ? 0
-        : ref.watch(creativeCountProvider(currentNovel.id)).value ?? 0;
+        : _visibleStarfieldPage.clamp(0, novels.length - 1);
+    if (_visibleStarfieldPage != starfieldPage) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _visibleStarfieldPage == starfieldPage) return;
+        setState(() => _visibleStarfieldPage = starfieldPage);
+      });
+    }
+
+    // 当前星球的创作量 → 星空亮度（无星球时最暗）
+    final starfieldNovel = novels.isEmpty ? null : novels[starfieldPage];
+    final starfieldCount = starfieldNovel == null
+        ? 0
+        : ref.watch(creativeCountProvider(starfieldNovel.id)).value ?? 0;
     _scheduleCreatedNovelJump(novels);
 
     return Scaffold(
@@ -321,18 +360,19 @@ class _HomePageState extends ConsumerState<HomePage> {
           // 动态层跟随高级效果开关：测试/低端机回退纯静态照片。
           // 演化速度随全局创作量（所有星球的章+节+灵感）：越写越"快进"
           Starfield(
-            brightness: starBrightness(currentCount),
-            animated: ref.watch(advanced3DProvider),
+            brightness: starBrightness(starfieldCount),
+            animated: use3D,
             evolveSpeed: nebulaEvolveSpeed(
               ref.watch(globalCreativeCountProvider).value ?? 0,
             ),
           ),
-          if (novels.isNotEmpty && ref.watch(advanced3DProvider))
+          if (novels.isNotEmpty && use3D)
             _SharedPlanetSceneLayer(
               config: _sharedSceneConfig,
+              prewarmPlanets: _neighborPlanetsFor(novels, safePage),
               visible: routeCurrent || popupOpen,
               snapshotRequestId: _sharedSnapshotReq,
-              onReady: _scheduleSceneReveal,
+              onReady: _onPlanetSceneReady,
               onSnapshot: _handleSharedSceneSnapshot,
             ),
           if (novels.isEmpty)
@@ -377,7 +417,15 @@ class _HomePageState extends ConsumerState<HomePage> {
                 physics: locked ? const NeverScrollableScrollPhysics() : null,
                 // 切星球**不复位就绪、不盖替身**：共享场景原地换贴图，旧星球
                 // 持续显示到新贴图就绪再一次性接管（planet_scene/index.html:setPlanet）。
-                onPageChanged: (i) => setState(() => _currentPage = i),
+                onPageChanged: (i) => setState(() {
+                  _currentPage = i;
+                  if (use3D) {
+                    _pendingStarfieldPage = i;
+                  } else {
+                    _visibleStarfieldPage = i;
+                    _pendingStarfieldPage = null;
+                  }
+                }),
                 // ClipRect：放大的星球画布只在本页内铺开，
                 // 不会溢出到相邻星球页造成"两颗星球重影"
                 itemBuilder: (context, i) => ClipRect(
@@ -600,6 +648,7 @@ class _SharedPlanetSceneConfig {
 class _SharedPlanetSceneLayer extends StatelessWidget {
   const _SharedPlanetSceneLayer({
     required this.config,
+    required this.prewarmPlanets,
     required this.visible,
     required this.snapshotRequestId,
     required this.onReady,
@@ -607,6 +656,7 @@ class _SharedPlanetSceneLayer extends StatelessWidget {
   });
 
   final _SharedPlanetSceneConfig? config;
+  final List<String> prewarmPlanets;
   final bool visible;
   final int snapshotRequestId;
   final VoidCallback onReady;
@@ -633,6 +683,7 @@ class _SharedPlanetSceneLayer extends StatelessWidget {
               yaw: config.yaw,
               pitch: config.pitch,
               autoPrewarm: config.autoPrewarm,
+              prewarmPlanets: prewarmPlanets,
               active: true,
               visible: visible,
               snapshotRequestId: snapshotRequestId,

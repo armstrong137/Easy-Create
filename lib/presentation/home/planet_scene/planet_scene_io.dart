@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -22,6 +25,7 @@ class PlanetScene extends ConsumerStatefulWidget {
     this.yaw = 0,
     this.pitch = 0,
     this.autoPrewarm = true,
+    this.prewarmPlanets = const [],
     this.active = true,
     this.visible = true,
     this.snapshotRequestId = 0,
@@ -52,6 +56,8 @@ class PlanetScene extends ConsumerStatefulWidget {
   ///
   /// 首页会预构建相邻页来减少切星球卡顿；相邻页只暖基础场景，避免多颗星球同时抢高清显存。
   final bool autoPrewarm;
+
+  final List<String> prewarmPlanets;
 
   /// 是否为当前可见页：非当前页暂停场景渲染（多球常驻越用越卡）
   final bool active;
@@ -113,7 +119,8 @@ class _PlanetSceneState extends ConsumerState<PlanetScene> {
           // lod=mid：移动端放大档封顶 4096。8192 单张纹理占显存约 134MB，
           // iPhone Safari/WKWebView 会直接卡死
           '&stage=${widget.stageScale}&lod=mid'
-          '&autoPrewarm=${widget.autoPrewarm ? 1 : 0}',
+          '&autoPrewarm=${widget.autoPrewarm ? 1 : 0}'
+          '&prewarm=${Uri.encodeComponent(widget.prewarmPlanets.join(','))}',
         ),
       );
     if (!mounted) return;
@@ -146,6 +153,11 @@ class _PlanetSceneState extends ConsumerState<PlanetScene> {
     }
     if (old.autoPrewarm != widget.autoPrewarm) {
       _web?.runJavaScript('setAutoPrewarm(${widget.autoPrewarm})');
+    }
+    if (!listEquals(old.prewarmPlanets, widget.prewarmPlanets)) {
+      _web?.runJavaScript(
+        'prewarmPlanets(${jsonEncode(widget.prewarmPlanets)})',
+      );
     }
     // 非当前页 或 被大纲页覆盖 → 暂停渲染（多球常驻越用越卡 / 覆盖时省电）
     final was = old.active && old.visible;

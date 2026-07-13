@@ -65,7 +65,8 @@ void main() {
       expect(homePage, contains('_scheduleSceneReveal'));
       expect(homePage, contains('_sceneRevealTimer'));
       expect(homePage, contains('Duration(milliseconds: 220)'));
-      expect(homePage, contains('onReady: _scheduleSceneReveal'));
+      expect(homePage, contains('onReady: _onPlanetSceneReady'));
+      expect(homePage, contains('void _onPlanetSceneReady()'));
     },
   );
 
@@ -263,7 +264,9 @@ void main() {
       // 冷启动首个 config 未就绪时启动兜底揭幕定时器
       expect(
         homePage,
-        contains('if (firstConfig && !_sharedSceneReady) _armSceneRevealFallback()'),
+        contains(
+          'if (firstConfig && !_sharedSceneReady) _armSceneRevealFallback()',
+        ),
       );
       expect(homePage, contains('Duration(milliseconds: 3000)'));
     },

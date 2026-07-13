@@ -178,6 +178,53 @@ void main() {
     expect(homePage, isNot(contains('!kIsWeb || routeCurrent')));
   });
 
+  test('切换星球前后只预热相邻纹理，不保活多套 WebGL 场景', () {
+    expect(
+      homePage,
+      contains('_neighborPlanetsFor'),
+      reason: '首页应按当前页计算左右相邻星球，用于单场景内的纹理预热',
+    );
+    expect(
+      homePage,
+      contains('prewarmPlanets: _neighborPlanetsFor(novels, safePage)'),
+    );
+    expect(webWrapper, contains('final List<String> prewarmPlanets'));
+    expect(ioWrapper, contains('final List<String> prewarmPlanets'));
+    expect(webWrapper, contains("'prewarmPlanets': widget.prewarmPlanets"));
+    expect(ioWrapper, contains('prewarmPlanets'));
+    expect(sceneHtml, contains('planetTextureCache'));
+    expect(sceneHtml, contains('prewarmPlanets'));
+    expect(sceneHtml, contains('preloadPlanetTextureBundle'));
+    expect(sceneHtml, contains('warmPlanetBundleOnGpu'));
+    expect(sceneHtml, contains('trimPlanetTextureCache'));
+  });
+
+  test('切页时星空亮度延后到 planetReady 后更新，避免和贴图上传抢同一帧', () {
+    expect(homePage, contains('_visibleStarfieldPage'));
+    expect(homePage, contains('_pendingStarfieldPage'));
+    expect(homePage, contains('_onPlanetSceneReady'));
+    expect(
+      homePage,
+      contains(
+        'final starfieldNovel = novels.isEmpty ? null : novels[starfieldPage]',
+      ),
+    );
+    expect(
+      homePage,
+      contains('ref.watch(creativeCountProvider(starfieldNovel.id))'),
+    );
+    expect(
+      homePage,
+      contains('_pendingStarfieldPage = i'),
+      reason: 'PageView 刚切页只记录待切换星空页，不立刻重建星空亮度/底图',
+    );
+    expect(
+      homePage,
+      contains('_visibleStarfieldPage = pending'),
+      reason: '等 3D 场景 planetReady 后再让星空跟上新页',
+    );
+  });
+
   test('Web 端 iframe viewType 必须每实例唯一（工厂闭包捕获旧 State 的回归）', () {
     // Flutter web 对同名 viewType 的重复注册会被忽略：PageView 滑页重建后
     // 新 State 的工厂不生效，iframe 被写进旧 State → postMessage 全部打空，
