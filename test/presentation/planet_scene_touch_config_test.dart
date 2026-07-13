@@ -37,7 +37,7 @@ void main() {
 
   test('场景就绪必须等待基础地表贴图加载，不能先露黑色空材质球', () {
     expect(sceneHtml, contains('baseTextureReady'));
-    expect(sceneHtml, contains('srgb(cfg.map, true)'));
+    expect(sceneHtml, contains('srgb(pcfg.map, true)'));
     expect(sceneHtml, contains('if (!baseTextureReady) return;'));
   });
 
@@ -254,9 +254,9 @@ void main() {
 
   test('拖动转星球：支点承载转角，云层与土星环同挂支点', () {
     expect(sceneHtml, contains('window.setRotation'));
-    expect(sceneHtml, contains('pivot.add(planet)'));
-    expect(sceneHtml, contains('pivot.add(clouds)'), reason: '云层不挂支点则拖动时与地表脱节');
-    expect(sceneHtml, contains('pivot.add(ring)'), reason: '土星环不挂支点则拖动时与赤道脱节');
+    expect(sceneHtml, contains('pivot.add(pmesh)'));
+    expect(sceneHtml, contains('pivot.add(cl)'), reason: '云层不挂支点则拖动时与地表脱节');
+    expect(sceneHtml, contains('pivot.add(rg)'), reason: '土星环不挂支点则拖动时与赤道脱节');
     expect(sceneHtml, contains('maxPitch'), reason: '俯仰须钳制，不许翻过极点');
     // 两端桥都要下发转角
     expect(ioWrapper, contains('setRotation('));
@@ -340,8 +340,8 @@ void main() {
     );
     expect(
       sceneHtml,
-      contains('const baseTex'),
-      reason: '常态贴图须常驻（带 mipmap，缩小观看不闪砂）',
+      contains('baseTex: pmat.map'),
+      reason: '常态贴图须常驻（mountPlanet 返回 baseTex，缩小观看不闪砂）',
     );
     expect(sceneHtml, contains('createImageBitmap'), reason: '主线程解码大图会整页卡住');
   });
@@ -488,7 +488,7 @@ void main() {
     );
     expect(
       sceneHtml,
-      contains('(v.length() - ringInner) / (ringOuter - ringInner)'),
+      contains('(vv.length() - ringInner) / (rOuter - ringInner)'),
       reason: 'UV 内径写死会让环纹整体错位',
     );
   });

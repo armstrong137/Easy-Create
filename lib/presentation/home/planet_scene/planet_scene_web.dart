@@ -91,7 +91,8 @@ class _PlanetSceneState extends State<PlanetScene> {
     final data = e.data;
     if (!data.isA<JSString>()) return;
     final text = (data as JSString).toDart;
-    if (text == 'sceneReady:$_seq') {
+    // 首帧就绪 / 切星球原地换贴图接管完成——都视作"活场景已在位"
+    if (text == 'sceneReady:$_seq' || text == 'planetReady:$_seq') {
       widget.onReady?.call();
       return;
     }
@@ -141,15 +142,24 @@ class _PlanetSceneState extends State<PlanetScene> {
   @override
   void didUpdateWidget(PlanetScene old) {
     super.didUpdateWidget(old);
-    // iframe 同源，postMessage 直达场景（其 message 监听调 setZoom/setRotation）
+    // iframe 同源，postMessage 直达场景（其 message 监听调 setPlanet/setZoom/…）
     if (old.planet != widget.planet) {
-      _post({'planet': widget.planet});
-    }
-    if (old.zoom != widget.zoom) {
-      _post({'zoom': widget.zoom});
-    }
-    if (old.yaw != widget.yaw || old.pitch != widget.pitch) {
-      _post({'yaw': widget.yaw, 'pitch': widget.pitch});
+      // 切星球：**合并**下发 planet + 当前视角，让场景原地换贴图时直接沿用
+      // 当前 yaw/pitch/zoom/spin，避免新星球先按默认角度亮一帧再收角度"跳一下"。
+      _post({
+        'planet': widget.planet,
+        'yaw': widget.yaw,
+        'pitch': widget.pitch,
+        'zoom': widget.zoom,
+        'spin': widget.spin,
+      });
+    } else {
+      if (old.zoom != widget.zoom) {
+        _post({'zoom': widget.zoom});
+      }
+      if (old.yaw != widget.yaw || old.pitch != widget.pitch) {
+        _post({'yaw': widget.yaw, 'pitch': widget.pitch});
+      }
     }
     if (old.autoPrewarm != widget.autoPrewarm) {
       _post({'autoPrewarm': widget.autoPrewarm ? 1 : 0});

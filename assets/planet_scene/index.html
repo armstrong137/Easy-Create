@@ -25,7 +25,7 @@
 
 // ---------- 启动参数 ----------
 const params = new URLSearchParams(location.search);
-const planetName = params.get('planet') || 'earth';
+let planetName = params.get('planet') || 'earth';
 let spinRevPerSec = parseFloat(params.get('spin') || '0.008');
 const stageScale = Math.max(1, parseFloat(params.get('stage') || '1'));
 let autoPrewarmEnabled = params.get('autoPrewarm') !== '0';
@@ -113,7 +113,7 @@ const PLANETS = {
     atmosColor: [0.95, 0.85, 0.62], atmosStrength: 0.6, ring: true,
   },
 };
-const cfg = PLANETS[planetName] || PLANETS.earth;
+let cfg = PLANETS[planetName] || PLANETS.earth;
 
 const loader = new THREE.TextureLoader();
 let baseTextureReady = false;
@@ -127,71 +127,12 @@ function srgb(path, critical = false) {
   return t;
 }
 
-// ---------- 星球本体 ----------
-const matOpts = { map: srgb(cfg.map, true) };
-if (cfg.normal) {
-  matOpts.normalMap = loader.load(cfg.normal);
-  matOpts.normalScale = new THREE.Vector2(0.85, 0.85);
-}
-if (cfg.specular) {
-  matOpts.specularMap = loader.load(cfg.specular);
-  matOpts.specular = new THREE.Color(0x66788c);
-  matOpts.shininess = 22;
-} else {
-  matOpts.specular = new THREE.Color(0x000000); // 非地球：无镜面，哑光地表
-}
-// 支点：承载用户拖动产生的转动（自转仍由星球/云层各自绕 y 轴累加）。
-// 太阳光在世界坐标，故转动星球时昼夜分界随之移动，符合"地球仪"直觉。
+// ---------- 支点 + 大气壳：星球无关，只建一次；换星球只换本体贴图不重建 ----------
+// 支点承载用户拖动产生的转动；太阳光在世界坐标，转星球时昼夜分界随之移动。
 const pivot = new THREE.Group();
 scene.add(pivot);
 
-// 128 段：放大后球体轮廓与晨昏线仍平滑（64 段近距可见多边形棱）
-const planetMat = new THREE.MeshPhongMaterial(matOpts);
-const detailBaseNormalScale = cfg.normal && planetMat.normalScale ? planetMat.normalScale.x : 0;
-const detailBaseShininess = planetMat.shininess;
-const detailZoomStart = 1.35, detailZoomFull = 2.85;
-const planet = new THREE.Mesh(new THREE.SphereGeometry(1, 128, 128), planetMat);
-pivot.add(planet);
-
-// ---------- 夜光层（仅地球）：背阳面城市灯光 ----------
-if (cfg.night) {
-  const nightMat = new THREE.ShaderMaterial({
-    uniforms: { nightMap: { value: srgb(cfg.night) }, lightDir: { value: sunDir } },
-    vertexShader: `
-      varying vec2 vUv; varying vec3 vWorldNormal;
-      void main() {
-        vUv = uv;
-        vWorldNormal = normalize(mat3(modelMatrix) * normal);
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }`,
-    fragmentShader: `
-      uniform sampler2D nightMap; uniform vec3 lightDir;
-      varying vec2 vUv; varying vec3 vWorldNormal;
-      void main() {
-        float night = smoothstep(0.10, -0.22, dot(normalize(vWorldNormal), lightDir));
-        gl_FragColor = vec4(texture2D(nightMap, vUv).rgb * night * 1.35, 1.0);
-      }`,
-    blending: THREE.AdditiveBlending, depthWrite: false, transparent: true,
-  });
-  const shell = new THREE.Mesh(new THREE.SphereGeometry(1.001, 64, 64), nightMat);
-  shell.name = 'night';
-  planet.add(shell); // 挂在星球下随其自转
-}
-
-// ---------- 云层（仅地球）：独立慢速漂移 ----------
-let clouds = null;
-if (cfg.clouds) {
-  clouds = new THREE.Mesh(
-    new THREE.SphereGeometry(1.012, 64, 64),
-    new THREE.MeshLambertMaterial({
-      map: srgb(cfg.clouds),
-      blending: THREE.AdditiveBlending, transparent: true, opacity: 0.55, depthWrite: false,
-    })
-  );
-  pivot.add(clouds); // 随支点一起被拖动，否则云层与地表脱节
-}
-
-// ---------- 大气临边辉光：颜色/强度按星球配置 ----------
+// 大气临边辉光：几何与星球无关，颜色/强度按星球更新 uniforms
 const atmosphere = new THREE.Mesh(
   new THREE.SphereGeometry(1.09, 64, 64),
   new THREE.ShaderMaterial({
@@ -217,35 +158,163 @@ const atmosphere = new THREE.Mesh(
 );
 scene.add(atmosphere);
 
-// ---------- 土星环：真 3D 环带（前后遮挡/倾角透视天然成立）+ 真实环带贴图 ----------
-let ringOuter = 0;
-if (cfg.ring) {
-  // 真实半径比（土星赤道半径为 1）：C 环内缘 1.24 → A 环外缘 2.27
-  ringOuter = 2.27;
-  const ringInner = 1.24;
-  // 8192×500 带 alpha 的真实环带图（含卡西尼缝），x 轴 = 内→外半径
-  const ringTex = srgb('textures/saturn_ring.png');
-  const ringGeo = new THREE.RingGeometry(ringInner, ringOuter, 256, 1);
-  const pos = ringGeo.attributes.position;
-  const uv = ringGeo.attributes.uv;
-  const v = new THREE.Vector3();
-  // RingGeometry 的 UV 沿半径方向重映射，使贴图 x 轴对应内→外
-  for (let i = 0; i < pos.count; i++) {
-    v.fromBufferAttribute(pos, i);
-    uv.setXY(i, (v.length() - ringInner) / (ringOuter - ringInner), 0.5);
-  }
-  const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({
-    map: ringTex, side: THREE.DoubleSide, transparent: true, depthWrite: false,
-  }));
-  ring.rotation.x = Math.PI / 2 - 0.42; // 倾角 ~24°
-  ring.rotation.y = 0.18;
-  pivot.add(ring); // 环随星球一同被拖动（环面与赤道共面）
+// 放大档档位偏好（手机 mapMid=6144，桌面 mapHi）——切星球时同样据此选高清源
+const lodParam = params.get('lod');
+const useMidLod = lodParam ? lodParam === 'mid' : isMobileLike;
+const detailZoomStart = 1.35, detailZoomFull = 2.85;
+
+// 夜光层材质（仅地球）：背阳面城市灯光
+function makeNightMat(nightMap) {
+  return new THREE.ShaderMaterial({
+    uniforms: { nightMap: { value: nightMap }, lightDir: { value: sunDir } },
+    vertexShader: `
+      varying vec2 vUv; varying vec3 vWorldNormal;
+      void main() {
+        vUv = uv;
+        vWorldNormal = normalize(mat3(modelMatrix) * normal);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: `
+      uniform sampler2D nightMap; uniform vec3 lightDir;
+      varying vec2 vUv; varying vec3 vWorldNormal;
+      void main() {
+        float night = smoothstep(0.10, -0.22, dot(normalize(vWorldNormal), lightDir));
+        gl_FragColor = vec4(texture2D(nightMap, vUv).rgb * night * 1.35, 1.0);
+      }`,
+    blending: THREE.AdditiveBlending, depthWrite: false, transparent: true,
+  });
 }
+
+// 建一颗星球（本体+夜光+云+环），加入 pivot，更新大气 uniforms，返回派生的
+// LOD/取景值。pre 非空时用**预加载好的纹理**——切星球时旧星球先继续渲染，
+// 新贴图全部就绪后由本函数一次性接管，全程复用同一 renderer / canvas / context。
+function mountPlanet(pcfg, pre) {
+  const matOpts = { map: pre ? pre.map : srgb(pcfg.map, true) };
+  if (pcfg.normal) {
+    matOpts.normalMap = pre ? pre.normal : loader.load(pcfg.normal);
+    matOpts.normalScale = new THREE.Vector2(0.85, 0.85);
+  }
+  if (pcfg.specular) {
+    matOpts.specularMap = pre ? pre.specular : loader.load(pcfg.specular);
+    matOpts.specular = new THREE.Color(0x66788c);
+    matOpts.shininess = 22;
+  } else {
+    matOpts.specular = new THREE.Color(0x000000); // 非地球：无镜面，哑光地表
+  }
+  const pmat = new THREE.MeshPhongMaterial(matOpts);
+  // 128 段：放大后球体轮廓与晨昏线仍平滑（64 段近距可见多边形棱）
+  const pmesh = new THREE.Mesh(new THREE.SphereGeometry(1, 128, 128), pmat);
+  pivot.add(pmesh);
+
+  let night = null;
+  if (pcfg.night) {
+    night = new THREE.Mesh(
+      new THREE.SphereGeometry(1.001, 64, 64),
+      makeNightMat(pre ? pre.night : srgb(pcfg.night))
+    );
+    night.name = 'night';
+    pmesh.add(night); // 挂在星球下随其自转
+  }
+
+  let cl = null;
+  if (pcfg.clouds) {
+    cl = new THREE.Mesh(
+      new THREE.SphereGeometry(1.012, 64, 64),
+      new THREE.MeshLambertMaterial({
+        map: pre ? pre.clouds : srgb(pcfg.clouds),
+        blending: THREE.AdditiveBlending, transparent: true, opacity: 0.55, depthWrite: false,
+      })
+    );
+    pivot.add(cl); // 随支点一起被拖动，否则云层与地表脱节
+  }
+
+  let rg = null, rOuter = 0;
+  if (pcfg.ring) {
+    // 真实半径比（土星赤道半径为 1）：C 环内缘 1.24 → A 环外缘 2.27
+    rOuter = 2.27;
+    const ringInner = 1.24;
+    const ringTex = pre ? pre.ring : srgb('textures/saturn_ring.png');
+    const ringGeo = new THREE.RingGeometry(ringInner, rOuter, 256, 1);
+    const pos = ringGeo.attributes.position;
+    const uv = ringGeo.attributes.uv;
+    const vv = new THREE.Vector3();
+    // RingGeometry 的 UV 沿半径方向重映射，使贴图 x 轴对应内→外
+    for (let i = 0; i < pos.count; i++) {
+      vv.fromBufferAttribute(pos, i);
+      uv.setXY(i, (vv.length() - ringInner) / (rOuter - ringInner), 0.5);
+    }
+    rg = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({
+      map: ringTex, side: THREE.DoubleSide, transparent: true, depthWrite: false,
+    }));
+    rg.rotation.x = Math.PI / 2 - 0.42; // 倾角 ~24°
+    rg.rotation.y = 0.18;
+    pivot.add(rg); // 环随星球一同被拖动（环面与赤道共面）
+  }
+
+  atmosphere.material.uniforms.glowColor.value.set(
+    pcfg.atmosColor[0], pcfg.atmosColor[1], pcfg.atmosColor[2]);
+  atmosphere.material.uniforms.strength.value = pcfg.atmosStrength;
+
+  return {
+    planet: pmesh, planetMat: pmat, clouds: cl, nightShell: night, ring: rg,
+    ringOuter: rOuter,
+    frameRadius: pcfg.ring ? rOuter * 0.94 : 1.09,
+    baseTex: pmat.map,
+    lodSrc: useMidLod ? pcfg.mapMid : pcfg.mapHi,
+    detailBaseNormalScale: pcfg.normal ? 0.85 : 0,
+    detailBaseShininess: pmat.shininess,
+  };
+}
+
+// 拆一颗星球：从 pivot 摘除并释放其几何/材质/贴图（含常态与缩放态高清）
+function unmountPlanet(b) {
+  if (b.planet) {
+    pivot.remove(b.planet);
+    b.planet.geometry.dispose();
+    const m = b.planet.material.map;
+    if (m && m !== b.baseTex) m.dispose(); // 缩放态残留的 hiTex
+    if (b.planet.material.normalMap) b.planet.material.normalMap.dispose();
+    if (b.planet.material.specularMap) b.planet.material.specularMap.dispose();
+    b.planet.material.dispose();
+  }
+  if (b.baseTex) b.baseTex.dispose();
+  if (b.nightShell) {
+    b.nightShell.geometry.dispose();
+    const nm = b.nightShell.material.uniforms.nightMap.value;
+    if (nm) nm.dispose();
+    b.nightShell.material.dispose();
+  }
+  if (b.clouds) {
+    pivot.remove(b.clouds);
+    b.clouds.geometry.dispose();
+    if (b.clouds.material.map) b.clouds.material.map.dispose();
+    b.clouds.material.dispose();
+  }
+  if (b.ring) {
+    pivot.remove(b.ring);
+    b.ring.geometry.dispose();
+    if (b.ring.material.map) b.ring.material.map.dispose();
+    b.ring.material.dispose();
+  }
+}
+
+// 首屏星球（同步创建；贴图异步加载，baseTextureReady 就绪后动画循环才揭幕）
+let parts = mountPlanet(cfg);
+let planet = parts.planet;
+let planetMat = parts.planetMat;
+let clouds = parts.clouds;
+let nightShell = parts.nightShell;
+let ring = parts.ring;
+let ringOuter = parts.ringOuter;
+let baseTex = parts.baseTex;
+let lodSrc = parts.lodSrc;
+let detailBaseNormalScale = parts.detailBaseNormalScale;
+let detailBaseShininess = parts.detailBaseShininess;
 
 // 取景距离：土星按环外径框，普通星球按大气壳框。
 // 舞台（stage>1）把画布放大同时把镜头等比拉远：初始视觉大小不变，
 // 但放大时星球有空间铺开而不会撞到画布方形边缘被裁。
-const frameRadius = cfg.ring ? ringOuter * 0.94 : 1.09;
+let frameRadius = parts.frameRadius;
 let d0 = 0;
 camera.lookAt(0, 0, 0);
 
@@ -282,19 +351,14 @@ function applySurfaceDetail() {
   }
 }
 
-// 放大档：手机取 mapMid（6144），桌面取 mapHi（源图上限）。
-// ?lod=mid|hi 显式指定（移动端 App 壳直接下发，不依赖浏览器嗅探）；
-// 缺省时按指针类型判断（Web 版在手机浏览器打开也能自动降档）
-const lodParam = params.get('lod');
-const useMid = lodParam ? lodParam === 'mid' : isMobileLike;
-const lodSrc = useMid ? cfg.mapMid : cfg.mapHi;
+// 放大档源（mapMid/mapHi）由 mountPlanet 按 useMidLod 选好放进 lodSrc；
+// baseTex（常态贴图）与 lodSrc 都在换星球时随 mountPlanet 重新赋值。
 
 // LOD 迟滞切换：缩放刚开始先预热，真正放大过 lodZoomIn 才换高清档；
 // 缩回 lodZoomOut 以下不立刻收尾，而是延迟降档/释放，避免手势中来回重配画布。
 const lodPrewarmZoom = 1.06, lodZoomIn = 1.35, lodZoomOut = 1.15;
 const lodSettleDelayMs = 700, lodDisposeDelayMs = 8000;
 const initialPrewarmDelayMs = 300;
-const baseTex = planetMat.map; // 常态贴图常驻，永不释放
 let hiTex = null, hiLoading = false, hiPrewarmRequested = false;
 let lodSettleTimer = 0, lodDisposeTimer = 0, initialPrewarmTimer = 0;
 
@@ -486,19 +550,99 @@ window.resumeRender = function () {
   requestNextFrame();
 };
 
-window.setPlanet = function (nextPlanet) {
-  if (!nextPlanet || nextPlanet === planetName || !PLANETS[nextPlanet]) return;
-  disposeScene();
-  const nextUrl = new URL(location.href);
-  nextUrl.searchParams.set('planet', nextPlanet);
-  location.replace(nextUrl.toString());
+// 沿用当前视角：切星球时先据宿主下发的 state 同步 yaw/pitch/zoom/spin，
+// 避免新星球用默认角度亮一帧再收角度消息造成"跳一下"。
+function applyViewState(s) {
+  if (!s) return;
+  if (typeof s.spin === 'number') spinRevPerSec = s.spin;
+  if (typeof s.zoom === 'number') { zoomTarget = Math.max(1, s.zoom); applyLod(); }
+  if (typeof s.yaw === 'number') yawTarget = s.yaw;
+  if (typeof s.pitch === 'number') {
+    pitchTarget = Math.max(-maxPitch, Math.min(maxPitch, s.pitch));
+  }
+}
+
+// 预加载一颗星球全部纹理（旧星球此间持续渲染，杜绝黑/替身）
+function loadTexAsync(path, srgbFlag) {
+  return new Promise(function (resolve) {
+    const t = loader.load(path, function () { resolve(t); }, undefined, function () { resolve(t); });
+    if (srgbFlag) t.encoding = THREE.sRGBEncoding;
+    t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  });
+}
+function preloadPlanetTextures(pcfg) {
+  const keys = ['map'];
+  const jobs = [loadTexAsync(pcfg.map, true)];
+  if (pcfg.normal) { keys.push('normal'); jobs.push(loadTexAsync(pcfg.normal, false)); }
+  if (pcfg.specular) { keys.push('specular'); jobs.push(loadTexAsync(pcfg.specular, false)); }
+  if (pcfg.clouds) { keys.push('clouds'); jobs.push(loadTexAsync(pcfg.clouds, true)); }
+  if (pcfg.night) { keys.push('night'); jobs.push(loadTexAsync(pcfg.night, true)); }
+  if (pcfg.ring) { keys.push('ring'); jobs.push(loadTexAsync('textures/saturn_ring.png', true)); }
+  return Promise.all(jobs).then(function (vals) {
+    const out = {};
+    keys.forEach(function (k, i) { out[k] = vals[i]; });
+    return out;
+  });
+}
+
+// 切星球：**原地换贴图**——不销毁 renderer、不换 iframe、不重载页面，全程单
+// canvas/context。旧星球持续渲染 → 新星球全部贴图就绪 → 一次性接管，沿用
+// 当前 yaw/pitch/zoom/stage；接管后拆旧星球释放显存（避免多套贴图常驻 OOM）。
+let planetSwapping = false, pendingPlanet = null;
+window.setPlanet = function (nextPlanet, state) {
+  if (state) applyViewState(state);
+  if (!nextPlanet || !PLANETS[nextPlanet] || disposed) return;
+  if (planetSwapping) {
+    // 换球途中又来新目标：记住最新的，本轮结束后接着换（连续快滑不丢帧）
+    pendingPlanet = nextPlanet === planetName ? null : nextPlanet;
+    return;
+  }
+  if (nextPlanet === planetName) return;
+  planetSwapping = true;
+  const nextName = nextPlanet;
+  const nextCfg = PLANETS[nextName];
+  preloadPlanetTextures(nextCfg).then(function (pre) {
+    if (disposed) { planetSwapping = false; return; }
+    const old = { planet: planet, nightShell: nightShell, clouds: clouds, ring: ring, baseTex: baseTex };
+    // 释放旧 LOD 状态（新星球重建）
+    cancelLodTimers();
+    if (initialPrewarmTimer) { clearTimeout(initialPrewarmTimer); initialPrewarmTimer = 0; }
+    if (hiTex) { hiTex.dispose(); hiTex = null; }
+    hiLoading = false; hiPrewarmRequested = false;
+    // 建新星球（用预加载纹理，下一帧即正确显示），接管全局引用
+    const p = mountPlanet(nextCfg, pre);
+    planet = p.planet; planetMat = p.planetMat; clouds = p.clouds; nightShell = p.nightShell;
+    ring = p.ring; ringOuter = p.ringOuter; frameRadius = p.frameRadius;
+    baseTex = p.baseTex; lodSrc = p.lodSrc;
+    detailBaseNormalScale = p.detailBaseNormalScale; detailBaseShininess = p.detailBaseShininess;
+    cfg = nextCfg; planetName = nextName;
+    // 场景没重建，pivot 转角/缩放本就保留；再据 state 兜一次，确保不复位默认角度
+    if (state) applyViewState(state);
+    applySurfaceDetail();
+    // 土星←→普通星球取景半径不同：强制重算 d0
+    lastW = 0; lastH = 0; updateFraming();
+    // 拆旧星球，释放其显存（新星球已接管）
+    unmountPlanet(old);
+    if (autoPrewarmEnabled) scheduleInitialScenePrewarm();
+    planetSwapping = false;
+    // 通知宿主：新星球已接管（宿主据此确认切换完成）
+    if (window.parent !== window) {
+      window.parent.postMessage('planetReady:' + (params.get('token') || ''), '*');
+    }
+    // 若途中又指定了新目标，接着换
+    if (pendingPlanet && pendingPlanet !== planetName) {
+      const pp = pendingPlanet; pendingPlanet = null; window.setPlanet(pp);
+    } else {
+      pendingPlanet = null;
+    }
+  }).catch(function () { planetSwapping = false; });
 };
 
 // Web 端（iframe 跨文档）经 postMessage 调同一组接口
 window.addEventListener('message', function (e) {
   const m = e.data;
   if (!m || typeof m !== 'object') return;
-  if (typeof m.planet === 'string') window.setPlanet(m.planet);
+  if (typeof m.planet === 'string') window.setPlanet(m.planet, m);
   if (typeof m.zoom === 'number') window.setZoom(m.zoom);
   if (typeof m.spin === 'number') window.setSpin(m.spin);
   if (typeof m.autoPrewarm === 'number') window.setAutoPrewarm(m.autoPrewarm > 0);
@@ -638,6 +782,14 @@ if (params.get('selftest') === '1') {
       window.postMessage({ yaw: 0.8, pitch: 0.2 }, '*');
       await new Promise(function (r) { setTimeout(r, 700); });
       if (Math.abs(pivot.rotation.y - 0.8) > 0.2) fails.push('rotate');
+      // 切星球：原地换贴图（不重载）。校验换成后 planetName 更新、仍单 canvas、
+      // 且沿用当前缩放（不复位）——覆盖"变脸/多 context/默认角度"回归。
+      const canvasBefore = document.querySelectorAll('canvas').length;
+      window.postMessage({ planet: 'mars' }, '*');
+      await new Promise(function (r) { setTimeout(r, 1600); });
+      if (planetName !== 'mars') fails.push('setPlanet');
+      if (document.querySelectorAll('canvas').length !== canvasBefore) fails.push('multicanvas');
+      if (zoomTarget < 1.5) fails.push('zoomkept');
     } catch (e) {
       fails.push('error:' + e.message);
     }

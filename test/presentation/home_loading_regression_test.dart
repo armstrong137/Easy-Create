@@ -183,12 +183,34 @@ void main() {
       final settingsStart = homePage.indexOf('// 左上角设置入口', pageViewStart);
       final pageViewBlock = homePage.substring(pageViewStart, settingsStart);
       expect(pageViewBlock, isNot(contains('PlanetScene(')));
-      expect(
-        homePage,
-        contains('(sceneVisible && widget.sharedSceneReady) ? 0 : 1'),
-      );
+      // 替身只在未就绪（冷启动/上下文异常）时露出；正常切星球不盖替身
+      expect(homePage, contains('opacity: widget.sharedSceneReady ? 0 : 1'));
     },
   );
+
+  test('E: 切星球共享场景原地换贴图（不重载/不盖替身/复用视角）', () {
+    final sceneHtml = File('assets/planet_scene/index.html').readAsStringSync();
+    final web = File(
+      'lib/presentation/home/planet_scene/planet_scene_web.dart',
+    ).readAsStringSync();
+    // setPlanet 不再 disposeScene+location.replace（"变脸"根源），而是原地重建本体
+    expect(sceneHtml, contains('function mountPlanet'));
+    expect(sceneHtml, contains('function preloadPlanetTextures'));
+    expect(sceneHtml, contains("postMessage('planetReady:'"));
+    final setPlanetStart = sceneHtml.indexOf('window.setPlanet = function');
+    final setPlanetBody = sceneHtml.substring(
+      setPlanetStart,
+      sceneHtml.indexOf('window.addEventListener', setPlanetStart),
+    );
+    expect(setPlanetBody, isNot(contains('location.replace')));
+    expect(setPlanetBody, isNot(contains('disposeScene()')));
+    // 切星球合并下发当前视角，避免新星球先按默认角度亮一帧
+    expect(web, contains("'planet': widget.planet"));
+    expect(web, contains("'yaw': widget.yaw"));
+    expect(web, contains("'zoom': widget.zoom"));
+    // 切页不复位就绪（不盖替身）
+    expect(homePage, isNot(contains('_markSceneNotReady')));
+  });
 
   test('B: stand-in uses the pre-rendered real snapshot, not a flat crop', () {
     // 替身底图是每颗星球的预渲染真身快照（three.js 同款一帧），与真实场景
@@ -214,9 +236,10 @@ void main() {
     () {
       expect(homePage, contains('Timer? _sceneFallbackTimer'));
       expect(homePage, contains('_armSceneRevealFallback'));
+      // 冷启动首个 config 未就绪时启动兜底揭幕定时器
       expect(
         homePage,
-        contains('if (!_sharedSceneReady) _armSceneRevealFallback()'),
+        contains('if (firstConfig && !_sharedSceneReady) _armSceneRevealFallback()'),
       );
       expect(homePage, contains('Duration(milliseconds: 3000)'));
     },

@@ -123,20 +123,26 @@ class _PlanetSceneState extends ConsumerState<PlanetScene> {
   @override
   void didUpdateWidget(PlanetScene old) {
     super.didUpdateWidget(old);
-    // 创作能量变化 → 转速经桥下发（星球纹理不会变，novel.planet 不可变）
+    // 切星球：共享场景**原地换贴图**，并合并下发当前视角，避免新星球先按
+    // 默认角度亮一帧再收角度"跳一下"（场景侧 setPlanet 第二参 applyViewState）。
     if (old.planet != widget.planet) {
-      _web?.runJavaScript("setPlanet('${widget.planet}')");
-    }
-    if (old.spin != widget.spin) {
-      _web?.runJavaScript('setSpin(${widget.spin})');
-    }
-    // 捏合缩放 → 镜头推进（场景侧自带阻尼平滑）
-    if (old.zoom != widget.zoom) {
-      _web?.runJavaScript('setZoom(${widget.zoom})');
-    }
-    // 拖动 → 转星球（场景侧同样带阻尼）
-    if (old.yaw != widget.yaw || old.pitch != widget.pitch) {
-      _web?.runJavaScript('setRotation(${widget.yaw}, ${widget.pitch})');
+      _web?.runJavaScript(
+        "setPlanet('${widget.planet}', "
+        '{yaw:${widget.yaw}, pitch:${widget.pitch}, '
+        'zoom:${widget.zoom}, spin:${widget.spin}})',
+      );
+    } else {
+      if (old.spin != widget.spin) {
+        _web?.runJavaScript('setSpin(${widget.spin})');
+      }
+      // 捏合缩放 → 镜头推进（场景侧自带阻尼平滑）
+      if (old.zoom != widget.zoom) {
+        _web?.runJavaScript('setZoom(${widget.zoom})');
+      }
+      // 拖动 → 转星球（场景侧同样带阻尼）
+      if (old.yaw != widget.yaw || old.pitch != widget.pitch) {
+        _web?.runJavaScript('setRotation(${widget.yaw}, ${widget.pitch})');
+      }
     }
     if (old.autoPrewarm != widget.autoPrewarm) {
       _web?.runJavaScript('setAutoPrewarm(${widget.autoPrewarm})');

@@ -189,15 +189,12 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   void _onSharedSceneConfig(_SharedPlanetSceneConfig config) {
     if (_sharedSceneConfig == config) return;
-    final planetChanged = _sharedSceneConfig?.planet != config.planet;
-    setState(() {
-      _sharedSceneConfig = config;
-      if (planetChanged) {
-        _sharedSceneReady = false;
-        _sharedSceneSnapshot = null;
-      }
-    });
-    if (!_sharedSceneReady) _armSceneRevealFallback();
+    // 换星球**不复位就绪**：共享场景原地换贴图（不重建 iframe），旧星球持续
+    // 显示到新贴图就绪再一次性接管——全程活画面，无需静态替身介入。就绪标记
+    // 只在真正冷启动（首个 config）/上下文异常时才为假，交给兜底定时器揭幕。
+    final firstConfig = _sharedSceneConfig == null;
+    setState(() => _sharedSceneConfig = config);
+    if (firstConfig && !_sharedSceneReady) _armSceneRevealFallback();
   }
 
   Future<void> _awaitSnapshotBeforeRoute() async {
@@ -229,14 +226,6 @@ class _HomePageState extends ConsumerState<HomePage> {
       }
       planetSceneReadyTick.value++;
     });
-  }
-
-  void _markSceneNotReady() {
-    _sceneRevealTimer?.cancel();
-    _sceneFallbackTimer?.cancel();
-    _sceneFallbackTimer = null;
-    if (!_sharedSceneReady) return;
-    setState(() => _sharedSceneReady = false);
   }
 
   void _armSceneRevealFallback() {
@@ -369,10 +358,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                 allowImplicitScrolling: false,
                 // 捏合放大星球期间禁翻页（否则双指会被识别成滑动换书）
                 physics: locked ? const NeverScrollableScrollPhysics() : null,
-                onPageChanged: (i) => setState(() {
-                  _currentPage = i;
-                  _markSceneNotReady();
-                }),
+                // 切星球**不复位就绪、不盖替身**：共享场景原地换贴图，旧星球
+                // 持续显示到新贴图就绪再一次性接管（planet_scene/index.html:setPlanet）。
+                onPageChanged: (i) => setState(() => _currentPage = i),
                 // ClipRect：放大的星球画布只在本页内铺开，
                 // 不会溢出到相邻星球页造成"两颗星球重影"
                 itemBuilder: (context, i) => ClipRect(
@@ -886,14 +874,11 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
     final diameter = MediaQuery.sizeOf(context).width * 0.62;
     final ready = use3D || assets != null;
 
-    final popupOpen = ref.watch(captureSheetOpenProvider);
-    final routeCurrent = ModalRoute.of(context)?.isCurrent ?? true;
     Widget planetBody() {
       if (use3D) {
         final sceneDiameter = novel.planet == 'saturn'
             ? diameter * 1.4
             : diameter;
-        final sceneVisible = widget.active && (routeCurrent || popupOpen);
         if (widget.active) {
           final config = _SharedPlanetSceneConfig(
             novelId: novel.id,
@@ -910,9 +895,11 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
             if (mounted && widget.active) widget.onSharedSceneConfig(config);
           });
         }
+        // 替身只在共享场景**未就绪**（真正冷启动/上下文异常兜底）时露出；
+        // 正常切星球场景常就绪 → 替身恒透明，不参与切换（原地换贴图不露替身）。
         final standIn = AnimatedOpacity(
           duration: const Duration(milliseconds: 350),
-          opacity: (sceneVisible && widget.sharedSceneReady) ? 0 : 1,
+          opacity: widget.sharedSceneReady ? 0 : 1,
           child: _PlanetStandIn(
             diameter: sceneDiameter,
             planet: novel.planet,
