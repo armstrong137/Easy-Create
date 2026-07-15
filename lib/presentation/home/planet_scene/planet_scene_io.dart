@@ -24,7 +24,6 @@ class PlanetScene extends ConsumerStatefulWidget {
     this.zoom = 1,
     this.yaw = 0,
     this.pitch = 0,
-    this.autoPrewarm = true,
     this.prewarmPlanets = const [],
     this.active = true,
     this.visible = true,
@@ -52,11 +51,8 @@ class PlanetScene extends ConsumerStatefulWidget {
   final double yaw;
   final double pitch;
 
-  /// 是否允许场景在首屏稳定后主动预热高清 LOD。
-  ///
-  /// 首页会预构建相邻页来减少切星球卡顿；相邻页只暖基础场景，避免多颗星球同时抢高清显存。
-  final bool autoPrewarm;
-
+  /// 相邻星球贴图只预取到 HTTP 缓存层（场景侧不解码、不上传 GPU）：
+  /// 可见场景零后台重活，切球事务时再真正解码/分块上传。
   final List<String> prewarmPlanets;
 
   /// 是否为当前可见页：非当前页暂停场景渲染（多球常驻越用越卡）
@@ -119,7 +115,6 @@ class _PlanetSceneState extends ConsumerState<PlanetScene> {
           // lod=mid：移动端放大档封顶 4096。8192 单张纹理占显存约 134MB，
           // iPhone Safari/WKWebView 会直接卡死
           '&stage=${widget.stageScale}&lod=mid'
-          '&autoPrewarm=${widget.autoPrewarm ? 1 : 0}'
           '&prewarm=${Uri.encodeComponent(widget.prewarmPlanets.join(','))}',
         ),
       );
@@ -150,9 +145,6 @@ class _PlanetSceneState extends ConsumerState<PlanetScene> {
       if (old.yaw != widget.yaw || old.pitch != widget.pitch) {
         _web?.runJavaScript('setRotation(${widget.yaw}, ${widget.pitch})');
       }
-    }
-    if (old.autoPrewarm != widget.autoPrewarm) {
-      _web?.runJavaScript('setAutoPrewarm(${widget.autoPrewarm})');
     }
     if (!listEquals(old.prewarmPlanets, widget.prewarmPlanets)) {
       _web?.runJavaScript(

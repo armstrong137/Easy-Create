@@ -605,7 +605,6 @@ class _SharedPlanetSceneConfig {
     required this.zoom,
     required this.yaw,
     required this.pitch,
-    required this.autoPrewarm,
   });
 
   final int novelId;
@@ -616,7 +615,6 @@ class _SharedPlanetSceneConfig {
   final double zoom;
   final double yaw;
   final double pitch;
-  final bool autoPrewarm;
 
   @override
   bool operator ==(Object other) =>
@@ -628,8 +626,7 @@ class _SharedPlanetSceneConfig {
       other.stageScale == stageScale &&
       other.zoom == zoom &&
       other.yaw == yaw &&
-      other.pitch == pitch &&
-      other.autoPrewarm == autoPrewarm;
+      other.pitch == pitch;
 
   @override
   int get hashCode => Object.hash(
@@ -641,7 +638,6 @@ class _SharedPlanetSceneConfig {
     zoom,
     yaw,
     pitch,
-    autoPrewarm,
   );
 }
 
@@ -682,7 +678,6 @@ class _SharedPlanetSceneLayer extends StatelessWidget {
               zoom: config.zoom,
               yaw: config.yaw,
               pitch: config.pitch,
-              autoPrewarm: config.autoPrewarm,
               prewarmPlanets: prewarmPlanets,
               active: true,
               visible: visible,
@@ -959,7 +954,6 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
             zoom: _zoom,
             yaw: _spin.yaw,
             pitch: _spin.pitch,
-            autoPrewarm: true,
           );
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && widget.active) widget.onSharedSceneConfig(config);

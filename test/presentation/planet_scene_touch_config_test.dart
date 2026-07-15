@@ -502,29 +502,34 @@ void main() {
     );
   });
 
-  test('当前星球进入页面后自动空闲预热高清 LOD，第一次捏合前就把重活提前做掉', () {
-    expect(
-      sceneHtml,
-      contains('initialPrewarmDelayMs'),
-      reason: '当前页要主动预热，而不是等用户第一次捏合才加载高清贴图',
+  test('可见场景零后台重活：切球完成后禁止一切自动高清预热/DPR boost', () {
+    // 根本方案（2026-07-15 定稿）：只要后台还允许偷偷做高清解码/GPU 上传/
+    // setPixelRatio+setSize，就一定会在某些 iPhone/Safari 时机下短顿（调 2.5s、
+    // 4s、分块大小都只是把顿挪来挪去）。自动高清预热线整条删除，高清 LOD
+    // 只在用户明确放大（applyLod 手势路径）时进入。
+    expect(sceneHtml, isNot(contains('scheduleInitialScenePrewarm')));
+    expect(sceneHtml, isNot(contains('initialPrewarmDelayMs')));
+    expect(sceneHtml, isNot(contains('autoPrewarm')));
+    expect(webWrapper, isNot(contains('autoPrewarm')));
+    expect(ioWrapper, isNot(contains('autoPrewarm')));
+    expect(homePage, isNot(contains('autoPrewarm')));
+    // 切球事务收尾不得排任何预热任务
+    final setPlanetStart = sceneHtml.indexOf('window.setPlanet = function');
+    final setPlanetBody = sceneHtml.substring(
+      setPlanetStart,
+      sceneHtml.indexOf('window.addEventListener', setPlanetStart),
     );
-    expect(
-      sceneHtml,
-      contains('const initialPrewarmDelayMs = 2500'),
-      reason:
-          '切球后 300ms 就预热高清档曾正撞滑页收尾动画（"切完还卡 0.5s"），'
-          '须延到真正静止后；上传本身也已分块，不再一口冻主线程',
+    expect(setPlanetBody, isNot(contains('prewarmHiTexture')));
+    expect(setPlanetBody, isNot(contains('PixelRatioBoost')));
+    // 邻居星球只预取到 HTTP 缓存层：不解码、不建 ImageBitmap、不上传 GPU
+    final prewarmBody = sceneHtml.substring(
+      sceneHtml.indexOf('window.prewarmPlanets = function'),
+      sceneHtml.indexOf('// 切星球'),
     );
-    expect(
-      sceneHtml,
-      contains('scheduleInitialScenePrewarm'),
-      reason: '预热入口应由场景加载后主动触发，覆盖第一次放大卡顿',
-    );
-    expect(
-      sceneHtml,
-      contains('setTimeout(scheduleInitialScenePrewarm'),
-      reason: '预热需要延迟到首屏渲染之后，避免和页面初始加载抢主线程',
-    );
+    expect(prewarmBody, isNot(contains('preloadPlanetTextureBundle')));
+    expect(prewarmBody, isNot(contains('createImageBitmap')));
+    expect(prewarmBody, isNot(contains('createTextureChunked')));
+    expect(prewarmBody, contains('.blob()'), reason: '消费完 body 落 HTTP 缓存即止');
   });
 
   test('切换星球：不预构建相邻页，也不保活多颗 WebGL 场景', () {

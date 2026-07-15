@@ -23,7 +23,6 @@ class PlanetScene extends StatefulWidget {
     this.zoom = 1,
     this.yaw = 0,
     this.pitch = 0,
-    this.autoPrewarm = true,
     this.prewarmPlanets = const [],
     this.active = true,
     this.visible = true,
@@ -51,9 +50,8 @@ class PlanetScene extends StatefulWidget {
   final double yaw;
   final double pitch;
 
-  /// 是否允许当前场景在加载后主动预热高清 LOD；相邻预构建页会关闭它以节省显存。
-  final bool autoPrewarm;
-
+  /// 相邻星球贴图只预取到 HTTP 缓存层（场景侧不解码、不上传 GPU）：
+  /// 可见场景零后台重活，切球事务时再真正解码/分块上传。
   final List<String> prewarmPlanets;
 
   /// 是否为当前可见页：非当前页暂停场景渲染——滑过的页被 keepAlive 后
@@ -116,7 +114,6 @@ class _PlanetSceneState extends State<PlanetScene> {
             'assets/assets/planet_scene/index.html'
             '?planet=${widget.planet}&spin=${widget.spin}'
             '&stage=${widget.stageScale}'
-            '&autoPrewarm=${widget.autoPrewarm ? 1 : 0}'
             '&prewarm=${Uri.encodeComponent(widget.prewarmPlanets.join(','))}'
             '&token=$_seq'
         ..style.border = 'none'
@@ -165,9 +162,6 @@ class _PlanetSceneState extends State<PlanetScene> {
       if (old.yaw != widget.yaw || old.pitch != widget.pitch) {
         _post({'yaw': widget.yaw, 'pitch': widget.pitch});
       }
-    }
-    if (old.autoPrewarm != widget.autoPrewarm) {
-      _post({'autoPrewarm': widget.autoPrewarm ? 1 : 0});
     }
     if (!listEquals(old.prewarmPlanets, widget.prewarmPlanets)) {
       _post({'prewarmPlanets': widget.prewarmPlanets});
