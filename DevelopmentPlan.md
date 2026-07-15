@@ -228,6 +228,11 @@
     补充修复（2026-07-15）：根治切球后立即捏合放大卡顿——applyLod 手势热路径不再同步
     setPixelRatio/setSize，也不再现场 ensureHiTexture；高清 JPEG 统一先走 img.decode 后台解码，
     再 createImageBitmap + 分块上传；DPR boost 延后到静默期执行，并恢复 autoPrewarm=true。
+    补充修复（2026-07-15）：高清 LOD 异步回写防串台——切星球不会取消在途的
+    ensureHiTexture，旧星球高清贴图迟到时曾只查 disposed 就回写全局 hiTex，
+    当前星球放大即贴上上一颗的地表（"地球放大变火星"）；现发起时捕获
+    planetName/lodSrc 归属，完成时校验不符即丢弃，且旧任务收尾不清新任务的
+    hiLoading 在途标记。
   - ✅ P2-2 动态星空第一步（2026-07-10）：银河照片底上叠程序化动态层
     （starfield_motion.dart 确定性调度 + starfield.dart 动态层）——
     星点呼吸闪烁、远近双层视差漂移（40s/16s 一屏）、12 秒一颗流星；

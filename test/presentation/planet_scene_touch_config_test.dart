@@ -217,6 +217,19 @@ void main() {
     expect(sceneHtml, contains('trimPlanetTextureCache'));
   });
 
+  test('高清 LOD 异步回写防串台：完成时校验仍是发起加载的那颗星球', () {
+    // 切星球不会取消在途的 ensureHiTexture：旧星球（如火星）的高清贴图解码/
+    // 上传完成太晚时，若只查 disposed 就回写全局 hiTex，当前星球（地球）
+    // 放大就会贴上火星地表（实测复现）。完成时必须校验归属再回写。
+    expect(sceneHtml, contains('const planetAtStart = planetName'));
+    expect(sceneHtml, contains('planetName !== planetAtStart'));
+    expect(
+      sceneHtml,
+      contains('if (planetName === planetAtStart) hiLoading = false'),
+      reason: '旧任务收尾不得清掉新星球加载的在途标记，否则会并发两份高清加载',
+    );
+  });
+
   test('切球收尾不冻主线程：静默期调度 + 不强制重分配画布 + 旧贴图回存缓存', () {
     // Safari 无 requestIdleCallback，旧退化 setTimeout(task, 350) 是固定延时，
     // 常正撞滑页收尾动画（星球+星空+书名一起冻 0.5s，用户 iPhone 实测）

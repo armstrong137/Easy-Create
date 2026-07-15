@@ -526,21 +526,31 @@ function decodeImageOffMainThread(src) {
 async function ensureHiTexture() {
   if (hiTex || hiLoading || !lodSrc || lodSrc === cfg.map) return;
   hiLoading = true;
+  // 捕获本次加载的归属：切星球会改 planetName/lodSrc 并清空 hiTex，但已在途的
+  // 异步解码/上传不会被取消——完成时必须校验归属，否则旧星球的高清贴图会迟到
+  // 回写进当前星球的全局 hiTex 槽（实测表现为"地球放大后变火星"）。
+  const planetAtStart = planetName;
+  const srcAtStart = lodSrc;
   try {
     // 常态贴图走 TextureLoader，WebGL 上传时会翻转 Y；ImageBitmap 路径会忽略
     // Texture.flipY，所以必须在解码阶段翻转，避免 LOD 换档时地表朝向跳变。
-    const decoded = await decodeImageOffMainThread(lodSrc);
+    const decoded = await decodeImageOffMainThread(srcAtStart);
     const bitmap = await createImageBitmap(decoded, { imageOrientation: 'flipY' });
     // 分块上传（无 mipmap：大图再多吃 33% 显存）：6144 档整张 texImage2D
     // ≈ 75MB 一口气会冻主线程 150~400ms，星空/标题连坐
     const tex = await createTextureChunked(bitmap, true, false);
-    if (disposed) { tex.dispose(); return; }
+    if (disposed || planetName !== planetAtStart || lodSrc !== srcAtStart) {
+      tex.dispose(); // 已销毁/已切走：丢弃，不回写
+      return;
+    }
     hiTex = tex;
     applyLod(); // 加载完成时可能已缩回，交由 applyLod 决定用不用
   } catch (e) {
     // 失败静默留用常态贴图，不影响交互
   } finally {
-    hiLoading = false;
+    // 只归还本次加载的占位：切球已把 hiLoading 复位、且可能已为新星球
+    // 另起加载——旧任务不得清掉新任务的在途标记
+    if (planetName === planetAtStart) hiLoading = false;
   }
 }
 
