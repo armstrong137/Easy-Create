@@ -551,6 +551,37 @@ void main() {
     expect(sceneHtml, contains('schedulePixelRatioBoost'));
   });
 
+  test('GPU 上传调度器：按帧预算、自适应块大小、交互期间让路', () {
+    // 交互期间绝不做重 GPU 工作：手指下的帧只允许改镜头。重活全部排进
+    // 按帧预算的串行队列——交互中让路、持续交互有防饿死兜底、块大小按
+    // 实测耗时自适应（>6ms 减半、<3ms 加倍）。
+    expect(sceneHtml, contains('waitForUploadWindow'));
+    expect(sceneHtml, contains('uploadInteractGuardMs'));
+    expect(sceneHtml, contains('uploadSlotMaxWaitMs'), reason: '连续滑页/转球不能把切球事务饿死');
+    expect(sceneHtml, contains('adaptiveBandBytes'));
+    expect(sceneHtml, contains('tuneUploadBudget'));
+    // 显存大分配（initTexture ≈75MB）也要先拿预算槽，不打手势热帧
+    final chunkBody = functionBody(sceneHtml, 'createTextureChunked');
+    expect(
+      chunkBody.indexOf('nextGpuUploadSlot'),
+      lessThan(chunkBody.indexOf('renderer.initTexture')),
+      reason: 'initTexture 必须排在预算槽之后执行',
+    );
+    // DPR 升/降档（画布重分配）全部走同一预算队列
+    expect(
+      functionBody(sceneHtml, 'schedulePixelRatioBoost'),
+      contains('nextGpuUploadSlot'),
+    );
+    expect(
+      functionBody(sceneHtml, 'prewarmPixelRatioBoost'),
+      contains('nextGpuUploadSlot'),
+    );
+    expect(
+      functionBody(sceneHtml, 'scheduleLodSettleDown'),
+      contains('nextGpuUploadSlot'),
+    );
+  });
+
   test('切换星球：不预构建相邻页，也不保活多颗 WebGL 场景', () {
     expect(
       homePage,

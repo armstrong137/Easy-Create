@@ -246,6 +246,13 @@
     过预热阈值即用户明确意图，prewarmHiTexture 立刻启动 img.decode+分块
     上传，不再等 runWhenQuiet 静默期（手势中静默期永远凑不满＝等手停）；
     ③保护阀：DPR setPixelRatio/setSize 画布重分配仍延后到手势静默。
+    补充优化（2026-07-15）：GPU 上传调度器（按帧预算渐进上贴）——交互期间
+    绝不做重 GPU 工作：initTexture 大分配/copyTextureToTexture 大分块/DPR
+    升降档（schedule/prewarm/settle 三处）全部排进串行预算队列；距最近输入
+    <200ms 视为交互中让路，持续交互 1s 兜底推进一小步防饿死切球事务；块
+    大小按实测耗时自适应（初始 2MB，>6ms 减半、<3ms 加倍，256KB~8MB）。
+    放大等待期由基础 4096+applySurfaceDetail 材质增强撑观感，高清就绪后帧
+    边界无感换上。本质：高清可以晚一点到，手指下的动画必须永远稳。
   - ✅ P2-2 动态星空第一步（2026-07-10）：银河照片底上叠程序化动态层
     （starfield_motion.dart 确定性调度 + starfield.dart 动态层）——
     星点呼吸闪烁、远近双层视差漂移（40s/16s 一屏）、12 秒一颗流星；

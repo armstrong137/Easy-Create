@@ -417,15 +417,28 @@ function cancelLodTimers() {
   }
 }
 
-// —— 大贴图分块上传 ——
-// texImage2D 一次性喂整张 4096/6144 贴图（33~75MB）会把 Safari 主线程冻
-// 150~400ms：同源 iframe 与 Flutter 页面共享同一主线程，星空/标题一起定格
-// （用户实测"切球时星空和书名一起卡 0.5s"的头号元凶）。改为：
-// DataTexture(null) 先分配空显存 → 一拍一条横带 texSubImage2D 喂入
-// （走 renderer.copyTextureToTexture，全程 three 状态机，不脏 GL 状态）。
-const gpuBandPixels = 2 * 1024 * 1024; // 每带约 8MB（RGBA），单次上传 ≤ 一帧预算
+// —— GPU 上传调度器（TextureUploadScheduler）——
+// 原则：**交互期间绝不做重 GPU 工作**。手指下的帧只允许改镜头，
+// initTexture 大分配 / copyTextureToTexture 大分块 / setPixelRatio+setSize
+// 重分配画布，全部排进这个按帧预算的串行队列：
+// - 距最近输入 < uploadInteractGuardMs 视为交互中 → 这帧让路，下帧再试；
+// - 持续交互超过 uploadSlotMaxWaitMs 仍推进一小步（块已自适应到很小，
+//   防止连续滑页/转球把切球事务饿死）；
+// - 块大小按实测耗时自适应：>6ms 减半、<3ms 加倍，稳定收敛到本机
+//   "一帧塞得下"的尺寸。高清晚一点到，但手势永远丝滑。
 let gpuUploadChain = Promise.resolve();
-function nextUploadTick() {
+const uploadInteractGuardMs = 200;
+const uploadSlotMaxWaitMs = 1000;
+let adaptiveBandBytes = 2 * 1024 * 1024; // 初始 2MB/块
+const bandBytesMin = 256 * 1024, bandBytesMax = 8 * 1024 * 1024;
+function tuneUploadBudget(costMs) {
+  if (costMs > 6) {
+    adaptiveBandBytes = Math.max(bandBytesMin, adaptiveBandBytes >> 1);
+  } else if (costMs < 3) {
+    adaptiveBandBytes = Math.min(bandBytesMax, adaptiveBandBytes * 2);
+  }
+}
+function nextFrameTick() {
   return new Promise(function (resolve) {
     let done = false;
     const finish = function () { if (!done) { done = true; resolve(); } };
@@ -433,9 +446,25 @@ function nextUploadTick() {
     setTimeout(finish, 120); // iframe 被隐藏时 rAF 停摆，超时兜底保证照样推进
   });
 }
-// 所有大贴图共用的串行上传节拍：绝不在同一帧堆两条横带
+function waitForUploadWindow() {
+  const start = performance.now();
+  return new Promise(function (resolve) {
+    const attempt = function () {
+      nextFrameTick().then(function () {
+        if (performance.now() - lastActivityTs >= uploadInteractGuardMs ||
+            performance.now() - start >= uploadSlotMaxWaitMs) {
+          resolve();
+          return;
+        }
+        attempt(); // 用户仍在捏合/拖动：这帧让路
+      });
+    };
+    attempt();
+  });
+}
+// 所有重 GPU 任务共用的串行预算槽：绝不在同一帧堆两个重活
 function nextGpuUploadSlot() {
-  const slot = gpuUploadChain.then(nextUploadTick);
+  const slot = gpuUploadChain.then(waitForUploadWindow);
   gpuUploadChain = slot.catch(function () {});
   return slot;
 }
@@ -449,10 +478,15 @@ async function createTextureChunked(bitmap, srgbFlag, mipmaps) {
   tex.minFilter = mipmaps ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter;
   tex.magFilter = THREE.LinearFilter;
   tex.needsUpdate = true;
+  // 大纹理显存分配本身也是重活（6144 档 ≈75MB），同样排队、不打手势热帧
+  await nextGpuUploadSlot();
+  if (disposed) { bitmap.close(); return tex; }
   renderer.initTexture(tex); // data 为 null：只分配显存，不搬像素
-  const bandRows = Math.max(64, Math.floor(gpuBandPixels / w));
   const pos = new THREE.Vector2();
-  for (let y = 0; y < h; y += bandRows) {
+  let y = 0;
+  while (y < h) {
+    // 块行数每轮按当前预算重算（自适应可能已调档）
+    const bandRows = Math.max(16, Math.floor(adaptiveBandBytes / (w * 4)));
     const bh = Math.min(bandRows, h - y);
     const slice = await createImageBitmap(bitmap, 0, y, w, bh); // 裁剪不占主线程
     await nextGpuUploadSlot();
@@ -460,10 +494,13 @@ async function createTextureChunked(bitmap, srgbFlag, mipmaps) {
     // 末带上传完由 copyTextureToTexture 顺手 generateMipmap（只此一次）
     tex.generateMipmaps = !!mipmaps && y + bh >= h;
     pos.set(0, y);
+    const t0 = performance.now();
     const sliceTex = new THREE.Texture(slice);
     renderer.copyTextureToTexture(pos, sliceTex, tex);
+    tuneUploadBudget(performance.now() - t0);
     sliceTex.dispose();
     slice.close();
+    y += bh;
   }
   bitmap.close();
   return tex;
@@ -474,10 +511,13 @@ function schedulePixelRatioBoost() {
   if (prZoomed === prIdle || prCurrent === prZoomed || pixelRatioBoostPending) return;
   pixelRatioBoostPending = true;
   runWhenQuiet(function () {
-    pixelRatioBoostPending = false;
-    if (zoomTarget < lodZoomIn || disposed) return;
-    setPixelRatioBoost(true);
-    renderer.render(scene, camera);
+    // 画布重分配也是重 GPU 活：走同一预算队列，不与高清分块挤同一帧
+    nextGpuUploadSlot().then(function () {
+      pixelRatioBoostPending = false;
+      if (zoomTarget < lodZoomIn || disposed) return;
+      setPixelRatioBoost(true);
+      renderer.render(scene, camera);
+    });
   }, 450, 2500);
 }
 
@@ -490,12 +530,21 @@ function prewarmPixelRatioBoost() {
       if (!disposed) schedulePixelRatioBoost();
       return;
     }
-    setPixelRatioBoost(true);
-    renderer.render(scene, camera);
-    runWhenQuiet(function () {
-      pixelRatioBoostPending = false;
-      if (zoomTarget < lodZoomIn && prCurrent === prZoomed) setPixelRatioBoost(false);
-    }, 450, 2500);
+    nextGpuUploadSlot().then(function () {
+      if (disposed || zoomTarget >= lodZoomIn) {
+        pixelRatioBoostPending = false;
+        if (!disposed) schedulePixelRatioBoost();
+        return;
+      }
+      setPixelRatioBoost(true);
+      renderer.render(scene, camera);
+      runWhenQuiet(function () {
+        nextGpuUploadSlot().then(function () {
+          pixelRatioBoostPending = false;
+          if (zoomTarget < lodZoomIn && prCurrent === prZoomed) setPixelRatioBoost(false);
+        });
+      }, 450, 2500);
+    });
   }, 450, 4000);
 }
 
@@ -585,12 +634,16 @@ function scheduleLodSettleDown() {
   lodSettleTimer = setTimeout(function () {
     lodSettleTimer = 0;
     if (zoomTarget > lodZoomOut) return;
-    setPixelRatioBoost(false);
-    if (planetMat.map !== baseTex) {
-      planetMat.map = baseTex;
-      planetMat.needsUpdate = true;
-    }
-    scheduleHiTextureDispose();
+    // 降像素比同样是画布重分配：走预算队列，让开手势/上传热帧
+    nextGpuUploadSlot().then(function () {
+      if (zoomTarget > lodZoomOut || disposed) return;
+      setPixelRatioBoost(false);
+      if (planetMat.map !== baseTex) {
+        planetMat.map = baseTex;
+        planetMat.needsUpdate = true;
+      }
+      scheduleHiTextureDispose();
+    });
   }, lodSettleDelayMs);
 }
 
