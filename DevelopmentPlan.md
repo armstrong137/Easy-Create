@@ -218,6 +218,13 @@
     生成透明背景 carpet_ball_clean.png 并替换灰底小球素材，去掉黑色星空下的小球灰影。
     补充修复：直接左右切换星球时，Web iframe 内部 canvas 默认透明隐藏，只有真实地表首帧 ready 后才淡入；
     同时首页预缓存五张星球替身图，避免新页替身未解码时露出短暂黑球。
+    补充优化（2026-07-13）：根治切星球后 0.5 秒整页冻结（星球+星空+书名连坐）——
+    大贴图改分块上传（DataTexture 空分配 + 每拍一条 texSubImage2D 横带，杜绝整张
+    texImage2D 一口冻主线程 150~400ms）；预加载改 fetch+createImageBitmap 解码不占
+    主线程且 resolve 即 GPU 就绪；高清 LOD 自动预热延到静止 2.5s 后；Safari 无
+    requestIdleCallback 时空闲任务改静默期调度（距最近交互≥800ms，4s 兜底）；
+    切球不再强制 setSize 重分配 drawing buffer；旧星球贴图回存缓存不销毁，
+    来回滑零加载零上传。
   - ✅ P2-2 动态星空第一步（2026-07-10）：银河照片底上叠程序化动态层
     （starfield_motion.dart 确定性调度 + starfield.dart 动态层）——
     星点呼吸闪烁、远近双层视差漂移（40s/16s 一屏）、12 秒一颗流星；

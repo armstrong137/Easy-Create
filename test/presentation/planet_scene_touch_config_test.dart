@@ -195,8 +195,36 @@ void main() {
     expect(sceneHtml, contains('planetTextureCache'));
     expect(sceneHtml, contains('prewarmPlanets'));
     expect(sceneHtml, contains('preloadPlanetTextureBundle'));
-    expect(sceneHtml, contains('warmPlanetBundleOnGpu'));
+    expect(
+      sceneHtml,
+      contains('createTextureChunked'),
+      reason: '预加载须在 loadTexAsync 内完成解码+分块 GPU 上传，到手即可用',
+    );
     expect(sceneHtml, contains('trimPlanetTextureCache'));
+  });
+
+  test('切球收尾不冻主线程：静默期调度 + 不强制重分配画布 + 旧贴图回存缓存', () {
+    // Safari 无 requestIdleCallback，旧退化 setTimeout(task, 350) 是固定延时，
+    // 常正撞滑页收尾动画（星球+星空+书名一起冻 0.5s，用户 iPhone 实测）
+    expect(sceneHtml, contains('lastActivityTs'));
+    expect(sceneHtml, contains('noteActivity'));
+    expect(sceneHtml, isNot(contains('setTimeout(task, 350)')));
+    // 切球只重算镜头距离；setSize 即使尺寸没变也会重分配 drawing buffer
+    expect(
+      sceneHtml,
+      isNot(contains('lastW = 0; lastH = 0; updateFraming();')),
+    );
+    // 大贴图分块上传：一次性 texImage2D 喂 33~75MB 会冻主线程 150~400ms
+    expect(sceneHtml, contains('copyTextureToTexture'));
+    expect(sceneHtml, contains('renderer.initTexture'));
+    expect(
+      sceneHtml,
+      isNot(contains('warmTextureOnGpu')),
+      reason: '1×1 渲染式整张预热（仍是整张上传）已被分块上传取代',
+    );
+    // 旧星球贴图回存缓存（GPU 常驻），杜绝来回滑"扔掉→重新下载解码上传"
+    expect(sceneHtml, contains('prevBundle'));
+    expect(sceneHtml, contains('unmountPlanet(old, true)'));
   });
 
   test('切页时星空亮度延后到 planetReady 后更新，避免和贴图上传抢同一帧', () {
@@ -406,8 +434,8 @@ void main() {
     );
     expect(
       sceneHtml,
-      contains('warmTextureOnGpu'),
-      reason: 'createImageBitmap 只解决解码，首次 GPU 上传也要提前做掉',
+      contains('createTextureChunked'),
+      reason: 'createImageBitmap 只解决解码，GPU 上传也要分块提前做掉',
     );
     expect(
       sceneHtml,
@@ -434,8 +462,9 @@ void main() {
     );
     expect(
       sceneHtml,
-      contains('const initialPrewarmDelayMs = 300'),
-      reason: '预热要挪到启动封面遮挡期内，避免用户看到旋转一秒后卡一下',
+      contains('const initialPrewarmDelayMs = 2500'),
+      reason: '切球后 300ms 就预热高清档曾正撞滑页收尾动画（"切完还卡 0.5s"），'
+          '须延到真正静止后；上传本身也已分块，不再一口冻主线程',
     );
     expect(
       sceneHtml,

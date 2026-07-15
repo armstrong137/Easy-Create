@@ -267,34 +267,40 @@ function mountPlanet(pcfg, pre) {
   };
 }
 
-// 拆一颗星球：从 pivot 摘除并释放其几何/材质/贴图（含常态与缩放态高清）
-function unmountPlanet(b) {
+// 拆一颗星球：从 pivot 摘除并释放其几何/材质；keepTex 为真时贴图不销毁
+// （由调用方回存 planetTextureCache，滑回该星球零加载零上传）。
+// 缩放态残留的 hiTex 不进缓存，一律释放。
+function unmountPlanet(b, keepTex) {
   if (b.planet) {
     pivot.remove(b.planet);
     b.planet.geometry.dispose();
     const m = b.planet.material.map;
     if (m && m !== b.baseTex) m.dispose(); // 缩放态残留的 hiTex
-    if (b.planet.material.normalMap) b.planet.material.normalMap.dispose();
-    if (b.planet.material.specularMap) b.planet.material.specularMap.dispose();
+    if (!keepTex) {
+      if (b.planet.material.normalMap) b.planet.material.normalMap.dispose();
+      if (b.planet.material.specularMap) b.planet.material.specularMap.dispose();
+    }
     b.planet.material.dispose();
   }
-  if (b.baseTex) b.baseTex.dispose();
+  if (!keepTex && b.baseTex) b.baseTex.dispose();
   if (b.nightShell) {
     b.nightShell.geometry.dispose();
-    const nm = b.nightShell.material.uniforms.nightMap.value;
-    if (nm) nm.dispose();
+    if (!keepTex) {
+      const nm = b.nightShell.material.uniforms.nightMap.value;
+      if (nm) nm.dispose();
+    }
     b.nightShell.material.dispose();
   }
   if (b.clouds) {
     pivot.remove(b.clouds);
     b.clouds.geometry.dispose();
-    if (b.clouds.material.map) b.clouds.material.map.dispose();
+    if (!keepTex && b.clouds.material.map) b.clouds.material.map.dispose();
     b.clouds.material.dispose();
   }
   if (b.ring) {
     pivot.remove(b.ring);
     b.ring.geometry.dispose();
-    if (b.ring.material.map) b.ring.material.map.dispose();
+    if (!keepTex && b.ring.material.map) b.ring.material.map.dispose();
     b.ring.material.dispose();
   }
 }
@@ -359,16 +365,32 @@ function applySurfaceDetail() {
 // 缩回 lodZoomOut 以下不立刻收尾，而是延迟降档/释放，避免手势中来回重配画布。
 const lodPrewarmZoom = 1.06, lodZoomIn = 1.35, lodZoomOut = 1.15;
 const lodSettleDelayMs = 700, lodDisposeDelayMs = 8000;
-const initialPrewarmDelayMs = 300;
+// 高清档自动预热延到真正静止后再做：切球后 300ms 就预热曾是"切完还卡 0.5s"
+// 的元凶之一（正撞滑页收尾动画）；上传本身也已改为分块，见 createTextureChunked
+const initialPrewarmDelayMs = 2500;
 let hiTex = null, hiLoading = false, hiPrewarmRequested = false;
 let lodSettleTimer = 0, lodDisposeTimer = 0, initialPrewarmTimer = 0;
 
+// Safari/WKWebView 没有 requestIdleCallback，旧退化 setTimeout(350) 是"固定延时"
+// 而非"空闲"——iPhone 上常正撞滑页收尾动画（星球+星空+标题一起冻）。改为静默期
+// 调度：距最近一次交互/切球消息 ≥ 800ms 才执行；久等不到静默则 4s 兜底强制执行
+// （对齐 requestIdleCallback 的 timeout 语义，保证任务不会饿死）。
+let lastActivityTs = performance.now();
+function noteActivity() { lastActivityTs = performance.now(); }
 function runWhenIdle(task) {
   if ('requestIdleCallback' in window) {
     window.requestIdleCallback(task, { timeout: 1800 });
-  } else {
-    setTimeout(task, 350);
+    return;
   }
+  const deadline = performance.now() + 4000;
+  const tryRun = function () {
+    if (performance.now() - lastActivityTs >= 800 || performance.now() >= deadline) {
+      task();
+      return;
+    }
+    setTimeout(tryRun, 250);
+  };
+  setTimeout(tryRun, 350);
 }
 
 function cancelLodTimers() {
@@ -382,28 +404,54 @@ function cancelLodTimers() {
   }
 }
 
-// createImageBitmap 只把解码挪走；首次 GPU 上传仍会卡一帧。
-// 用 1x1 离屏 render target 提前采样一次，让上传发生在空闲帧。
-function warmTextureOnGpu(tex) {
-  if (!tex || tex.userData.gpuWarm) return;
-  const warmScene = new THREE.Scene();
-  const warmCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 2);
-  warmCamera.position.z = 1;
-  const warmGeo = new THREE.PlaneGeometry(2, 2);
-  const warmMat = new THREE.MeshBasicMaterial({ map: tex });
-  warmScene.add(new THREE.Mesh(warmGeo, warmMat));
-  const oldTarget = renderer.getRenderTarget();
-  const target = new THREE.WebGLRenderTarget(1, 1, {
-    depthBuffer: false,
-    stencilBuffer: false,
+// —— 大贴图分块上传 ——
+// texImage2D 一次性喂整张 4096/6144 贴图（33~75MB）会把 Safari 主线程冻
+// 150~400ms：同源 iframe 与 Flutter 页面共享同一主线程，星空/标题一起定格
+// （用户实测"切球时星空和书名一起卡 0.5s"的头号元凶）。改为：
+// DataTexture(null) 先分配空显存 → 一拍一条横带 texSubImage2D 喂入
+// （走 renderer.copyTextureToTexture，全程 three 状态机，不脏 GL 状态）。
+const gpuBandPixels = 2 * 1024 * 1024; // 每带约 8MB（RGBA），单次上传 ≤ 一帧预算
+let gpuUploadChain = Promise.resolve();
+function nextUploadTick() {
+  return new Promise(function (resolve) {
+    let done = false;
+    const finish = function () { if (!done) { done = true; resolve(); } };
+    requestAnimationFrame(finish);
+    setTimeout(finish, 120); // iframe 被隐藏时 rAF 停摆，超时兜底保证照样推进
   });
-  renderer.setRenderTarget(target);
-  renderer.render(warmScene, warmCamera);
-  renderer.setRenderTarget(oldTarget);
-  target.dispose();
-  warmGeo.dispose();
-  warmMat.dispose();
-  tex.userData.gpuWarm = true;
+}
+// 所有大贴图共用的串行上传节拍：绝不在同一帧堆两条横带
+function nextGpuUploadSlot() {
+  const slot = gpuUploadChain.then(nextUploadTick);
+  gpuUploadChain = slot.catch(function () {});
+  return slot;
+}
+async function createTextureChunked(bitmap, srgbFlag, mipmaps) {
+  const w = bitmap.width, h = bitmap.height;
+  const tex = new THREE.DataTexture(null, w, h, THREE.RGBAFormat, THREE.UnsignedByteType);
+  tex.flipY = false; // ImageBitmap 已在解码阶段翻转
+  if (srgbFlag) tex.encoding = THREE.sRGBEncoding;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  tex.generateMipmaps = false; // 逐带期间不生成；末带一次生成
+  tex.minFilter = mipmaps ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.needsUpdate = true;
+  renderer.initTexture(tex); // data 为 null：只分配显存，不搬像素
+  const bandRows = Math.max(64, Math.floor(gpuBandPixels / w));
+  const pos = new THREE.Vector2();
+  for (let y = 0; y < h; y += bandRows) {
+    const bh = Math.min(bandRows, h - y);
+    const slice = await createImageBitmap(bitmap, 0, y, w, bh); // 裁剪不占主线程
+    await nextGpuUploadSlot();
+    if (disposed) { slice.close(); break; }
+    // 末带上传完由 copyTextureToTexture 顺手 generateMipmap（只此一次）
+    tex.generateMipmaps = !!mipmaps && y + bh >= h;
+    pos.set(0, y);
+    renderer.copyTextureToTexture(pos, new THREE.Texture(slice), tex);
+    slice.close();
+  }
+  bitmap.close();
+  return tex;
 }
 
 function prewarmPixelRatioBoost() {
@@ -442,15 +490,11 @@ async function ensureHiTexture() {
     const bitmap = await createImageBitmap(await (await fetch(lodSrc)).blob(), {
       imageOrientation: 'flipY',
     });
-    const tex = new THREE.Texture(bitmap);
-    tex.flipY = false;
-    tex.encoding = THREE.sRGBEncoding;
-    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-    tex.generateMipmaps = false; // 大图 mipmap 再多吃 33% 显存
-    tex.minFilter = THREE.LinearFilter;
-    tex.needsUpdate = true;
+    // 分块上传（无 mipmap：大图再多吃 33% 显存）：6144 档整张 texImage2D
+    // ≈ 75MB 一口气会冻主线程 150~400ms，星空/标题连坐
+    const tex = await createTextureChunked(bitmap, true, false);
+    if (disposed) { tex.dispose(); return; }
     hiTex = tex;
-    warmTextureOnGpu(tex);
     applyLod(); // 加载完成时可能已缩回，交由 applyLod 决定用不用
   } catch (e) {
     // 失败静默留用常态贴图，不影响交互
@@ -516,6 +560,7 @@ function scheduleHiTextureDispose() {
 }
 
 window.setZoom = function (z) {
+  noteActivity();
   zoomTarget = Math.max(1, z);
   applyLod();
 };
@@ -530,6 +575,7 @@ window.setAutoPrewarm = function (on) {
 let yawTarget = 0, pitchTarget = 0;
 const maxPitch = Math.PI / 2 * 0.92; // 别转到极点翻面
 window.setRotation = function (yaw, pitch) {
+  noteActivity();
   yawTarget = yaw;
   pitchTarget = Math.max(-maxPitch, Math.min(maxPitch, pitch));
 };
@@ -548,6 +594,7 @@ window.pauseRender = function () {
 window.resumeRender = function () {
   if (disposed) return;
   paused = false;
+  noteActivity(); // 返回首页揭幕期不是静默期，预热任务再等等
   requestNextFrame();
 };
 
@@ -563,13 +610,28 @@ function applyViewState(s) {
   }
 }
 
-// 预加载一颗星球全部纹理（旧星球此间持续渲染，杜绝黑/替身）
-function loadTexAsync(path, srgbFlag) {
+// 预加载一颗星球全部纹理（旧星球此间持续渲染，杜绝黑/替身）。
+// JPEG 走 fetch + createImageBitmap（解码不占主线程）+ 分块上传：resolve 时
+// 已经 GPU 就绪，切球那一帧只做引用切换，不再现场解码/整张上传。
+// 旧 TextureLoader 路只在 img.onload 就 resolve——那只是"下载完"，JPEG 解码
+// 和整张 texImage2D 全部欠着，会在切球帧一起爆发。
+// PNG（土星环，小图，有 alpha 预乘差异）与 WebGL1 回退沿用老路。
+function loadTexLegacy(path, srgbFlag) {
   return new Promise(function (resolve) {
     const t = loader.load(path, function () { resolve(t); }, undefined, function () { resolve(t); });
     if (srgbFlag) t.encoding = THREE.sRGBEncoding;
     t.anisotropy = renderer.capabilities.getMaxAnisotropy();
   });
+}
+function loadTexAsync(path, srgbFlag) {
+  if (!renderer.capabilities.isWebGL2 || !/\.jpe?g$/i.test(path)) {
+    return loadTexLegacy(path, srgbFlag);
+  }
+  return fetch(path)
+    .then(function (r) { return r.blob(); })
+    .then(function (blob) { return createImageBitmap(blob, { imageOrientation: 'flipY' }); })
+    .then(function (bitmap) { return createTextureChunked(bitmap, srgbFlag, true); })
+    .catch(function () { return loadTexLegacy(path, srgbFlag); });
 }
 const planetTextureCache = new Map();
 const maxPlanetTextureCache = 2;
@@ -638,22 +700,6 @@ function takePlanetTextureBundle(name) {
   });
 }
 
-function warmPlanetBundleOnGpu(bundle) {
-  if (!bundle || bundle.gpuWarm) return;
-  const textures = Object.keys(bundle).map(function (key) { return bundle[key]; }).filter(Boolean);
-  let index = 0;
-  function warmNext() {
-    if (index >= textures.length || disposed) {
-      bundle.gpuWarm = true;
-      return;
-    }
-    warmTextureOnGpu(textures[index]);
-    index += 1;
-    if (index < textures.length) runWhenIdle(warmNext);
-  }
-  runWhenIdle(warmNext);
-}
-
 function trimPlanetTextureCache(keepNames) {
   const keep = new Set(keepNames || []);
   while (planetTextureCache.size > maxPlanetTextureCache) {
@@ -686,9 +732,9 @@ window.prewarmPlanets = function (names) {
   const keep = nextNames.concat([planetName]);
   nextNames.forEach(function (name) {
     runWhenIdle(function () {
-      preloadPlanetTextureBundle(name).then(function (bundle) {
-        if (disposed || name === planetName) return;
-        warmPlanetBundleOnGpu(bundle);
+      if (disposed || name === planetName) return;
+      // 预加载在 loadTexAsync 内已完成解码 + 分块 GPU 上传，到手即可用
+      preloadPlanetTextureBundle(name).then(function () {
         trimPlanetTextureCache(keep);
       });
     });
@@ -701,6 +747,7 @@ window.prewarmPlanets = function (names) {
 // 当前 yaw/pitch/zoom/stage；接管后拆旧星球释放显存（避免多套贴图常驻 OOM）。
 let planetSwapping = false, pendingPlanet = null;
 window.setPlanet = function (nextPlanet, state) {
+  noteActivity();
   if (state) applyViewState(state);
   if (!nextPlanet || !PLANETS[nextPlanet] || disposed) return;
   if (planetSwapping) {
@@ -714,6 +761,7 @@ window.setPlanet = function (nextPlanet, state) {
   const nextCfg = PLANETS[nextName];
   takePlanetTextureBundle(nextName).then(function (pre) {
     if (disposed) { planetSwapping = false; return; }
+    const prevName = planetName;
     const old = { planet: planet, nightShell: nightShell, clouds: clouds, ring: ring, baseTex: baseTex };
     // 释放旧 LOD 状态（新星球重建）
     cancelLodTimers();
@@ -730,10 +778,29 @@ window.setPlanet = function (nextPlanet, state) {
     // 场景没重建，pivot 转角/缩放本就保留；再据 state 兜一次，确保不复位默认角度
     if (state) applyViewState(state);
     applySurfaceDetail();
-    // 土星←→普通星球取景半径不同：强制重算 d0
-    lastW = 0; lastH = 0; updateFraming();
-    // 拆旧星球，释放其显存（新星球已接管）
-    unmountPlanet(old);
+    // 土星←→普通星球取景半径不同：只重算镜头距离。不再借道 setSize——
+    // 即使尺寸没变，canvas.width 赋值也会强制重分配 drawing buffer（白冻一下）
+    if (lastW > 0 && lastH > 0) {
+      d0 = fitDistance(frameRadius, stageScale * 1.02);
+      camera.position.set(0, 0, d0 / zoom);
+    }
+    // 旧星球整套贴图不销毁：原样回存纹理缓存（GPU 常驻）。否则来回滑就是
+    // "扔掉→重新下载/解码/上传"死循环，每次都在滑页收尾动画里卡主线程
+    const prevBundle = { map: old.baseTex };
+    if (old.planet.material.normalMap) prevBundle.normal = old.planet.material.normalMap;
+    if (old.planet.material.specularMap) prevBundle.specular = old.planet.material.specularMap;
+    if (old.clouds) prevBundle.clouds = old.clouds.material.map;
+    if (old.nightShell) prevBundle.night = old.nightShell.material.uniforms.nightMap.value;
+    if (old.ring) prevBundle.ring = old.ring.material.map;
+    planetTextureCache.set(prevName, {
+      name: prevName,
+      bundle: prevBundle,
+      lastUsed: performance.now(),
+      promise: Promise.resolve(prevBundle),
+    });
+    trimPlanetTextureCache([nextName, prevName]);
+    // 拆旧星球：几何/材质释放，贴图保留（已回存缓存，滑回即刻接管）
+    unmountPlanet(old, true);
     if (autoPrewarmEnabled) scheduleInitialScenePrewarm();
     planetSwapping = false;
     // 通知宿主：新星球已接管（宿主据此确认切换完成）
