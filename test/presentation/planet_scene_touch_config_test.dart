@@ -529,7 +529,26 @@ void main() {
     expect(prewarmBody, isNot(contains('preloadPlanetTextureBundle')));
     expect(prewarmBody, isNot(contains('createImageBitmap')));
     expect(prewarmBody, isNot(contains('createTextureChunked')));
-    expect(prewarmBody, contains('.blob()'), reason: '消费完 body 落 HTTP 缓存即止');
+    // 预取助手本体也必须是纯字节层：消费完 body 落 HTTP 缓存即止
+    final prefetchBody = functionBody(sceneHtml, 'prefetchTexturePath');
+    expect(prefetchBody, contains('.blob()'));
+    expect(prefetchBody, isNot(contains('createImageBitmap')));
+    expect(prefetchBody, isNot(contains('createTextureChunked')));
+    expect(prefetchBody, isNot(contains('decodeImageOffMainThread')));
+  });
+
+  test('第一次放大不慢半拍：高清文件预取字节 + 手势即刻解码 + DPR 仍延后', () {
+    // 1) 高清 LOD 路径进入轻量预取清单（仅字节落 HTTP 缓存，不碰 GPU）；
+    //    切球后/首屏也预取当前星球的高清档
+    expect(sceneHtml, contains('useMidLod ? pcfg.mapMid : pcfg.mapHi'));
+    expect(sceneHtml, contains('prefetchTexturePath(lodSrc)'));
+    // 2) 捏合跨过预热阈值＝用户明确意图：立刻 img.decode+分块上传，
+    //    不再走 runWhenQuiet 等静默期（那是人为制造"慢半拍"）
+    final prewarmHiBody = functionBody(sceneHtml, 'prewarmHiTexture');
+    expect(prewarmHiBody, isNot(contains('runWhenQuiet')));
+    expect(prewarmHiBody, contains('ensureHiTexture()'));
+    // 3) 保护阀：DPR 画布重分配仍不打在手势热帧上
+    expect(sceneHtml, contains('schedulePixelRatioBoost'));
   });
 
   test('切换星球：不预构建相邻页，也不保活多颗 WebGL 场景', () {

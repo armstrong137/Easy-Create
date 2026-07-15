@@ -502,7 +502,12 @@ function prewarmPixelRatioBoost() {
 function prewarmHiTexture() {
   if (hiPrewarmRequested || hiTex || !lodSrc || lodSrc === cfg.map) return;
   hiPrewarmRequested = true;
-  runWhenQuiet(function () { ensureHiTexture(); }, 450, 4000);
+  // 捏合跨过预热阈值本身就是用户明确意图：立刻开始 fetch（已预取过则命中
+  // 缓存）+ img.decode（后台线程）+ 分块上传（按帧节拍）——这三样都不打
+  // 手势热帧，再等静默期只是人为制造"第一次放大慢半拍"。
+  // 保护阀：DPR setPixelRatio/setSize 的画布重分配仍延后到手势静默
+  // （schedulePixelRatioBoost），不激进。
+  ensureHiTexture();
 }
 
 function decodeImageOffMainThread(src) {
@@ -771,26 +776,32 @@ function texturePathsForPlanet(pcfg) {
   if (pcfg.clouds) paths.push(pcfg.clouds);
   if (pcfg.night) paths.push(pcfg.night);
   if (pcfg.ring) paths.push('textures/saturn_ring.png');
+  // 高清 LOD 文件也预取字节：第一次放大不再等文件读取（解码/上传仍只在
+  // 用户明确放大时发生）
+  const lodPath = useMidLod ? pcfg.mapMid : pcfg.mapHi;
+  if (lodPath && lodPath !== pcfg.map) paths.push(lodPath);
   return paths;
 }
+// 轻量预取：只把文件字节拉进 HTTP 缓存（消费完 body 即丢弃引用），
+// 不解码、不建 ImageBitmap、不上传 GPU、不动画布
 const prefetchedTexturePaths = new Set();
+function prefetchTexturePath(path) {
+  if (!path || prefetchedTexturePaths.has(path)) return;
+  prefetchedTexturePaths.add(path);
+  runWhenIdle(function () {
+    if (disposed) return;
+    fetch(path).then(function (r) { return r.blob(); }).catch(function () {
+      prefetchedTexturePaths.delete(path); // 失败允许下次重试
+    });
+  });
+}
 window.prewarmPlanets = function (names) {
   if (!Array.isArray(names) || disposed) return;
   names
     .filter(function (name) { return name && PLANETS[name] && name !== planetName; })
     .slice(0, maxPlanetTextureCache)
     .forEach(function (name) {
-      texturePathsForPlanet(PLANETS[name]).forEach(function (path) {
-        if (prefetchedTexturePaths.has(path)) return;
-        prefetchedTexturePaths.add(path);
-        runWhenIdle(function () {
-          if (disposed) return;
-          // 消费完 body 让浏览器落缓存，blob 引用随即丢弃（不触发图像解码）
-          fetch(path).then(function (r) { return r.blob(); }).catch(function () {
-            prefetchedTexturePaths.delete(path); // 失败允许下次重试
-          });
-        });
-      });
+      texturePathsForPlanet(PLANETS[name]).forEach(prefetchTexturePath);
     });
 };
 
@@ -852,6 +863,8 @@ window.setPlanet = function (nextPlanet, state) {
     trimPlanetTextureCache([nextName, prevName]);
     // 拆旧星球：几何/材质释放，贴图保留（已回存缓存，滑回即刻接管）
     unmountPlanet(old, true);
+    // 新星球的高清档只预取字节（不解码、不上传、不动画布）：第一次放大不等文件
+    prefetchTexturePath(lodSrc);
     planetSwapping = false;
     // 通知宿主：新星球已接管（宿主据此确认切换完成）
     if (window.parent !== window) {
@@ -964,6 +977,8 @@ function animate() {
 }
 updateFraming();
 requestNextFrame();
+// 首屏星球的高清档同样只预取字节（第一次放大不等文件读取）
+prefetchTexturePath(lodSrc);
 if (initialPrewarmPlanets.length) {
   setTimeout(function () { window.prewarmPlanets(initialPrewarmPlanets); }, 600);
 }
