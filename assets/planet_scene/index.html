@@ -377,6 +377,19 @@ let lodSettleTimer = 0, lodDisposeTimer = 0, initialPrewarmTimer = 0;
 // （对齐 requestIdleCallback 的 timeout 语义，保证任务不会饿死）。
 let lastActivityTs = performance.now();
 function noteActivity() { lastActivityTs = performance.now(); }
+function runWhenQuiet(task, quietMs, timeoutMs) {
+  quietMs = quietMs || 450;
+  timeoutMs = timeoutMs || 4000;
+  const start = performance.now();
+  const waitForQuiet = function () {
+    if (performance.now() - lastActivityTs >= quietMs || performance.now() - start >= timeoutMs) {
+      runWhenIdle(task);
+      return;
+    }
+    setTimeout(waitForQuiet, 150);
+  };
+  setTimeout(waitForQuiet, quietMs);
+}
 function runWhenIdle(task) {
   if ('requestIdleCallback' in window) {
     window.requestIdleCallback(task, { timeout: 1800 });
@@ -447,27 +460,49 @@ async function createTextureChunked(bitmap, srgbFlag, mipmaps) {
     // 末带上传完由 copyTextureToTexture 顺手 generateMipmap（只此一次）
     tex.generateMipmaps = !!mipmaps && y + bh >= h;
     pos.set(0, y);
-    renderer.copyTextureToTexture(pos, new THREE.Texture(slice), tex);
+    const sliceTex = new THREE.Texture(slice);
+    renderer.copyTextureToTexture(pos, sliceTex, tex);
+    sliceTex.dispose();
     slice.close();
   }
   bitmap.close();
   return tex;
 }
 
-function prewarmPixelRatioBoost() {
-  if (prZoomed === prIdle) return;
-  runWhenIdle(function () {
-    const before = prCurrent;
+let pixelRatioBoostPending = false;
+function schedulePixelRatioBoost() {
+  if (prZoomed === prIdle || prCurrent === prZoomed || pixelRatioBoostPending) return;
+  pixelRatioBoostPending = true;
+  runWhenQuiet(function () {
+    pixelRatioBoostPending = false;
+    if (zoomTarget < lodZoomIn || disposed) return;
     setPixelRatioBoost(true);
     renderer.render(scene, camera);
-    if (zoomTarget < lodZoomIn && before !== prZoomed) setPixelRatioBoost(false);
-  });
+  }, 450, 2500);
+}
+
+function prewarmPixelRatioBoost() {
+  if (prZoomed === prIdle || prCurrent === prZoomed || pixelRatioBoostPending) return;
+  pixelRatioBoostPending = true;
+  runWhenQuiet(function () {
+    if (disposed || zoomTarget >= lodZoomIn) {
+      pixelRatioBoostPending = false;
+      if (!disposed) schedulePixelRatioBoost();
+      return;
+    }
+    setPixelRatioBoost(true);
+    renderer.render(scene, camera);
+    runWhenQuiet(function () {
+      pixelRatioBoostPending = false;
+      if (zoomTarget < lodZoomIn && prCurrent === prZoomed) setPixelRatioBoost(false);
+    }, 450, 2500);
+  }, 450, 4000);
 }
 
 function prewarmHiTexture() {
   if (hiPrewarmRequested || hiTex || !lodSrc || lodSrc === cfg.map) return;
   hiPrewarmRequested = true;
-  runWhenIdle(function () { ensureHiTexture(); });
+  runWhenQuiet(function () { ensureHiTexture(); }, 450, 4000);
 }
 
 function scheduleInitialScenePrewarm() {
@@ -480,16 +515,22 @@ function scheduleInitialScenePrewarm() {
   }, initialPrewarmDelayMs);
 }
 
-// 解码放到主线程之外（createImageBitmap），避免大图解码时整页卡住
+function decodeImageOffMainThread(src) {
+  const img = new Image();
+  img.decoding = 'async';
+  img.src = src;
+  return img.decode().then(function () { return img; });
+}
+
+// 解码先走 img.decode 后台通道，再进入 ImageBitmap / 分块上传，避免大图整页卡住
 async function ensureHiTexture() {
   if (hiTex || hiLoading || !lodSrc || lodSrc === cfg.map) return;
   hiLoading = true;
   try {
     // 常态贴图走 TextureLoader，WebGL 上传时会翻转 Y；ImageBitmap 路径会忽略
     // Texture.flipY，所以必须在解码阶段翻转，避免 LOD 换档时地表朝向跳变。
-    const bitmap = await createImageBitmap(await (await fetch(lodSrc)).blob(), {
-      imageOrientation: 'flipY',
-    });
+    const decoded = await decodeImageOffMainThread(lodSrc);
+    const bitmap = await createImageBitmap(decoded, { imageOrientation: 'flipY' });
     // 分块上传（无 mipmap：大图再多吃 33% 显存）：6144 档整张 texImage2D
     // ≈ 75MB 一口气会冻主线程 150~400ms，星空/标题连坐
     const tex = await createTextureChunked(bitmap, true, false);
@@ -520,14 +561,14 @@ function applyLod() {
   }
   if (zoomTarget >= lodZoomIn) {
     cancelLodTimers();
-    setPixelRatioBoost(true);
+    schedulePixelRatioBoost();
     if (hiTex) {
       if (planetMat.map !== hiTex) {
         planetMat.map = hiTex;
         planetMat.needsUpdate = true;
       }
     } else {
-      ensureHiTexture();
+      prewarmHiTexture();
     }
   } else if (zoomTarget <= lodZoomOut) {
     scheduleLodSettleDown();
@@ -611,7 +652,7 @@ function applyViewState(s) {
 }
 
 // 预加载一颗星球全部纹理（旧星球此间持续渲染，杜绝黑/替身）。
-// JPEG 走 fetch + createImageBitmap（解码不占主线程）+ 分块上传：resolve 时
+// JPEG 走 img.decode + createImageBitmap + 分块上传：resolve 时
 // 已经 GPU 就绪，切球那一帧只做引用切换，不再现场解码/整张上传。
 // 旧 TextureLoader 路只在 img.onload 就 resolve——那只是"下载完"，JPEG 解码
 // 和整张 texImage2D 全部欠着，会在切球帧一起爆发。
@@ -627,9 +668,8 @@ function loadTexAsync(path, srgbFlag) {
   if (!renderer.capabilities.isWebGL2 || !/\.jpe?g$/i.test(path)) {
     return loadTexLegacy(path, srgbFlag);
   }
-  return fetch(path)
-    .then(function (r) { return r.blob(); })
-    .then(function (blob) { return createImageBitmap(blob, { imageOrientation: 'flipY' }); })
+  return decodeImageOffMainThread(path)
+    .then(function (decoded) { return createImageBitmap(decoded, { imageOrientation: 'flipY' }); })
     .then(function (bitmap) { return createTextureChunked(bitmap, srgbFlag, true); })
     .catch(function () { return loadTexLegacy(path, srgbFlag); });
 }

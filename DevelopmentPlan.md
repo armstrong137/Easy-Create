@@ -225,6 +225,9 @@
     requestIdleCallback 时空闲任务改静默期调度（距最近交互≥800ms，4s 兜底）；
     切球不再强制 setSize 重分配 drawing buffer；旧星球贴图回存缓存不销毁，
     来回滑零加载零上传。
+    补充修复（2026-07-15）：根治切球后立即捏合放大卡顿——applyLod 手势热路径不再同步
+    setPixelRatio/setSize，也不再现场 ensureHiTexture；高清 JPEG 统一先走 img.decode 后台解码，
+    再 createImageBitmap + 分块上传；DPR boost 延后到静默期执行，并恢复 autoPrewarm=true。
   - ✅ P2-2 动态星空第一步（2026-07-10）：银河照片底上叠程序化动态层
     （starfield_motion.dart 确定性调度 + starfield.dart 动态层）——
     星点呼吸闪烁、远近双层视差漂移（40s/16s 一屏）、12 秒一颗流星；

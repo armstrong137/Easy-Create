@@ -3,6 +3,20 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 /// 3D 星球缩放的架构护栏（源码级断言，不依赖平台视图）
+String functionBody(String source, String name) {
+  final start = source.indexOf('function $name(');
+  expect(start, greaterThanOrEqualTo(0), reason: '找不到函数 $name');
+  final open = source.indexOf('{', start);
+  var depth = 0;
+  for (var i = open; i < source.length; i += 1) {
+    final ch = source[i];
+    if (ch == '{') depth += 1;
+    if (ch == '}') depth -= 1;
+    if (depth == 0) return source.substring(open + 1, i);
+  }
+  fail('函数 $name 没有闭合');
+}
+
 void main() {
   final webWrapper = File(
     'lib/presentation/home/planet_scene/planet_scene_web.dart',
@@ -422,6 +436,7 @@ void main() {
   });
 
   test('LOD 调度避开手势热路径：空闲预热、GPU 预热、缩回延迟收尾', () {
+    final applyLodBody = functionBody(sceneHtml, 'applyLod');
     expect(
       sceneHtml,
       contains('requestIdleCallback'),
@@ -452,6 +467,26 @@ void main() {
       contains('cancelLodTimers'),
       reason: '重新放大时必须取消延迟收尾，否则会把正在看的高清档释放掉',
     );
+    expect(
+      applyLodBody,
+      isNot(contains('setPixelRatioBoost(true)')),
+      reason: '捏合跨过高清阈值时不能同步重分配 drawing buffer / MSAA 缓冲',
+    );
+    expect(
+      applyLodBody,
+      isNot(contains('ensureHiTexture()')),
+      reason: '捏合热路径不能现场 fetch/decode/upload 6144 高清贴图',
+    );
+    expect(
+      sceneHtml,
+      contains('schedulePixelRatioBoost'),
+      reason: 'DPR 提升应延后到手势静默期或空闲帧执行',
+    );
+    expect(
+      sceneHtml,
+      contains('decodeImageOffMainThread'),
+      reason: '高清 JPEG 先用 img.decode 后台解码，再进入 ImageBitmap/分块上传',
+    );
   });
 
   test('当前星球进入页面后自动空闲预热高清 LOD，第一次捏合前就把重活提前做掉', () {
@@ -463,7 +498,8 @@ void main() {
     expect(
       sceneHtml,
       contains('const initialPrewarmDelayMs = 2500'),
-      reason: '切球后 300ms 就预热高清档曾正撞滑页收尾动画（"切完还卡 0.5s"），'
+      reason:
+          '切球后 300ms 就预热高清档曾正撞滑页收尾动画（"切完还卡 0.5s"），'
           '须延到真正静止后；上传本身也已分块，不再一口冻主线程',
     );
     expect(
