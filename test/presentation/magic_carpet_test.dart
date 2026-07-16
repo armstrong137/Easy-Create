@@ -283,6 +283,56 @@ void main() {
     );
   });
 
+  test('完整卷轴素材底部不能残留灰白抠图边或棋盘阴影', () {
+    final file = File('assets/textures/scroll_carpet/scroll_full.png');
+    expect(file.existsSync(), isTrue);
+    final image = img.decodePng(file.readAsBytesSync())!;
+
+    var dirtyBottomPixels = 0;
+    for (var y = (image.height * 0.94).round(); y < image.height; y++) {
+      for (
+        var x = (image.width * 0.16).round();
+        x < (image.width * 0.84).round();
+        x++
+      ) {
+        final p = image.getPixel(x, y);
+        final avg = (p.r + p.g + p.b) / 3;
+        final diff =
+            [p.r, p.g, p.b].reduce((a, b) => a > b ? a : b) -
+            [p.r, p.g, p.b].reduce((a, b) => a < b ? a : b);
+        if (p.a > 32 && diff < 18 && avg > 55 && avg < 245) {
+          dirtyBottomPixels++;
+        }
+      }
+    }
+
+    expect(
+      dirtyBottomPixels,
+      lessThan(500),
+      reason: '底部中心区域不能带灰白实底，否则贴在星空上会露出抠图边',
+    );
+  });
+
+  test('展开卷轴不能再使用矩形阴影或纸面硬边造成抠图感', () {
+    final scrollSrc = File(
+      'lib/presentation/outline/scroll_carpet.dart',
+    ).readAsStringSync();
+    final carpetSrc = File(
+      'lib/presentation/outline/magic_carpet.dart',
+    ).readAsStringSync();
+
+    expect(
+      scrollSrc,
+      isNot(contains('_EdgeShade')),
+      reason: '纸面内容层不应再叠矩形上下阴影，真实卷轴素材本身承担边缘过渡',
+    );
+    expect(
+      carpetSrc,
+      isNot(contains('Color(0x66000000)')),
+      reason: '整条卷轴外层不能用矩形 BoxShadow，否则星空背景上会出现方形痕迹',
+    );
+  });
+
   testWidgets('展开态整体高度精致收敛，保留首页地球可见区', (tester) async {
     await pumpCarpet(tester, [fake(1, '深夜的旋律')]);
 

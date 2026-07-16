@@ -387,6 +387,18 @@
       验证：`flutter test test/presentation/magic_carpet_test.dart` 21 项全绿；
       `flutter analyze --no-pub` 零问题；`flutter test --timeout 2m` 216 项全绿；
       `flutter build web --release` 通过。
+    - ✅ P4-R10 卷轴抠图痕迹与纸面硬边清理（2026-07-16）：针对用户反馈
+      “灵感显示仍有抠图感、魔毯底部灰色阴影没抠干净、卷轴背景和星空过渡痕迹
+      明显”，定位到三处根因：`scroll_full.png` 底部中心残留约 10110 个不透明
+      低饱和灰白像素；ScrollFrame 纸面内容层叠了矩形上下 EdgeShade；MagicCarpet
+      外层用了整矩形 BoxShadow。修复：清理 PNG 边界连通灰底与底部灰白实边，
+      对 alpha 轮廓做约 2px 羽化并压暗全透明像素 RGB；删除纸面硬边阴影；
+      删除整卷轴矩形投影，改由素材自身边缘自然融入星空。新增回归测试：
+      底部中心灰白脏像素必须 <500，源码不得再使用 `_EdgeShade` 或外层
+      `Color(0x66000000)` 矩形阴影。验证：
+      `flutter test test/presentation/magic_carpet_test.dart` 23 项全绿；
+      `flutter analyze --no-pub` 零问题；`flutter test --timeout 2m` 218 项全绿；
+      `flutter build web --release` 通过。
 - ☐ P5 小节页 3D 写作工作台（卡堆/卡片包/沉浸编辑器）
 - ☐ P6 速记与设置重构（魔法物件按钮/弹层/设置页）
 - ☐ P7 统一设计系统和验收（材质/动效 Token、视觉与性能回归）

@@ -580,28 +580,17 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
               child: Align(
                 alignment: Alignment.topCenter,
                 heightFactor: reveal.clamp(0.02, 1.0),
-                child: DecoratedBox(
-                  decoration: const BoxDecoration(
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0x66000000),
-                        blurRadius: 24,
-                        offset: Offset(0, 14),
-                      ),
-                    ],
+                child: ScrollFrame(
+                  count: pool.length,
+                  glow: glow,
+                  onClose: () => _toggle(false),
+                  progress: progress,
+                  progressOpacity: ((_unroll.value - 0.85) / 0.15).clamp(
+                    0.0,
+                    1.0,
                   ),
-                  child: ScrollFrame(
-                    count: pool.length,
-                    glow: glow,
-                    onClose: () => _toggle(false),
-                    progress: progress,
-                    progressOpacity: ((_unroll.value - 0.85) / 0.15).clamp(
-                      0.0,
-                      1.0,
-                    ),
-                    titleOpacity: ((_unroll.value - 0.15) / 0.2).clamp(0.0, 1.0),
-                    child: content,
-                  ),
+                  titleOpacity: ((_unroll.value - 0.15) / 0.2).clamp(0.0, 1.0),
+                  child: content,
                 ),
               ),
             ),

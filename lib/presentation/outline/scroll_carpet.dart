@@ -107,28 +107,7 @@ class ScrollFrame extends StatelessWidget {
               // ② 纸面墨迹层：覆盖在资产羊皮纸上，不再另铺一张矩形纸。
               Positioned.fromRect(
                 rect: hole,
-                child: ClipRect(
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      child,
-                      const Positioned(
-                        left: 0,
-                        right: 0,
-                        top: 0,
-                        height: 18,
-                        child: _EdgeShade(top: true),
-                      ),
-                      const Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        height: 16,
-                        child: _EdgeShade(top: false),
-                      ),
-                    ],
-                  ),
-                ),
+                child: ClipRect(child: child),
               ),
               // ③ 右侧墨迹进度线（叠在纸面窗口右缘内）
               if (progress != null)
@@ -226,26 +205,6 @@ class _CloseButton extends StatelessWidget {
           color: kScrollGold,
           size: 18,
           shadows: [Shadow(color: Color(0xE60A0906), blurRadius: 3)],
-        ),
-      ),
-    );
-  }
-}
-
-/// 上下卷入阴影
-class _EdgeShade extends StatelessWidget {
-  const _EdgeShade({required this.top});
-
-  final bool top;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: top ? Alignment.topCenter : Alignment.bottomCenter,
-          end: top ? Alignment.bottomCenter : Alignment.topCenter,
-          colors: const [Color(0x66321F0E), Color(0x00321F0E)],
         ),
       ),
     );
