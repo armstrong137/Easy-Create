@@ -9,6 +9,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 const _port = 9222;
 final _stateFile = File(
@@ -174,6 +175,61 @@ Future<void> main(List<String> args) async {
       final b64 = ((r['result'] as Map)['data']) as String;
       File(args[1]).writeAsBytesSync(base64Decode(b64));
       stdout.writeln('saved ${args[1]}');
+    case 'tapshot':
+      // 点击后延时 ms 毫秒抓帧（单进程内完成：跨进程起动延迟会错过
+      // 短动画帧，如魔毯收起的 480ms 反向卷回）
+      final tx = double.parse(args[1]), ty = double.parse(args[2]);
+      final delay = int.parse(args[3]);
+      for (final type in ['mousePressed', 'mouseReleased']) {
+        await send('Input.dispatchMouseEvent', {
+          'type': type,
+          'x': tx,
+          'y': ty,
+          'button': 'left',
+          'clickCount': 1,
+        });
+      }
+      await Future<void>.delayed(Duration(milliseconds: delay));
+      final ts = await send('Page.captureScreenshot', {'format': 'png'});
+      final tb64 = ((ts['result'] as Map)['data']) as String;
+      File(args[4]).writeAsBytesSync(base64Decode(tb64));
+      stdout.writeln('tapshot saved ${args[4]}');
+    case 'holdshot':
+      // 按住不放并在 shotAt 毫秒时抓帧，再继续按满 holdMs 后抬起
+      //（拖拽中态：LongPressDraggable 浮影只在按住期间存在）
+      final hx2 = double.parse(args[1]), hy2 = double.parse(args[2]);
+      final holdMs = int.parse(args[3]);
+      final shotAt = int.parse(args[4]);
+      await send('Input.dispatchMouseEvent', {
+        'type': 'mousePressed',
+        'x': hx2,
+        'y': hy2,
+        'button': 'left',
+        'clickCount': 1,
+      });
+      await Future<void>.delayed(Duration(milliseconds: shotAt));
+      // 拖出几像素让拖拽浮影就位
+      await send('Input.dispatchMouseEvent', {
+        'type': 'mouseMoved',
+        'x': hx2 - 20,
+        'y': hy2 + 30,
+        'button': 'left',
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      final hs = await send('Page.captureScreenshot', {'format': 'png'});
+      final hb64 = ((hs['result'] as Map)['data']) as String;
+      File(args[5]).writeAsBytesSync(base64Decode(hb64));
+      await Future<void>.delayed(
+        Duration(milliseconds: math.max(0, holdMs - shotAt - 250)),
+      );
+      await send('Input.dispatchMouseEvent', {
+        'type': 'mouseReleased',
+        'x': hx2 - 20,
+        'y': hy2 + 30,
+        'button': 'left',
+        'clickCount': 1,
+      });
+      stdout.writeln('holdshot saved ${args[5]}');
     default:
       stderr.writeln('未知命令 $cmd');
       exit(2);

@@ -110,6 +110,11 @@ void main() {
       findsNWidgets(2),
       reason: '3 条灵感之间应有 2 道金色分隔纹（最后一条不画）',
     );
+    expect(
+      find.byType(InkHandle),
+      findsNWidgets(3),
+      reason: '排序把手是融入材质的金线书签结，每行一个',
+    );
     final src = File(
       'lib/presentation/outline/magic_carpet.dart',
     ).readAsStringSync();
@@ -117,6 +122,11 @@ void main() {
       src,
       isNot(contains('0xFAFFFCF4')),
       reason: '白色卡片底已退役：墨迹直接写在羊皮纸上（方案二红线）',
+    );
+    expect(
+      src,
+      isNot(contains('line_horizontal_3')),
+      reason: '三横线系统图标已退役（R3：操作暗示要融入卷轴材质）',
     );
   });
 

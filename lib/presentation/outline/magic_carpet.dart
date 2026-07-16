@@ -604,10 +604,10 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
                 children: [
                   SizedBox(
                     height: listArea,
-                    // ListenableBuilder 只重建纸壳（进度线跟随滚动），
+                    // ListenableBuilder 只重建纸壳（进度线跟随滚动与主时间线），
                     // content 作 child 缓存不随滚动重建
                     child: ListenableBuilder(
-                      listenable: _listScroll,
+                      listenable: Listenable.merge([_listScroll, _unroll]),
                       builder: (context, child) {
                         double? progress;
                         if (overflow) {
@@ -622,6 +622,9 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
                         }
                         return ScrollParchmentBody(
                           progress: progress,
+                          // 分镜定稿：进度线**最后**淡入（收起时最先退场）
+                          progressOpacity: ((_unroll.value - 0.85) / 0.15)
+                              .clamp(0.0, 1.0),
                           glow: glow,
                           child: child!,
                         );
@@ -746,18 +749,13 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
                     ],
                   ),
                 ),
-                // 排序把手：按住直接拖动重排
+                // 排序把手：金线书签结（融入卷轴材质，不用系统图标）
                 ReorderableDragStartListener(
                   index: i,
                   child: Padding(
                     padding: const EdgeInsets.only(left: 6),
                     child: Center(
-                      child: Icon(
-                        CupertinoIcons.line_horizontal_3,
-                        key: Key('魔毯排序把手_${pool[i].id}'),
-                        size: 16,
-                        color: const Color(0x99693F1A),
-                      ),
+                      child: InkHandle(key: Key('魔毯排序把手_${pool[i].id}')),
                     ),
                   ),
                 ),
@@ -879,6 +877,15 @@ class CarpetItem extends StatelessWidget {
           fontSize: big ? 19 : 13.5,
           height: big ? 1.7 : 1.35,
           fontWeight: FontWeight.w600,
+          letterSpacing: big ? 2 : 0.4,
+          // 轻微墨晕：像墨渗进纸纤维，而不是浮在纸上的控件文字
+          shadows: const [
+            Shadow(
+              color: Color(0x30321F0E),
+              blurRadius: 2.2,
+              offset: Offset(0.4, 0.9),
+            ),
+          ],
         ),
       ),
     );

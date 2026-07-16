@@ -108,6 +108,7 @@ class ScrollParchmentBody extends StatelessWidget {
     super.key,
     required this.child,
     this.progress,
+    this.progressOpacity = 1,
     this.glow = false,
   });
 
@@ -115,6 +116,9 @@ class ScrollParchmentBody extends StatelessWidget {
 
   /// 滚动进度 0~1（null = 无溢出，不显示进度线）
   final double? progress;
+
+  /// 进度线透明度（展开分镜里进度线**最后**淡入，收起时最先退场）
+  final double progressOpacity;
 
   /// 高级效果：进度金点带辉光
   final bool glow;
@@ -206,14 +210,65 @@ class ScrollParchmentBody extends StatelessWidget {
             top: 14,
             bottom: 14,
             width: 10,
-            child: CustomPaint(
-              key: const Key('卷轴进度线'),
-              painter: InkProgressPainter(t: progress!, glow: glow),
+            child: Opacity(
+              opacity: progressOpacity.clamp(0.0, 1.0),
+              child: CustomPaint(
+                key: const Key('卷轴进度线'),
+                painter: InkProgressPainter(t: progress!, glow: glow),
+              ),
             ),
           ),
       ],
     );
   }
+}
+
+/// 排序把手：织入卷轴的"金线书签结"——两粒金珠夹一段织线（R3 定稿：
+/// 不再用三横线系统图标，操作暗示融进材质，不当视觉主角）。
+class InkHandle extends StatelessWidget {
+  const InkHandle({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      width: 14,
+      height: 32,
+      child: CustomPaint(painter: _InkHandlePainter()),
+    );
+  }
+}
+
+class _InkHandlePainter extends CustomPainter {
+  const _InkHandlePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    // 织线
+    canvas.drawLine(
+      Offset(cx, 5),
+      Offset(cx, size.height - 5),
+      Paint()
+        ..color = const Color(0x59795A22)
+        ..strokeWidth = 1
+        ..strokeCap = StrokeCap.round,
+    );
+    // 上下金珠
+    final bead = Paint()..color = const Color(0xB3C9A050);
+    canvas.drawCircle(Offset(cx, 5), 2.0, bead);
+    canvas.drawCircle(Offset(cx, size.height - 5), 2.0, bead);
+    // 中央织线结（小菱形）
+    final knot = Path()
+      ..moveTo(cx, size.height / 2 - 2.4)
+      ..lineTo(cx + 2.4, size.height / 2)
+      ..lineTo(cx, size.height / 2 + 2.4)
+      ..lineTo(cx - 2.4, size.height / 2)
+      ..close();
+    canvas.drawPath(knot, Paint()..color = const Color(0x8CA9812F));
+  }
+
+  @override
+  bool shouldRepaint(_InkHandlePainter oldDelegate) => false;
 }
 
 /// 不规则纸边：左右缘轻微波浪（真实羊皮纸不会是刀切矩形），
@@ -273,7 +328,7 @@ class ParchmentPainter extends CustomPainter {
         ..shader = const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFFEADDBE), Color(0xFFE2D0A9), Color(0xFFD8C398)],
+          colors: [Color(0xFFE7D5B0), Color(0xFFDDC79C), Color(0xFFD0B98A)],
         ).createShader(rect),
     );
     // 斑驳陈化：固定种子的柔和色斑（深沉/偏亮两组）
@@ -420,31 +475,20 @@ class _GoldDividerPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final cy = size.height / 2;
     final cx = size.width / 2;
-    // 两端渐隐的金线（深金描边 + 亮金主线，羊皮纸上要压得住底纹）
+    // 轻装饰金线（R3：分隔纹不能强到像表格线——短跨度、半透明）
     final rect = Rect.fromLTWH(0, cy - 1, size.width, 2);
-    final under = Paint()
-      ..strokeWidth = 2.4
-      ..strokeCap = StrokeCap.round
-      ..shader = const LinearGradient(
-        colors: [Color(0x00795A22), Color(0xB3795A22), Color(0x00795A22)],
-      ).createShader(rect);
-    canvas.drawLine(
-      Offset(size.width * 0.06, cy + 0.6),
-      Offset(size.width * 0.94, cy + 0.6),
-      under,
-    );
     final line = Paint()
-      ..strokeWidth = 1.4
+      ..strokeWidth = 1.1
       ..strokeCap = StrokeCap.round
       ..shader = const LinearGradient(
-        colors: [Color(0x00E8C87A), Color(0xFFE8C87A), Color(0x00E8C87A)],
+        colors: [Color(0x00C9A050), Color(0x8CC9A050), Color(0x00C9A050)],
       ).createShader(rect);
     canvas.drawLine(
-      Offset(size.width * 0.06, cy),
-      Offset(size.width * 0.94, cy),
+      Offset(size.width * 0.16, cy),
+      Offset(size.width * 0.84, cy),
       line,
     );
-    // 中央菱形星饰（深金衬底 + 亮金本体）
+    // 中央菱形星饰（缩小、半透明，只作点缀）
     void diamond(double r, Paint p) {
       final path = Path()
         ..moveTo(cx, cy - r)
@@ -455,12 +499,12 @@ class _GoldDividerPainter extends CustomPainter {
       canvas.drawPath(path, p);
     }
 
-    diamond(4.6, Paint()..color = const Color(0xCC795A22));
-    diamond(3.4, Paint()..color = const Color(0xFFE8C87A));
+    diamond(3.6, Paint()..color = const Color(0x73795A22));
+    diamond(2.6, Paint()..color = const Color(0xCCE0BE72));
     // 菱形两侧的小点
-    final dot = Paint()..color = const Color(0xE6C9A050);
-    canvas.drawCircle(Offset(cx - 12, cy), 1.5, dot);
-    canvas.drawCircle(Offset(cx + 12, cy), 1.5, dot);
+    final dot = Paint()..color = const Color(0x99C9A050);
+    canvas.drawCircle(Offset(cx - 11, cy), 1.2, dot);
+    canvas.drawCircle(Offset(cx + 11, cy), 1.2, dot);
   }
 
   @override
