@@ -376,6 +376,17 @@
       正确四边暗角、整体轻微俯视透视和统一投影，避免贴顶、硬矩形、粗大裁片
       和遮住地球的问题。验证：magic_carpet_test、quick_capture_test、
       flutter analyze、flutter test --timeout 2m 全部通过。
+    - ✅ P4-R9 真实完整卷轴资产修复（2026-07-16）：用户继续反馈 Claude 最新版
+      仍“显示不全、抠图感严重、三维效果不够、蓝色标题牌割裂”。根因确认：
+      `scroll_full.png` 旧资产本身是破碎中空相框，中央纸面被挖成黑洞，外部代码
+      只能继续叠控件，无法形成真实一体物件。本次替换为 1134×1285 的完整透明
+      背景卷轴资产（滚轴、织物边、流苏、宝石、羊皮纸同图一体），ScrollFrame
+      改为先绘整件物体，再把灵感墨迹/进度线/标题金字叠进素材预留区；删除独立
+      羊皮纸矩形底、星图硬贴层和深蓝标题底板。新增素材质量测试：四角必须真透明、
+      中央羊皮纸必须不透明且非黑洞；展开高度护栏同步适配完整物件尺寸。
+      验证：`flutter test test/presentation/magic_carpet_test.dart` 21 项全绿；
+      `flutter analyze --no-pub` 零问题；`flutter test --timeout 2m` 216 项全绿；
+      `flutter build web --release` 通过。
 - ☐ P5 小节页 3D 写作工作台（卡堆/卡片包/沉浸编辑器）
 - ☐ P6 速记与设置重构（魔法物件按钮/弹层/设置页）
 - ☐ P7 统一设计系统和验收（材质/动效 Token、视觉与性能回归）

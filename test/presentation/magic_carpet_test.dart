@@ -253,6 +253,36 @@ void main() {
     expect(dirtyBottomPixels, lessThan(80));
   });
 
+  test('完整卷轴素材必须是真透明背景，且中央羊皮纸不能再是黑洞/空洞', () {
+    final file = File('assets/textures/scroll_carpet/scroll_full.png');
+    expect(file.existsSync(), isTrue);
+    final image = img.decodePng(file.readAsBytesSync())!;
+
+    final corners = [
+      image.getPixel(0, 0),
+      image.getPixel(image.width - 1, 0),
+      image.getPixel(0, image.height - 1),
+      image.getPixel(image.width - 1, image.height - 1),
+    ];
+    expect(
+      corners.every((p) => p.a <= 8),
+      isTrue,
+      reason: '四角必须是真透明，不能把生成图的棋盘格/灰底带进星空',
+    );
+
+    final center = image.getPixel(
+      image.width ~/ 2,
+      (image.height * 0.55).round(),
+    );
+    final centerBrightness = (center.r + center.g + center.b) / 3;
+    expect(center.a, greaterThan(240), reason: '中央羊皮纸必须完整承载灵感墨迹');
+    expect(
+      centerBrightness,
+      inInclusiveRange(120, 235),
+      reason: '中央不能再是黑洞或被挖空的透明窗口',
+    );
+  });
+
   testWidgets('展开态整体高度精致收敛，保留首页地球可见区', (tester) async {
     await pumpCarpet(tester, [fake(1, '深夜的旋律')]);
 
@@ -261,7 +291,7 @@ void main() {
 
     expect(
       tester.getSize(find.byType(ScrollFrame)).height,
-      inInclusiveRange(290, 380),
+      inInclusiveRange(360, 430),
     );
   });
 

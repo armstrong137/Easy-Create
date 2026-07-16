@@ -4,9 +4,9 @@
 /// 侧穗流苏、底部流苏边、中央宝石、四周波斯织纹框，整体悬浮在真实星空里，
 /// 纸面只是中间一块可书写、可滚动的窗口。灵感墨迹写进羊皮纸本体，禁止白卡片。
 ///
-/// 实现：把参考图 04 的整条卷轴抠成"透明中空相框" `scroll_full.png`
-/// （外部星空/金纹抠透明、地球排除、纸面窗口挖空羽化），照片级素材整体直用。
-/// 相框覆于最上层，挖空处透出下层的真羊皮纸 + 活文字；标题牌活绘覆盖基线字。
+/// 实现：`scroll_full.png` 是完整透明背景卷轴物件（含滚轴/织物边/羊皮纸/
+/// 流苏/宝石），Flutter 只把活标题和灵感墨迹叠进素材预留区域；避免把控件
+/// 画成蓝色牌子或把纸面挖成硬黑洞。
 library;
 
 import 'dart:math' as math;
@@ -19,24 +19,24 @@ const kScrollInk = Color(0xFF3A2A18);
 /// 鎏金（标题/分隔纹/进度线）
 const kScrollGold = Color(0xFFE8C87A);
 
-/// 相框素材宽高比（裁切像素 900×1070）——布局按此定尺寸，纸面窗口/标题牌
+/// 相框素材宽高比（透明资产 1134×1285）——布局按此定尺寸，纸面窗口/标题牌
 /// 都以本比例内的**归一化坐标**定位，随相框等比缩放。
-const kScrollFrameAspect = 900.0 / 1070.0;
+const kScrollFrameAspect = 1134.0 / 1285.0;
 
-/// 纸面窗口在相框内的归一化矩形（scroll_full.png 挖空区，见 build_frame 脚本）
-const kScrollHoleLeft = 0.2111;
-const kScrollHoleTop = 0.1729;
-const kScrollHoleRight = 0.7889;
-const kScrollHoleBottom = 0.7710;
+/// 灵感墨迹可写区域在完整羊皮纸中的归一化矩形。
+const kScrollHoleLeft = 0.205;
+const kScrollHoleTop = 0.305;
+const kScrollHoleRight = 0.795;
+const kScrollHoleBottom = 0.805;
 
-/// 标题牌（基线"灵感魔毯·N"所在织物牌）归一化矩形，活标题覆盖其上
-const kScrollTitleLeft = 0.30;
-const kScrollTitleTop = 0.060;
-const kScrollTitleRight = 0.70;
-const kScrollTitleBottom = 0.152;
+/// 标题牌归一化矩形，活标题只绘制鎏金字，底板由资产里的织物牌承担。
+const kScrollTitleLeft = 0.285;
+const kScrollTitleTop = 0.058;
+const kScrollTitleRight = 0.715;
+const kScrollTitleBottom = 0.145;
 
-/// 整条卷轴相框（照片级素材，透明中空）。[child] 渲染进纸面窗口，
-/// [title]/[onClose] 绘制活标题牌与收起按钮，[progressLine] 叠右侧进度线。
+/// 整条卷轴（照片级完整素材）。[child] 渲染进羊皮纸安全区，[title]/[onClose]
+/// 绘制活标题与收起按钮，[progressLine] 叠右侧进度线。
 class ScrollFrame extends StatelessWidget {
   const ScrollFrame({
     super.key,
@@ -57,7 +57,7 @@ class ScrollFrame extends StatelessWidget {
 
   final VoidCallback onClose;
 
-  /// 纸面窗口内容（羊皮纸 + 墨迹，随相框挖空处显示）
+  /// 纸面窗口内容（墨迹/滚动/拖拽层）
   final Widget child;
 
   /// 滚动进度 0~1（null = 无溢出不显示进度线）
@@ -92,17 +92,26 @@ class ScrollFrame extends StatelessWidget {
           );
           return Stack(
             children: [
-              // ① 纸面窗口：真羊皮纸底 + 墨迹内容（在相框挖空处透出）。
-              //    放最底层，手势直达（相框在其上但 IgnorePointer 放行）。
+              // ① 完整照片级卷轴物件：含羊皮纸、滚轴、织纹、流苏、宝石。
+              const Positioned.fill(
+                child: IgnorePointer(
+                  child: Image(
+                    image: AssetImage(
+                      'assets/textures/scroll_carpet/scroll_full.png',
+                    ),
+                    fit: BoxFit.fill,
+                    filterQuality: FilterQuality.high,
+                  ),
+                ),
+              ),
+              // ② 纸面墨迹层：覆盖在资产羊皮纸上，不再另铺一张矩形纸。
               Positioned.fromRect(
                 rect: hole,
                 child: ClipRect(
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      const _ParchmentFill(),
                       child,
-                      // 顶/底卷入阴影：内容滑动时像被卷进滚轴
                       const Positioned(
                         left: 0,
                         right: 0,
@@ -118,18 +127,6 @@ class ScrollFrame extends StatelessWidget {
                         child: _EdgeShade(top: false),
                       ),
                     ],
-                  ),
-                ),
-              ),
-              // ② 相框（最上层视觉，放行手势给下层纸面）
-              const Positioned.fill(
-                child: IgnorePointer(
-                  child: Image(
-                    image: AssetImage(
-                      'assets/textures/scroll_carpet/scroll_full.png',
-                    ),
-                    fit: BoxFit.fill,
-                    filterQuality: FilterQuality.medium,
                   ),
                 ),
               ),
@@ -150,7 +147,7 @@ class ScrollFrame extends StatelessWidget {
                     ),
                   ),
                 ),
-              // ④ 活标题牌：覆盖基线"灵感魔毯·N"，随条数实时更新
+              // ④ 活标题：只绘制鎏金字，底板来自素材里的织物牌
               Positioned.fromRect(
                 rect: title,
                 child: IgnorePointer(
@@ -162,8 +159,8 @@ class ScrollFrame extends StatelessWidget {
               ),
               // ⑤ 收起按钮（右上轴头附近，可点）
               Positioned(
-                right: w * 0.045,
-                top: h * 0.055,
+                right: w * 0.055,
+                top: h * 0.060,
                 child: _CloseButton(onClose: onClose),
               ),
             ],
@@ -174,7 +171,7 @@ class ScrollFrame extends StatelessWidget {
   }
 }
 
-/// 活标题牌：深蓝织物牌底 + 细金框 + 鎏金"灵感魔毯 · N"
+/// 活标题：鎏金字直接压在资产里的织物牌上，不再画额外矩形底板。
 class _TitleCartouche extends StatelessWidget {
   const _TitleCartouche({required this.count, required this.glow});
 
@@ -183,35 +180,27 @@ class _TitleCartouche extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        // 与基线牌同色系深蓝，完全盖住基线字
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF1B2144), Color(0xFF12162E)],
-        ),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFB8933F), width: 1),
-      ),
+    return Center(
       child: FittedBox(
         fit: BoxFit.scaleDown,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(
-            '灵感魔毯 · $count',
-            style: TextStyle(
-              fontFamily: 'LXGWWenKai',
-              color: kScrollGold,
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 2,
-              shadows: [
-                const Shadow(color: Color(0xE60A0906), blurRadius: 2),
-                if (glow) const Shadow(color: Color(0x80E8C87A), blurRadius: 8),
-              ],
-            ),
+        child: Text(
+          '灵感魔毯 · $count',
+          key: const Key('卷轴织物标题'),
+          style: TextStyle(
+            fontFamily: 'LXGWWenKai',
+            color: kScrollGold,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 2.6,
+            shadows: [
+              const Shadow(
+                color: Color(0xF20A0906),
+                blurRadius: 3,
+                offset: Offset(0, 1),
+              ),
+              const Shadow(color: Color(0x99E8C87A), blurRadius: 7),
+              if (glow) const Shadow(color: Color(0xAAE8C87A), blurRadius: 12),
+            ],
           ),
         ),
       ),
@@ -235,34 +224,10 @@ class _CloseButton extends StatelessWidget {
         child: Icon(
           Icons.close_rounded,
           color: kScrollGold,
-          size: 20,
+          size: 18,
           shadows: [Shadow(color: Color(0xE60A0906), blurRadius: 3)],
         ),
       ),
-    );
-  }
-}
-
-/// 纸面窗口的羊皮纸底：真素材平铺（与相框保留的纸缘同源，无缝）+ 极淡星图水印
-class _ParchmentFill extends StatelessWidget {
-  const _ParchmentFill();
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        const Image(
-          image: AssetImage('assets/textures/scroll_carpet/scroll_parchment.png'),
-          fit: BoxFit.cover,
-          filterQuality: FilterQuality.medium,
-        ),
-        CustomPaint(
-          isComplex: true,
-          willChange: false,
-          painter: const _StarChartPainter(),
-        ),
-      ],
     );
   }
 }
@@ -285,72 +250,6 @@ class _EdgeShade extends StatelessWidget {
       ),
     );
   }
-}
-
-/// 极淡星图水印（弯月/四芒星/虚线连线），融进纸面
-class _StarChartPainter extends CustomPainter {
-  const _StarChartPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final ink = Paint()..color = const Color(0x24A98B4F);
-    final moonC = Offset(size.width * 0.2, size.height * 0.16);
-    final moon = Path()
-      ..addOval(Rect.fromCircle(center: moonC, radius: 9))
-      ..addOval(Rect.fromCircle(center: moonC.translate(4, -2), radius: 8));
-    moon.fillType = PathFillType.evenOdd;
-    canvas.drawPath(moon, ink);
-    const pts = [
-      Offset(0.34, 0.28),
-      Offset(0.55, 0.2),
-      Offset(0.7, 0.36),
-      Offset(0.48, 0.5),
-      Offset(0.26, 0.6),
-      Offset(0.64, 0.66),
-      Offset(0.8, 0.82),
-    ];
-    for (var i = 0; i < pts.length; i++) {
-      final p = Offset(pts[i].dx * size.width, pts[i].dy * size.height);
-      _star(canvas, p, i.isEven ? 6.0 : 4.0, ink);
-      if (i > 0) {
-        final prev = Offset(
-          pts[i - 1].dx * size.width,
-          pts[i - 1].dy * size.height,
-        );
-        _dashed(canvas, prev, p, ink);
-      }
-    }
-  }
-
-  void _star(Canvas canvas, Offset c, double r, Paint paint) {
-    final path = Path()
-      ..moveTo(c.dx, c.dy - r)
-      ..quadraticBezierTo(c.dx, c.dy, c.dx + r, c.dy)
-      ..quadraticBezierTo(c.dx, c.dy, c.dx, c.dy + r)
-      ..quadraticBezierTo(c.dx, c.dy, c.dx - r, c.dy)
-      ..quadraticBezierTo(c.dx, c.dy, c.dx, c.dy - r)
-      ..close();
-    canvas.drawPath(path, paint);
-  }
-
-  void _dashed(Canvas canvas, Offset a, Offset b, Paint paint) {
-    const dash = 4.0, gap = 5.0;
-    final total = (b - a).distance;
-    final dir = (b - a) / total;
-    var d = 0.0;
-    final stroke = Paint()
-      ..color = paint.color
-      ..strokeWidth = 1
-      ..strokeCap = StrokeCap.round;
-    while (d < total) {
-      final end = math.min(d + dash, total);
-      canvas.drawLine(a + dir * d, a + dir * end, stroke);
-      d = end + gap;
-    }
-  }
-
-  @override
-  bool shouldRepaint(_StarChartPainter oldDelegate) => false;
 }
 
 /// 排序把手：金线书签结（融入卷轴材质，不用系统图标）
