@@ -129,6 +129,51 @@ void main() {
     expect(find.byKey(const Key('卷轴进度线')), findsOneWidget);
   });
 
+  testWidgets('P4-R1：五条以上不增加外部面板高度，只内部滚动（地球可见区回归）', (tester) async {
+    // 用户实测截图：7 条灵感时长卷拉到整屏、首页地球被完全盖掉。
+    // 修复定稿：面板总高封顶 min(屏高×0.50, 520)，条数增加只加内部滚动。
+    final pool = StreamController<List<Inspiration>>();
+    addTearDown(pool.close);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [inspirationPoolProvider.overrideWith((ref) => pool.stream)],
+        child: const MaterialApp(
+          home: Scaffold(
+            body: Align(alignment: Alignment.topRight, child: MagicCarpet()),
+          ),
+        ),
+      ),
+    );
+    pool.add([for (var i = 1; i <= 5; i++) fake(i, '灵感$i')]);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('魔毯小球')));
+    await tester.pumpAndSettle();
+    final h5 = tester.getSize(find.byType(MagicCarpet)).height;
+
+    pool.add([for (var i = 1; i <= 7; i++) fake(i, '灵感$i')]);
+    await tester.pumpAndSettle();
+    final h7 = tester.getSize(find.byType(MagicCarpet)).height;
+
+    pool.add([for (var i = 1; i <= 20; i++) fake(i, '灵感$i')]);
+    await tester.pumpAndSettle();
+    final h20 = tester.getSize(find.byType(MagicCarpet)).height;
+
+    expect(h7, h5, reason: '7 条不得比 5 条更高：多出的只能内部滚动');
+    expect(h20, h5, reason: '20 条同理，面板高度恒定');
+  });
+
+  test('P4-R1 源码护栏：面板高度封顶公式在位，不再按整屏可用高度铺满', () {
+    final src = File(
+      'lib/presentation/outline/magic_carpet.dart',
+    ).readAsStringSync();
+    expect(src, contains('math.min(screen.height * 0.50, 520.0)'));
+    expect(
+      src,
+      isNot(contains('screen.height -')),
+      reason: '不得再用"屏高减部件"当纸面最大高度（那就是地球被盖掉的根因）',
+    );
+  });
+
   testWidgets('未溢出可视槽位时不显示进度线', (tester) async {
     await pumpCarpet(tester, [fake(1, 'A'), fake(2, 'B')]);
     await tester.tap(find.byKey(const Key('魔毯小球')));

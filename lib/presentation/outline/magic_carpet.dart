@@ -452,20 +452,16 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
     final width = screen.width * 0.86;
     final rollerH = width * kScrollRollerAspect;
     final curlH = width * kScrollCurlAspect;
-    // 纸面可用空间 = 屏高 - 顶部安全区与留白 - 滚轴 - 底部卷边 - 底部留白：
-    // 面板绝不伸出屏幕底（灵感多时末尾条目会被屏幕截断、滑也滑不出来），
-    // 且纸面只取整数个卡槽 → 条目要么完整显示要么不显示（用户定稿）
-    final avail =
-        screen.height -
-        MediaQuery.paddingOf(context).top -
-        6 -
-        rollerH -
-        curlH -
-        16;
-    // 0/1 条给足呼吸空间（参考图 01/04 的从容留白）；多条按整槽计算
-    final listArea = math.min(
-      pool.length <= 1 ? 280.0 : carpetHeight(pool.length, maxAvail: avail),
-      math.max(avail, kCarpetItemHeight + kCarpetListPad),
+    // P4-R1（返工方案定稿）：首页展开魔毯必须保留地球可见区。
+    // 面板总高封顶 = min(屏高 × 0.50, 520)——卷轴占上半区，中下区露出地球，
+    // 右下速记按钮永不被遮。五条以上灵感**只增加内部滚动长度**，
+    // 绝不再把长卷拉高到遮住地球（用户实测截图：7 条时地球被整个盖掉）。
+    final panelCap = math.min(screen.height * 0.50, 520.0);
+    // 纸面书写区：下限 220 保证 0/1 条的呼吸空间，上限约 5 个槽位
+    //（可视 3.5~5 条，底部自然半露下一条的淡墨开头，暗示可滑）
+    final listArea = (panelCap - rollerH - curlH).clamp(
+      220.0,
+      5 * kCarpetItemHeight + kCarpetListPad,
     );
     final height = rollerH + listArea + curlH;
     final glow = ref.watch(advanced3DProvider);
