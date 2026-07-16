@@ -83,20 +83,39 @@ void main() {
     expect(find.textContaining('灵感魔毯 · 1'), findsOneWidget);
   });
 
-  testWidgets('标题金字织入滚轴织物带，不再是悬浮白色 pill', (tester) async {
+  testWidgets('标题活绘覆盖基线牌，是鎏金字不是悬浮白色 pill', (tester) async {
     await pumpCarpet(tester, [fake(1, '深夜的旋律')]);
 
     await tester.tap(find.byKey(const Key('魔毯小球')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('卷轴织物标题')), findsOneWidget);
+    // 活标题牌覆盖相框基线"灵感魔毯·N"，鎏金字随条数更新
+    final title = tester.widget<Text>(find.text('灵感魔毯 · 1'));
+    expect(title.style?.color, kScrollGold);
     expect(
       find.byKey(const Key('魔毯标题背板')),
       findsNothing,
-      reason: '标题必须织入滚轴织物本体（方案二定稿），白色 pill 已退役',
+      reason: '标题必须织入卷轴（方案二定稿），白色 pill 已退役',
     );
-    final title = tester.widget<Text>(find.byKey(const Key('卷轴织物标题')));
-    expect(title.style?.color, kScrollGold);
+  });
+
+  testWidgets('整条卷轴是单张相框素材（含轴头/流苏/宝石），非零件竖排', (tester) async {
+    await pumpCarpet(tester, [fake(1, '深夜的旋律')]);
+    await tester.tap(find.byKey(const Key('魔毯小球')));
+    await tester.pumpAndSettle();
+
+    // 相框整体直用一张抠好的透明卷轴图；零件拼图组件已退役
+    final frame = tester.widgetList<Image>(find.byType(Image)).where((im) {
+      final p = im.image;
+      return p is AssetImage &&
+          p.assetName == 'assets/textures/scroll_carpet/scroll_full.png';
+    });
+    expect(frame, isNotEmpty, reason: '展开态必须包含整条卷轴相框 scroll_full.png');
+    final src = File(
+      'lib/presentation/outline/scroll_carpet.dart',
+    ).readAsStringSync();
+    expect(src, isNot(contains('ScrollRollerHeader')));
+    expect(src, isNot(contains('ScrollBottomCurl')));
   });
 
   testWidgets('灵感墨迹写在长卷纸面上：无独立白色卡片，条目间金色分隔纹', (tester) async {
@@ -156,25 +175,27 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('魔毯小球')));
     await tester.pumpAndSettle();
-    final h5 = tester.getSize(find.byType(MagicCarpet)).height;
+    final h5 = tester.getSize(find.byType(ScrollFrame)).height;
 
     pool.add([for (var i = 1; i <= 7; i++) fake(i, '灵感$i')]);
     await tester.pumpAndSettle();
-    final h7 = tester.getSize(find.byType(MagicCarpet)).height;
+    final h7 = tester.getSize(find.byType(ScrollFrame)).height;
 
     pool.add([for (var i = 1; i <= 20; i++) fake(i, '灵感$i')]);
     await tester.pumpAndSettle();
-    final h20 = tester.getSize(find.byType(MagicCarpet)).height;
+    final h20 = tester.getSize(find.byType(ScrollFrame)).height;
 
     expect(h7, h5, reason: '7 条不得比 5 条更高：多出的只能内部滚动');
     expect(h20, h5, reason: '20 条同理，面板高度恒定');
   });
 
-  test('P4-R1 源码护栏：面板高度封顶公式在位，不再按整屏可用高度铺满', () {
+  test('P4-R1 源码护栏：相框高度封顶护地球可见区，五条以上只窗口内滚动', () {
     final src = File(
       'lib/presentation/outline/magic_carpet.dart',
     ).readAsStringSync();
-    expect(src, contains('math.min(screen.height * 0.42, 380.0)'));
+    // 相框是固定宽高比，高度封顶后缩宽保持比例；不再按"屏高减部件"铺满
+    expect(src, contains('width / kScrollFrameAspect'));
+    expect(src, contains('math.min(screen.height * 0.62, 560.0)'));
     expect(
       src,
       isNot(contains('screen.height -')),
@@ -239,7 +260,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      tester.getSize(find.byType(MagicCarpet)).height,
+      tester.getSize(find.byType(ScrollFrame)).height,
       inInclusiveRange(290, 380),
     );
   });
