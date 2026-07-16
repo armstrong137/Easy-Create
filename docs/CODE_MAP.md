@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-16 00:43:01　对应提交：439acdb 之后的工作区状态
+> 生成时间：2026-07-16 14:28:24　对应提交：b3a36f5 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,16 +13,16 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     106
-  Nodes:     4,018
-  Edges:     18,934
-  DB Size:   20.16 MB
+  Nodes:     4,035
+  Edges:     18,969
+  DB Size:   20.20 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,558
+  method          1,572
   function        1,366
-  class           464
+  class           467
   import          323
   constant        181
   file            98
@@ -168,10 +168,10 @@ Project Structure (106 files):
 |   |   |   `-- starfield.dart (dart, 31 symbols)
 |   |   |-- outline
 |   |   |   |-- label_layout.dart (dart, 12 symbols)
-|   |   |   |-- magic_carpet.dart (dart, 63 symbols)
+|   |   |   |-- magic_carpet.dart (dart, 64 symbols)
 |   |   |   |-- magic_tree_model.dart (dart, 34 symbols)
 |   |   |   |-- outline_page.dart (dart, 54 symbols)
-|   |   |   `-- scroll_carpet.dart (dart, 39 symbols)
+|   |   |   `-- scroll_carpet.dart (dart, 55 symbols)
 |   |   |-- section
 |   |   |   |-- card_deck_sheet.dart (dart, 19 symbols)
 |   |   |   |-- card_editor_page.dart (dart, 15 symbols)

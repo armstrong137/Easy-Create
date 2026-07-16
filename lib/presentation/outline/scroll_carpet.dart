@@ -16,9 +16,10 @@ const kScrollInk = Color(0xFF3A2A18);
 /// 鎏金（标题/分隔纹/进度线）
 const kScrollGold = Color(0xFFE8C87A);
 
-/// 素材原始宽高比（裁切像素尺寸），布局按面板宽度等比缩放
-const kScrollRollerAspect = 150.0 / 755.0;
-const kScrollCurlAspect = 250.0 / 810.0;
+/// 卷轴部件宽高比：顶部/底部都用绘制式 3D 部件，比例可控，避免参考图裁片
+/// 自带星空背景与多余纸面造成“显示不全、像截图硬裁”的问题。
+const kScrollRollerAspect = 0.16;
+const kScrollCurlAspect = 0.18;
 
 /// 左右织纹边框显示宽度
 const kScrollBorderWidth = 22.0;
@@ -46,11 +47,7 @@ class ScrollRollerHeader extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        Image.asset(
-          'assets/textures/scroll_carpet/scroll_roller.png',
-          fit: BoxFit.fill,
-          filterQuality: FilterQuality.medium,
-        ),
+        const CustomPaint(painter: ScrollRollerPainter()),
         Center(
           child: Text(
             '灵感魔毯 · $count',
@@ -97,6 +94,122 @@ class ScrollRollerHeader extends StatelessWidget {
       ],
     );
   }
+}
+
+/// 绘制式顶部滚轴：用圆柱渐变、金属端头、织纹线条和投影建立 3D 感。
+/// 不再使用带星空背景的截图素材。
+class ScrollRollerPainter extends CustomPainter {
+  const ScrollRollerPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final h = size.height;
+    final y = h * 0.18;
+    final bodyH = h * 0.58;
+    final body = RRect.fromRectAndRadius(
+      Rect.fromLTWH(size.width * 0.08, y, size.width * 0.84, bodyH),
+      Radius.circular(bodyH / 2),
+    );
+    _drawShadow(canvas, size, y + bodyH);
+    _drawFabricCylinder(canvas, body);
+    _drawGoldEnds(canvas, size, y, bodyH);
+    _drawFabricOrnaments(canvas, body.outerRect);
+  }
+
+  void _drawShadow(Canvas canvas, Size size, double y) {
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(size.width / 2, y + size.height * 0.18),
+        width: size.width * 0.76,
+        height: size.height * 0.25,
+      ),
+      Paint()
+        ..color = const Color(0x66000000)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+    );
+  }
+
+  void _drawFabricCylinder(Canvas canvas, RRect body) {
+    final rect = body.outerRect;
+    canvas.drawRRect(
+      body,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: const [
+            Color(0xFF5B2417),
+            Color(0xFF1C2442),
+            Color(0xFF8A3B1D),
+            Color(0xFF261322),
+          ],
+          stops: const [0, 0.28, 0.62, 1],
+        ).createShader(rect),
+    );
+    canvas.drawRRect(
+      body,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.4
+        ..color = const Color(0xCCE4BE75),
+    );
+    canvas.drawLine(
+      Offset(rect.left + 18, rect.top + rect.height * 0.33),
+      Offset(rect.right - 18, rect.top + rect.height * 0.33),
+      Paint()
+        ..color = const Color(0x66F0D591)
+        ..strokeWidth = 1,
+    );
+  }
+
+  void _drawGoldEnds(Canvas canvas, Size size, double y, double bodyH) {
+    final cy = y + bodyH / 2;
+    for (final side in [-1, 1]) {
+      final x = side < 0 ? size.width * 0.08 : size.width * 0.92;
+      final cap = Rect.fromCenter(
+        center: Offset(x, cy),
+        width: bodyH * 0.92,
+        height: bodyH * 1.05,
+      );
+      canvas.drawOval(
+        cap,
+        Paint()
+          ..shader = const LinearGradient(
+            colors: [Color(0xFF5D3510), Color(0xFFFFD98B), Color(0xFF7A4717)],
+          ).createShader(cap),
+      );
+      canvas.drawCircle(
+        Offset(x + side * bodyH * 0.44, cy),
+        bodyH * 0.16,
+        Paint()..color = const Color(0xFFF3CD80),
+      );
+      canvas.drawLine(
+        Offset(x - side * bodyH * 0.16, y + bodyH * 0.18),
+        Offset(x - side * bodyH * 0.16, y + bodyH * 0.82),
+        Paint()
+          ..color = const Color(0x99623312)
+          ..strokeWidth = 2,
+      );
+    }
+  }
+
+  void _drawFabricOrnaments(Canvas canvas, Rect rect) {
+    final paint = Paint()
+      ..color = const Color(0x55E8C87A)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.9;
+    for (var x = rect.left + 34; x < rect.right - 34; x += 34) {
+      final cy = rect.center.dy;
+      final path = Path()
+        ..moveTo(x - 8, cy)
+        ..quadraticBezierTo(x, cy - 7, x + 8, cy)
+        ..quadraticBezierTo(x, cy + 7, x - 8, cy);
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(ScrollRollerPainter oldDelegate) => false;
 }
 
 /// 羊皮纸书写区外壳：织纹边框在下层，**不规则纸边**的羊皮纸覆于其上
@@ -152,6 +265,11 @@ class ScrollParchmentBody extends StatelessWidget {
           ),
         ),
         // 羊皮纸：不规则纸边裁切，微微压住边框内缘
+        Positioned.fill(
+          left: kScrollBorderWidth - 4,
+          right: kScrollBorderWidth - 4,
+          child: CustomPaint(painter: const PaperShadowPainter()),
+        ),
         Positioned.fill(
           left: kScrollBorderWidth - 4,
           right: kScrollBorderWidth - 4,
@@ -271,6 +389,28 @@ class _InkHandlePainter extends CustomPainter {
   bool shouldRepaint(_InkHandlePainter oldDelegate) => false;
 }
 
+/// 纸面投影：在裁切羊皮纸背后先画柔和暗影，让纸面真正浮在织物边框上。
+class PaperShadowPainter extends CustomPainter {
+  const PaperShadowPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = const PaperEdgeClipper().getClip(size);
+    canvas.save();
+    canvas.translate(0, 5);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = const Color(0x73000000)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(PaperShadowPainter oldDelegate) => false;
+}
+
 /// 不规则纸边：左右缘轻微波浪（真实羊皮纸不会是刀切矩形），
 /// 上下缘平直（分别藏在滚轴与底部卷边后面）。
 class PaperEdgeClipper extends CustomClipper<Path> {
@@ -298,12 +438,7 @@ class PaperEdgeClipper extends CustomClipper<Path> {
     final segL = size.height / waves;
     for (var i = waves - 1; i >= 0; i--) {
       final bump = i.isOdd ? amp : -amp;
-      path.quadraticBezierTo(
-        amp + bump,
-        segL * (i + 0.5),
-        amp,
-        segL * i,
-      );
+      path.quadraticBezierTo(amp + bump, segL * (i + 0.5), amp, segL * i);
     }
     path.close();
     return path;
@@ -346,33 +481,51 @@ class ParchmentPainter extends CustomPainter {
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9),
       );
     }
-    // 四边暗角（纸缘陈旧发暗）
-    for (final side in const [
-      Alignment.topCenter,
-      Alignment.bottomCenter,
-      Alignment.centerLeft,
-      Alignment.centerRight,
-    ]) {
-      final horizontal = side.y == 0;
-      final band = horizontal
-          ? Rect.fromLTWH(
-              side.x < 0 ? 0 : size.width - 26,
-              0,
-              26,
-              size.height,
-            )
-          : Rect.fromLTWH(0, side.y < 0 ? 0 : size.height - 22, size.width, 22);
-      canvas.drawRect(
-        band,
-        Paint()
-          ..shader = LinearGradient(
-            begin: side,
-            end: Alignment(-side.x, -side.y),
-            colors: const [Color(0x24503514), Color(0x00503514)],
-          ).createShader(band),
-      );
-    }
+    _drawEdgeShade(canvas, size);
     _drawStarChart(canvas, size);
+  }
+
+  void _drawEdgeShade(Canvas canvas, Size size) {
+    final top = Rect.fromLTWH(0, 0, size.width, 28);
+    final bottom = Rect.fromLTWH(0, size.height - 28, size.width, 28);
+    final left = Rect.fromLTWH(0, 0, 28, size.height);
+    final right = Rect.fromLTWH(size.width - 28, 0, 28, size.height);
+    canvas.drawRect(
+      top,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0x2B503514), Color(0x00503514)],
+        ).createShader(top),
+    );
+    canvas.drawRect(
+      bottom,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.bottomCenter,
+          end: Alignment.topCenter,
+          colors: [Color(0x2B503514), Color(0x00503514)],
+        ).createShader(bottom),
+    );
+    canvas.drawRect(
+      left,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [Color(0x24503514), Color(0x00503514)],
+        ).createShader(left),
+    );
+    canvas.drawRect(
+      right,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.centerRight,
+          end: Alignment.centerLeft,
+          colors: [Color(0x24503514), Color(0x00503514)],
+        ).createShader(right),
+    );
   }
 
   /// 星图水印：弯月 + 四芒星 + 虚线连线（淡金，融入纸面）
@@ -446,12 +599,93 @@ class ScrollBottomCurl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Image.asset(
-      'assets/textures/scroll_carpet/scroll_bottom_curl.png',
-      fit: BoxFit.fill,
-      filterQuality: FilterQuality.medium,
-    );
+    return const CustomPaint(painter: ScrollBottomCurlPainter());
   }
+}
+
+/// 绘制式底部卷边：压低高度，只画织物卷边和中央金饰，避免底部大截图
+/// 把纸面挤没。
+class ScrollBottomCurlPainter extends CustomPainter {
+  const ScrollBottomCurlPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final roll = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        size.width * 0.07,
+        size.height * 0.12,
+        size.width * 0.86,
+        size.height * 0.58,
+      ),
+      Radius.circular(size.height * 0.28),
+    );
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(size.width / 2, size.height * 0.78),
+        width: size.width * 0.72,
+        height: size.height * 0.26,
+      ),
+      Paint()
+        ..color = const Color(0x66000000)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+    );
+    canvas.drawRRect(
+      roll,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF24345C), Color(0xFF8B321E), Color(0xFF1A1125)],
+        ).createShader(roll.outerRect),
+    );
+    canvas.drawRRect(
+      roll,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2
+        ..color = const Color(0xCCE4BE75),
+    );
+    _drawGoldEmblem(canvas, size);
+    _drawEndCaps(canvas, size, roll.outerRect);
+  }
+
+  void _drawGoldEmblem(Canvas canvas, Size size) {
+    final c = Offset(size.width / 2, size.height * 0.42);
+    final path = Path()
+      ..moveTo(c.dx, c.dy - 13)
+      ..lineTo(c.dx + 18, c.dy)
+      ..lineTo(c.dx, c.dy + 13)
+      ..lineTo(c.dx - 18, c.dy)
+      ..close();
+    canvas.drawPath(
+      path,
+      Paint()
+        ..shader = const RadialGradient(
+          colors: [Color(0xFFFFE1A0), Color(0xFF855114)],
+        ).createShader(Rect.fromCircle(center: c, radius: 22)),
+    );
+    canvas.drawCircle(c, 5, Paint()..color = const Color(0xFF3A8CA7));
+  }
+
+  void _drawEndCaps(Canvas canvas, Size size, Rect roll) {
+    final capPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFF5D3510), Color(0xFFFFD98B), Color(0xFF7A4717)],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    for (final x in [roll.left, roll.right]) {
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(x, roll.center.dy),
+          width: size.height * 0.45,
+          height: size.height * 0.62,
+        ),
+        capPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(ScrollBottomCurlPainter oldDelegate) => false;
 }
 
 /// 金色分隔纹：细金线 + 中央菱形星饰（灵感条目之间）
@@ -553,8 +787,7 @@ class InkProgressPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(InkProgressPainter old) =>
-      old.t != t || old.glow != glow;
+  bool shouldRepaint(InkProgressPainter old) => old.t != t || old.glow != glow;
 }
 
 /// 墨迹条目在展开时间线上的淡入进度（写入感的近似：按序淡入）。

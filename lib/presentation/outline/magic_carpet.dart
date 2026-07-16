@@ -449,19 +449,19 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
     final pool =
         _optimisticPool ?? ref.watch(inspirationPoolProvider).value ?? const [];
     final screen = MediaQuery.sizeOf(context);
-    final width = screen.width * 0.86;
+    final width = math.min(screen.width * 0.78, 340.0);
     final rollerH = width * kScrollRollerAspect;
     final curlH = width * kScrollCurlAspect;
     // P4-R1（返工方案定稿）：首页展开魔毯必须保留地球可见区。
-    // 面板总高封顶 = min(屏高 × 0.50, 520)——卷轴占上半区，中下区露出地球，
+    // 面板总高封顶 = min(屏高 × 0.42, 380)——卷轴占上半区，中下区露出地球，
     // 右下速记按钮永不被遮。五条以上灵感**只增加内部滚动长度**，
     // 绝不再把长卷拉高到遮住地球（用户实测截图：7 条时地球被整个盖掉）。
-    final panelCap = math.min(screen.height * 0.50, 520.0);
-    // 纸面书写区：下限 220 保证 0/1 条的呼吸空间，上限约 5 个槽位
-    //（可视 3.5~5 条，底部自然半露下一条的淡墨开头，暗示可滑）
+    final panelCap = math.min(screen.height * 0.42, 380.0);
+    // 纸面书写区：下限 188 保证 0/1 条的呼吸空间，上限约 4 个槽位。
+    // 控制滚轴与卷边占比，避免展开态像一张贴顶大截图。
     final listArea = (panelCap - rollerH - curlH).clamp(
-      220.0,
-      5 * kCarpetItemHeight + kCarpetListPad,
+      188.0,
+      4 * kCarpetItemHeight + kCarpetListPad,
     );
     final height = rollerH + listArea + curlH;
     final glow = ref.watch(advanced3DProvider);
@@ -571,73 +571,97 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
     final content = _paperContent(pool);
     return Material(
       type: MaterialType.transparency,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            height: rollerH,
-            child: FadeTransition(
-              opacity: rollerT,
-              child: ScaleTransition(
-                scale: Tween(begin: 0.72, end: 1.0).animate(rollerT),
-                child: ScrollRollerHeader(
-                  count: pool.length,
-                  glow: glow,
-                  onClose: () => _toggle(false),
+      child: _scrollPerspective(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: rollerH,
+              child: FadeTransition(
+                opacity: rollerT,
+                child: ScaleTransition(
+                  scale: Tween(begin: 0.72, end: 1.0).animate(rollerT),
+                  child: ScrollRollerHeader(
+                    count: pool.length,
+                    glow: glow,
+                    onClose: () => _toggle(false),
+                  ),
                 ),
               ),
             ),
-          ),
-          // 纸面 + 底部卷边随 paperT 从滚轴下方铺开（收起时反向卷回）
-          ClipRect(
-            child: AnimatedBuilder(
-              animation: paperT,
-              builder: (context, child) => Align(
-                alignment: Alignment.topCenter,
-                heightFactor: paperT.value.clamp(0.0, 1.0),
-                child: child,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    height: listArea,
-                    // ListenableBuilder 只重建纸壳（进度线跟随滚动与主时间线），
-                    // content 作 child 缓存不随滚动重建
-                    child: ListenableBuilder(
-                      listenable: Listenable.merge([_listScroll, _unroll]),
-                      builder: (context, child) {
-                        double? progress;
-                        if (overflow) {
-                          progress = 0;
-                          if (_listScroll.hasClients &&
-                              _listScroll.position.hasContentDimensions &&
-                              _listScroll.position.maxScrollExtent > 0) {
-                            progress =
-                                _listScroll.position.pixels /
-                                _listScroll.position.maxScrollExtent;
+            // 纸面 + 底部卷边随 paperT 从滚轴下方铺开（收起时反向卷回）
+            ClipRect(
+              child: AnimatedBuilder(
+                animation: paperT,
+                builder: (context, child) => Align(
+                  alignment: Alignment.topCenter,
+                  heightFactor: paperT.value.clamp(0.0, 1.0),
+                  child: child,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      height: listArea,
+                      // ListenableBuilder 只重建纸壳（进度线跟随滚动与主时间线），
+                      // content 作 child 缓存不随滚动重建
+                      child: ListenableBuilder(
+                        listenable: Listenable.merge([_listScroll, _unroll]),
+                        builder: (context, child) {
+                          double? progress;
+                          if (overflow) {
+                            progress = 0;
+                            if (_listScroll.hasClients &&
+                                _listScroll.position.hasContentDimensions &&
+                                _listScroll.position.maxScrollExtent > 0) {
+                              progress =
+                                  _listScroll.position.pixels /
+                                  _listScroll.position.maxScrollExtent;
+                            }
                           }
-                        }
-                        return ScrollParchmentBody(
-                          progress: progress,
-                          // 分镜定稿：进度线**最后**淡入（收起时最先退场）
-                          progressOpacity: ((_unroll.value - 0.85) / 0.15)
-                              .clamp(0.0, 1.0),
-                          glow: glow,
-                          child: child!,
-                        );
-                      },
-                      child: content,
+                          return ScrollParchmentBody(
+                            progress: progress,
+                            // 分镜定稿：进度线**最后**淡入（收起时最先退场）
+                            progressOpacity: ((_unroll.value - 0.85) / 0.15)
+                                .clamp(0.0, 1.0),
+                            glow: glow,
+                            child: child!,
+                          );
+                        },
+                        child: content,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: curlH, child: const ScrollBottomCurl()),
-                ],
+                    SizedBox(height: curlH, child: const ScrollBottomCurl()),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 给展开长卷一个轻微俯视透视和统一投影，补足“浮在宇宙中”的 3D 层次。
+  Widget _scrollPerspective(Widget child) {
+    return Transform(
+      alignment: Alignment.topCenter,
+      transform: Matrix4.identity()
+        ..setEntry(3, 2, 0.0009)
+        ..rotateX(-0.035),
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x73000000),
+              blurRadius: 26,
+              offset: Offset(0, 18),
+            ),
+          ],
+        ),
+        child: child,
       ),
     );
   }

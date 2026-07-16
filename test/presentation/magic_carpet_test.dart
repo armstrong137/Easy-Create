@@ -131,9 +131,7 @@ void main() {
   });
 
   testWidgets('超过可视槽位时长卷内滚动并显示右侧墨迹进度线', (tester) async {
-    await pumpCarpet(tester, [
-      for (var i = 1; i <= 20; i++) fake(i, '灵感$i'),
-    ]);
+    await pumpCarpet(tester, [for (var i = 1; i <= 20; i++) fake(i, '灵感$i')]);
     await tester.tap(find.byKey(const Key('魔毯小球')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('卷轴进度线')), findsOneWidget);
@@ -141,7 +139,7 @@ void main() {
 
   testWidgets('P4-R1：五条以上不增加外部面板高度，只内部滚动（地球可见区回归）', (tester) async {
     // 用户实测截图：7 条灵感时长卷拉到整屏、首页地球被完全盖掉。
-    // 修复定稿：面板总高封顶 min(屏高×0.50, 520)，条数增加只加内部滚动。
+    // 修复定稿：面板总高封顶 min(屏高×0.42, 380)，条数增加只加内部滚动。
     final pool = StreamController<List<Inspiration>>();
     addTearDown(pool.close);
     await tester.pumpWidget(
@@ -176,7 +174,7 @@ void main() {
     final src = File(
       'lib/presentation/outline/magic_carpet.dart',
     ).readAsStringSync();
-    expect(src, contains('math.min(screen.height * 0.50, 520.0)'));
+    expect(src, contains('math.min(screen.height * 0.42, 380.0)'));
     expect(
       src,
       isNot(contains('screen.height -')),
@@ -223,7 +221,8 @@ void main() {
       for (var x = 0; x < image.width; x++) {
         final p = image.getPixel(x, y);
         final avg = (p.r + p.g + p.b) / 3;
-        final diff = [p.r, p.g, p.b].reduce((a, b) => a > b ? a : b) -
+        final diff =
+            [p.r, p.g, p.b].reduce((a, b) => a > b ? a : b) -
             [p.r, p.g, p.b].reduce((a, b) => a < b ? a : b);
         if (p.a > 24 && avg > 80 && avg < 245 && diff < 35) {
           dirtyBottomPixels++;
@@ -233,7 +232,7 @@ void main() {
     expect(dirtyBottomPixels, lessThan(80));
   });
 
-  testWidgets('展开态整体高度足够容纳大尺寸魔毯横幅', (tester) async {
+  testWidgets('展开态整体高度精致收敛，保留首页地球可见区', (tester) async {
     await pumpCarpet(tester, [fake(1, '深夜的旋律')]);
 
     await tester.tap(find.byKey(const Key('魔毯小球')));
@@ -241,7 +240,7 @@ void main() {
 
     expect(
       tester.getSize(find.byType(MagicCarpet)).height,
-      greaterThanOrEqualTo(420),
+      inInclusiveRange(290, 380),
     );
   });
 
