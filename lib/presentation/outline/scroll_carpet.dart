@@ -99,7 +99,10 @@ class ScrollRollerHeader extends StatelessWidget {
   }
 }
 
-/// 羊皮纸书写区外壳：羊皮纸底 + 左右织纹边框 + 内容 + 可选墨迹进度线。
+/// 羊皮纸书写区外壳：织纹边框在下层，**不规则纸边**的羊皮纸覆于其上
+/// （纸缘波浪处透出边框织物，建立"纸嵌在毯里"的空间关系），
+/// 纸面为 CustomPainter 手绘（清晰纸纹/暗角/星图水印，杜绝整张模糊截图），
+/// 上沿卷入阴影暗示纸从滚轴后方铺出。
 class ScrollParchmentBody extends StatelessWidget {
   const ScrollParchmentBody({
     super.key,
@@ -121,18 +124,12 @@ class ScrollParchmentBody extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // 羊皮纸底（含星图水印，空状态直接透出）
-        Image.asset(
-          'assets/textures/scroll_carpet/scroll_parchment.png',
-          fit: BoxFit.cover,
-          filterQuality: FilterQuality.medium,
-        ),
-        // 左右织纹边框（纵向拉伸；波斯织纹容拉伸不露馅）
+        // 织纹边框（下层，内缘已做 alpha 过渡）
         Positioned(
           left: 0,
           top: 0,
           bottom: 0,
-          width: kScrollBorderWidth,
+          width: kScrollBorderWidth + 12,
           child: Image.asset(
             'assets/textures/scroll_carpet/scroll_border_left.png',
             fit: BoxFit.fill,
@@ -143,54 +140,71 @@ class ScrollParchmentBody extends StatelessWidget {
           right: 0,
           top: 0,
           bottom: 0,
-          width: kScrollBorderWidth,
+          width: kScrollBorderWidth + 12,
           child: Image.asset(
             'assets/textures/scroll_carpet/scroll_border_right.png',
             fit: BoxFit.fill,
             filterQuality: FilterQuality.medium,
           ),
         ),
-        // 纸面上下沿的柔和阴影：长卷"卷入滚轴"的暗示
-        const Positioned(
-          left: kScrollBorderWidth,
-          right: kScrollBorderWidth,
-          top: 0,
-          height: 14,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0x59321F0E), Color(0x00321F0E)],
-              ),
-            ),
-          ),
-        ),
-        const Positioned(
-          left: kScrollBorderWidth,
-          right: kScrollBorderWidth,
-          bottom: 0,
-          height: 14,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [Color(0x59321F0E), Color(0x00321F0E)],
-              ),
-            ),
-          ),
-        ),
+        // 羊皮纸：不规则纸边裁切，微微压住边框内缘
         Positioned.fill(
-          left: kScrollBorderWidth + 8,
-          right: kScrollBorderWidth + 8,
-          child: child,
+          left: kScrollBorderWidth - 4,
+          right: kScrollBorderWidth - 4,
+          child: ClipPath(
+            clipper: const PaperEdgeClipper(),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                RepaintBoundary(
+                  child: CustomPaint(
+                    isComplex: true,
+                    willChange: false,
+                    painter: const ParchmentPainter(),
+                  ),
+                ),
+                // 顶部卷入阴影：内容上滑时像被卷进滚轴（P4-R4 遮罩）
+                const Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  height: 24,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0x80321F0E), Color(0x00321F0E)],
+                      ),
+                    ),
+                  ),
+                ),
+                // 底部卷边阴影：下一条从卷边下方露出的暗示
+                const Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: 18,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [Color(0x66321F0E), Color(0x00321F0E)],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned.fill(left: 12, right: 12, child: child),
+              ],
+            ),
+          ),
         ),
         if (progress != null)
           Positioned(
             right: kScrollBorderWidth + 2,
-            top: 12,
-            bottom: 12,
+            top: 14,
+            bottom: 14,
             width: 10,
             child: CustomPaint(
               key: const Key('卷轴进度线'),
@@ -200,6 +214,175 @@ class ScrollParchmentBody extends StatelessWidget {
       ],
     );
   }
+}
+
+/// 不规则纸边：左右缘轻微波浪（真实羊皮纸不会是刀切矩形），
+/// 上下缘平直（分别藏在滚轴与底部卷边后面）。
+class PaperEdgeClipper extends CustomClipper<Path> {
+  const PaperEdgeClipper();
+
+  @override
+  Path getClip(Size size) {
+    const amp = 3.2; // 波浪振幅
+    const waves = 5; // 每侧波浪数
+    final path = Path()..moveTo(amp, 0);
+    path.lineTo(size.width - amp, 0);
+    // 右缘：向下波浪
+    final segR = size.height / waves;
+    for (var i = 0; i < waves; i++) {
+      final bump = i.isEven ? amp : -amp;
+      path.quadraticBezierTo(
+        size.width - amp + bump,
+        segR * (i + 0.5),
+        size.width - amp,
+        segR * (i + 1),
+      );
+    }
+    path.lineTo(amp, size.height);
+    // 左缘：向上波浪（相位错开，别和右缘对称得像模具）
+    final segL = size.height / waves;
+    for (var i = waves - 1; i >= 0; i--) {
+      final bump = i.isOdd ? amp : -amp;
+      path.quadraticBezierTo(
+        amp + bump,
+        segL * (i + 0.5),
+        amp,
+        segL * i,
+      );
+    }
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(PaperEdgeClipper oldClipper) => false;
+}
+
+/// 手绘羊皮纸：底色渐变 + 斑驳陈化 + 四边暗角 + 星图水印。
+/// 任意尺寸下都清晰（整张截图放大会糊，这是 P4-R2 判定的完成度硬伤）。
+class ParchmentPainter extends CustomPainter {
+  const ParchmentPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    // 底色：微暖的纵向渐变
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFEADDBE), Color(0xFFE2D0A9), Color(0xFFD8C398)],
+        ).createShader(rect),
+    );
+    // 斑驳陈化：固定种子的柔和色斑（深沉/偏亮两组）
+    final rng = math.Random(7);
+    for (var i = 0; i < 130; i++) {
+      final cx = rng.nextDouble() * size.width;
+      final cy = rng.nextDouble() * size.height;
+      final r = 6 + rng.nextDouble() * 26;
+      final dark = rng.nextBool();
+      canvas.drawCircle(
+        Offset(cx, cy),
+        r,
+        Paint()
+          ..color = dark ? const Color(0x0D6B4E24) : const Color(0x0DF5EACB)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9),
+      );
+    }
+    // 四边暗角（纸缘陈旧发暗）
+    for (final side in const [
+      Alignment.topCenter,
+      Alignment.bottomCenter,
+      Alignment.centerLeft,
+      Alignment.centerRight,
+    ]) {
+      final horizontal = side.y == 0;
+      final band = horizontal
+          ? Rect.fromLTWH(
+              side.x < 0 ? 0 : size.width - 26,
+              0,
+              26,
+              size.height,
+            )
+          : Rect.fromLTWH(0, side.y < 0 ? 0 : size.height - 22, size.width, 22);
+      canvas.drawRect(
+        band,
+        Paint()
+          ..shader = LinearGradient(
+            begin: side,
+            end: Alignment(-side.x, -side.y),
+            colors: const [Color(0x24503514), Color(0x00503514)],
+          ).createShader(band),
+      );
+    }
+    _drawStarChart(canvas, size);
+  }
+
+  /// 星图水印：弯月 + 四芒星 + 虚线连线（淡金，融入纸面）
+  void _drawStarChart(Canvas canvas, Size size) {
+    final ink = Paint()..color = const Color(0x30A98B4F);
+    // 弯月（左上）
+    final moonC = Offset(size.width * 0.18, size.height * 0.14);
+    final moon = Path()
+      ..addOval(Rect.fromCircle(center: moonC, radius: 11))
+      ..addOval(Rect.fromCircle(center: moonC.translate(4.5, -2), radius: 9.5));
+    moon.fillType = PathFillType.evenOdd;
+    canvas.drawPath(moon, ink);
+    // 星座节点（归一化坐标，参考 04 的松散星图）
+    const pts = [
+      Offset(0.32, 0.30),
+      Offset(0.52, 0.20),
+      Offset(0.68, 0.38),
+      Offset(0.46, 0.52),
+      Offset(0.24, 0.62),
+      Offset(0.62, 0.70),
+      Offset(0.80, 0.58),
+      Offset(0.82, 0.16),
+    ];
+    for (var i = 0; i < pts.length; i++) {
+      final p = Offset(pts[i].dx * size.width, pts[i].dy * size.height);
+      _fourPointStar(canvas, p, i.isEven ? 7.0 : 4.6, ink);
+      if (i > 0) {
+        final prev = Offset(
+          pts[i - 1].dx * size.width,
+          pts[i - 1].dy * size.height,
+        );
+        _dashedLine(canvas, prev, p, ink);
+      }
+    }
+  }
+
+  void _fourPointStar(Canvas canvas, Offset c, double r, Paint paint) {
+    final path = Path()
+      ..moveTo(c.dx, c.dy - r)
+      ..quadraticBezierTo(c.dx, c.dy, c.dx + r, c.dy)
+      ..quadraticBezierTo(c.dx, c.dy, c.dx, c.dy + r)
+      ..quadraticBezierTo(c.dx, c.dy, c.dx - r, c.dy)
+      ..quadraticBezierTo(c.dx, c.dy, c.dx, c.dy - r)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  void _dashedLine(Canvas canvas, Offset a, Offset b, Paint paint) {
+    const dash = 4.0, gap = 5.0;
+    final total = (b - a).distance;
+    final dir = (b - a) / total;
+    var d = 0.0;
+    final stroke = Paint()
+      ..color = paint.color
+      ..strokeWidth = 1.1
+      ..strokeCap = StrokeCap.round;
+    while (d < total) {
+      final end = math.min(d + dash, total);
+      canvas.drawLine(a + dir * d, a + dir * end, stroke);
+      d = end + gap;
+    }
+  }
+
+  @override
+  bool shouldRepaint(ParchmentPainter oldDelegate) => false;
 }
 
 /// 底部卷边（长卷下端卷起的织物 + 鎏金饰件）
