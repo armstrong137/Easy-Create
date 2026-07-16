@@ -12,6 +12,7 @@ import 'package:novel_app/data/database/app_database.dart';
 import 'package:novel_app/presentation/home/home_page.dart'
     show inspirationPoolProvider;
 import 'package:novel_app/presentation/outline/magic_carpet.dart';
+import 'package:novel_app/presentation/outline/scroll_carpet.dart';
 
 /// 阶段五·1+2：魔毯缩球/展开与列表（灵感池流照例 override）
 void main() {
@@ -82,16 +83,57 @@ void main() {
     expect(find.textContaining('灵感魔毯 · 1'), findsOneWidget);
   });
 
-  testWidgets('黑色星空背景下标题有浅色背板，文字不糊进背景', (tester) async {
+  testWidgets('标题金字织入滚轴织物带，不再是悬浮白色 pill', (tester) async {
     await pumpCarpet(tester, [fake(1, '深夜的旋律')]);
 
     await tester.tap(find.byKey(const Key('魔毯小球')));
     await tester.pumpAndSettle();
 
-    final box = tester.widget<DecoratedBox>(find.byKey(const Key('魔毯标题背板')));
-    final decoration = box.decoration as BoxDecoration;
-    expect(decoration.color, const Color(0xEFFFFDF6));
-    expect(decoration.borderRadius, isNotNull);
+    expect(find.byKey(const Key('卷轴织物标题')), findsOneWidget);
+    expect(
+      find.byKey(const Key('魔毯标题背板')),
+      findsNothing,
+      reason: '标题必须织入滚轴织物本体（方案二定稿），白色 pill 已退役',
+    );
+    final title = tester.widget<Text>(find.byKey(const Key('卷轴织物标题')));
+    expect(title.style?.color, kScrollGold);
+  });
+
+  testWidgets('灵感墨迹写在长卷纸面上：无独立白色卡片，条目间金色分隔纹', (tester) async {
+    await pumpCarpet(tester, [fake(1, '第一条'), fake(2, '第二条'), fake(3, '第三条')]);
+
+    await tester.tap(find.byKey(const Key('魔毯小球')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byType(GoldDivider),
+      findsNWidgets(2),
+      reason: '3 条灵感之间应有 2 道金色分隔纹（最后一条不画）',
+    );
+    final src = File(
+      'lib/presentation/outline/magic_carpet.dart',
+    ).readAsStringSync();
+    expect(
+      src,
+      isNot(contains('0xFAFFFCF4')),
+      reason: '白色卡片底已退役：墨迹直接写在羊皮纸上（方案二红线）',
+    );
+  });
+
+  testWidgets('超过可视槽位时长卷内滚动并显示右侧墨迹进度线', (tester) async {
+    await pumpCarpet(tester, [
+      for (var i = 1; i <= 20; i++) fake(i, '灵感$i'),
+    ]);
+    await tester.tap(find.byKey(const Key('魔毯小球')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('卷轴进度线')), findsOneWidget);
+  });
+
+  testWidgets('未溢出可视槽位时不显示进度线', (tester) async {
+    await pumpCarpet(tester, [fake(1, 'A'), fake(2, 'B')]);
+    await tester.tap(find.byKey(const Key('魔毯小球')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('卷轴进度线')), findsNothing);
   });
 
   test('展开态不能用整面板 opaque 命中层挡住首页星球点击', () {

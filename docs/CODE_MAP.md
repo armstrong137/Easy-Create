@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-15 20:55:43　对应提交：c210a64 之后的工作区状态
+> 生成时间：2026-07-15 22:18:12　对应提交：690e0d1 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,26 +12,26 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     105
-  Nodes:     3,976
-  Edges:     18,843
-  DB Size:   19.97 MB
+  Files:     106
+  Nodes:     4,003
+  Edges:     18,898
+  DB Size:   20.03 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,538
-  function        1,364
-  class           454
-  import          316
-  constant        179
-  file            97
+  method          1,548
+  function        1,366
+  class           460
+  import          322
+  constant        181
+  file            98
   variable        14
   type_alias      12
   namespace       2
 
 Files by Language:
-  dart            67
+  dart            68
   javascript      10
   kotlin          8
   xml             6
@@ -49,7 +49,7 @@ Files by Language:
 
 ```
 
-Project Structure (105 files):
+Project Structure (106 files):
 
 |-- .agents
 |   `-- skills
@@ -168,9 +168,10 @@ Project Structure (105 files):
 |   |   |   `-- starfield.dart (dart, 31 symbols)
 |   |   |-- outline
 |   |   |   |-- label_layout.dart (dart, 12 symbols)
-|   |   |   |-- magic_carpet.dart (dart, 61 symbols)
+|   |   |   |-- magic_carpet.dart (dart, 63 symbols)
 |   |   |   |-- magic_tree_model.dart (dart, 34 symbols)
-|   |   |   `-- outline_page.dart (dart, 54 symbols)
+|   |   |   |-- outline_page.dart (dart, 54 symbols)
+|   |   |   `-- scroll_carpet.dart (dart, 25 symbols)
 |   |   |-- section
 |   |   |   |-- card_deck_sheet.dart (dart, 19 symbols)
 |   |   |   |-- card_editor_page.dart (dart, 15 symbols)
@@ -203,7 +204,7 @@ Project Structure (105 files):
 |   |-- presentation
 |   |   |-- home_loading_regression_test.dart (dart, 4 symbols)
 |   |   |-- home_page_test.dart (dart, 20 symbols)
-|   |   |-- magic_carpet_test.dart (dart, 17 symbols)
+|   |   |-- magic_carpet_test.dart (dart, 18 symbols)
 |   |   |-- magic_tree_model_test.dart (dart, 13 symbols)
 |   |   |-- orbiting_inspirations_test.dart (dart, 11 symbols)
 |   |   |-- outline_page_test.dart (dart, 23 symbols)

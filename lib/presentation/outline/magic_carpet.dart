@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -11,8 +12,10 @@ import '../../core/inspiration_font.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart' show inspirationRepositoryProvider;
 import '../home/home_page.dart' show inspirationPoolProvider;
+import '../home/planet_scene/planet_scene.dart' show advanced3DProvider;
 import '../shared/quick_capture/quick_capture_layer.dart'
     show captureSheetOpenProvider;
+import 'scroll_carpet.dart';
 
 /// 墨色（配羊皮纸面板）
 const _ink = Color(0xFF3A2A18);
@@ -281,12 +284,13 @@ class _TrashZoneState extends ConsumerState<_TrashZone> {
   }
 }
 
-/// 灵感魔毯（2026-07-03 照片级改版，用户素材 picture/魔毯1-9）：
+/// 灵感魔毯（2026-07-15 方案二「卷轴灵感」改版，参考图 picture/方案2_卷轴灵感）：
 ///
-/// - 缩球态 = 素材"魔毯1"卷球照片本体
-/// - 点击展开：**逐帧播放素材 1→9 的真实展开动画**（卷球徐徐摊平），
-///   摊平的魔毯横陈面板顶部，灵感列表在其下的羊皮纸毛玻璃卡内
-/// - 收起反向卷回；拖拽落点后自动缩球
+/// - 缩球态 = 素材卷球照片本体（不变）
+/// - 点击展开：滚轴先现身 → 羊皮纸长卷向下铺开 → 灵感墨迹按序写入。
+///   灵感文字直接写在羊皮纸上（无独立白色卡片），条目间金色分隔纹，
+///   超出可视槽位时长卷内滚动、右侧墨迹进度线指示位置
+/// - 收起反向卷回（先淡墨迹、再卷纸面、最后回小球）；拖拽落点后自动缩球
 class MagicCarpet extends ConsumerStatefulWidget {
   const MagicCarpet({super.key});
 
@@ -318,7 +322,8 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
   /// 避免松手瞬间闪回旧序再跳新序（用户反馈"不连贯"）
   List<Inspiration>? _optimisticPool;
 
-  /// 展开帧动画：value 0→1 映射素材帧 1→9
+  /// 卷轴展开主时间线：0~0.32 滚轴现身 → 0.26~0.72 纸面铺开 →
+  /// 0.58~1.0 墨迹按序写入；收起 reverse（先淡墨迹再卷纸面）。
   /// （必须在 initState 立即创建：late 惰性到 dispose 才初始化会在
   /// 已卸载元素上建 Ticker 而崩溃）
   late final AnimationController _unroll;
@@ -328,15 +333,10 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
     super.initState();
     _unroll = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 620),
+      duration: const Duration(milliseconds: 1050),
+      reverseDuration: const Duration(milliseconds: 480),
     );
   }
-
-  /// 展开面板顶部魔毯横幅高度
-  static const _bannerHeight = 210.0;
-
-  /// 标题行固定高度（参与面板总高计算，保证列表区恰为整数个卡槽）
-  static const _titleHeight = 32.0;
 
   bool get expanded => _expanded;
 
@@ -392,9 +392,18 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // 预解码九帧，首次展开不闪帧
-    for (var f = 1; f <= 9; f++) {
-      precacheImage(AssetImage('assets/textures/carpet_frame_$f.png'), context);
+    // 预解码卷轴素材，首次展开不闪帧
+    for (final name in const [
+      'scroll_roller',
+      'scroll_parchment',
+      'scroll_border_left',
+      'scroll_border_right',
+      'scroll_bottom_curl',
+    ]) {
+      precacheImage(
+        AssetImage('assets/textures/scroll_carpet/$name.png'),
+        context,
+      );
     }
   }
 
@@ -441,20 +450,25 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
         _optimisticPool ?? ref.watch(inspirationPoolProvider).value ?? const [];
     final screen = MediaQuery.sizeOf(context);
     final width = screen.width * 0.86;
-    // 列表可用空间 = 屏高 - 顶部安全区与留白 - 横幅 - 标题 - 底部留白：
-    // 面板绝不伸出屏幕底（灵感多时末尾卡片会被屏幕截断、滑也滑不出来），
-    // 且列表只取整数个卡槽 → 卡片要么完整显示要么不显示（用户定稿）
+    final rollerH = width * kScrollRollerAspect;
+    final curlH = width * kScrollCurlAspect;
+    // 纸面可用空间 = 屏高 - 顶部安全区与留白 - 滚轴 - 底部卷边 - 底部留白：
+    // 面板绝不伸出屏幕底（灵感多时末尾条目会被屏幕截断、滑也滑不出来），
+    // 且纸面只取整数个卡槽 → 条目要么完整显示要么不显示（用户定稿）
     final avail =
         screen.height -
         MediaQuery.paddingOf(context).top -
         6 -
-        _bannerHeight -
-        _titleHeight -
+        rollerH -
+        curlH -
         16;
-    final height =
-        _bannerHeight +
-        _titleHeight +
-        carpetHeight(pool.length, maxAvail: avail);
+    // 0/1 条给足呼吸空间（参考图 01/04 的从容留白）；多条按整槽计算
+    final listArea = math.min(
+      pool.length <= 1 ? 280.0 : carpetHeight(pool.length, maxAvail: avail),
+      math.max(avail, kCarpetItemHeight + kCarpetListPad),
+    );
+    final height = rollerH + listArea + curlH;
+    final glow = ref.watch(advanced3DProvider);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 320),
@@ -470,8 +484,10 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
               maxHeight: height,
               alignment: Alignment.topLeft,
               child: _dragging
-                  ? _buildPanel(pool, width, height)
-                  : _returnDropTarget(_buildPanel(pool, width, height)),
+                  ? _buildPanel(pool, rollerH, listArea, curlH, glow)
+                  : _returnDropTarget(
+                      _buildPanel(pool, rollerH, listArea, curlH, glow),
+                    ),
             )
           : _returnDropTarget(_buildBall()),
     );
@@ -517,217 +533,272 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
     );
   }
 
-  /// 展开态：魔毯展开动画横幅 + 羊皮纸毛玻璃灵感列表
-  Widget _buildPanel(List<Inspiration> pool, double width, double height) {
+  /// 展开态：卷轴长卷（滚轴 + 羊皮纸书写区 + 底部卷边）
+  Widget _buildPanel(
+    List<Inspiration> pool,
+    double rollerH,
+    double listArea,
+    double curlH,
+    bool glow,
+  ) {
     return IgnorePointer(
       ignoring: _dragging,
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 150),
         // 拖拽时完全隐藏面板：半透明残卡会像"残影"干扰落点（用户反馈）
         opacity: _dragging ? 0 : 1,
-        child: _panelBody(pool, width, height),
+        child: _panelBody(pool, rollerH, listArea, curlH, glow),
       ),
     );
   }
 
-  /// 标题/空状态文字用的柔和阴影（浮在星空/魔树背景上仍可读）
-  static const _floatShadow = [
-    Shadow(color: Color(0xCCFFFFFF), blurRadius: 6),
-    Shadow(color: Color(0x66FFFFFF), blurRadius: 12),
-  ];
-
-  Widget _panelBody(List<Inspiration> pool, double width, double height) {
-    // 透明浮层：不再有实底面板。魔毯图透明四周、灵感卡之间的空隙，
-    // 都直接透出后面一层的背景（用户定稿：有内容置顶、空处显背景）。
-    // 透明 Material 供 Text/InkWell 用；透明空白处不再整面板吃点击，
-    // 避免首页星球被展开魔毯挡住。收起请点右上角 X。
+  Widget _panelBody(
+    List<Inspiration> pool,
+    double rollerH,
+    double listArea,
+    double curlH,
+    bool glow,
+  ) {
+    // 展开分镜（参考 06）：滚轴先现身 → 纸面向下铺开 → 墨迹按序写入；
+    // 收起 reverse 反向卷回。透明 Material：纸外区域放过底层点击。
+    final rollerT = CurvedAnimation(
+      parent: _unroll,
+      curve: const Interval(0, 0.32, curve: Curves.easeOutBack),
+    );
+    final paperT = CurvedAnimation(
+      parent: _unroll,
+      curve: const Interval(0.26, 0.72, curve: Curves.easeInOut),
+    );
+    // 纸面是否溢出可视槽位（溢出才显示墨迹进度线）
+    final overflow =
+        pool.length * kCarpetItemHeight + kCarpetListPad > listArea + 0.5;
+    final content = _paperContent(pool);
     return Material(
       type: MaterialType.transparency,
-      child: SizedBox(
-        width: width,
-        height: height,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // 魔毯横幅：逐帧展开动画（contain → 两侧透出背景）
-            SizedBox(
-              height: _bannerHeight,
-              child: Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            height: rollerH,
+            child: FadeTransition(
+              opacity: rollerT,
+              child: ScaleTransition(
+                scale: Tween(begin: 0.72, end: 1.0).animate(rollerT),
+                child: ScrollRollerHeader(
+                  count: pool.length,
+                  glow: glow,
+                  onClose: () => _toggle(false),
+                ),
+              ),
+            ),
+          ),
+          // 纸面 + 底部卷边随 paperT 从滚轴下方铺开（收起时反向卷回）
+          ClipRect(
+            child: AnimatedBuilder(
+              animation: paperT,
+              builder: (context, child) => Align(
+                alignment: Alignment.topCenter,
+                heightFactor: paperT.value.clamp(0.0, 1.0),
+                child: child,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Positioned.fill(
-                    child: AnimatedBuilder(
-                      animation: _unroll,
-                      builder: (context, _) {
-                        final t = Curves.easeInOut.transform(_unroll.value);
-                        final frame = 1 + (t * 8).round();
-                        return Image.asset(
-                          'assets/textures/carpet_frame_$frame.png',
-                          fit: BoxFit.contain,
-                          gaplessPlayback: true,
-                          filterQuality: FilterQuality.medium,
+                  SizedBox(
+                    height: listArea,
+                    // ListenableBuilder 只重建纸壳（进度线跟随滚动），
+                    // content 作 child 缓存不随滚动重建
+                    child: ListenableBuilder(
+                      listenable: _listScroll,
+                      builder: (context, child) {
+                        double? progress;
+                        if (overflow) {
+                          progress = 0;
+                          if (_listScroll.hasClients &&
+                              _listScroll.position.hasContentDimensions &&
+                              _listScroll.position.maxScrollExtent > 0) {
+                            progress =
+                                _listScroll.position.pixels /
+                                _listScroll.position.maxScrollExtent;
+                          }
+                        }
+                        return ScrollParchmentBody(
+                          progress: progress,
+                          glow: glow,
+                          child: child!,
                         );
                       },
+                      child: content,
                     ),
                   ),
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: IconButton(
-                      key: const Key('魔毯收起按钮'),
-                      icon: const Icon(
-                        CupertinoIcons.xmark_circle_fill,
-                        color: Color(0xE63A2A18),
-                        size: 26,
-                        shadows: _floatShadow,
-                      ),
-                      onPressed: () => _toggle(false),
-                    ),
-                  ),
+                  SizedBox(height: curlH, child: const ScrollBottomCurl()),
                 ],
               ),
             ),
-            // 标题：浅色背板压住星空噪点，黑色背景下也清楚。
-            SizedBox(
-              height: _titleHeight,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: DecoratedBox(
-                    key: const Key('魔毯标题背板'),
-                    decoration: BoxDecoration(
-                      color: const Color(0xEFFFFDF6),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: const Color(0x55C9A050)),
-                      boxShadow: const [
-                        BoxShadow(color: Color(0x66000000), blurRadius: 8),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      child: Text(
-                        '灵感魔毯 · ${pool.length}',
-                        style: const TextStyle(
-                          fontFamily: 'LXGWWenKai',
-                          color: _ink,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 纸面内容：0 条淡墨水印 / 1 条居中大字 / 多条长卷逐条墨迹
+  Widget _paperContent(List<Inspiration> pool) {
+    if (pool.isEmpty) {
+      // 空状态：提示作淡墨水印融入羊皮纸（星图水印在纸面素材里）
+      return _inkFade(
+        0,
+        const Center(
+          child: Opacity(
+            opacity: 0.55,
+            child: Text(
+              '魔毯空空如也\n随时速记一条灵感吧',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'LXGWWenKai',
+                color: _ink,
+                fontSize: 14,
+                height: 1.8,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    if (pool.length == 1) {
+      // 单条：居中大字，四周留呼吸空间（参考 01）
+      return _inkFade(
+        0,
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
+            child: CarpetItem(
+              inspiration: pool.first,
+              big: true,
+              onDragStarted: () {
+                setState(() => _dragging = true);
+                carpetDragging.value = pool.first;
+              },
+              onDragEnd: _finishDrag,
+            ),
+          ),
+        ),
+      );
+    }
+    return NotificationListener<ScrollEndNotification>(
+      onNotification: _snapAfterScroll,
+      // 可重排长卷：右侧把手拖动重排（长按墨迹本体仍是拖上树）
+      child: ReorderableListView.builder(
+        scrollController: _listScroll,
+        padding: const EdgeInsets.fromLTRB(2, 2, 14, 12),
+        // 固定槽高 + 整卡吸附：静止时不出现被拦腰截断的条目
+        physics: const _SnapToCardPhysics(),
+        buildDefaultDragHandles: false,
+        // 拖动替身透明底（默认 Material 灰底会遮纸面）
+        proxyDecorator: (child, index, animation) =>
+            Material(type: MaterialType.transparency, child: child),
+        onReorderStart: (_) {
+          _reordering = true;
+          HapticFeedback.selectionClick();
+        },
+        onReorderEnd: (_) {
+          // 重排的自动滚动可能停在半卡位，结束后补吸附
+          _reordering = false;
+          _scheduleSnapToSlot();
+        },
+        // onReorderItem 已自动修正移除位后的 newIndex。
+        // 先乐观更新本地顺序（拖完什么样就是什么样），再落库
+        onReorderItem: (oldIndex, newIndex) {
+          final list = [...pool];
+          list.insert(newIndex, list.removeAt(oldIndex));
+          setState(() => _optimisticPool = list);
+          ref
+              .read(inspirationRepositoryProvider)
+              .reorderCards(list.map((e) => e.id).toList());
+        },
+        itemCount: pool.length,
+        itemBuilder: (context, i) => SizedBox(
+          key: Key('魔毯行_${pool[i].id}'),
+          height: kCarpetItemHeight,
+          child: _inkFade(
+            i,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: CarpetItem(
+                          inspiration: pool[i],
+                          onDragStarted: () {
+                            setState(() => _dragging = true);
+                            carpetDragging.value = pool[i];
+                          },
+                          onDragEnd: _finishDrag,
                         ),
+                      ),
+                      // 条目间金色分隔纹（最后一条不画）
+                      if (i < pool.length - 1)
+                        const GoldDivider()
+                      else
+                        const SizedBox(height: 10),
+                    ],
+                  ),
+                ),
+                // 排序把手：按住直接拖动重排
+                ReorderableDragStartListener(
+                  index: i,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 6),
+                    child: Center(
+                      child: Icon(
+                        CupertinoIcons.line_horizontal_3,
+                        key: Key('魔毯排序把手_${pool[i].id}'),
+                        size: 16,
+                        color: const Color(0x99693F1A),
                       ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
-            // 灵感列表（卡片不透明→可读；卡间与列表未占满处透出背景）
-            Expanded(
-              child: pool.isEmpty
-                  ? const Center(
-                      child: Text(
-                        '魔毯空空如也\n随时速记一条灵感吧',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: 'LXGWWenKai',
-                          color: _ink,
-                          fontSize: 13,
-                          height: 1.6,
-                          fontWeight: FontWeight.w600,
-                          shadows: _floatShadow,
-                        ),
-                      ),
-                    )
-                  : NotificationListener<ScrollEndNotification>(
-                      onNotification: _snapAfterScroll,
-                      // 可重排列表：右侧把手拖动重排（长按卡片本体仍是拖上树）
-                      child: ReorderableListView.builder(
-                        scrollController: _listScroll,
-                        padding: const EdgeInsets.fromLTRB(12, 2, 12, 12),
-                        // 固定槽高 + 整卡吸附：静止时不出现被拦腰截断的卡
-                        physics: const _SnapToCardPhysics(),
-                        buildDefaultDragHandles: false,
-                        // 拖动替身透明底（默认 Material 灰底会遮星空背景）
-                        proxyDecorator: (child, index, animation) => Material(
-                          type: MaterialType.transparency,
-                          child: child,
-                        ),
-                        onReorderStart: (_) {
-                          _reordering = true;
-                          HapticFeedback.selectionClick();
-                        },
-                        onReorderEnd: (_) {
-                          // 重排的自动滚动可能停在半卡位，结束后补吸附
-                          _reordering = false;
-                          _scheduleSnapToSlot();
-                        },
-                        // onReorderItem 已自动修正移除位后的 newIndex。
-                        // 先乐观更新本地顺序（拖完什么样就是什么样），再落库
-                        onReorderItem: (oldIndex, newIndex) {
-                          final list = [...pool];
-                          list.insert(newIndex, list.removeAt(oldIndex));
-                          setState(() => _optimisticPool = list);
-                          ref
-                              .read(inspirationRepositoryProvider)
-                              .reorderCards(list.map((e) => e.id).toList());
-                        },
-                        itemCount: pool.length,
-                        itemBuilder: (context, i) => SizedBox(
-                          key: Key('魔毯行_${pool[i].id}'),
-                          height: kCarpetItemHeight,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: CarpetItem(
-                                  inspiration: pool[i],
-                                  onDragStarted: () {
-                                    setState(() => _dragging = true);
-                                    carpetDragging.value = pool[i];
-                                  },
-                                  onDragEnd: _finishDrag,
-                                ),
-                              ),
-                              // 排序把手：按住直接拖动重排
-                              ReorderableDragStartListener(
-                                index: i,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(
-                                    left: 6,
-                                    bottom: 7,
-                                  ),
-                                  child: Icon(
-                                    CupertinoIcons.line_horizontal_3,
-                                    key: Key('魔毯排序把手_${pool[i].id}'),
-                                    size: 18,
-                                    color: const Color(0xE63A2A18),
-                                    shadows: _floatShadow,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
+
+  /// 墨迹淡入：第 [index] 条按主时间线错峰写入（收起时反向先淡出）
+  Widget _inkFade(int index, Widget child) {
+    return AnimatedBuilder(
+      animation: _unroll,
+      builder: (context, c) =>
+          Opacity(opacity: inkFadeT(_unroll.value, index), child: c),
+      child: child,
+    );
+  }
 }
 
-/// 魔毯上的一条灵感：长按拖起，可放到树上章/节标签（DragTarget 在大纲页）
+/// 长卷上的一条灵感墨迹：长按从纸面浮起成拖拽影子（可放到树上章/节标签），
+/// 原位留淡墨残影，松手失败墨迹回写纸面。文字直接写在羊皮纸上，无卡片底。
 class CarpetItem extends StatelessWidget {
   const CarpetItem({
     super.key,
     required this.inspiration,
+    this.big = false,
     this.onDragStarted,
     this.onDragEnd,
   });
 
   final Inspiration inspiration;
+
+  /// 单条模式：居中大字（参考 01_单条灵感_展开态）
+  final bool big;
 
   /// 拖起/结束通知（魔毯面板借此让路/复原）
   final VoidCallback? onDragStarted;
@@ -735,7 +806,7 @@ class CarpetItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tile = _tile();
+    final tile = _inkText();
     // 长按拖拽（列表内普通 Draggable 会与滚动手势冲突）
     return LongPressDraggable<Inspiration>(
       key: Key('魔毯灵感_${inspiration.id}'),
@@ -745,18 +816,28 @@ class CarpetItem extends StatelessWidget {
       onDragEnd: (_) => onDragEnd?.call(),
       onDragCompleted: onDragEnd,
       onDraggableCanceled: (_, _) => onDragEnd?.call(),
-      // 拖起时的浮影：一张微光羊皮纸小卡
+      // 拖起时的浮影：一小片撕下的羊皮纸（墨迹随纸浮起）
       feedback: Material(
         color: Colors.transparent,
         child: Container(
           width: 200,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFFDF6),
-            borderRadius: BorderRadius.circular(12),
+            image: const DecorationImage(
+              image: AssetImage(
+                'assets/textures/scroll_carpet/scroll_parchment.png',
+              ),
+              fit: BoxFit.cover,
+            ),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(color: const Color(0xFFC9A050), width: 1.2),
             boxShadow: const [
-              BoxShadow(color: Color(0x59C9A050), blurRadius: 14),
+              BoxShadow(color: Color(0x66C9A050), blurRadius: 14),
+              BoxShadow(
+                color: Color(0x59000000),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
             ],
           ),
           child: Text(
@@ -775,34 +856,23 @@ class CarpetItem extends StatelessWidget {
           ),
         ),
       ),
-      childWhenDragging: Opacity(opacity: 0.3, child: tile),
+      // 淡墨残影：拖起后原位留下若隐若现的墨痕
+      childWhenDragging: Opacity(opacity: 0.25, child: tile),
       child: tile,
     );
   }
 
-  Widget _tile() {
+  /// 墨迹本体：直接写在羊皮纸上（透明底），两行内优雅截断
+  Widget _inkText() {
     return Container(
-      // 固定卡槽（外层 itemExtent = kCarpetItemHeight）内单行居中、两行占满
-      margin: const EdgeInsets.only(bottom: 7),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      alignment: Alignment.centerLeft,
-      decoration: BoxDecoration(
-        // 不透明羊皮纸底：卡片浮在星空/魔树背景上文字仍清晰
-        color: const Color(0xFAFFFCF4),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0x33C9A050)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x33000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
+      padding: EdgeInsets.symmetric(horizontal: big ? 4 : 8, vertical: 4),
+      alignment: big ? Alignment.center : Alignment.centerLeft,
+      color: Colors.transparent,
       child: Text(
         inspiration.content,
-        maxLines: 2,
+        maxLines: big ? 4 : 2,
         overflow: TextOverflow.ellipsis,
+        textAlign: big ? TextAlign.center : TextAlign.start,
         style: TextStyle(
           fontFamily:
               inspirationFontFamily(inspiration.content) ?? 'LXGWWenKai',
@@ -810,8 +880,9 @@ class CarpetItem extends StatelessWidget {
               ? FontStyle.italic
               : FontStyle.normal,
           color: _ink,
-          fontSize: 13,
-          height: 1.35,
+          fontSize: big ? 19 : 13.5,
+          height: big ? 1.7 : 1.35,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
