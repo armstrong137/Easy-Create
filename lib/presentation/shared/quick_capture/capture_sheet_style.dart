@@ -71,7 +71,7 @@ class CaptureSheetShell extends StatelessWidget {
   }
 }
 
-/// 主行动墨色胶囊按钮（存入灵感魔毯）
+/// 主行动墨色胶囊按钮（存入灵感卷轴）
 class CapturePillButton extends StatelessWidget {
   const CapturePillButton({
     super.key,

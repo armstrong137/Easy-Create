@@ -253,7 +253,7 @@ class _EmptyDeck extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.all(32),
         child: Text(
-          '还没有灵感卡\n去魔毯上拖一条过来，或随手速记',
+          '还没有灵感卡\n去灵感卷轴上拖一条过来，或随手速记',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'LXGWWenKai',

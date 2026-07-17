@@ -28,6 +28,7 @@ void main() {
     carpetDragging.value = null;
     carpetTrashPending.value = null;
     carpetTucked.value = false;
+    carpetExpanded.value = false;
   });
 
   Future<void> pumpCarpet(WidgetTester tester, List<Inspiration> pool) async {
@@ -80,7 +81,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('深夜的旋律'), findsOneWidget);
-    expect(find.textContaining('灵感魔毯 · 1'), findsOneWidget);
+    expect(find.textContaining('灵感卷轴 · 1'), findsOneWidget);
   });
 
   testWidgets('标题活绘覆盖基线牌，是鎏金字不是悬浮白色 pill', (tester) async {
@@ -89,8 +90,8 @@ void main() {
     await tester.tap(find.byKey(const Key('魔毯小球')));
     await tester.pumpAndSettle();
 
-    // 活标题牌覆盖相框基线"灵感魔毯·N"，鎏金字随条数更新
-    final title = tester.widget<Text>(find.text('灵感魔毯 · 1'));
+    // 活标题牌覆盖相框基线标题，鎏金字随条数更新
+    final title = tester.widget<Text>(find.text('灵感卷轴 · 1'));
     expect(title.style?.color, kScrollGold);
     expect(
       find.byKey(const Key('魔毯标题背板')),
@@ -210,15 +211,69 @@ void main() {
     expect(find.byKey(const Key('卷轴进度线')), findsNothing);
   });
 
-  test('展开态不能用整面板 opaque 命中层挡住首页星球点击', () {
-    final src = File(
-      'lib/presentation/outline/magic_carpet.dart',
-    ).readAsStringSync();
-    expect(
-      src,
-      isNot(contains('behavior: HitTestBehavior.opaque')),
-      reason: '透明区域应露出并放过底层星球点击；收起请点右上角 X',
+  testWidgets('点击卷轴外空白处自动复原（2026-07-16 用户定稿）', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          inspirationPoolProvider.overrideWith(
+            (ref) => Stream.value([fake(1, '空白收起验证')]),
+          ),
+        ],
+        child: const MaterialApp(
+          home: CarpetOverlay(child: Scaffold(body: SizedBox.expand())),
+        ),
+      ),
     );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('魔毯小球')));
+    await tester.pumpAndSettle();
+    expect(find.text('空白收起验证'), findsOneWidget);
+    expect(find.byKey(const Key('卷轴空白收起层')), findsOneWidget);
+
+    // 点卷轴外的空白（屏幕左下角）→ 反向卷回 → 回到小球
+    await tester.tapAt(const Offset(20, 560));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('魔毯小球')), findsOneWidget);
+    expect(find.text('空白收起验证'), findsNothing);
+    expect(
+      find.byKey(const Key('卷轴空白收起层')),
+      findsNothing,
+      reason: '收起后空白层必须卸载，不能再拦星球点击',
+    );
+  });
+
+  testWidgets('拖拽中不挂空白收起层（树/垃圾桶落点要可命中）', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          inspirationPoolProvider.overrideWith(
+            (ref) => Stream.value([fake(1, '拖拽让路验证')]),
+          ),
+        ],
+        child: const MaterialApp(
+          home: CarpetOverlay(child: Scaffold(body: SizedBox.expand())),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('魔毯小球')));
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byKey(const Key('魔毯灵感_1'))),
+    );
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 100));
+    await gesture.moveBy(const Offset(-10, 10));
+    await tester.pump();
+    expect(carpetDragging.value?.id, 1);
+    expect(
+      find.byKey(const Key('卷轴空白收起层')),
+      findsNothing,
+      reason: '拖拽期间空白层必须让路',
+    );
+    await gesture.up();
+    await tester.pumpAndSettle();
   });
 
   test('垃圾桶删除确认由全局宿主托管，拖拽结束也不会丢失删除动作', () {
@@ -384,7 +439,7 @@ void main() {
     await tester.tap(find.byKey(const Key('魔毯小球')));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('魔毯空空如也'), findsOneWidget);
+    expect(find.textContaining('卷轴空空如也'), findsOneWidget);
   });
 
   testWidgets('列表按传入顺序渲染（池序由仓库保证：先入池的在上）', (tester) async {

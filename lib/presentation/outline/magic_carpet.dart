@@ -63,8 +63,12 @@ class _SnapToCardPhysics extends ScrollPhysics {
 /// 全局魔毯句柄（大纲页拖拽落点后调 collapse）
 final magicCarpetKey = GlobalKey<MagicCarpetState>();
 
-/// 正在从魔毯拖拽的灵感（null=未拖拽）。拖拽时底部浮现垃圾桶可永久删除。
+/// 正在从卷轴拖拽的灵感（null=未拖拽）。拖拽时底部浮现垃圾桶可永久删除。
 final carpetDragging = ValueNotifier<Inspiration?>(null);
+
+/// 卷轴是否处于展开态（2026-07-16 用户定稿：点击卷轴外空白处自动复原）。
+/// 全局层据此挂载"空白收起层"。
+final carpetExpanded = ValueNotifier<bool>(false);
 
 /// 已投进垃圾桶、等待确认删除的灵感。
 ///
@@ -111,6 +115,28 @@ class _GlobalCarpet extends ConsumerWidget {
     final popupOpen = ref.watch(captureSheetOpenProvider);
     return Stack(
       children: [
+        // 空白收起层（2026-07-16 用户定稿）：卷轴展开时点它外面的任意空白处
+        // 自动复原。置于卷轴条带之下（卷轴自身交互优先）；拖拽中不挂载
+        //（树/垃圾桶落点要可命中），速记弹层打开时也不挂载。
+        if (!popupOpen)
+          ValueListenableBuilder<bool>(
+            valueListenable: carpetExpanded,
+            builder: (context, expanded, _) => !expanded
+                ? const SizedBox.shrink()
+                : ValueListenableBuilder<Inspiration?>(
+                    valueListenable: carpetDragging,
+                    builder: (context, dragging, _) => dragging != null
+                        ? const SizedBox.shrink()
+                        : Positioned.fill(
+                            child: GestureDetector(
+                              key: const Key('卷轴空白收起层'),
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () =>
+                                  magicCarpetKey.currentState?.collapse(),
+                            ),
+                          ),
+                  ),
+          ),
         // 顶部全宽横条：收球态贴右上，展开态整条卷轴自己居中（MagicCarpet 内部
         // 按展开状态切 Align），既保留右上小球习惯，又让展开卷轴居中悬浮。
         Positioned(
@@ -207,7 +233,7 @@ class _TrashDeleteHostState extends ConsumerState<_TrashDeleteHost> {
         content: Padding(
           padding: const EdgeInsets.only(top: 8),
           child: Text(
-            '「${inspiration.content}」将从魔毯彻底删除，无法恢复。',
+            '「${inspiration.content}」将从卷轴彻底删除，无法恢复。',
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontFamily: 'LXGWWenKai', fontSize: 13),
@@ -379,6 +405,7 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
 
   Future<void> _toggle(bool open) async {
     HapticFeedback.lightImpact();
+    carpetExpanded.value = open; // 全局空白收起层据此挂载/卸载
     if (open) {
       _reTuckTimer?.cancel();
       setState(() {
@@ -409,6 +436,8 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
 
   @override
   void dispose() {
+    // 卷轴随宿主卸载时归零展开态，空白收起层跟着退场（测试反复 pump 场景）
+    carpetExpanded.value = false;
     _reTuckTimer?.cancel();
     _listScroll.dispose();
     _unroll.dispose();
@@ -610,7 +639,7 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 8),
             child: Text(
-              '魔毯空空如也\n随时速记一条灵感吧',
+              '卷轴空空如也\n随时速记一条灵感吧',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'LXGWWenKai',

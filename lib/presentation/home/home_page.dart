@@ -1062,7 +1062,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
         content: Padding(
           padding: const EdgeInsets.only(top: 10),
           child: Text(
-            '「${widget.novel.title}」的大纲会被剪掉，挂在小节里的灵感会回到魔毯。',
+            '「${widget.novel.title}」的大纲会被剪掉，挂在小节里的灵感会回到灵感卷轴。',
             style: _dlgStyle(size: 14, color: const Color(0xFF4A3A28)),
           ),
         ),

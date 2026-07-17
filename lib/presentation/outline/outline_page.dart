@@ -273,8 +273,8 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
           padding: const EdgeInsets.only(top: 8),
           child: Text(
             isChapter
-                ? '这一章和它的所有小节都会被剪掉；挂在上面的灵感会放回魔毯。'
-                : '这一节会被剪掉；挂在上面的灵感会放回魔毯。',
+                ? '这一章和它的所有小节都会被剪掉；挂在上面的灵感会放回灵感卷轴。'
+                : '这一节会被剪掉；挂在上面的灵感会放回灵感卷轴。',
             style: _dlgStyle(size: 13),
           ),
         ),

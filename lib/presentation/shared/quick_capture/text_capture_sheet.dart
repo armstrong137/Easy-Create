@@ -83,7 +83,7 @@ class _TextCaptureSheetState extends ConsumerState<_TextCaptureSheet> {
           const SizedBox(height: 18),
           CapturePillButton(
             key: const Key('灵感保存按钮'),
-            label: '存入灵感魔毯',
+            label: '存入灵感卷轴',
             onPressed: _save,
           ),
         ],

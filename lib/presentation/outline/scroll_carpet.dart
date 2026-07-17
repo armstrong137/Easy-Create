@@ -163,7 +163,7 @@ class _TitleCartouche extends StatelessWidget {
       child: FittedBox(
         fit: BoxFit.scaleDown,
         child: Text(
-          '灵感魔毯 · $count',
+          '灵感卷轴 · $count',
           key: const Key('卷轴织物标题'),
           style: TextStyle(
             fontFamily: 'LXGWWenKai',

@@ -46,10 +46,10 @@ class _CardEditorPageState extends ConsumerState<CardEditorPage> {
     final confirmed = await showCupertinoDialog<bool>(
       context: context,
       builder: (context) => CupertinoAlertDialog(
-        title: Text('把这张卡放回魔毯？', style: _s(weight: FontWeight.w600)),
+        title: Text('把这张卡放回灵感卷轴？', style: _s(weight: FontWeight.w600)),
         content: Padding(
           padding: const EdgeInsets.only(top: 8),
-          child: Text('卡片会从这一节消失，灵感本身回到魔毯（按创建时间归位），不会丢失。', style: _s(size: 13)),
+          child: Text('卡片会从这一节消失，灵感本身回到灵感卷轴（按创建时间归位），不会丢失。', style: _s(size: 13)),
         ),
         actions: [
           CupertinoDialogAction(
@@ -61,7 +61,7 @@ class _CardEditorPageState extends ConsumerState<CardEditorPage> {
             isDestructiveAction: true,
             onPressed: () => Navigator.of(context).pop(true),
             child: Text(
-              '放回魔毯',
+              '放回卷轴',
               style: _s(color: CupertinoColors.destructiveRed),
             ),
           ),

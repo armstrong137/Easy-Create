@@ -142,7 +142,7 @@ class _VoiceCaptureSheetState extends ConsumerState<_VoiceCaptureSheet> {
             const SizedBox(height: 18),
             CapturePillButton(
               key: const Key('语音保存按钮'),
-              label: '存入灵感魔毯',
+              label: '存入灵感卷轴',
               enabled: _recognized.trim().isNotEmpty,
               onPressed: _save,
             ),
