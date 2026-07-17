@@ -786,6 +786,18 @@ class CarpetItem extends StatelessWidget {
   final VoidCallback? onDragStarted;
   final VoidCallback? onDragEnd;
 
+  /// 拖拽浮影尺寸（固定，供中心锚点计算）
+  static const _feedbackWidth = 200.0;
+  static const _feedbackHeight = 56.0;
+
+  /// 浮影锚点 = 纸片**中心**对准手指。默认 pointer 锚在左上角，
+  /// 拇指看起来总是捏着纸片最左边（用户实测反馈）。
+  static Offset _centerDragAnchor(
+    Draggable<Object> draggable,
+    BuildContext context,
+    Offset position,
+  ) => const Offset(_feedbackWidth / 2, _feedbackHeight / 2);
+
   @override
   Widget build(BuildContext context) {
     final tile = _inkText();
@@ -793,7 +805,7 @@ class CarpetItem extends StatelessWidget {
     return LongPressDraggable<Inspiration>(
       key: Key('魔毯灵感_${inspiration.id}'),
       data: inspiration,
-      dragAnchorStrategy: pointerDragAnchorStrategy,
+      dragAnchorStrategy: _centerDragAnchor,
       onDragStarted: onDragStarted,
       onDragEnd: (_) => onDragEnd?.call(),
       onDragCompleted: onDragEnd,
@@ -802,7 +814,9 @@ class CarpetItem extends StatelessWidget {
       feedback: Material(
         color: Colors.transparent,
         child: Container(
-          width: 200,
+          width: _feedbackWidth,
+          height: _feedbackHeight,
+          alignment: Alignment.centerLeft,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             image: const DecorationImage(
