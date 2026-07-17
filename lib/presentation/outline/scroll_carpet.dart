@@ -231,24 +231,26 @@ class _InkHandlePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2;
+    // 各元素只比原来亮一档（用户定稿：明显一点但不突兀）——
+    // 织线 35%→50%、金珠 70%→90%、线结 55%→80%，尺寸微放大
     canvas.drawLine(
       Offset(cx, 5),
       Offset(cx, size.height - 5),
       Paint()
-        ..color = const Color(0x59795A22)
-        ..strokeWidth = 1
+        ..color = const Color(0x80795A22)
+        ..strokeWidth = 1.2
         ..strokeCap = StrokeCap.round,
     );
-    final bead = Paint()..color = const Color(0xB3C9A050);
-    canvas.drawCircle(Offset(cx, 5), 2, bead);
-    canvas.drawCircle(Offset(cx, size.height - 5), 2, bead);
+    final bead = Paint()..color = const Color(0xE6C9A050);
+    canvas.drawCircle(Offset(cx, 5), 2.3, bead);
+    canvas.drawCircle(Offset(cx, size.height - 5), 2.3, bead);
     final knot = Path()
-      ..moveTo(cx, size.height / 2 - 2.4)
-      ..lineTo(cx + 2.4, size.height / 2)
-      ..lineTo(cx, size.height / 2 + 2.4)
-      ..lineTo(cx - 2.4, size.height / 2)
+      ..moveTo(cx, size.height / 2 - 2.8)
+      ..lineTo(cx + 2.8, size.height / 2)
+      ..lineTo(cx, size.height / 2 + 2.8)
+      ..lineTo(cx - 2.8, size.height / 2)
       ..close();
-    canvas.drawPath(knot, Paint()..color = const Color(0x8CA9812F));
+    canvas.drawPath(knot, Paint()..color = const Color(0xCCA9812F));
   }
 
   @override
