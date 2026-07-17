@@ -1,8 +1,12 @@
 /// 灵感魔毯尺寸常量（claude.md 约定放 core；配色已随照片素材版魔毯退役）
 library;
 
-/// 缩球直径（照片版卷球，需要在右上角有明确存在感）
+/// 历史缩球直径（旧测试/拖拽命中仍沿用此基准）
 const double kCarpetBallSize = 92;
+
+/// 折叠态短卷轴尺寸：正向横放，比展开卷轴短很多，但仍能看出金属轴头/织纹/宝石。
+const double kCollapsedScrollWidth = 138;
+const double kCollapsedScrollHeight = 56;
 
 /// 展开面板列表区最小/最大高度（定稿：高度随灵感数伸缩，有上下限）
 const double kCarpetMinHeight = 180;

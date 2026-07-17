@@ -405,6 +405,18 @@
       `flutter test test/presentation/magic_carpet_test.dart` 23 项全绿；
       `flutter analyze --no-pub` 零问题；`flutter test --timeout 2m` 218 项全绿；
       `flutter build web --release` 通过。
+    - ✅ P4-R11 折叠态改为短横向魔法卷轴（2026-07-17）：用户确认展开态满意后，
+      要求折叠态从旧“灵感魔毯小球”改成符合当前卷轴方案的折叠卷轴，并要求
+      正向横放、不要文字、X 轴更短且精致。新增 `scroll_collapsed.png` 透明资产：
+      红蓝波斯织纹短卷、鎏金轴头、中央绿松石宝石扣、双侧小流苏；清理生成图
+      棋盘/灰底并压暗透明像素。MagicCarpet 折叠态尺寸改为
+      `138×56`，预缓存折叠/展开卷轴素材，展开动画改 360ms easeOutCubic，
+      从短横卷轴平滑过渡到完整卷轴；保留历史 `魔毯小球` key 兼容拖拽和旧测试。
+      新增回归测试：折叠态必须加载 `scroll_collapsed.png`，源码不得再使用
+      `carpet_ball_clean.png`，折叠卷轴素材必须真透明且无灰底阴影。已验证：
+      `flutter test test\presentation\magic_carpet_test.dart` 25 项通过、
+      `flutter analyze --no-pub` 无问题、`flutter test --timeout 2m` 220 项通过、
+      `flutter build web --release` 通过。
 - ☐ P5 小节页 3D 写作工作台（卡堆/卡片包/沉浸编辑器）
 - ☐ P6 速记与设置重构（魔法物件按钮/弹层/设置页）
 - ☐ P7 统一设计系统和验收（材质/动效 Token、视觉与性能回归）

@@ -84,6 +84,27 @@ void main() {
     expect(find.textContaining('灵感卷轴 · 1'), findsOneWidget);
   });
 
+  testWidgets('折叠态使用短横向魔法卷轴，不再显示小球素材', (tester) async {
+    await pumpCarpet(tester, [fake(1, '深夜的旋律')]);
+
+    final folded = tester.widget<Image>(find.byKey(const Key('灵感卷轴折叠态')));
+    final provider = folded.image;
+    expect(provider, isA<AssetImage>());
+    expect(
+      (provider as AssetImage).assetName,
+      'assets/textures/scroll_carpet/scroll_collapsed.png',
+    );
+
+    final src = File(
+      'lib/presentation/outline/magic_carpet.dart',
+    ).readAsStringSync();
+    expect(
+      src,
+      isNot(contains('assets/textures/carpet_ball_clean.png')),
+      reason: '卷轴方案定稿后，折叠态也必须是卷轴，不再使用小球素材',
+    );
+  });
+
   testWidgets('标题活绘覆盖基线牌，是鎏金字不是悬浮白色 pill', (tester) async {
     await pumpCarpet(tester, [fake(1, '深夜的旋律')]);
 
@@ -288,8 +309,8 @@ void main() {
     expect(src, isNot(contains('_confirmDelete()')));
   });
 
-  test('魔毯小球素材必须是真透明背景，不能把灰底阴影带到星空里', () {
-    final file = File('assets/textures/carpet_ball_clean.png');
+  test('折叠卷轴素材必须是真透明背景，不能把灰底阴影带到星空里', () {
+    final file = File('assets/textures/scroll_carpet/scroll_collapsed.png');
     expect(file.existsSync(), isTrue);
     final image = img.decodePng(file.readAsBytesSync())!;
     var dirtyBottomPixels = 0;

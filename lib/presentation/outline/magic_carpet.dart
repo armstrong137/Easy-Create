@@ -76,8 +76,8 @@ final carpetExpanded = ValueNotifier<bool>(false);
 /// 随 carpetDragging 清空而卸载，如果弹窗依赖垃圾桶自身 context，会出现拖进去却删不掉。
 final carpetTrashPending = ValueNotifier<Inspiration?>(null);
 
-/// 魔毯小球是否缩到右边栏（只露一点点）。大纲页章节多时置 true 让路，
-/// 点缩起的小球即恢复完整（用户定稿：章节小节多了自动隐到边栏、点击恢复）。
+/// 折叠卷轴是否缩到右边栏（只露一点点）。大纲页章节多时置 true 让路，
+/// 点缩起的卷轴即恢复完整（用户定稿：章节小节多了自动隐到边栏、点击恢复）。
 final carpetTucked = ValueNotifier<bool>(false);
 
 /// 全局魔毯层：叠在 Navigator 之上 → **任何界面**右上角都有魔毯
@@ -138,7 +138,7 @@ class _GlobalCarpet extends ConsumerWidget {
                   ),
           ),
         // 顶部全宽横条：收球态贴右上，展开态整条卷轴自己居中（MagicCarpet 内部
-        // 按展开状态切 Align），既保留右上小球习惯，又让展开卷轴居中悬浮。
+        // 按展开状态切 Align），既保留右上折叠入口习惯，又让展开卷轴居中悬浮。
         Positioned(
           top: 0,
           left: 0,
@@ -315,11 +315,11 @@ class _TrashZoneState extends ConsumerState<_TrashZone> {
 
 /// 灵感魔毯（2026-07-15 方案二「卷轴灵感」改版，参考图 picture/方案2_卷轴灵感）：
 ///
-/// - 缩球态 = 素材卷球照片本体（不变）
+/// - 折叠态 = 短横向魔法卷轴（与展开态同一物件语言）
 /// - 点击展开：滚轴先现身 → 羊皮纸长卷向下铺开 → 灵感墨迹按序写入。
 ///   灵感文字直接写在羊皮纸上（无独立白色卡片），条目间金色分隔纹，
 ///   超出可视槽位时长卷内滚动、右侧墨迹进度线指示位置
-/// - 收起反向卷回（先淡墨迹、再卷纸面、最后回小球）；拖拽落点后自动缩球
+/// - 收起反向卷回（先淡墨迹、再卷纸面、最后回折叠卷轴）；拖拽落点后自动折叠
 class MagicCarpet extends ConsumerStatefulWidget {
   const MagicCarpet({super.key});
 
@@ -331,13 +331,13 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
     with SingleTickerProviderStateMixin {
   bool _expanded = false;
 
-  /// 面板是否仍在画面中：收起时先保留面板播放反向卷回帧，结束后再切小球
+  /// 面板是否仍在画面中：收起时先保留面板播放反向卷回帧，结束后再切折叠卷轴
   bool _showPanel = false;
 
   /// 正在拖拽灵感：面板半透明且不拦截指针，给树上落点让路
   bool _dragging = false;
 
-  /// 缩边栏态下临时"点开完整球"（3 秒后自动缩回边栏）
+  /// 缩边栏态下临时"点开完整折叠卷轴"（3 秒后自动缩回边栏）
   bool _showFull = false;
   Timer? _reTuckTimer;
 
@@ -372,7 +372,7 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
 
   bool get expanded => _expanded;
 
-  /// 外部可调用：拖拽完成后自动缩回小球（定稿）
+  /// 外部可调用：拖拽完成后自动折叠回右上卷轴（定稿）
   void collapse() {
     _finishDrag();
     if ((_expanded || _showPanel) && mounted) _toggle(false);
@@ -425,8 +425,12 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // 预解码卷轴素材，首次展开不闪帧
-    for (final name in const ['scroll_full', 'scroll_parchment']) {
+    // 预解码卷轴素材，首次折叠/展开不闪帧
+    for (final name in const [
+      'scroll_collapsed',
+      'scroll_full',
+      'scroll_parchment',
+    ]) {
       precacheImage(
         AssetImage('assets/textures/scroll_carpet/$name.png'),
         context,
@@ -493,10 +497,10 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
     _lastHoleHeight = height * (kScrollHoleBottom - kScrollHoleTop) - 20;
 
     final box = AnimatedContainer(
-      duration: const Duration(milliseconds: 320),
-      curve: Curves.easeOutBack,
-      width: _showPanel ? width : kCarpetBallSize,
-      height: _showPanel ? height : kCarpetBallSize,
+      duration: const Duration(milliseconds: 360),
+      curve: Curves.easeOutCubic,
+      width: _showPanel ? width : kCollapsedScrollWidth,
+      height: _showPanel ? height : kCollapsedScrollHeight,
       child: _showPanel
           // OverflowBox 让内容始终以展开后的尺寸布局，避免动画中途挤压溢出
           ? OverflowBox(
@@ -509,7 +513,7 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
                   ? _buildPanel(pool, glow)
                   : _returnDropTarget(_buildPanel(pool, glow)),
             )
-          : _returnDropTarget(_buildBall()),
+          : _returnDropTarget(_buildCollapsedScroll()),
     );
     // 展开态整条卷轴居中悬浮 + 顶部留白（不贴屏顶）；收球态回到右上角。
     return Align(
@@ -524,10 +528,10 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
     );
   }
 
-  /// 缩球态：素材卷球照片。
-  /// 缩边栏（章节多）时只露一点点：点一下临时露出完整球（3 秒后自动缩回），
+  /// 折叠态：短横向魔法卷轴。
+  /// 缩边栏（章节多）时只露一点点：点一下临时露出完整折叠卷轴（3 秒后自动缩回），
   /// 完整态再点一下才展开魔毯；不缩边栏时点击直接展开。
-  Widget _buildBall() {
+  Widget _buildCollapsedScroll() {
     return ValueListenableBuilder<bool>(
       valueListenable: carpetTucked,
       builder: (context, tucked, _) {
@@ -537,10 +541,10 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
           duration: const Duration(milliseconds: 260),
           curve: Curves.easeOutBack,
           child: GestureDetector(
-            key: const Key('魔毯小球'),
+            key: const Key('魔毯小球'), // 历史 key：保留给拖拽/回归测试命中。
             onTap: () {
               if (peek) {
-                // 贴边→点一下露出完整球，3 秒没进一步操作就自动缩回
+                // 贴边→点一下露出完整折叠卷轴，3 秒没进一步操作就自动缩回
                 setState(() => _showFull = true);
                 _reTuckTimer?.cancel();
                 _reTuckTimer = Timer(const Duration(seconds: 3), () {
@@ -552,11 +556,12 @@ class MagicCarpetState extends ConsumerState<MagicCarpet>
               }
             },
             child: Image.asset(
-              'assets/textures/carpet_ball_clean.png',
-              width: kCarpetBallSize,
-              height: kCarpetBallSize,
+              'assets/textures/scroll_carpet/scroll_collapsed.png',
+              key: const Key('灵感卷轴折叠态'),
+              width: kCollapsedScrollWidth,
+              height: kCollapsedScrollHeight,
               fit: BoxFit.contain,
-              filterQuality: FilterQuality.medium,
+              filterQuality: FilterQuality.high,
             ),
           ),
         );
