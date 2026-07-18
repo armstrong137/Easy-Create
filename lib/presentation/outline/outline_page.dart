@@ -130,15 +130,18 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     );
 
     setState(() => _visualStageOverride = frozenStage);
-    await _playGrow(isChapter: true, id: chapter.id);
-    if (!mounted) return;
-
-    if (motion.steps.contains(ChapterGrowthStep.panCamera)) {
-      await _camera.animateTo(
-        motion.targetOffset,
-        duration: const Duration(milliseconds: 520),
-        curve: Curves.easeInOutCubic,
-      );
+    for (final step in motion.steps) {
+      if (!mounted) return;
+      switch (step) {
+        case ChapterGrowthStep.panCamera:
+          await _camera.animateTo(
+            motion.targetOffset,
+            duration: const Duration(milliseconds: 520),
+            curve: Curves.easeInOutCubic,
+          );
+        case ChapterGrowthStep.growBranch:
+          await _playGrow(isChapter: true, id: chapter.id);
+      }
     }
 
     if (mounted) setState(() => _visualStageOverride = null);
