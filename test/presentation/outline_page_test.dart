@@ -266,6 +266,18 @@ void main() {
     );
   });
 
+  test('卷须生长使用裁剪显露，不再整体缩放精灵', () {
+    final src = File(
+      'lib/presentation/outline/outline_page.dart',
+    ).readAsStringSync();
+    expect(
+      src,
+      isNot(contains('Transform.scale')),
+      reason: '卷须整体缩放会产生强拉伸图片感，应使用 ClipRect + Align 显露',
+    );
+    expect(src, contains('widthFactor: growth'));
+  });
+
   testWidgets('窗口模式：右滑滚小节（树背景不动、章带内滚）', (tester) async {
     await seedNovel();
     await pumpOutline(tester, [

@@ -441,21 +441,47 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
 
   /// 一根卷须精灵（shift：在裁剪层内渲染时的坐标平移）
   Widget _tendril(VineBranch b, Offset shift) {
+    final fullRect = b.spriteRect.shift(-shift);
+    final growth = _growthFor(isChapter: b.isChapter, id: b.id).clamp(0.0, 1.0);
+    final align = b.isChapter ? Alignment.centerRight : Alignment.centerLeft;
+    final visibleWidth = fullRect.width * growth;
+    final visibleLeft = b.isChapter
+        ? fullRect.right - visibleWidth
+        : fullRect.left;
+
     return Positioned.fromRect(
-      rect: b.spriteRect.shift(-shift),
-      child: Transform.scale(
-        scale: _growthFor(isChapter: b.isChapter, id: b.id),
-        // 缩放锚点 = 根茬（右缘/左缘 31% 高度处）
-        alignment: b.isChapter
-            ? const Alignment(1.0, -0.38)
-            : const Alignment(-1.0, -0.38),
-        child: Image.asset(
-          b.isChapter
-              ? 'assets/textures/tendril_chapter.png'
-              : 'assets/textures/tendril_section.png',
-          fit: BoxFit.fill,
-          gaplessPlayback: true,
-          filterQuality: FilterQuality.medium,
+      rect: Rect.fromLTWH(
+        visibleLeft,
+        fullRect.top,
+        visibleWidth,
+        fullRect.height,
+      ),
+      child: Opacity(
+        opacity: growth <= 0.02 ? 0 : (0.25 + growth * 0.75).clamp(0.0, 1.0),
+        child: ClipRect(
+          child: OverflowBox(
+            alignment: align,
+            minWidth: fullRect.width,
+            maxWidth: fullRect.width,
+            minHeight: fullRect.height,
+            maxHeight: fullRect.height,
+            child: Align(
+              alignment: align,
+              widthFactor: growth,
+              child: SizedBox(
+                width: fullRect.width,
+                height: fullRect.height,
+                child: Image.asset(
+                  b.isChapter
+                      ? 'assets/textures/tendril_chapter.png'
+                      : 'assets/textures/tendril_section.png',
+                  fit: BoxFit.fill,
+                  gaplessPlayback: true,
+                  filterQuality: FilterQuality.medium,
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
