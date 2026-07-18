@@ -539,10 +539,16 @@ MagicTreeLayout _layoutWindow(
   final maxOffset = (n - 2).toDouble();
   final offset = chapterOffset.clamp(0.0, maxOffset);
 
-  // 虚拟树高随章数增长；树干撑满全屏（镜头贴近，只见一段树干）
+  // 虚拟树高随章数增长；树干撑满全屏（镜头贴近，只见一段树干）。
+  // 宽度封顶（2026-07-17 用户定稿）：泥土碰到屏幕两边就不再往宽处长，
+  // 之后章数增加**只往高处长**（素材 BoxFit.fill 纵向拉伸，藤蔓照片可容忍；
+  // 旧实现宽度跟高度等比放大，章多时泥土远超屏幕、树大到冲出视野）。
   final k = treeGrowthFactor(n);
   final dispH = size.height * k;
-  final dispW = dispH * (kStageImageWidth / kStageImageHeight);
+  final dispW = math.min(
+    dispH * (kStageImageWidth / kStageImageHeight),
+    size.width,
+  );
   // 镜头平移：offset 0 → 见树顶；offset 最大 → 见土壤
   final panT = maxOffset == 0 ? 0.0 : offset / maxOffset;
   final imageTop = -(dispH - size.height) * panT;

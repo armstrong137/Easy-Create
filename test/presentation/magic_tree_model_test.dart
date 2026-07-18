@@ -104,6 +104,35 @@ void main() {
     expect(bottom.chapterBands.keys, isNot(contains(1)));
   });
 
+  test('窗口模式：泥土碰到屏幕两边后不再往宽处长，只往高处长（2026-07-17 用户定稿）', () {
+    // 旧实现宽度随树高等比放大（k 最大 2.15），章多时泥土远超屏幕、
+    // 树大到冲出视野（用户 19 章实测截图）。修复后宽度封顶为屏宽。
+    for (final count in [3, 8, 19, 40]) {
+      final outline = [for (var i = 1; i <= count; i++) chapterWith(i, 1)];
+      final layout = layoutMagicTree(size: size, outline: outline);
+      expect(
+        layout.imageRect.width,
+        lessThanOrEqualTo(size.width + 0.5),
+        reason: '$count 章时树宽不得超过屏宽',
+      );
+      expect(
+        layout.imageRect.height,
+        greaterThanOrEqualTo(size.height - 0.5),
+        reason: '高度仍随章数增长（至少满屏）',
+      );
+    }
+    // 高度确实继续随章数增长（3 章 < 19 章）
+    final h3 = layoutMagicTree(
+      size: size,
+      outline: [for (var i = 1; i <= 3; i++) chapterWith(i, 1)],
+    ).imageRect.height;
+    final h19 = layoutMagicTree(
+      size: size,
+      outline: [for (var i = 1; i <= 19; i++) chapterWith(i, 1)],
+    ).imageRect.height;
+    expect(h19, greaterThan(h3), reason: '只往高处长');
+  });
+
   test('窗口模式：首章小节落在章根之下（不飘到树顶/魔毯球旁）', () {
     // 3 章 → 窗口模式；首章带顶贴屏顶、远高于树干顶。
     // 修复前 contentTop=bandTop+34 让小节排到章根之上、窜到树顶（用户反馈错位）。

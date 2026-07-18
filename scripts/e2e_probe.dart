@@ -105,6 +105,25 @@ Future<void> main(List<String> args) async {
         });
       }
       stdout.writeln('tapped $x,$y');
+    case 'dbltap':
+      // 双击：单进程内两次快速点按（Flutter 双击识别窗约 300ms，
+      // 跨进程两次 tap 启动延迟太长凑不成双击）
+      final dx = double.parse(args[1]), dy = double.parse(args[2]);
+      for (var i = 0; i < 2; i++) {
+        for (final type in ['mousePressed', 'mouseReleased']) {
+          await send('Input.dispatchMouseEvent', {
+            'type': type,
+            'x': dx,
+            'y': dy,
+            'button': 'left',
+            'clickCount': 1,
+          });
+        }
+        if (i == 0) {
+          await Future<void>.delayed(const Duration(milliseconds: 90));
+        }
+      }
+      stdout.writeln('double-tapped $dx,$dy');
     case 'hold':
       // 长按：按下→保持 ms 毫秒→抬起（复现长按星球弹删除确认）
       final hx = double.parse(args[1]), hy = double.parse(args[2]);
