@@ -104,26 +104,32 @@ void main() {
     expect(bottom.chapterBands.keys, isNot(contains(1)));
   });
 
-  test('窗口模式：树背景恒定——泥土贴屏底不动、宽度不超屏（2026-07-17 用户定稿）', () {
-    // 历史教训：靠"放大照片"表达树高走不通——等比放大章多时泥土远超
-    // 屏幕（19 章实测）；只放高度则纵向变形/悬空。定稿：树背景完全固定，
-    // 泥土永远贴屏底，不随章数、不随镜头档变化。
-    Rect? baseline;
+  test('窗口模式：树随章数只长高，宽度不增长且镜头首尾对齐', () {
+    final first = layoutMagicTree(
+      size: size,
+      outline: [for (var i = 1; i <= 3; i++) chapterWith(i, 1)],
+    ).imageRect;
+
     for (final count in [3, 8, 19, 40]) {
       final outline = [for (var i = 1; i <= count; i++) chapterWith(i, 1)];
-      for (final offset in [0.0, (count - 2).toDouble()]) {
-        final layout = layoutMagicTree(
-          size: size,
-          outline: outline,
-          chapterOffset: offset,
-        );
-        final r = layout.imageRect;
-        expect(r.width, lessThanOrEqualTo(size.width + 0.5));
-        expect(r.top, 0, reason: '树背景不平移');
-        expect(r.bottom, closeTo(size.height, 0.5), reason: '泥土贴屏底');
-        baseline ??= r;
-        expect(r, baseline, reason: '$count 章 offset=$offset 时树背景必须与基准完全一致');
-      }
+      final top = layoutMagicTree(size: size, outline: outline).imageRect;
+      final bottom = layoutMagicTree(
+        size: size,
+        outline: outline,
+        chapterOffset: (count - 2).toDouble(),
+      ).imageRect;
+
+      expect(top.width, closeTo(first.width, 0.5), reason: '$count 章时树不能变宽');
+      expect(top.width, lessThanOrEqualTo(size.width + 0.5));
+      expect(
+        top.height,
+        closeTo(size.height * treeGrowthFactor(count), 0.5),
+        reason: '$count 章时树高应按虚拟树高增长',
+      );
+      expect(top.top, closeTo(0, 0.5), reason: '首章镜头要看到树顶');
+      expect(bottom.width, closeTo(top.width, 0.5), reason: '镜头滚动时树宽不变');
+      expect(bottom.height, closeTo(top.height, 0.5), reason: '镜头滚动时树高不变');
+      expect(bottom.bottom, closeTo(size.height, 0.5), reason: '末章镜头要看到泥土');
     }
   });
 

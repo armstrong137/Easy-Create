@@ -417,6 +417,14 @@
       `flutter test test\presentation\magic_carpet_test.dart` 25 项通过、
       `flutter analyze --no-pub` 无问题、`flutter test --timeout 2m` 220 项通过、
       `flutter build web --release` 通过。
+    - ✅ P3-R 魔树窗口高度返工（2026-07-17）：接力修正“树不是纹丝不动，而是只高度增加、宽度不增加”。
+      `treeGrowthFactor` 接入窗口模式布局：>2 章时魔树背景宽度仍按一屏高度推算并封顶，
+      章数增加只拉长虚拟树高；左侧章节镜头随 `chapterOffset` 在虚拟高树上平移，
+      首章对齐树顶、末章对齐泥土，避免此前固定背景导致章数增多后树没有生长感。
+      更新模型回归测试，覆盖 3/8/19/40 章下宽度不增长、树高随章数增长、首尾镜头对齐。
+      验证：`flutter test test/presentation/magic_tree_model_test.dart --timeout 2m`、
+      `flutter test test/presentation/outline_page_test.dart --timeout 2m`、`flutter analyze`、
+      `flutter test --timeout 2m` 均通过。
 - ☐ P5 小节页 3D 写作工作台（卡堆/卡片包/沉浸编辑器）
 - ☐ P6 速记与设置重构（魔法物件按钮/弹层/设置页）
 - ☐ P7 统一设计系统和验收（材质/动效 Token、视觉与性能回归）

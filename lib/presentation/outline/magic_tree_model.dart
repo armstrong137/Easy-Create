@@ -55,6 +55,13 @@ int stageForNodes(int totalNodes) {
   return totalNodes < 12 ? 2 : 3;
 }
 
+/// 虚拟树高倍数：章越多树越高（镜头一次只看得到一段树干）。
+/// 用户定稿"树的生长速度必须随着章节的增多而变化"
+double treeGrowthFactor(int chapterCount) {
+  if (chapterCount <= 2) return 1;
+  return 1 + math.min(1.15, 0.09 * (chapterCount - 2));
+}
+
 /// 每阶段茎干轮廓（归一化到素材图：y 相对图高，半宽相对图宽）
 class _Stalk {
   const _Stalk(this.topY, this.botY, this.topHalfW, this.botHalfW);
@@ -532,17 +539,24 @@ MagicTreeLayout _layoutWindow(
   final maxOffset = (n - 2).toDouble();
   final offset = chapterOffset.clamp(0.0, maxOffset);
 
-  // 树背景恒定（2026-07-17 用户定稿"泥土就不要动"）：泥土永远贴屏底，
-  // 不随章数放大、不随镜头平移，宽度封顶为屏宽（泥土不超出两边）。
-  // 历史教训：想靠"放大照片"表达树高，照片素材走不通——等比放大章多时
-  // 泥土远超屏幕（19 章实测）；只放高度则纵向变形/悬空。树的成长感
-  // 交给三阶段素材（幼苗→缠绕→参天）与章带滚动深度表达。
-  final dispH = size.height;
+  // 树背景随章数只增高、不增宽：宽度仍用一屏高度推算并封顶，避免泥土横向溢出；
+  // 高度按章节数拉长，左侧章节镜头在虚拟高树上平移（首章见树顶、末章见泥土）。
+  final baseDispH = size.height;
+  final dispH = baseDispH * treeGrowthFactor(n);
   final dispW = math.min(
-    dispH * (kStageImageWidth / kStageImageHeight),
+    baseDispH * (kStageImageWidth / kStageImageHeight),
     size.width,
   );
-  final imageRect = Rect.fromLTWH((size.width - dispW) / 2, 0, dispW, dispH);
+  final travel = math.max(0.0, dispH - size.height);
+  final imageTop = maxOffset <= 0
+      ? size.height - dispH
+      : -travel * offset / maxOffset;
+  final imageRect = Rect.fromLTWH(
+    (size.width - dispW) / 2,
+    imageTop,
+    dispW,
+    dispH,
+  );
 
   final stalk = _stalks[stage]!;
   final stalkTopY = imageRect.top + stalk.topY * dispH;
