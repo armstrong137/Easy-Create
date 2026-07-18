@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -251,6 +253,17 @@ void main() {
 
     expect(top.assetName, 'assets/textures/tree_seg/s2_top.jpg');
     expect(bottom.assetName, 'assets/textures/tree_seg/s2_bottom.jpg');
+  });
+
+  test('分段魔树不得用整树 AnimatedSwitcher 交叉淡入淡出', () {
+    final src = File(
+      'lib/presentation/outline/outline_page.dart',
+    ).readAsStringSync();
+    expect(
+      src,
+      isNot(contains("ValueKey('tree_segments_")),
+      reason: '阶段切换不能把整棵树交叉淡入淡出，否则会出现半透明鬼影',
+    );
   });
 
   testWidgets('窗口模式：右滑滚小节（树背景不动、章带内滚）', (tester) async {

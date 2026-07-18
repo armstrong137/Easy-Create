@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-18 11:30:52　对应提交：8cda956 之后的工作区状态
+> 生成时间：2026-07-18 14:26:54　对应提交：e004553 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,17 +13,17 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     106
-  Nodes:     4,037
-  Edges:     19,011
+  Nodes:     4,039
+  Edges:     19,027
   DB Size:   20.38 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,555
-  function        1,371
+  function        1,372
   class           469
-  import          323
+  import          324
   constant        193
   file            98
   variable        14
@@ -205,9 +205,9 @@ Project Structure (106 files):
 |   |   |-- home_loading_regression_test.dart (dart, 4 symbols)
 |   |   |-- home_page_test.dart (dart, 20 symbols)
 |   |   |-- magic_carpet_test.dart (dart, 18 symbols)
-|   |   |-- magic_tree_model_test.dart (dart, 13 symbols)
+|   |   |-- magic_tree_model_test.dart (dart, 15 symbols)
 |   |   |-- orbiting_inspirations_test.dart (dart, 11 symbols)
-|   |   |-- outline_page_test.dart (dart, 25 symbols)
+|   |   |-- outline_page_test.dart (dart, 26 symbols)
 |   |   |-- planet_scene_touch_config_test.dart (dart, 5 symbols)
 |   |   |-- quick_capture_test.dart (dart, 16 symbols)
 |   |   |-- section_page_test.dart (dart, 24 symbols)

@@ -544,4 +544,59 @@ void main() {
       );
     }
   });
+
+  test('窗口模式：新增章节跨阶段时可冻结视觉阶段，避免整树鬼影切换', () {
+    final before = [for (var i = 1; i <= 11; i++) chapterWith(i, 0)];
+    final after = [for (var i = 1; i <= 12; i++) chapterWith(i, 0)];
+
+    final oldLayout = layoutMagicTree(size: size, outline: before);
+    expect(oldLayout.stage, 2);
+
+    final frozenLayout = layoutMagicTree(
+      size: size,
+      outline: after,
+      visualStageOverride: oldLayout.stage,
+    );
+    expect(frozenLayout.stage, 2, reason: '新增章节生长期间必须沿用旧视觉阶段');
+
+    final settledLayout = layoutMagicTree(size: size, outline: after);
+    expect(settledLayout.stage, 3, reason: '动画结束后才允许切到新视觉阶段');
+  });
+
+  test('窗口模式：土壤层固定在视口底部，不随章节数增长上下跳动', () {
+    Rect soilFor(int count) {
+      final outline = [for (var i = 1; i <= count; i++) chapterWith(i, 0)];
+      final layout = layoutMagicTree(
+        size: size,
+        outline: outline,
+        chapterOffset: (count - 2).toDouble(),
+      );
+      final pieces = layoutMagicTreeImagePieces(layout);
+      expect(pieces, isA<SegmentedTreeImagePieces>());
+      return (pieces as SegmentedTreeImagePieces).soilRect;
+    }
+
+    final soil3 = soilFor(3);
+    for (final count in [4, 8, 11]) {
+      final soil = soilFor(count);
+      expect(soil.bottom, closeTo(size.height, 0.5), reason: '$count 章土壤底边固定');
+      expect(soil.left, closeTo(soil3.left, 0.5), reason: '$count 章土壤横向不漂移');
+      expect(soil.width, closeTo(soil3.width, 0.5), reason: '$count 章土壤宽度不变');
+    }
+  });
+
+  test('新增章节动作计划：先长枝，再镜头跟随', () {
+    final plan = chapterGrowthMotionPlan(
+      oldCount: 4,
+      newCount: 5,
+      currentOffset: 2,
+    );
+
+    expect(plan.targetOffset, 3);
+    expect(plan.steps, [
+      ChapterGrowthStep.growBranch,
+      ChapterGrowthStep.panCamera,
+    ]);
+    expect(plan.panDelay, const Duration(milliseconds: 620));
+  });
 }
