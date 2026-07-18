@@ -55,6 +55,44 @@ int stageForNodes(int totalNodes) {
   return totalNodes < 12 ? 2 : 3;
 }
 
+/// 新增章节的视觉流程：先让新枝生长，再移动镜头。
+enum ChapterGrowthStep { growBranch, panCamera }
+
+/// 新增章节的动作计划：枝条长完后镜头才平滑跟随（不同时发生，
+/// 否则用户看到的不是树枝长出来，而是整棵树和土壤一起滑动）。
+class ChapterGrowthMotionPlan {
+  const ChapterGrowthMotionPlan({
+    required this.targetOffset,
+    required this.steps,
+    required this.panDelay,
+  });
+
+  /// 镜头最终档位（新章所在档）
+  final double targetOffset;
+
+  /// 按序执行的动作
+  final List<ChapterGrowthStep> steps;
+
+  /// 枝条生长到镜头启动之间的间隔
+  final Duration panDelay;
+}
+
+ChapterGrowthMotionPlan chapterGrowthMotionPlan({
+  required int oldCount,
+  required int newCount,
+  required double currentOffset,
+}) {
+  final target = newCount > 2 ? (newCount - 2).toDouble() : 0.0;
+  final shouldPan = (target - currentOffset).abs() > 0.01;
+  return ChapterGrowthMotionPlan(
+    targetOffset: target,
+    steps: shouldPan
+        ? const [ChapterGrowthStep.growBranch, ChapterGrowthStep.panCamera]
+        : const [ChapterGrowthStep.growBranch],
+    panDelay: const Duration(milliseconds: 620),
+  );
+}
+
 /// 虚拟树高倍数：章越多树越高（镜头一次只看得到一段树干）。
 /// 用户定稿"树的生长速度必须随着章节的增多而变化"
 double treeGrowthFactor(int chapterCount) {
@@ -125,6 +163,7 @@ class SegmentedTreeImagePieces extends TreeImagePieces {
     required this.topRect,
     required this.middleRect,
     required this.bottomRect,
+    required this.soilRect,
     required this.tileHeight,
   });
 
@@ -132,6 +171,10 @@ class SegmentedTreeImagePieces extends TreeImagePieces {
   final Rect topRect;
   final Rect middleRect;
   final Rect bottomRect;
+
+  /// 固定在视口底部的土壤层；新增章节动画期间不得跟随树干/镜头跳动。
+  final Rect soilRect;
+
   final double tileHeight;
 }
 
@@ -169,6 +212,12 @@ TreeImagePieces layoutMagicTreeImagePieces(MagicTreeLayout layout) {
     layout.imageRect.width,
     bottomH,
   );
+  final soilRect = Rect.fromLTWH(
+    layout.imageRect.left,
+    layout.viewportHeight - bottomH,
+    layout.imageRect.width,
+    bottomH,
+  );
 
   return SegmentedTreeImagePieces(
     bounds: layout.imageRect,
@@ -176,6 +225,7 @@ TreeImagePieces layoutMagicTreeImagePieces(MagicTreeLayout layout) {
     topRect: topRect,
     middleRect: middleRect,
     bottomRect: bottomRect,
+    soilRect: soilRect,
     tileHeight: tileH,
   );
 }
@@ -236,6 +286,7 @@ class MagicTreeLayout {
     required this.age,
     required this.stage,
     required this.windowMode,
+    required this.viewportHeight,
     required this.imageRect,
     required this.trunkRect,
     required this.chapters,
@@ -252,6 +303,9 @@ class MagicTreeLayout {
 
   /// true = 镜头窗口模式（>2 章）
   final bool windowMode;
+
+  /// 当前视口高度；固定土壤层需要脱离虚拟树高来对齐屏幕底部。
+  final double viewportHeight;
 
   /// 阶段素材整图的显示区域（窗口模式下高于画布，随章滚动上下平移）
   final Rect imageRect;
@@ -297,12 +351,14 @@ MagicTreeLayout layoutMagicTree({
   double chapterOffset = 0,
   Map<int, double> sectionScrolls = const {},
   Map<int, int> sectionNoteCounts = const {},
+  int? visualStageOverride,
 }) {
   final n = outline.length;
   final totalNodes =
       n + outline.fold<int>(0, (sum, c) => sum + c.sections.length);
   final age = treeAge(totalNodes);
-  final stage = stageForNodes(totalNodes);
+  final computedStage = stageForNodes(totalNodes);
+  final stage = visualStageOverride ?? computedStage;
 
   return n == 1
       ? _layoutSingleChapter(
@@ -464,6 +520,7 @@ MagicTreeLayout _layoutSingleChapter(
     age: age,
     stage: stage,
     windowMode: true,
+    viewportHeight: size.height,
     imageRect: imageRect,
     trunkRect: trunkRect,
     chapters: chapters,
@@ -633,6 +690,7 @@ MagicTreeLayout _layoutWholeTree(
     age: age,
     stage: stage,
     windowMode: outline.isNotEmpty,
+    viewportHeight: size.height,
     imageRect: imageRect,
     trunkRect: trunkRect,
     chapters: chapters,
@@ -825,6 +883,7 @@ MagicTreeLayout _layoutWindow(
     age: age,
     stage: stage,
     windowMode: true,
+    viewportHeight: size.height,
     imageRect: imageRect,
     trunkRect: trunkRect,
     chapters: chapters,
