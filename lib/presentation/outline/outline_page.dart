@@ -746,17 +746,22 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                         builder: (context, candidates, rejected) => Stack(
                           key: _treeKey,
                           children: [
-                            // 魔树本体：阶段摄影素材，窗口模式随镜头平移
+                            // 魔树本体：阶段摄影素材。SizedBox.expand 强制
+                            // 铺满 imageRect——AnimatedSwitcher 默认布局给
+                            // 子级宽松约束，Image 会保持纵横比缩小并居中，
+                            // 矩形与素材比例不一致时泥土悬空（用户实测）。
                             Positioned.fromRect(
                               rect: layout.imageRect,
                               child: AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 600),
-                                child: Image.asset(
-                                  'assets/textures/magic_tree_${layout.stage}.jpg',
+                                child: SizedBox.expand(
                                   key: ValueKey(layout.stage),
-                                  fit: BoxFit.fill,
-                                  gaplessPlayback: true,
-                                  filterQuality: FilterQuality.medium,
+                                  child: Image.asset(
+                                    'assets/textures/magic_tree_${layout.stage}.jpg',
+                                    fit: BoxFit.fill,
+                                    gaplessPlayback: true,
+                                    filterQuality: FilterQuality.medium,
+                                  ),
                                 ),
                               ),
                             ),
