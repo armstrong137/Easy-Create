@@ -133,6 +133,71 @@ void main() {
     }
   });
 
+  test('窗口模式分段素材：泥土和树梢不随章数缩放，中段承担增长', () {
+    for (final pair in [(3, 5), (12, 40)]) {
+      final lowCount = pair.$1;
+      final highCount = pair.$2;
+      final lowOutline = [
+        for (var i = 1; i <= lowCount; i++) chapterWith(i, 1),
+      ];
+      final highOutline = [
+        for (var i = 1; i <= highCount; i++) chapterWith(i, 1),
+      ];
+
+      final low = layoutMagicTree(
+        size: size,
+        outline: lowOutline,
+        chapterOffset: (lowCount - 2).toDouble(),
+      );
+      final high = layoutMagicTree(
+        size: size,
+        outline: highOutline,
+        chapterOffset: (highCount - 2).toDouble(),
+      );
+      final lowPieces = layoutMagicTreeImagePieces(low);
+      final highPieces = layoutMagicTreeImagePieces(high);
+
+      expect(lowPieces, isA<SegmentedTreeImagePieces>());
+      expect(highPieces, isA<SegmentedTreeImagePieces>());
+      final lowSegmented = lowPieces as SegmentedTreeImagePieces;
+      final highSegmented = highPieces as SegmentedTreeImagePieces;
+
+      expect(
+        highSegmented.topRect.height,
+        closeTo(lowSegmented.topRect.height, 0.5),
+        reason: '同一阶段内树梢段必须保持原比例，不随章节数纵向拉伸',
+      );
+      expect(
+        highSegmented.bottomRect.height,
+        closeTo(lowSegmented.bottomRect.height, 0.5),
+        reason: '同一阶段内泥土段必须保持原比例，不随章节数纵向拉伸',
+      );
+      expect(
+        highSegmented.tileHeight,
+        closeTo(lowSegmented.tileHeight, 0.5),
+        reason: '单块树干中段高度必须保持原比例，只能增加平铺数量/区域',
+      );
+      expect(
+        highSegmented.middleRect.height,
+        greaterThan(lowSegmented.middleRect.height),
+        reason: '章节更多时，只允许中段树干区域变高',
+      );
+      expect(lowSegmented.bottomRect.bottom, closeTo(size.height, 0.5));
+      expect(highSegmented.bottomRect.bottom, closeTo(size.height, 0.5));
+    }
+  });
+
+  test('单章和双章仍使用整图素材，不进入分段拼接', () {
+    final single = layoutMagicTree(size: size, outline: [chapterWith(1, 3)]);
+    final two = layoutMagicTree(
+      size: size,
+      outline: [chapterWith(1, 1), chapterWith(2, 1)],
+    );
+
+    expect(layoutMagicTreeImagePieces(single), isA<WholeTreeImagePieces>());
+    expect(layoutMagicTreeImagePieces(two), isA<WholeTreeImagePieces>());
+  });
+
   test('窗口模式：首章小节落在章根之下（不飘到树顶/魔毯球旁）', () {
     // 3 章 → 窗口模式；首章带顶贴屏顶、远高于树干顶。
     // 修复前 contentTop=bandTop+34 让小节排到章根之上、窜到树顶（用户反馈错位）。

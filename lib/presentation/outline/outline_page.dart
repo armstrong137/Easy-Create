@@ -746,25 +746,8 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                         builder: (context, candidates, rejected) => Stack(
                           key: _treeKey,
                           children: [
-                            // 魔树本体：阶段摄影素材。SizedBox.expand 强制
-                            // 铺满 imageRect——AnimatedSwitcher 默认布局给
-                            // 子级宽松约束，Image 会保持纵横比缩小并居中，
-                            // 矩形与素材比例不一致时泥土悬空（用户实测）。
-                            Positioned.fromRect(
-                              rect: layout.imageRect,
-                              child: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 600),
-                                child: SizedBox.expand(
-                                  key: ValueKey(layout.stage),
-                                  child: Image.asset(
-                                    'assets/textures/magic_tree_${layout.stage}.jpg',
-                                    fit: BoxFit.fill,
-                                    gaplessPlayback: true,
-                                    filterQuality: FilterQuality.medium,
-                                  ),
-                                ),
-                              ),
-                            ),
+                            // 魔树本体：窗口模式用顶段/中段/泥土段拼接，避免整张照片纵向拉伸。
+                            _MagicTreeImage(layout: layout),
                             // 左半空白：双击长章枝（用户定稿：改双击避免误建）；
                             // 纵向拖动滚章节（树背景跟随）
                             Positioned(
@@ -893,5 +876,125 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
       return;
     }
     magicCarpetKey.currentState?.collapse();
+  }
+}
+
+class _MagicTreeImage extends StatelessWidget {
+  const _MagicTreeImage({required this.layout});
+
+  final MagicTreeLayout layout;
+
+  @override
+  Widget build(BuildContext context) {
+    final pieces = layoutMagicTreeImagePieces(layout);
+    if (pieces is WholeTreeImagePieces) {
+      return Positioned.fromRect(
+        rect: pieces.bounds,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 600),
+          child: SizedBox.expand(
+            key: ValueKey(pieces.asset),
+            child: Image.asset(
+              pieces.asset,
+              fit: BoxFit.fill,
+              gaplessPlayback: true,
+              filterQuality: FilterQuality.medium,
+            ),
+          ),
+        ),
+      );
+    }
+    return _SegmentedMagicTreeImage(pieces: pieces as SegmentedTreeImagePieces);
+  }
+}
+
+class _SegmentedMagicTreeImage extends StatelessWidget {
+  const _SegmentedMagicTreeImage({required this.pieces});
+
+  final SegmentedTreeImagePieces pieces;
+
+  @override
+  Widget build(BuildContext context) {
+    final origin = pieces.bounds.topLeft;
+    Rect local(Rect rect) => rect.shift(-origin);
+
+    return Positioned.fromRect(
+      rect: pieces.bounds,
+      child: ClipRect(
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 600),
+          child: Stack(
+            key: ValueKey('tree_segments_${pieces.spec.stage}'),
+            clipBehavior: Clip.hardEdge,
+            children: [
+              Positioned.fromRect(
+                rect: local(pieces.topRect),
+                child: Image.asset(
+                  pieces.spec.topAsset,
+                  key: const Key('魔树顶段'),
+                  fit: BoxFit.fill,
+                  gaplessPlayback: true,
+                  filterQuality: FilterQuality.medium,
+                ),
+              ),
+              Positioned.fromRect(
+                rect: local(pieces.middleRect),
+                child: ClipRect(
+                  key: const Key('魔树中段裁剪'),
+                  child: _TreeMiddleTiles(pieces: pieces),
+                ),
+              ),
+              Positioned.fromRect(
+                rect: local(pieces.bottomRect),
+                child: Image.asset(
+                  pieces.spec.bottomAsset,
+                  key: const Key('魔树泥土段'),
+                  fit: BoxFit.fill,
+                  gaplessPlayback: true,
+                  filterQuality: FilterQuality.medium,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TreeMiddleTiles extends StatelessWidget {
+  const _TreeMiddleTiles({required this.pieces});
+
+  final SegmentedTreeImagePieces pieces;
+
+  @override
+  Widget build(BuildContext context) {
+    final height = pieces.middleRect.height;
+    final tileH = pieces.tileHeight;
+    if (height <= 0 || tileH <= 0) return const SizedBox.shrink();
+    final count = (height / tileH).ceil() + 1;
+
+    return Stack(
+      clipBehavior: Clip.hardEdge,
+      children: [
+        for (var i = 0; i < count; i++)
+          Positioned(
+            left: 0,
+            right: 0,
+            top: i * tileH,
+            height: tileH,
+            child: Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.diagonal3Values(1, i.isOdd ? -1 : 1, 1),
+              child: Image.asset(
+                pieces.spec.middleAsset,
+                fit: BoxFit.fill,
+                gaplessPlayback: true,
+                filterQuality: FilterQuality.medium,
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }

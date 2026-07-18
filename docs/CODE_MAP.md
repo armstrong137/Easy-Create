@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-17 23:10:06　对应提交：c1644ed 之后的工作区状态
+> 生成时间：2026-07-18 11:30:52　对应提交：8cda956 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,18 +13,18 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     106
-  Nodes:     4,022
-  Edges:     18,959
+  Nodes:     4,037
+  Edges:     19,011
   DB Size:   20.38 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,552
-  function        1,367
-  class           462
+  method          1,555
+  function        1,371
+  class           469
   import          323
-  constant        192
+  constant        193
   file            98
   variable        14
   type_alias      12
@@ -169,8 +169,8 @@ Project Structure (106 files):
 |   |   |-- outline
 |   |   |   |-- label_layout.dart (dart, 12 symbols)
 |   |   |   |-- magic_carpet.dart (dart, 67 symbols)
-|   |   |   |-- magic_tree_model.dart (dart, 34 symbols)
-|   |   |   |-- outline_page.dart (dart, 54 symbols)
+|   |   |   |-- magic_tree_model.dart (dart, 41 symbols)
+|   |   |   |-- outline_page.dart (dart, 62 symbols)
 |   |   |   `-- scroll_carpet.dart (dart, 38 symbols)
 |   |   |-- section
 |   |   |   |-- card_deck_sheet.dart (dart, 19 symbols)
@@ -207,7 +207,7 @@ Project Structure (106 files):
 |   |   |-- magic_carpet_test.dart (dart, 18 symbols)
 |   |   |-- magic_tree_model_test.dart (dart, 13 symbols)
 |   |   |-- orbiting_inspirations_test.dart (dart, 11 symbols)
-|   |   |-- outline_page_test.dart (dart, 23 symbols)
+|   |   |-- outline_page_test.dart (dart, 25 symbols)
 |   |   |-- planet_scene_touch_config_test.dart (dart, 5 symbols)
 |   |   |-- quick_capture_test.dart (dart, 16 symbols)
 |   |   |-- section_page_test.dart (dart, 24 symbols)

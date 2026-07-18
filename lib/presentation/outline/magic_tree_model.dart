@@ -62,6 +62,124 @@ double treeGrowthFactor(int chapterCount) {
   return 1 + math.min(1.15, 0.09 * (chapterCount - 2));
 }
 
+/// 魔树分段素材：顶段和泥土段保持原比例，中段按纵向平铺承担高度增长。
+class TreeSegmentSpec {
+  const TreeSegmentSpec({
+    required this.stage,
+    required this.topAsset,
+    required this.middleAsset,
+    required this.bottomAsset,
+    required this.topSourceHeight,
+    required this.middleSourceHeight,
+    required this.bottomSourceHeight,
+  });
+
+  final int stage;
+  final String topAsset;
+  final String middleAsset;
+  final String bottomAsset;
+  final double topSourceHeight;
+  final double middleSourceHeight;
+  final double bottomSourceHeight;
+}
+
+const _treeSegmentSpecs = <int, TreeSegmentSpec>{
+  2: TreeSegmentSpec(
+    stage: 2,
+    topAsset: 'assets/textures/tree_seg/s2_top.jpg',
+    middleAsset: 'assets/textures/tree_seg/s2_mid.jpg',
+    bottomAsset: 'assets/textures/tree_seg/s2_bottom.jpg',
+    topSourceHeight: 700,
+    middleSourceHeight: 500,
+    bottomSourceHeight: 472,
+  ),
+  3: TreeSegmentSpec(
+    stage: 3,
+    topAsset: 'assets/textures/tree_seg/s3_top.jpg',
+    middleAsset: 'assets/textures/tree_seg/s3_mid.jpg',
+    bottomAsset: 'assets/textures/tree_seg/s3_bottom.jpg',
+    topSourceHeight: 650,
+    middleSourceHeight: 500,
+    bottomSourceHeight: 522,
+  ),
+};
+
+TreeSegmentSpec? treeSegmentSpecForStage(int stage) => _treeSegmentSpecs[stage];
+
+sealed class TreeImagePieces {
+  const TreeImagePieces({required this.bounds});
+
+  final Rect bounds;
+}
+
+class WholeTreeImagePieces extends TreeImagePieces {
+  const WholeTreeImagePieces({required super.bounds, required this.asset});
+
+  final String asset;
+}
+
+class SegmentedTreeImagePieces extends TreeImagePieces {
+  const SegmentedTreeImagePieces({
+    required super.bounds,
+    required this.spec,
+    required this.topRect,
+    required this.middleRect,
+    required this.bottomRect,
+    required this.tileHeight,
+  });
+
+  final TreeSegmentSpec spec;
+  final Rect topRect;
+  final Rect middleRect;
+  final Rect bottomRect;
+  final double tileHeight;
+}
+
+TreeImagePieces layoutMagicTreeImagePieces(MagicTreeLayout layout) {
+  final spec = layout.maxChapterOffset > 0
+      ? treeSegmentSpecForStage(layout.stage)
+      : null;
+  if (spec == null) {
+    return WholeTreeImagePieces(
+      bounds: layout.imageRect,
+      asset: 'assets/textures/magic_tree_${layout.stage}.jpg',
+    );
+  }
+
+  final scale = layout.imageRect.width / kStageImageWidth;
+  final topH = spec.topSourceHeight * scale;
+  final bottomH = spec.bottomSourceHeight * scale;
+  final tileH = spec.middleSourceHeight * scale;
+  final middleH = math.max(0.0, layout.imageRect.height - topH - bottomH);
+  final topRect = Rect.fromLTWH(
+    layout.imageRect.left,
+    layout.imageRect.top,
+    layout.imageRect.width,
+    topH,
+  );
+  final middleRect = Rect.fromLTWH(
+    layout.imageRect.left,
+    topRect.bottom,
+    layout.imageRect.width,
+    middleH,
+  );
+  final bottomRect = Rect.fromLTWH(
+    layout.imageRect.left,
+    layout.imageRect.bottom - bottomH,
+    layout.imageRect.width,
+    bottomH,
+  );
+
+  return SegmentedTreeImagePieces(
+    bounds: layout.imageRect,
+    spec: spec,
+    topRect: topRect,
+    middleRect: middleRect,
+    bottomRect: bottomRect,
+    tileHeight: tileH,
+  );
+}
+
 /// 每阶段茎干轮廓（归一化到素材图：y 相对图高，半宽相对图宽）
 class _Stalk {
   const _Stalk(this.topY, this.botY, this.topHalfW, this.botHalfW);

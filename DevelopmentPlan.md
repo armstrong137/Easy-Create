@@ -425,6 +425,14 @@
       验证：`flutter test test/presentation/magic_tree_model_test.dart --timeout 2m`、
       `flutter test test/presentation/outline_page_test.dart --timeout 2m`、`flutter analyze`、
       `flutter test --timeout 2m` 均通过。
+    - ✅ P3-R2 魔树分段生长返工（2026-07-18）：接力修正“加章节时泥土动来动去、树干纵向拉伸不协调”。
+      新增 `assets/textures/tree_seg/` 顶段/中段/泥土分段素材，并在 >2 章窗口模式下改用
+      顶段固定原比例、中段纵向平铺且镜像交替、泥土段固定原比例的拼接方式；单章/双章仍使用整图素材。
+      更新模型与页面回归测试，覆盖树梢/泥土/单块中段不随章数缩放、只让中段承担虚拟树高增长，
+      以及 Outline 页实际加载分段素材。验证：`dart format` 无改动、
+      `flutter test test/presentation/magic_tree_model_test.dart --timeout 2m` 24 项通过、
+      `flutter test test/presentation/outline_page_test.dart --timeout 2m` 13 项通过、
+      `flutter analyze` 无问题、`flutter test --timeout 2m` 223 项通过。
 - ☐ P5 小节页 3D 写作工作台（卡堆/卡片包/沉浸编辑器）
 - ☐ P6 速记与设置重构（魔法物件按钮/弹层/设置页）
 - ☐ P7 统一设计系统和验收（材质/动效 Token、视觉与性能回归）

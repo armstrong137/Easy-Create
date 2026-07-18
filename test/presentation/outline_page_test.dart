@@ -234,6 +234,25 @@ void main() {
     expect(find.byKey(const Key('章热区_1')), findsNothing);
   });
 
+  testWidgets('窗口模式：魔树使用顶段/中段/泥土分段素材，避免整图纵向拉伸', (tester) async {
+    await seedNovel();
+    await pumpOutline(tester, [
+      for (var i = 1; i <= 4; i++) fakeChapter(i, '第$i章', 0),
+    ]);
+
+    expect(find.byKey(const Key('魔树顶段')), findsOneWidget);
+    expect(find.byKey(const Key('魔树中段裁剪')), findsOneWidget);
+    expect(find.byKey(const Key('魔树泥土段')), findsOneWidget);
+
+    Image segmentImage(String key) =>
+        tester.widget<Image>(find.byKey(Key(key)).first);
+    final top = segmentImage('魔树顶段').image as AssetImage;
+    final bottom = segmentImage('魔树泥土段').image as AssetImage;
+
+    expect(top.assetName, 'assets/textures/tree_seg/s2_top.jpg');
+    expect(bottom.assetName, 'assets/textures/tree_seg/s2_bottom.jpg');
+  });
+
   testWidgets('窗口模式：右滑滚小节（树背景不动、章带内滚）', (tester) async {
     await seedNovel();
     await pumpOutline(tester, [
