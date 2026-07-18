@@ -433,6 +433,17 @@
       `flutter test test/presentation/magic_tree_model_test.dart --timeout 2m` 24 项通过、
       `flutter test test/presentation/outline_page_test.dart --timeout 2m` 13 项通过、
       `flutter analyze` 无问题、`flutter test --timeout 2m` 223 项通过。
+    - ✅ P3-R3 魔树新增章节动画验收返工（2026-07-18）：接力完成“树在长、土壤不长”的最终实现。
+      新增章节流程拆成镜头定位与枝丫生长：新章不在当前两章窗口时，先用 `easeInOutCubic`
+      平滑滑到目标窗口，再播放 `easeOutCubic` 新枝裁剪显露；新章已在窗口内时只长枝。
+      页面在动画期间冻结视觉阶段，避免 11→12 章这类跨阶段时整棵树鬼影切换；分段魔树移除整树
+      `AnimatedSwitcher`，土壤固定为视口底层；卷须由 `Transform.scale` 改成 `ClipRect`/`OverflowBox`
+      裁剪显露，保留素材原比例，避免越长越扁或强行拉伸。
+      验证：`dart format` 无改动、
+      `flutter test test/presentation/magic_tree_model_test.dart --timeout 2m` 26 项通过、
+      `flutter test test/presentation/outline_page_test.dart --timeout 2m` 15 项通过、
+      `flutter analyze --no-pub` 无问题、`flutter test --timeout 2m` 228 项通过、
+      `flutter build web --release` 通过。
 - ☐ P5 小节页 3D 写作工作台（卡堆/卡片包/沉浸编辑器）
 - ☐ P6 速记与设置重构（魔法物件按钮/弹层/设置页）
 - ☐ P7 统一设计系统和验收（材质/动效 Token、视觉与性能回归）
