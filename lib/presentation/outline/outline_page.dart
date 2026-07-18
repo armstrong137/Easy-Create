@@ -89,6 +89,9 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   /// 正在生长的枝（章/节分开记，避免章节撞 id）
   ({bool isChapter, int id})? _growing;
 
+  /// 新增章节生长期间冻结旧视觉阶段，避免 11→12 章时整树鬼影切换。
+  int? _visualStageOverride;
+
   /// 最近一次布局（手势换算用）
   MagicTreeLayout? _layout;
   Size _bodySize = Size.zero;
@@ -113,18 +116,32 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   /// 点左侧空白：长出章枝（仓库按新序号原子命名：引子 → 第一章 → …），镜头滑到新章
   Future<void> _addChapter(List<OutlineChapter> outline) async {
     HapticFeedback.lightImpact();
+    final oldCount = outline.length;
+    final frozenStage = _layout?.stage;
+
     final chapter = await ref
         .read(novelRepositoryProvider)
         .createChapter(novelId: widget.novelId);
-    final newCount = outline.length + 1;
-    if (newCount > 2) {
-      _camera.animateTo(
-        (newCount - 2).toDouble(),
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeOutCubic,
+
+    final motion = chapterGrowthMotionPlan(
+      oldCount: oldCount,
+      newCount: oldCount + 1,
+      currentOffset: _camera.value,
+    );
+
+    setState(() => _visualStageOverride = frozenStage);
+    await _playGrow(isChapter: true, id: chapter.id);
+    if (!mounted) return;
+
+    if (motion.steps.contains(ChapterGrowthStep.panCamera)) {
+      await _camera.animateTo(
+        motion.targetOffset,
+        duration: const Duration(milliseconds: 520),
+        curve: Curves.easeInOutCubic,
       );
     }
-    await _playGrow(isChapter: true, id: chapter.id);
+
+    if (mounted) setState(() => _visualStageOverride = null);
   }
 
   /// 点右侧空白：按点击高度找对应章，长出节枝
@@ -408,7 +425,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   double _growthFor({required bool isChapter, required int id}) {
     final g = _growing;
     if (g == null || g.isChapter != isChapter || g.id != id) return 1;
-    return Curves.easeOutBack.transform(_grow.value);
+    return Curves.easeOutCubic.transform(_grow.value);
   }
 
   /// 标签透明度：生长后段（60% 起）才浮现
@@ -702,6 +719,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                         chapterOffset: _camera.value,
                         sectionScrolls: _sectionScrolls,
                         sectionNoteCounts: noteCounts,
+                        visualStageOverride: _visualStageOverride,
                       );
                       _layout = layout;
                       final labels = placeMagicLabels(
@@ -915,47 +933,39 @@ class _SegmentedMagicTreeImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final origin = pieces.bounds.topLeft;
-    Rect local(Rect rect) => rect.shift(-origin);
-
-    return Positioned.fromRect(
-      rect: pieces.bounds,
+    return Positioned.fill(
       child: ClipRect(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 600),
-          child: Stack(
-            key: ValueKey('tree_segments_${pieces.spec.stage}'),
-            clipBehavior: Clip.hardEdge,
-            children: [
-              Positioned.fromRect(
-                rect: local(pieces.topRect),
-                child: Image.asset(
-                  pieces.spec.topAsset,
-                  key: const Key('魔树顶段'),
-                  fit: BoxFit.fill,
-                  gaplessPlayback: true,
-                  filterQuality: FilterQuality.medium,
-                ),
+        child: Stack(
+          clipBehavior: Clip.hardEdge,
+          children: [
+            Positioned.fromRect(
+              rect: pieces.topRect,
+              child: Image.asset(
+                pieces.spec.topAsset,
+                key: const Key('魔树顶段'),
+                fit: BoxFit.fill,
+                gaplessPlayback: true,
+                filterQuality: FilterQuality.medium,
               ),
-              Positioned.fromRect(
-                rect: local(pieces.middleRect),
-                child: ClipRect(
-                  key: const Key('魔树中段裁剪'),
-                  child: _TreeMiddleTiles(pieces: pieces),
-                ),
+            ),
+            Positioned.fromRect(
+              rect: pieces.middleRect,
+              child: ClipRect(
+                key: const Key('魔树中段裁剪'),
+                child: _TreeMiddleTiles(pieces: pieces),
               ),
-              Positioned.fromRect(
-                rect: local(pieces.bottomRect),
-                child: Image.asset(
-                  pieces.spec.bottomAsset,
-                  key: const Key('魔树泥土段'),
-                  fit: BoxFit.fill,
-                  gaplessPlayback: true,
-                  filterQuality: FilterQuality.medium,
-                ),
+            ),
+            Positioned.fromRect(
+              rect: pieces.soilRect,
+              child: Image.asset(
+                pieces.spec.bottomAsset,
+                key: const Key('魔树固定土壤层'),
+                fit: BoxFit.fill,
+                gaplessPlayback: true,
+                filterQuality: FilterQuality.medium,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

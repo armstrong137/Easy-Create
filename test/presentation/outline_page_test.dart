@@ -244,12 +244,12 @@ void main() {
 
     expect(find.byKey(const Key('魔树顶段')), findsOneWidget);
     expect(find.byKey(const Key('魔树中段裁剪')), findsOneWidget);
-    expect(find.byKey(const Key('魔树泥土段')), findsOneWidget);
+    expect(find.byKey(const Key('魔树固定土壤层')), findsOneWidget);
 
     Image segmentImage(String key) =>
         tester.widget<Image>(find.byKey(Key(key)).first);
     final top = segmentImage('魔树顶段').image as AssetImage;
-    final bottom = segmentImage('魔树泥土段').image as AssetImage;
+    final bottom = segmentImage('魔树固定土壤层').image as AssetImage;
 
     expect(top.assetName, 'assets/textures/tree_seg/s2_top.jpg');
     expect(bottom.assetName, 'assets/textures/tree_seg/s2_bottom.jpg');
