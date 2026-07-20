@@ -236,34 +236,31 @@ void main() {
     expect(find.byKey(const Key('章热区_1')), findsNothing);
   });
 
-  testWidgets('窗口模式：魔树使用顶段/中段/泥土分段素材，避免整图纵向拉伸', (tester) async {
+  testWidgets('窗口模式止血：魔树背景使用完整素材，不再分段拼接', (tester) async {
     await seedNovel();
     await pumpOutline(tester, [
       for (var i = 1; i <= 4; i++) fakeChapter(i, '第$i章', 0),
     ]);
 
-    expect(find.byKey(const Key('魔树顶段')), findsOneWidget);
-    expect(find.byKey(const Key('魔树中段裁剪')), findsOneWidget);
-    expect(find.byKey(const Key('魔树固定土壤层')), findsOneWidget);
-
-    Image segmentImage(String key) =>
-        tester.widget<Image>(find.byKey(Key(key)).first);
-    final top = segmentImage('魔树顶段').image as AssetImage;
-    final bottom = segmentImage('魔树固定土壤层').image as AssetImage;
-
-    expect(top.assetName, 'assets/textures/tree_seg/s2_top.jpg');
-    expect(bottom.assetName, 'assets/textures/tree_seg/s2_bottom.jpg');
+    expect(find.byKey(const Key('魔树完整图')), findsOneWidget);
+    expect(find.byKey(const Key('魔树顶段')), findsNothing);
+    expect(find.byKey(const Key('魔树中段裁剪')), findsNothing);
+    expect(find.byKey(const Key('魔树固定土壤层')), findsNothing);
+    expect(find.byType(ShaderMask), findsNothing);
   });
 
-  testWidgets('窗口模式：中段瓦片使用重叠羽化过渡，不硬拼接', (tester) async {
-    await seedNovel();
-    await pumpOutline(tester, [
-      for (var i = 1; i <= 8; i++) fakeChapter(i, '第$i章', 0),
-    ]);
-
-    expect(find.byKey(const Key('魔树中段羽化瓦片_0')), findsOneWidget);
-    expect(find.byKey(const Key('魔树中段羽化瓦片_1')), findsOneWidget);
-    expect(find.byType(ShaderMask), findsWidgets);
+  test('窗口模式止血：代码禁止分段平铺、镜像、羽化路线回流', () {
+    final src = File(
+      'lib/presentation/outline/outline_page.dart',
+    ).readAsStringSync();
+    expect(src, isNot(contains('_SegmentedMagicTreeImage')));
+    expect(src, isNot(contains('_TreeMiddleTiles')));
+    expect(src, isNot(contains('_FeatheredTreeMiddleTile')));
+    expect(src, isNot(contains('ShaderMask')));
+    expect(
+      src,
+      isNot(contains('Matrix4.diagonal3Values(1, index.isOdd ? -1 : 1, 1)')),
+    );
   });
 
   test('分段魔树不得用整树 AnimatedSwitcher 交叉淡入淡出', () {

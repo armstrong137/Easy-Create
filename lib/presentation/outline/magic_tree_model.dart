@@ -3,7 +3,7 @@
 /// - **章序沿树自上而下**：第一章在树顶方向，新章向土壤方向生长
 ///   （下滑=更多章，符合树的生长方向）
 /// - **≤2 章**：整树可见；**>2 章**：镜头窗口模式——一屏恰好两章，
-///   左滑章节时树背景跟随（首章见树顶、末章见土壤，虚拟树高随章数增长），
+///   左滑章节时完整树图平移（首章见树顶、末章见土壤），
 ///   右滑小节时树背景不动
 library;
 
@@ -18,9 +18,6 @@ const kParchment = Color(0xFFFDF6EC);
 /// 素材原始尺寸（三张魔树图同尺寸）
 const kStageImageWidth = 941.0;
 const kStageImageHeight = 1672.0;
-
-/// 中段藤蔓不是无缝纹理，重复拼接时必须重叠羽化，避免出现横向硬缝。
-const kTreeMiddleTileOverlapRatio = 0.28;
 
 /// 卷须精灵图（tendril_chapter.png 实测 130x106，节图为其镜像）：
 /// 根茬在右缘 31% 高度处，螺旋端在左上角附近
@@ -96,57 +93,6 @@ ChapterGrowthMotionPlan chapterGrowthMotionPlan({
   );
 }
 
-/// 虚拟树高倍数：章越多树越高（镜头一次只看得到一段树干）。
-/// 用户定稿"树的生长速度必须随着章节的增多而变化"
-double treeGrowthFactor(int chapterCount) {
-  if (chapterCount <= 2) return 1;
-  return 1 + math.min(1.15, 0.09 * (chapterCount - 2));
-}
-
-/// 魔树分段素材：顶段和泥土段保持原比例，中段按纵向平铺承担高度增长。
-class TreeSegmentSpec {
-  const TreeSegmentSpec({
-    required this.stage,
-    required this.topAsset,
-    required this.middleAsset,
-    required this.bottomAsset,
-    required this.topSourceHeight,
-    required this.middleSourceHeight,
-    required this.bottomSourceHeight,
-  });
-
-  final int stage;
-  final String topAsset;
-  final String middleAsset;
-  final String bottomAsset;
-  final double topSourceHeight;
-  final double middleSourceHeight;
-  final double bottomSourceHeight;
-}
-
-const _treeSegmentSpecs = <int, TreeSegmentSpec>{
-  2: TreeSegmentSpec(
-    stage: 2,
-    topAsset: 'assets/textures/tree_seg/s2_top.jpg',
-    middleAsset: 'assets/textures/tree_seg/s2_mid.jpg',
-    bottomAsset: 'assets/textures/tree_seg/s2_bottom.jpg',
-    topSourceHeight: 700,
-    middleSourceHeight: 500,
-    bottomSourceHeight: 472,
-  ),
-  3: TreeSegmentSpec(
-    stage: 3,
-    topAsset: 'assets/textures/tree_seg/s3_top.jpg',
-    middleAsset: 'assets/textures/tree_seg/s3_mid.jpg',
-    bottomAsset: 'assets/textures/tree_seg/s3_bottom.jpg',
-    topSourceHeight: 650,
-    middleSourceHeight: 500,
-    bottomSourceHeight: 522,
-  ),
-};
-
-TreeSegmentSpec? treeSegmentSpecForStage(int stage) => _treeSegmentSpecs[stage];
-
 sealed class TreeImagePieces {
   const TreeImagePieces({required this.bounds});
 
@@ -159,87 +105,11 @@ class WholeTreeImagePieces extends TreeImagePieces {
   final String asset;
 }
 
-class SegmentedTreeImagePieces extends TreeImagePieces {
-  const SegmentedTreeImagePieces({
-    required super.bounds,
-    required this.spec,
-    required this.topRect,
-    required this.middleRect,
-    required this.bottomRect,
-    required this.soilRect,
-    required this.tileHeight,
-    required this.tileOverlap,
-    required this.tileStep,
-  });
-
-  final TreeSegmentSpec spec;
-  final Rect topRect;
-  final Rect middleRect;
-  final Rect bottomRect;
-
-  /// 固定在视口底部的土壤层；新增章节动画期间不得跟随树干/镜头跳动。
-  final Rect soilRect;
-
-  final double tileHeight;
-  final double tileOverlap;
-  final double tileStep;
-}
-
-TreeImagePieces layoutMagicTreeImagePieces(MagicTreeLayout layout) {
-  final spec = layout.maxChapterOffset > 0
-      ? treeSegmentSpecForStage(layout.stage)
-      : null;
-  if (spec == null) {
-    return WholeTreeImagePieces(
+TreeImagePieces layoutMagicTreeImagePieces(MagicTreeLayout layout) =>
+    WholeTreeImagePieces(
       bounds: layout.imageRect,
       asset: 'assets/textures/magic_tree_${layout.stage}.jpg',
     );
-  }
-
-  final scale = layout.imageRect.width / kStageImageWidth;
-  final topH = spec.topSourceHeight * scale;
-  final bottomH = spec.bottomSourceHeight * scale;
-  final tileH = spec.middleSourceHeight * scale;
-  final tileOverlap = tileH * kTreeMiddleTileOverlapRatio;
-  final tileStep = math.max(1.0, tileH - tileOverlap);
-  final middleH = math.max(0.0, layout.imageRect.height - topH - bottomH);
-  final topRect = Rect.fromLTWH(
-    layout.imageRect.left,
-    layout.imageRect.top,
-    layout.imageRect.width,
-    topH,
-  );
-  final middleRect = Rect.fromLTWH(
-    layout.imageRect.left,
-    topRect.bottom,
-    layout.imageRect.width,
-    middleH,
-  );
-  final bottomRect = Rect.fromLTWH(
-    layout.imageRect.left,
-    layout.imageRect.bottom - bottomH,
-    layout.imageRect.width,
-    bottomH,
-  );
-  final soilRect = Rect.fromLTWH(
-    layout.imageRect.left,
-    layout.viewportHeight - bottomH,
-    layout.imageRect.width,
-    bottomH,
-  );
-
-  return SegmentedTreeImagePieces(
-    bounds: layout.imageRect,
-    spec: spec,
-    topRect: topRect,
-    middleRect: middleRect,
-    bottomRect: bottomRect,
-    soilRect: soilRect,
-    tileHeight: tileH,
-    tileOverlap: tileOverlap,
-    tileStep: tileStep,
-  );
-}
 
 /// 每阶段茎干轮廓（归一化到素材图：y 相对图高，半宽相对图宽）
 class _Stalk {
@@ -726,10 +596,10 @@ MagicTreeLayout _layoutWindow(
   final maxOffset = (n - 2).toDouble();
   final offset = chapterOffset.clamp(0.0, maxOffset);
 
-  // 树背景随章数只增高、不增宽：宽度仍用一屏高度推算并封顶，避免泥土横向溢出；
-  // 高度按章节数拉长，左侧章节镜头在虚拟高树上平移（首章见树顶、末章见泥土）。
+  // 方案 B 止血：完整照片保持一屏高度，不再拉伸或切片平铺。
+  // 多章节仍通过一屏两章的标签窗口表达，树背景只在首尾镜头间平移。
   final baseDispH = size.height;
-  final dispH = baseDispH * treeGrowthFactor(n);
+  final dispH = baseDispH;
   final dispW = math.min(
     baseDispH * (kStageImageWidth / kStageImageHeight),
     size.width,

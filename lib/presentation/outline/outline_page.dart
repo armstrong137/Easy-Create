@@ -793,7 +793,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                         builder: (context, candidates, rejected) => Stack(
                           key: _treeKey,
                           children: [
-                            // 魔树本体：窗口模式用顶段/中段/泥土段拼接，避免整张照片纵向拉伸。
+                            // 魔树本体：方案 B 止血，窗口模式只用完整图，禁止切片平铺。
                             _MagicTreeImage(layout: layout),
                             // 左半空白：双击长章枝（用户定稿：改双击避免误建）；
                             // 纵向拖动滚章节（树背景跟随）
@@ -933,134 +933,16 @@ class _MagicTreeImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pieces = layoutMagicTreeImagePieces(layout);
-    if (pieces is WholeTreeImagePieces) {
-      return Positioned.fromRect(
-        rect: pieces.bounds,
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 600),
-          child: SizedBox.expand(
-            key: ValueKey(pieces.asset),
-            child: Image.asset(
-              pieces.asset,
-              fit: BoxFit.fill,
-              gaplessPlayback: true,
-              filterQuality: FilterQuality.medium,
-            ),
-          ),
-        ),
-      );
-    }
-    return _SegmentedMagicTreeImage(pieces: pieces as SegmentedTreeImagePieces);
-  }
-}
-
-class _SegmentedMagicTreeImage extends StatelessWidget {
-  const _SegmentedMagicTreeImage({required this.pieces});
-
-  final SegmentedTreeImagePieces pieces;
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: ClipRect(
-        child: Stack(
-          clipBehavior: Clip.hardEdge,
-          children: [
-            Positioned.fromRect(
-              rect: pieces.topRect,
-              child: Image.asset(
-                pieces.spec.topAsset,
-                key: const Key('魔树顶段'),
-                fit: BoxFit.fill,
-                gaplessPlayback: true,
-                filterQuality: FilterQuality.medium,
-              ),
-            ),
-            Positioned.fromRect(
-              rect: pieces.middleRect,
-              child: ClipRect(
-                key: const Key('魔树中段裁剪'),
-                child: _TreeMiddleTiles(pieces: pieces),
-              ),
-            ),
-            Positioned.fromRect(
-              rect: pieces.soilRect,
-              child: Image.asset(
-                pieces.spec.bottomAsset,
-                key: const Key('魔树固定土壤层'),
-                fit: BoxFit.fill,
-                gaplessPlayback: true,
-                filterQuality: FilterQuality.medium,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TreeMiddleTiles extends StatelessWidget {
-  const _TreeMiddleTiles({required this.pieces});
-
-  final SegmentedTreeImagePieces pieces;
-
-  @override
-  Widget build(BuildContext context) {
-    final height = pieces.middleRect.height;
-    final tileH = pieces.tileHeight;
-    if (height <= 0 || tileH <= 0) return const SizedBox.shrink();
-    final step = pieces.tileStep;
-    final count = (height / step).ceil() + 2;
-
-    return Stack(
-      clipBehavior: Clip.hardEdge,
-      children: [
-        for (var i = 0; i < count; i++)
-          Positioned(
-            key: Key('魔树中段羽化瓦片_$i'),
-            left: 0,
-            right: 0,
-            top: i * step,
-            height: tileH,
-            child: _FeatheredTreeMiddleTile(index: i, pieces: pieces),
-          ),
-      ],
-    );
-  }
-}
-
-class _FeatheredTreeMiddleTile extends StatelessWidget {
-  const _FeatheredTreeMiddleTile({required this.index, required this.pieces});
-
-  final int index;
-  final SegmentedTreeImagePieces pieces;
-
-  @override
-  Widget build(BuildContext context) {
-    final image = Transform(
-      alignment: Alignment.center,
-      transform: Matrix4.diagonal3Values(1, index.isOdd ? -1 : 1, 1),
+    final pieces = layoutMagicTreeImagePieces(layout) as WholeTreeImagePieces;
+    return Positioned.fromRect(
+      rect: pieces.bounds,
       child: Image.asset(
-        pieces.spec.middleAsset,
+        pieces.asset,
+        key: const Key('魔树完整图'),
         fit: BoxFit.fill,
         gaplessPlayback: true,
-        filterQuality: FilterQuality.high,
+        filterQuality: FilterQuality.medium,
       ),
-    );
-    if (index == 0) return image;
-
-    final fadeEnd = (pieces.tileOverlap / pieces.tileHeight).clamp(0.08, 0.5);
-    return ShaderMask(
-      blendMode: BlendMode.dstIn,
-      shaderCallback: (bounds) => LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: const [Color(0x00FFFFFF), Color(0xFFFFFFFF), Color(0xFFFFFFFF)],
-        stops: [0, fadeEnd, 1],
-      ).createShader(bounds),
-      child: image,
     );
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -104,7 +105,7 @@ void main() {
     expect(bottom.chapterBands.keys, isNot(contains(1)));
   });
 
-  test('窗口模式：树随章数只长高，宽度不增长且镜头首尾对齐', () {
+  test('窗口模式止血：完整魔树图恒定显示，不再随章数拉伸或分段拼接', () {
     final first = layoutMagicTree(
       size: size,
       outline: [for (var i = 1; i <= 3; i++) chapterWith(i, 1)],
@@ -112,96 +113,58 @@ void main() {
 
     for (final count in [3, 8, 19, 40]) {
       final outline = [for (var i = 1; i <= count; i++) chapterWith(i, 1)];
-      final top = layoutMagicTree(size: size, outline: outline).imageRect;
-      final bottom = layoutMagicTree(
+      final topLayout = layoutMagicTree(size: size, outline: outline);
+      final top = topLayout.imageRect;
+      final bottomLayout = layoutMagicTree(
         size: size,
         outline: outline,
         chapterOffset: (count - 2).toDouble(),
-      ).imageRect;
-
-      expect(top.width, closeTo(first.width, 0.5), reason: '$count 章时树不能变宽');
-      expect(top.width, lessThanOrEqualTo(size.width + 0.5));
-      expect(
-        top.height,
-        closeTo(size.height * treeGrowthFactor(count), 0.5),
-        reason: '$count 章时树高应按虚拟树高增长',
       );
+      final bottom = bottomLayout.imageRect;
+
+      expect(top.width, closeTo(first.width, 0.5), reason: '$count 章时树宽应恒定');
+      expect(top.height, closeTo(first.height, 0.5), reason: '$count 章时树高应恒定');
       expect(top.top, closeTo(0, 0.5), reason: '首章镜头要看到树顶');
       expect(bottom.width, closeTo(top.width, 0.5), reason: '镜头滚动时树宽不变');
       expect(bottom.height, closeTo(top.height, 0.5), reason: '镜头滚动时树高不变');
       expect(bottom.bottom, closeTo(size.height, 0.5), reason: '末章镜头要看到泥土');
+      expect(
+        layoutMagicTreeImagePieces(topLayout),
+        isA<WholeTreeImagePieces>(),
+      );
+      expect(
+        layoutMagicTreeImagePieces(bottomLayout),
+        isA<WholeTreeImagePieces>(),
+      );
     }
   });
 
-  test('窗口模式分段素材：泥土和树梢不随章数缩放，中段承担增长', () {
-    for (final pair in [(3, 5), (12, 40)]) {
-      final lowCount = pair.$1;
-      final highCount = pair.$2;
-      final lowOutline = [
-        for (var i = 1; i <= lowCount; i++) chapterWith(i, 1),
-      ];
-      final highOutline = [
-        for (var i = 1; i <= highCount; i++) chapterWith(i, 1),
-      ];
-
-      final low = layoutMagicTree(
+  test('窗口模式止血：禁止再走分段平铺路线', () {
+    for (final count in [3, 8, 40]) {
+      final layout = layoutMagicTree(
         size: size,
-        outline: lowOutline,
-        chapterOffset: (lowCount - 2).toDouble(),
+        outline: [for (var i = 1; i <= count; i++) chapterWith(i, 1)],
       );
-      final high = layoutMagicTree(
-        size: size,
-        outline: highOutline,
-        chapterOffset: (highCount - 2).toDouble(),
-      );
-      final lowPieces = layoutMagicTreeImagePieces(low);
-      final highPieces = layoutMagicTreeImagePieces(high);
+      final pieces = layoutMagicTreeImagePieces(layout);
 
-      expect(lowPieces, isA<SegmentedTreeImagePieces>());
-      expect(highPieces, isA<SegmentedTreeImagePieces>());
-      final lowSegmented = lowPieces as SegmentedTreeImagePieces;
-      final highSegmented = highPieces as SegmentedTreeImagePieces;
-
+      expect(pieces, isA<WholeTreeImagePieces>());
       expect(
-        highSegmented.topRect.height,
-        closeTo(lowSegmented.topRect.height, 0.5),
-        reason: '同一阶段内树梢段必须保持原比例，不随章节数纵向拉伸',
+        (pieces as WholeTreeImagePieces).asset,
+        startsWith('assets/textures/magic_tree_'),
       );
-      expect(
-        highSegmented.bottomRect.height,
-        closeTo(lowSegmented.bottomRect.height, 0.5),
-        reason: '同一阶段内泥土段必须保持原比例，不随章节数纵向拉伸',
-      );
-      expect(
-        highSegmented.tileHeight,
-        closeTo(lowSegmented.tileHeight, 0.5),
-        reason: '单块树干中段高度必须保持原比例，只能增加平铺数量/区域',
-      );
-      expect(
-        highSegmented.middleRect.height,
-        greaterThan(lowSegmented.middleRect.height),
-        reason: '章节更多时，只允许中段树干区域变高',
-      );
-      expect(lowSegmented.bottomRect.bottom, closeTo(size.height, 0.5));
-      expect(highSegmented.bottomRect.bottom, closeTo(size.height, 0.5));
     }
   });
 
-  test('窗口模式分段素材：中段瓦片必须重叠，避免硬拼接缝', () {
-    final outline = [for (var i = 1; i <= 8; i++) chapterWith(i, 1)];
-    final layout = layoutMagicTree(
-      size: size,
-      outline: outline,
-      chapterOffset: 4,
-    );
-    final segmented = layoutMagicTreeImagePieces(layout) as dynamic;
+  test('窗口模式止血：模型层禁止重新接入 tree_seg 分段素材', () {
+    final src = File(
+      'lib/presentation/outline/magic_tree_model.dart',
+    ).readAsStringSync();
 
-    expect(segmented.tileStep, lessThan(segmented.tileHeight));
-    expect(
-      segmented.tileOverlap,
-      greaterThan(segmented.tileHeight * 0.25),
-      reason: '中段藤蔓素材不是无缝纹理，必须用足够重叠区域做羽化过渡',
-    );
+    expect(src, isNot(contains('SegmentedTreeImagePieces')));
+    expect(src, isNot(contains('TreeSegmentSpec')));
+    expect(src, isNot(contains('tree_seg')));
+    expect(src, isNot(contains('tileOverlap')));
+    expect(src, isNot(contains('tileStep')));
   });
 
   test('单章和双章仍使用整图素材，不进入分段拼接', () {
@@ -580,8 +543,8 @@ void main() {
     expect(settledLayout.stage, 3, reason: '动画结束后才允许切到新视觉阶段');
   });
 
-  test('窗口模式：土壤层固定在视口底部，不随章节数增长上下跳动', () {
-    Rect soilFor(int count) {
+  test('窗口模式止血：完整魔树图首尾镜头同尺寸，末章贴底', () {
+    Rect imageFor(int count) {
       final outline = [for (var i = 1; i <= count; i++) chapterWith(i, 0)];
       final layout = layoutMagicTree(
         size: size,
@@ -589,16 +552,21 @@ void main() {
         chapterOffset: (count - 2).toDouble(),
       );
       final pieces = layoutMagicTreeImagePieces(layout);
-      expect(pieces, isA<SegmentedTreeImagePieces>());
-      return (pieces as SegmentedTreeImagePieces).soilRect;
+      expect(pieces, isA<WholeTreeImagePieces>());
+      return pieces.bounds;
     }
 
-    final soil3 = soilFor(3);
+    final image3 = imageFor(3);
     for (final count in [4, 8, 11]) {
-      final soil = soilFor(count);
-      expect(soil.bottom, closeTo(size.height, 0.5), reason: '$count 章土壤底边固定');
-      expect(soil.left, closeTo(soil3.left, 0.5), reason: '$count 章土壤横向不漂移');
-      expect(soil.width, closeTo(soil3.width, 0.5), reason: '$count 章土壤宽度不变');
+      final image = imageFor(count);
+      expect(
+        image.bottom,
+        closeTo(size.height, 0.5),
+        reason: '$count 章末章镜头应贴底',
+      );
+      expect(image.left, closeTo(image3.left, 0.5), reason: '$count 章横向不漂移');
+      expect(image.width, closeTo(image3.width, 0.5), reason: '$count 章宽度不变');
+      expect(image.height, closeTo(image3.height, 0.5), reason: '$count 章高度不变');
     }
   });
 

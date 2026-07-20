@@ -444,6 +444,16 @@
       `flutter test test/presentation/outline_page_test.dart --timeout 2m` 15 项通过、
       `flutter analyze --no-pub` 无问题、`flutter test --timeout 2m` 228 项通过、
       `flutter build web --release` 通过。
+    - ✅ P3-R4 魔树拼接痕迹止血（2026-07-20）：按用户确认的方案 B 回滚“切片平铺/羽化/镜像”路线。
+      根因定性为中段照片不是无缝纹理，继续用参数、镜像、羽化只会在硬缝、鬼影和轮廓断裂之间切换。
+      已删除 `SegmentedTreeImagePieces`、`TreeSegmentSpec`、中段瓦片 widget、`ShaderMask` 羽化层与
+      `assets/textures/tree_seg/` 打包入口；窗口模式重新只渲染完整 `magic_tree_N.jpg`，并固定一屏高度，
+      禁止完整照片继续按章节数纵向拉伸。保留一屏两章窗口、先定位再长枝、视觉阶段冻结、卷须裁剪显露等
+      已验收交互。回归测试新增 source guard，禁止模型层和页面层重新接入 `tree_seg`、分段 widget、
+      镜像瓦片或羽化遮罩。验证：`flutter test test/presentation/magic_tree_model_test.dart --timeout 2m`
+      27 项通过、`flutter test test/presentation/outline_page_test.dart --timeout 2m` 16 项通过、
+      `flutter analyze --no-pub` 无问题、`flutter test --timeout 2m` 230 项通过、
+      `flutter build web --release --no-wasm-dry-run` 通过。
 - ☐ P5 小节页 3D 写作工作台（卡堆/卡片包/沉浸编辑器）
 - ☐ P6 速记与设置重构（魔法物件按钮/弹层/设置页）
 - ☐ P7 统一设计系统和验收（材质/动效 Token、视觉与性能回归）
