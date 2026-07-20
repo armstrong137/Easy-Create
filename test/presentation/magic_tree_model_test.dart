@@ -187,6 +187,23 @@ void main() {
     }
   });
 
+  test('窗口模式分段素材：中段瓦片必须重叠，避免硬拼接缝', () {
+    final outline = [for (var i = 1; i <= 8; i++) chapterWith(i, 1)];
+    final layout = layoutMagicTree(
+      size: size,
+      outline: outline,
+      chapterOffset: 4,
+    );
+    final segmented = layoutMagicTreeImagePieces(layout) as dynamic;
+
+    expect(segmented.tileStep, lessThan(segmented.tileHeight));
+    expect(
+      segmented.tileOverlap,
+      greaterThan(segmented.tileHeight * 0.25),
+      reason: '中段藤蔓素材不是无缝纹理，必须用足够重叠区域做羽化过渡',
+    );
+  });
+
   test('单章和双章仍使用整图素材，不进入分段拼接', () {
     final single = layoutMagicTree(size: size, outline: [chapterWith(1, 3)]);
     final two = layoutMagicTree(

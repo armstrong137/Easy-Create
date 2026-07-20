@@ -255,6 +255,17 @@ void main() {
     expect(bottom.assetName, 'assets/textures/tree_seg/s2_bottom.jpg');
   });
 
+  testWidgets('窗口模式：中段瓦片使用重叠羽化过渡，不硬拼接', (tester) async {
+    await seedNovel();
+    await pumpOutline(tester, [
+      for (var i = 1; i <= 8; i++) fakeChapter(i, '第$i章', 0),
+    ]);
+
+    expect(find.byKey(const Key('魔树中段羽化瓦片_0')), findsOneWidget);
+    expect(find.byKey(const Key('魔树中段羽化瓦片_1')), findsOneWidget);
+    expect(find.byType(ShaderMask), findsWidgets);
+  });
+
   test('分段魔树不得用整树 AnimatedSwitcher 交叉淡入淡出', () {
     final src = File(
       'lib/presentation/outline/outline_page.dart',

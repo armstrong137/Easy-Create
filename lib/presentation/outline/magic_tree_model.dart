@@ -19,6 +19,9 @@ const kParchment = Color(0xFFFDF6EC);
 const kStageImageWidth = 941.0;
 const kStageImageHeight = 1672.0;
 
+/// 中段藤蔓不是无缝纹理，重复拼接时必须重叠羽化，避免出现横向硬缝。
+const kTreeMiddleTileOverlapRatio = 0.28;
+
 /// 卷须精灵图（tendril_chapter.png 实测 130x106，节图为其镜像）：
 /// 根茬在右缘 31% 高度处，螺旋端在左上角附近
 const kTendrilAspect = 106 / 130;
@@ -165,6 +168,8 @@ class SegmentedTreeImagePieces extends TreeImagePieces {
     required this.bottomRect,
     required this.soilRect,
     required this.tileHeight,
+    required this.tileOverlap,
+    required this.tileStep,
   });
 
   final TreeSegmentSpec spec;
@@ -176,6 +181,8 @@ class SegmentedTreeImagePieces extends TreeImagePieces {
   final Rect soilRect;
 
   final double tileHeight;
+  final double tileOverlap;
+  final double tileStep;
 }
 
 TreeImagePieces layoutMagicTreeImagePieces(MagicTreeLayout layout) {
@@ -193,6 +200,8 @@ TreeImagePieces layoutMagicTreeImagePieces(MagicTreeLayout layout) {
   final topH = spec.topSourceHeight * scale;
   final bottomH = spec.bottomSourceHeight * scale;
   final tileH = spec.middleSourceHeight * scale;
+  final tileOverlap = tileH * kTreeMiddleTileOverlapRatio;
+  final tileStep = math.max(1.0, tileH - tileOverlap);
   final middleH = math.max(0.0, layout.imageRect.height - topH - bottomH);
   final topRect = Rect.fromLTWH(
     layout.imageRect.left,
@@ -227,6 +236,8 @@ TreeImagePieces layoutMagicTreeImagePieces(MagicTreeLayout layout) {
     bottomRect: bottomRect,
     soilRect: soilRect,
     tileHeight: tileH,
+    tileOverlap: tileOverlap,
+    tileStep: tileStep,
   );
 }
 

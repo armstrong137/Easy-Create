@@ -1011,29 +1011,56 @@ class _TreeMiddleTiles extends StatelessWidget {
     final height = pieces.middleRect.height;
     final tileH = pieces.tileHeight;
     if (height <= 0 || tileH <= 0) return const SizedBox.shrink();
-    final count = (height / tileH).ceil() + 1;
+    final step = pieces.tileStep;
+    final count = (height / step).ceil() + 2;
 
     return Stack(
       clipBehavior: Clip.hardEdge,
       children: [
         for (var i = 0; i < count; i++)
           Positioned(
+            key: Key('魔树中段羽化瓦片_$i'),
             left: 0,
             right: 0,
-            top: i * tileH,
+            top: i * step,
             height: tileH,
-            child: Transform(
-              alignment: Alignment.center,
-              transform: Matrix4.diagonal3Values(1, i.isOdd ? -1 : 1, 1),
-              child: Image.asset(
-                pieces.spec.middleAsset,
-                fit: BoxFit.fill,
-                gaplessPlayback: true,
-                filterQuality: FilterQuality.medium,
-              ),
-            ),
+            child: _FeatheredTreeMiddleTile(index: i, pieces: pieces),
           ),
       ],
+    );
+  }
+}
+
+class _FeatheredTreeMiddleTile extends StatelessWidget {
+  const _FeatheredTreeMiddleTile({required this.index, required this.pieces});
+
+  final int index;
+  final SegmentedTreeImagePieces pieces;
+
+  @override
+  Widget build(BuildContext context) {
+    final image = Transform(
+      alignment: Alignment.center,
+      transform: Matrix4.diagonal3Values(1, index.isOdd ? -1 : 1, 1),
+      child: Image.asset(
+        pieces.spec.middleAsset,
+        fit: BoxFit.fill,
+        gaplessPlayback: true,
+        filterQuality: FilterQuality.high,
+      ),
+    );
+    if (index == 0) return image;
+
+    final fadeEnd = (pieces.tileOverlap / pieces.tileHeight).clamp(0.08, 0.5);
+    return ShaderMask(
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (bounds) => LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: const [Color(0x00FFFFFF), Color(0xFFFFFFFF), Color(0xFFFFFFFF)],
+        stops: [0, fadeEnd, 1],
+      ).createShader(bounds),
+      child: image,
     );
   }
 }
