@@ -526,21 +526,47 @@ void main() {
   });
 
   test('窗口模式：新增章节跨阶段时可冻结视觉阶段，避免整树鬼影切换', () {
-    final before = [for (var i = 1; i <= 11; i++) chapterWith(i, 0)];
-    final after = [for (var i = 1; i <= 12; i++) chapterWith(i, 0)];
+    // 方案 A 五档：7 节=第3档、8 节=第4档，加章跨档正好换更大的整树图。
+    final before = [for (var i = 1; i <= 7; i++) chapterWith(i, 0)];
+    final after = [for (var i = 1; i <= 8; i++) chapterWith(i, 0)];
 
     final oldLayout = layoutMagicTree(size: size, outline: before);
-    expect(oldLayout.stage, 2);
+    expect(oldLayout.stage, 3);
 
     final frozenLayout = layoutMagicTree(
       size: size,
       outline: after,
       visualStageOverride: oldLayout.stage,
     );
-    expect(frozenLayout.stage, 2, reason: '新增章节生长期间必须沿用旧视觉阶段');
+    expect(frozenLayout.stage, 3, reason: '新增章节生长期间必须沿用旧视觉阶段');
 
     final settledLayout = layoutMagicTree(size: size, outline: after);
-    expect(settledLayout.stage, 3, reason: '动画结束后才允许切到新视觉阶段');
+    expect(settledLayout.stage, 4, reason: '动画结束后才允许切到新视觉阶段');
+  });
+
+  test('方案A五档成长：加章跨阈值时整树照片依次换大（章多树长大）', () {
+    // 用户反馈"第二章到第九章树木一点变化都没有"的根治：档位随创作量铺开，
+    // 前十来章要能看到多次成长跨档（每档一张不同大小的完整树照片）。
+    int stageOf(int chapters) => layoutMagicTree(
+      size: size,
+      outline: [for (var i = 1; i <= chapters; i++) chapterWith(i, 0)],
+    ).stage;
+    expect(stageOf(0), 1, reason: '空树=破土嫩芽');
+    expect(stageOf(2), 2);
+    expect(stageOf(5), 3);
+    expect(stageOf(9), 4);
+    expect(stageOf(20), 5, reason: '海量创作=巨藤封顶');
+    // 2→9 章至少跨 2 次档（不再一动不动）
+    final tiers = {stageOf(2), stageOf(5), stageOf(9)};
+    expect(tiers.length, greaterThanOrEqualTo(3), reason: '2/5/9 章应各不相同');
+    // 五张完整树素材都存在
+    for (var s = 1; s <= 5; s++) {
+      expect(
+        File('assets/textures/magic_tree_$s.jpg').existsSync(),
+        isTrue,
+        reason: 'magic_tree_$s.jpg 必须存在',
+      );
+    }
   });
 
   test('窗口模式止血：完整魔树图首尾镜头同尺寸，末章贴底', () {

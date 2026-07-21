@@ -454,6 +454,14 @@
       27 项通过、`flutter test test/presentation/outline_page_test.dart --timeout 2m` 16 项通过、
       `flutter analyze --no-pub` 无问题、`flutter test --timeout 2m` 230 项通过、
       `flutter build web --release --no-wasm-dry-run` 通过。
+    - ✅ P3-R5 魔树五档完整成长（2026-07-20，方案 A 定稿）：解决止血版"2~9 章树一动不动"
+      （dispH=屏高→镜头行程 0 恒静止，且节点数<12 全落 stage2 一张图）。用户素材 picture/魔树1~5.png
+      本就是"破土嫩芽→幼藤→缠绕藤→参天藤→巨藤"5 张同画幅完整成长快照；转 magic_tree_4/5.jpg 补全
+      5 档素材，stageForNodes 由 3 档扩为 5 档并按创作量铺开阈值（0/≤3/≤7/≤13/更多 → 1/2/3/4/5），
+      _stalks 补 4/5 树干几何。加章跨阈值时整树照片淡换成更大的一张——零拼接、零变形、泥土贴底不动，
+      真正"章多树长大"。回归测试新增五档成长断言（2/5/9 章各不相同、5 张素材齐备）与冻结阶段改用
+      7→8 节跨档。验证：flutter analyze 零问题、全量 231 项通过、真实浏览器实证 0/2/5/9 章
+      依次换大（docs/ui_review/rounds/2026-07-20/tree-tier-growth/）。
 - ☐ P5 小节页 3D 写作工作台（卡堆/卡片包/沉浸编辑器）
 - ☐ P6 速记与设置重构（魔法物件按钮/弹层/设置页）
 - ☐ P7 统一设计系统和验收（材质/动效 Token、视觉与性能回归）
