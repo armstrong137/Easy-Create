@@ -249,6 +249,20 @@ void main() {
     expect(find.byType(ShaderMask), findsNothing);
   });
 
+  test('档位切换平滑：整树用 AnimatedSwitcher 交叉淡入 + 预解码五档防卡顿', () {
+    final src = File(
+      'lib/presentation/outline/outline_page.dart',
+    ).readAsStringSync();
+    // 淡切（像 PPT 换页），不是硬切
+    expect(src, contains('AnimatedSwitcher'));
+    expect(src, contains('ValueKey(pieces.asset)'));
+    // 五档素材页面进入即预解码，切档时无临时解码卡顿
+    expect(
+      src,
+      contains("precacheImage(AssetImage('assets/textures/magic_tree_"),
+    );
+  });
+
   test('窗口模式止血：代码禁止分段平铺、镜像、羽化路线回流', () {
     final src = File(
       'lib/presentation/outline/outline_page.dart',

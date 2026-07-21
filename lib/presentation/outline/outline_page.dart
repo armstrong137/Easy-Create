@@ -99,6 +99,21 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   /// 上次设给魔毯的缩边栏状态（避免每帧重复设）
   bool _lastTuck = false;
 
+  /// 五档树素材只预解码一次（避免每次依赖变化重复触发）
+  bool _treesPrecached = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 预解码全部 5 档完整树照片：加章跨阈值淡切时素材已在内存，
+    // 交叉淡入淡出全程零解码卡顿（用户要求"像 PPT 一样流畅"）。
+    if (_treesPrecached) return;
+    _treesPrecached = true;
+    for (var s = 1; s <= 5; s++) {
+      precacheImage(AssetImage('assets/textures/magic_tree_$s.jpg'), context);
+    }
+  }
+
   @override
   void dispose() {
     carpetTucked.value = false; // 离开大纲页恢复完整魔毯球
@@ -934,14 +949,27 @@ class _MagicTreeImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pieces = layoutMagicTreeImagePieces(layout) as WholeTreeImagePieces;
+    // 档位切换（加章跨阈值）时整树照片**交叉淡入淡出**：两棵同泥土、同中轴
+    // 的完整树对叠溶解，像 PPT 换页那样平滑长大，而非硬切。
+    // 素材已在 didChangeDependencies 预解码，切换时不再临时解码，无卡顿。
     return Positioned.fromRect(
       rect: pieces.bounds,
-      child: Image.asset(
-        pieces.asset,
+      child: AnimatedSwitcher(
         key: const Key('魔树完整图'),
-        fit: BoxFit.fill,
-        gaplessPlayback: true,
-        filterQuality: FilterQuality.medium,
+        duration: const Duration(milliseconds: 650),
+        switchInCurve: Curves.easeInOut,
+        switchOutCurve: Curves.easeInOut,
+        // 新旧树同框叠加淡变（默认 layoutBuilder 即居中 Stack），
+        // 泥土与中轴对齐，溶解读作"树长大"
+        child: SizedBox.expand(
+          key: ValueKey(pieces.asset),
+          child: Image.asset(
+            pieces.asset,
+            fit: BoxFit.fill,
+            gaplessPlayback: true,
+            filterQuality: FilterQuality.medium,
+          ),
+        ),
       ),
     );
   }

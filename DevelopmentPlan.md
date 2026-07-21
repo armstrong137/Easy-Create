@@ -462,6 +462,14 @@
       真正"章多树长大"。回归测试新增五档成长断言（2/5/9 章各不相同、5 张素材齐备）与冻结阶段改用
       7→8 节跨档。验证：flutter analyze 零问题、全量 231 项通过、真实浏览器实证 0/2/5/9 章
       依次换大（docs/ui_review/rounds/2026-07-20/tree-tier-growth/）。
+    - ✅ P3-R6 魔树档位淡切优化（2026-07-20）：接力完成“几个档位之间像 PPT 一样流畅切换”。
+      Outline 页进入后一次性 `precacheImage` 五档完整树图，避免首次跨档临时解码大图；
+      整树渲染改为 `AnimatedSwitcher` + `ValueKey(pieces.asset)`，跨档时新旧完整树同框 650ms
+      easeInOut 交叉淡入淡出，保留完整图路线，不回流分段/平铺/羽化方案。`scripts/e2e_probe.dart`
+      增加 `dblshot` 单进程双击延时抓帧命令，用于捕捉 650ms 过渡中间帧；新增验收截图
+      `淡切_加第8章生长中.png`、`淡切_落定tier4参天藤.png`。验证：`flutter analyze` 无问题、
+      `flutter test test/presentation/outline_page_test.dart --timeout 2m` 17 项通过、
+      `flutter test --timeout 2m` 232 项通过。
 - ☐ P5 小节页 3D 写作工作台（卡堆/卡片包/沉浸编辑器）
 - ☐ P6 速记与设置重构（魔法物件按钮/弹层/设置页）
 - ☐ P7 统一设计系统和验收（材质/动效 Token、视觉与性能回归）

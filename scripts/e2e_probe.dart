@@ -124,6 +124,30 @@ Future<void> main(List<String> args) async {
         }
       }
       stdout.writeln('double-tapped $dx,$dy');
+    case 'dblshot':
+      // 双击 → 延时 ms → 抓帧（单进程内，捕捉档位淡切的中间帧；
+      // 跨进程 dart run 启动 1~2s 会错过 650ms 过渡）
+      final ddx = double.parse(args[1]), ddy = double.parse(args[2]);
+      final delayMs = int.parse(args[3]);
+      for (var i = 0; i < 2; i++) {
+        for (final type in ['mousePressed', 'mouseReleased']) {
+          await send('Input.dispatchMouseEvent', {
+            'type': type,
+            'x': ddx,
+            'y': ddy,
+            'button': 'left',
+            'clickCount': 1,
+          });
+        }
+        if (i == 0) {
+          await Future<void>.delayed(const Duration(milliseconds: 90));
+        }
+      }
+      await Future<void>.delayed(Duration(milliseconds: delayMs));
+      final ds = await send('Page.captureScreenshot', {'format': 'png'});
+      final db64 = ((ds['result'] as Map)['data']) as String;
+      File(args[4]).writeAsBytesSync(base64Decode(db64));
+      stdout.writeln('dblshot saved ${args[4]}');
     case 'hold':
       // 长按：按下→保持 ms 毫秒→抬起（复现长按星球弹删除确认）
       final hx = double.parse(args[1]), hy = double.parse(args[2]);
