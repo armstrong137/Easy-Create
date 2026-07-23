@@ -97,6 +97,14 @@ class _HomePageState extends ConsumerState<HomePage> {
   int? _pendingNovelId;
 
   _SharedPlanetSceneConfig? _sharedSceneConfig;
+
+  /// 翻页动画是否在飞行中。PageView 的 onPageChanged 在动画**中途**（越过半页）
+  /// 就回调，此刻换星球会让贴图解码/上传和剩余的滑动动画抢同一条主线程
+  /// （用户实测"星球之间切换卡顿"）。故换星球一律推迟到滑动落定后再下发。
+  bool _pageSettling = false;
+  _SharedPlanetSceneConfig? _deferredSceneConfig;
+  Timer? _deferredSceneTimer;
+
   bool _sharedSceneReady = false;
   String? _sharedSceneSnapshot;
   int _sharedSnapshotReq = 0;
@@ -139,6 +147,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     _coverMaxTimer?.cancel();
     _sceneRevealTimer?.cancel();
     _sceneFallbackTimer?.cancel();
+    _deferredSceneTimer?.cancel();
     final snapshotCompleter = _sharedSnapshotCompleter;
     if (snapshotCompleter != null && !snapshotCompleter.isCompleted) {
       snapshotCompleter.complete();
@@ -203,12 +212,50 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   void _onSharedSceneConfig(_SharedPlanetSceneConfig config) {
     if (_sharedSceneConfig == config) return;
-    // 换星球**不复位就绪**：共享场景原地换贴图（不重建 iframe），旧星球持续
-    // 显示到新贴图就绪再一次性接管——全程活画面，无需静态替身介入。就绪标记
-    // 只在真正冷启动（首个 config）/上下文异常时才为假，交给兜底定时器揭幕。
+    final current = _sharedSceneConfig;
+    // 只推迟"换星球"这一种变化（贴图解码+上传是重活）；同一颗球内的缩放/旋转
+    // 等变化仍即时下发，手感不受影响。
+    if (_pageSettling && current != null && current.planet != config.planet) {
+      _deferredSceneConfig = config;
+      // 兜底：滑动结束通知万一没来（当前页被删/被替换），也不能把星球永远卡住
+      _deferredSceneTimer ??= Timer(
+        const Duration(milliseconds: 600),
+        _flushDeferredSceneConfig,
+      );
+      return;
+    }
+    _applySharedSceneConfig(config);
+  }
+
+  /// 换星球**不复位就绪**：共享场景原地换贴图（不重建 iframe），旧星球持续
+  /// 显示到新贴图就绪再一次性接管——全程活画面，无需静态替身介入。就绪标记
+  /// 只在真正冷启动（首个 config）/上下文异常时才为假，交给兜底定时器揭幕。
+  void _applySharedSceneConfig(_SharedPlanetSceneConfig config) {
     final firstConfig = _sharedSceneConfig == null;
     setState(() => _sharedSceneConfig = config);
     if (firstConfig && !_sharedSceneReady) _armSceneRevealFallback();
+  }
+
+  /// 滑动落定（或兜底超时）后补发被推迟的换星球配置
+  void _flushDeferredSceneConfig() {
+    _deferredSceneTimer?.cancel();
+    _deferredSceneTimer = null;
+    final pending = _deferredSceneConfig;
+    _deferredSceneConfig = null;
+    if (pending == null || !mounted || pending == _sharedSceneConfig) return;
+    _applySharedSceneConfig(pending);
+  }
+
+  /// 只认 PageView 自身的滚动（depth==0），卷轴等内层列表的滚动不参与
+  bool _onPageScroll(ScrollNotification n) {
+    if (n.depth != 0) return false;
+    if (n is ScrollStartNotification) {
+      _pageSettling = true;
+    } else if (n is ScrollEndNotification) {
+      _pageSettling = false;
+      _flushDeferredSceneConfig();
+    }
+    return false;
   }
 
   Future<void> _awaitSnapshotBeforeRoute() async {
@@ -413,42 +460,49 @@ class _HomePageState extends ConsumerState<HomePage> {
             // 一页一星球，左右滑切换小说
             ValueListenableBuilder<bool>(
               valueListenable: planetZoomLock,
-              builder: (context, locked, _) => PageView.builder(
-                controller: _pageController,
-                itemCount: novels.length,
-                allowImplicitScrolling: false,
-                // 捏合放大星球期间禁翻页（否则双指会被识别成滑动换书）
-                physics: locked ? const NeverScrollableScrollPhysics() : null,
-                // 切星球**不复位就绪、不盖替身**：共享场景原地换贴图，旧星球
-                // 持续显示到新贴图就绪再一次性接管（planet_scene/index.html:setPlanet）。
-                onPageChanged: (i) => setState(() {
-                  _currentPage = i;
-                  if (use3D) {
-                    _pendingStarfieldPage = i;
-                  } else {
-                    _visibleStarfieldPage = i;
-                    _pendingStarfieldPage = null;
-                  }
-                }),
-                // ClipRect：放大的星球画布只在本页内铺开，
-                // 不会溢出到相邻星球页造成"两颗星球重影"
-                itemBuilder: (context, i) => ClipRect(
-                  child: _PlanetPage(
-                    key: ValueKey(
-                      'planet-page-${novels[i].id}-${novels[i].planet}',
+              builder: (context, locked, _) =>
+                  NotificationListener<ScrollNotification>(
+                    onNotification: _onPageScroll,
+                    child: PageView.builder(
+                      controller: _pageController,
+                      itemCount: novels.length,
+                      allowImplicitScrolling: false,
+                      // 捏合放大星球期间禁翻页（否则双指会被识别成滑动换书）
+                      physics: locked
+                          ? const NeverScrollableScrollPhysics()
+                          : null,
+                      // 切星球**不复位就绪、不盖替身**：共享场景原地换贴图，旧星球
+                      // 持续显示到新贴图就绪再一次性接管（planet_scene/index.html:setPlanet）。
+                      onPageChanged: (i) => setState(() {
+                        _currentPage = i;
+                        if (use3D) {
+                          _pendingStarfieldPage = i;
+                        } else {
+                          _visibleStarfieldPage = i;
+                          _pendingStarfieldPage = null;
+                        }
+                      }),
+                      // ClipRect：放大的星球画布只在本页内铺开，
+                      // 不会溢出到相邻星球页造成"两颗星球重影"
+                      itemBuilder: (context, i) => ClipRect(
+                        child: _PlanetPage(
+                          key: ValueKey(
+                            'planet-page-${novels[i].id}-${novels[i].planet}',
+                          ),
+                          novel: novels[i],
+                          pool: pool,
+                          // active 用回正后的 safePage：删掉当前页后，剩余页立刻
+                          // 成为 active 并把新星球配置发给共享场景，杜绝残留删除前那颗。
+                          active: i == safePage,
+                          sharedSceneReady: _sharedSceneReady,
+                          sharedSceneSnapshot: _sharedSceneSnapshot,
+                          onSharedSceneConfig: _onSharedSceneConfig,
+                          onRequestSnapshotBeforeRoute:
+                              _awaitSnapshotBeforeRoute,
+                        ),
+                      ),
                     ),
-                    novel: novels[i],
-                    pool: pool,
-                    // active 用回正后的 safePage：删掉当前页后，剩余页立刻成为
-                    // active 并把新星球配置发给共享场景，杜绝残留删除前那颗。
-                    active: i == safePage,
-                    sharedSceneReady: _sharedSceneReady,
-                    sharedSceneSnapshot: _sharedSceneSnapshot,
-                    onSharedSceneConfig: _onSharedSceneConfig,
-                    onRequestSnapshotBeforeRoute: _awaitSnapshotBeforeRoute,
                   ),
-                ),
-              ),
             ),
           // 左上角设置入口（齿轮）：进设置页改速记按钮左右侧
           SafeArea(

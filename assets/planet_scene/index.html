@@ -188,18 +188,26 @@ function makeNightMat(nightMap) {
 // 建一颗星球（本体+夜光+云+环），加入 pivot，更新大气 uniforms，返回派生的
 // LOD/取景值。pre 非空时用**预加载好的纹理**——切星球时旧星球先继续渲染，
 // 新贴图全部就绪后由本函数一次性接管，全程复用同一 renderer / canvas / context。
+// pre 只带 map（基础相）时，本函数只建基础球；normal/specular/云层/夜光
+// 由 attachPlanetDetails 在后台静默期补挂（地球细节贴图共 ~34MB，
+// 和底图一起前台上传会跟滑动动画抢帧）。
 function mountPlanet(pcfg, pre) {
+  const has = pre ? function (k) { return !!pre[k]; } : function () { return true; };
+  const tex = function (k, path, isSrgb) {
+    if (pre) return pre[k];
+    return isSrgb ? srgb(path) : loader.load(path);
+  };
   const matOpts = { map: pre ? pre.map : srgb(pcfg.map, true) };
-  if (pcfg.normal) {
-    matOpts.normalMap = pre ? pre.normal : loader.load(pcfg.normal);
+  if (pcfg.normal && has('normal')) {
+    matOpts.normalMap = tex('normal', pcfg.normal, false);
     matOpts.normalScale = new THREE.Vector2(0.85, 0.85);
   }
-  if (pcfg.specular) {
-    matOpts.specularMap = pre ? pre.specular : loader.load(pcfg.specular);
+  if (pcfg.specular && has('specular')) {
+    matOpts.specularMap = tex('specular', pcfg.specular, false);
     matOpts.specular = new THREE.Color(0x66788c);
     matOpts.shininess = 22;
   } else {
-    matOpts.specular = new THREE.Color(0x000000); // 非地球：无镜面，哑光地表
+    matOpts.specular = new THREE.Color(0x000000); // 非地球/细节未到：哑光地表
   }
   const pmat = new THREE.MeshPhongMaterial(matOpts);
   // 128 段：放大后球体轮廓与晨昏线仍平滑（64 段近距可见多边形棱）
@@ -207,21 +215,21 @@ function mountPlanet(pcfg, pre) {
   pivot.add(pmesh);
 
   let night = null;
-  if (pcfg.night) {
+  if (pcfg.night && has('night')) {
     night = new THREE.Mesh(
       new THREE.SphereGeometry(1.001, 64, 64),
-      makeNightMat(pre ? pre.night : srgb(pcfg.night))
+      makeNightMat(tex('night', pcfg.night, true))
     );
     night.name = 'night';
     pmesh.add(night); // 挂在星球下随其自转
   }
 
   let cl = null;
-  if (pcfg.clouds) {
+  if (pcfg.clouds && has('clouds')) {
     cl = new THREE.Mesh(
       new THREE.SphereGeometry(1.012, 64, 64),
       new THREE.MeshLambertMaterial({
-        map: pre ? pre.clouds : srgb(pcfg.clouds),
+        map: tex('clouds', pcfg.clouds, true),
         blending: THREE.AdditiveBlending, transparent: true, opacity: 0.55, depthWrite: false,
       })
     );
@@ -745,13 +753,17 @@ function disposeTextureBundle(bundle) {
   });
 }
 
-function loadPlanetTextureBundle(pcfg, foreground) {
+// baseOnly=true 只取底图(+土星环)：切星球时先出基础球，细节相后台补。
+// 地球细节 4 张（normal/specular/clouds/night）共约 34MB，与 33.5MB 底图
+// 一起前台上传要占十几帧，正压在滑动动画上 → 卡顿（用户实测）。
+function loadPlanetTextureBundle(pcfg, foreground, baseOnly) {
   const keys = ['map'];
   const jobs = [loadTexAsync(pcfg.map, true, foreground)];
-  if (pcfg.normal) { keys.push('normal'); jobs.push(loadTexAsync(pcfg.normal, false, foreground)); }
-  if (pcfg.specular) { keys.push('specular'); jobs.push(loadTexAsync(pcfg.specular, false, foreground)); }
-  if (pcfg.clouds) { keys.push('clouds'); jobs.push(loadTexAsync(pcfg.clouds, true, foreground)); }
-  if (pcfg.night) { keys.push('night'); jobs.push(loadTexAsync(pcfg.night, true, foreground)); }
+  if (!baseOnly && pcfg.normal) { keys.push('normal'); jobs.push(loadTexAsync(pcfg.normal, false, foreground)); }
+  if (!baseOnly && pcfg.specular) { keys.push('specular'); jobs.push(loadTexAsync(pcfg.specular, false, foreground)); }
+  if (!baseOnly && pcfg.clouds) { keys.push('clouds'); jobs.push(loadTexAsync(pcfg.clouds, true, foreground)); }
+  if (!baseOnly && pcfg.night) { keys.push('night'); jobs.push(loadTexAsync(pcfg.night, true, foreground)); }
+  // 土星环留在基础相：它是土星的身份特征，且只有一张小图
   if (pcfg.ring) { keys.push('ring'); jobs.push(loadTexAsync('textures/saturn_ring.png', true, foreground)); }
   return Promise.all(jobs).then(function (vals) {
     const out = {};
@@ -760,7 +772,7 @@ function loadPlanetTextureBundle(pcfg, foreground) {
   });
 }
 
-function preloadPlanetTextureBundle(name, foreground) {
+function preloadPlanetTextureBundle(name, foreground, baseOnly) {
   if (!name || !PLANETS[name]) return Promise.resolve(null);
   const cached = planetTextureCache.get(name);
   if (cached) {
@@ -773,7 +785,7 @@ function preloadPlanetTextureBundle(name, foreground) {
     lastUsed: performance.now(),
     promise: null,
   };
-  record.promise = loadPlanetTextureBundle(PLANETS[name], foreground).then(function (bundle) {
+  record.promise = loadPlanetTextureBundle(PLANETS[name], foreground, baseOnly).then(function (bundle) {
     if (disposed) {
       disposeTextureBundle(bundle);
       return null;
@@ -792,11 +804,69 @@ function takePlanetTextureBundle(name) {
     planetTextureCache.delete(name);
     return cached.promise;
   }
-  // 换星球=用户主动前台操作：foreground=true 让重贴图（地球 5 张）
-  // 只等下一帧上传，不被首页自转的活动挡在静默窗口外
-  return preloadPlanetTextureBundle(name, true).then(function (bundle) {
+  // 换星球=用户主动前台操作：底图 foreground=true 只等下一帧上传，
+  // 不被首页自转的活动挡在静默窗口外；细节相另行后台补（见 attachPlanetDetails）
+  return preloadPlanetTextureBundle(name, true, true).then(function (bundle) {
     planetTextureCache.delete(name);
     return bundle;
+  });
+}
+
+/// 细节相：基础球已在画面上后，后台静默期补齐 normal/specular/云层/夜光，
+/// 就绪即挂到当前星球上（期间用户已经看到正确的星球，不再和滑动抢帧）。
+function attachPlanetDetails(name, pcfg) {
+  if (disposed || !planetMat) return;
+  // 缓存里若已带全套细节（从上一颗原样回存），mountPlanet 已建好，勿重复加载
+  const needNormal = !!pcfg.normal && !planetMat.normalMap;
+  const needSpec = !!pcfg.specular && !planetMat.specularMap;
+  const needClouds = !!pcfg.clouds && !clouds;
+  const needNight = !!pcfg.night && !nightShell;
+  if (!needNormal && !needSpec && !needClouds && !needNight) return;
+  const jobs = {};
+  if (needNormal) jobs.normal = loadTexAsync(pcfg.normal, false, false);
+  if (needSpec) jobs.specular = loadTexAsync(pcfg.specular, false, false);
+  if (needClouds) jobs.clouds = loadTexAsync(pcfg.clouds, true, false);
+  if (needNight) jobs.night = loadTexAsync(pcfg.night, true, false);
+  const keys = Object.keys(jobs);
+  Promise.all(keys.map(function (k) { return jobs[k]; })).then(function (vals) {
+    const d = {};
+    keys.forEach(function (k, i) { d[k] = vals[i]; });
+    // 期间用户可能又切走了：丢弃，不写到别的星球身上
+    if (disposed || planetName !== name || !planetMat) {
+      disposeTextureBundle(d);
+      return;
+    }
+    if (d.normal) {
+      planetMat.normalMap = d.normal;
+      planetMat.normalScale = new THREE.Vector2(0.85, 0.85);
+      planetMat.needsUpdate = true;
+    }
+    if (d.specular) {
+      planetMat.specularMap = d.specular;
+      planetMat.specular = new THREE.Color(0x66788c);
+      planetMat.shininess = 22;
+      detailBaseShininess = 22;
+      planetMat.needsUpdate = true;
+    }
+    if (d.night && !nightShell && planet) {
+      nightShell = new THREE.Mesh(
+        new THREE.SphereGeometry(1.001, 64, 64),
+        makeNightMat(d.night)
+      );
+      nightShell.name = 'night';
+      planet.add(nightShell);
+    }
+    if (d.clouds && !clouds) {
+      clouds = new THREE.Mesh(
+        new THREE.SphereGeometry(1.012, 64, 64),
+        new THREE.MeshLambertMaterial({
+          map: d.clouds,
+          blending: THREE.AdditiveBlending, transparent: true, opacity: 0.55, depthWrite: false,
+        })
+      );
+      pivot.add(clouds);
+    }
+    applySurfaceDetail();
   });
 }
 
@@ -926,6 +996,8 @@ window.setPlanet = function (nextPlanet, state) {
     // 新星球的高清档只预取字节（不解码、不上传、不动画布）：第一次放大不等文件
     prefetchTexturePath(lodSrc);
     planetSwapping = false;
+    // 基础球已接管画面 → 细节相后台补齐（不再和滑动动画抢帧）
+    attachPlanetDetails(nextName, nextCfg);
     // 通知宿主：新星球已接管（宿主据此确认切换完成）
     if (window.parent !== window) {
       window.parent.postMessage('planetReady:' + (params.get('token') || ''), '*');

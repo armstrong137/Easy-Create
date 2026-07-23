@@ -261,11 +261,77 @@ void main() {
     expect(sceneHtml, contains('function nextGpuUploadSlot(foreground)'));
     expect(
       sceneHtml,
-      contains('preloadPlanetTextureBundle(name, true)'),
-      reason: 'takePlanetTextureBundle（切球）必须以 foreground=true 上传',
+      contains('preloadPlanetTextureBundle(name, true, true)'),
+      reason: 'takePlanetTextureBundle（切球）必须以 foreground=true 上传基础相',
     );
     // 前台通道只等下一帧、不等静默
     expect(sceneHtml, contains('foreground ? nextFrameTick : waitForUploadWindow'));
+  });
+
+  test('切球分两相：基础球前台先出，细节贴图后台补挂', () {
+    // 地球 5 张贴图约 67MB 全走前台通道会和滑页动画抢帧（用户实测切换卡顿）。
+    // 只有底图（+土星环）走前台，normal/specular/云层/夜光留到基础球出画面后
+    // 由 attachPlanetDetails 以 foreground=false 补齐。
+    expect(sceneHtml, contains('function loadPlanetTextureBundle(pcfg, foreground, baseOnly)'));
+    expect(
+      sceneHtml,
+      contains('if (!baseOnly && pcfg.normal)'),
+      reason: '基础相只上传底图，细节贴图必须被 baseOnly 跳过',
+    );
+    expect(sceneHtml, contains('function attachPlanetDetails(name, pcfg)'));
+    expect(
+      sceneHtml,
+      contains('attachPlanetDetails(nextName, nextCfg)'),
+      reason: '换星球事务收尾必须触发细节相补挂',
+    );
+    final detailBody = functionBody(sceneHtml, 'attachPlanetDetails');
+    expect(
+      detailBody,
+      contains('loadTexAsync(pcfg.normal, false, false)'),
+      reason: '细节相走后台通道（foreground=false），不与滑动动画抢帧',
+    );
+    expect(
+      detailBody,
+      contains('planetName !== name'),
+      reason: '补挂前须校验仍是同一颗星球，否则丢弃（防串台）',
+    );
+    expect(
+      detailBody,
+      contains('!planetMat.normalMap'),
+      reason: '缓存里已带全套细节时不得重复加载',
+    );
+  });
+
+  test('换星球推迟到滑页落定后：贴图上传不与 PageView 动画抢主线程', () {
+    // PageView 的 onPageChanged 在动画中途（越过半页）就回调，此刻换星球会让
+    // 解码/上传和剩余滑动动画抢同一条主线程（用户实测"星球之间切换卡顿"）。
+    expect(homePage, contains('bool _pageSettling = false'));
+    expect(homePage, contains('_deferredSceneConfig'));
+    expect(homePage, contains('bool _onPageScroll(ScrollNotification n)'));
+    expect(
+      homePage,
+      contains('NotificationListener<ScrollNotification>'),
+      reason: 'PageView 须被滚动通知监听包裹，才能识别滑动起止',
+    );
+    final onConfig = homePage.substring(
+      homePage.indexOf('void _onSharedSceneConfig('),
+      homePage.indexOf('void _applySharedSceneConfig('),
+    );
+    expect(
+      onConfig,
+      contains('current.planet != config.planet'),
+      reason: '只推迟"换星球"，同一颗球内的缩放/旋转仍即时下发',
+    );
+    final flush = homePage.substring(
+      homePage.indexOf('bool _onPageScroll('),
+      homePage.length,
+    );
+    expect(flush, contains('ScrollEndNotification'));
+    expect(
+      homePage,
+      contains('_deferredSceneTimer ??= Timer('),
+      reason: '滚动结束通知万一没来也要兜底补发，不能把星球永远卡住',
+    );
   });
 
   test('切页时星空亮度延后到 planetReady 后更新，避免和贴图上传抢同一帧', () {
