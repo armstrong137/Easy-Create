@@ -22,7 +22,7 @@ void main() {
 
   // 建一条 小说→章→节 链路，返回节 id（灵感测试的挂靠点）
   Future<int> createSectionChain() async {
-    final novel = await novelRepo.createNovel(title: '测试小说', planet: 'earth');
+    final novel = (await novelRepo.createNovel(title: '测试小说'))!;
     final chapter = await novelRepo.createChapter(
       novelId: novel.id,
       title: '第一章',
@@ -34,10 +34,35 @@ void main() {
     return section.id;
   }
 
+  group('星球纹理循环与数量上限', () {
+    test('前五颗依次 earth→saturn，第六颗起五个一组循环（不复制上一颗）', () async {
+      const expected = [
+        'earth', 'mars', 'jupiter', 'venus', 'saturn', // 1~5
+        'earth', 'mars', 'jupiter', // 6~8：循环重复，第 6 颗回 earth
+      ];
+      final planets = <String>[];
+      for (var i = 0; i < expected.length; i++) {
+        final n = (await novelRepo.createNovel(title: '星球$i'))!;
+        planets.add(n.planet);
+      }
+      expect(planets, expected);
+    });
+
+    test('最多 30 颗：第 31 次创建返回 null，不入库', () async {
+      for (var i = 0; i < 30; i++) {
+        expect(await novelRepo.createNovel(title: '第$i颗'), isNotNull);
+      }
+      expect(await novelRepo.novelCount(), 30);
+      final overflow = await novelRepo.createNovel(title: '第31颗');
+      expect(overflow, isNull, reason: '达到 30 上限后不再创建');
+      expect(await novelRepo.novelCount(), 30, reason: '数量仍为 30');
+    });
+  });
+
   group('大纲结构 CRUD', () {
     test('创建小说/章/节，sort_order 依次递增', () async {
-      final n1 = await novelRepo.createNovel(title: '甲', planet: 'earth');
-      final n2 = await novelRepo.createNovel(title: '乙', planet: 'mars');
+      final n1 = (await novelRepo.createNovel(title: '甲'))!;
+      final n2 = (await novelRepo.createNovel(title: '乙'))!;
       expect(n1.sortOrder, 0);
       expect(n2.sortOrder, 1);
 
@@ -57,7 +82,7 @@ void main() {
     });
 
     test('并发建章：sort_order 与默认名互不重复（原子事务防连点竞态）', () async {
-      final novel = await novelRepo.createNovel(title: '书', planet: 'earth');
+      final novel = (await novelRepo.createNovel(title: '书'))!;
       // 同时（不 await）发起 5 次建章，模拟快速连点/生长动画期间再点。
       // 修复前"读 max→插入"非原子，5 次会读到同一 max、产生重复 sort_order 与重名。
       final results = await Future.wait([
@@ -72,7 +97,7 @@ void main() {
     });
 
     test('省略标题时按新序号自动命名（引子 → 第一章 …；节 第一节 …）', () async {
-      final novel = await novelRepo.createNovel(title: '书', planet: 'earth');
+      final novel = (await novelRepo.createNovel(title: '书'))!;
       final c0 = await novelRepo.createChapter(novelId: novel.id);
       final c1 = await novelRepo.createChapter(novelId: novel.id);
       expect([c0.title, c1.title], ['引子', '第一章']);
@@ -83,7 +108,7 @@ void main() {
     });
 
     test('重命名小说/章/节生效', () async {
-      final novel = await novelRepo.createNovel(title: '旧名', planet: 'earth');
+      final novel = (await novelRepo.createNovel(title: '旧名'))!;
       await novelRepo.renameNovel(novel.id, '新名');
       final novels = await novelRepo.watchNovels().first;
       expect(novels.single.title, '新名');
@@ -103,7 +128,7 @@ void main() {
 
   group('创作能量计数（首页转速/亮度数据源）', () {
     test('新小说创作量为 0；章节与挂靠灵感累加；魔毯灵感不计入', () async {
-      final novel = await novelRepo.createNovel(title: '书', planet: 'earth');
+      final novel = (await novelRepo.createNovel(title: '书'))!;
       expect(await novelRepo.watchCreativeCount(novel.id).first, 0);
 
       final chapter = await novelRepo.createChapter(
@@ -141,8 +166,8 @@ void main() {
       expect(await novelRepo.watchGlobalCreativeCount().first, 0);
 
       // 两本小说：共 2 章 + 1 节
-      final n1 = await novelRepo.createNovel(title: '甲', planet: 'earth');
-      final n2 = await novelRepo.createNovel(title: '乙', planet: 'mars');
+      final n1 = (await novelRepo.createNovel(title: '甲'))!;
+      final n2 = (await novelRepo.createNovel(title: '乙'))!;
       final c1 = await novelRepo.createChapter(novelId: n1.id, title: '一');
       await novelRepo.createChapter(novelId: n2.id, title: '一');
       final s1 = await novelRepo.createSection(chapterId: c1.id, title: '节');

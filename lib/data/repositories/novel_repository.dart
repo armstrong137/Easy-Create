@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../core/chinese_numbers.dart';
+import '../../core/planet_constants.dart';
 import '../../domain/entities/outline_chapter.dart';
 import '../database/app_database.dart';
 
@@ -20,22 +21,35 @@ class NovelRepository {
     _db.novels,
   )..orderBy([(t) => OrderingTerm.asc(t.sortOrder)])).watch();
 
-  /// 创建小说：排在现有星球末尾
-  Future<Novel> createNovel({
-    required String title,
-    required String planet,
-  }) async {
-    final maxOrder = await _maxSortOrder(_db.novels, _db.novels.sortOrder);
-    return _db
-        .into(_db.novels)
-        .insertReturning(
-          NovelsCompanion.insert(
-            title: title,
-            planet: planet,
-            sortOrder: maxOrder + 1,
-            createdAt: DateTime.now(),
-          ),
-        );
+  /// 当前星球总数。
+  Future<int> novelCount() async {
+    final c = _db.novels.id.count();
+    final row = await (_db.selectOnly(_db.novels)..addColumns([c])).getSingle();
+    return row.read(c) ?? 0;
+  }
+
+  /// 创建小说：排在现有星球末尾。
+  ///
+  /// 纹理与上限在**事务内按数据库真实数量原子决定**（不靠异步流长度，
+  /// 快速连建也不会重复上一颗）：
+  /// - 纹理 = kPlanetTextures[现有数量 % 5]（第 6 颗起循环 earth→mars→…）；
+  /// - 已达 [kMaxNovels] 上限时返回 null，不创建。
+  Future<Novel?> createNovel({required String title}) {
+    return _db.transaction(() async {
+      final count = await novelCount();
+      if (count >= kMaxNovels) return null;
+      final maxOrder = await _maxSortOrder(_db.novels, _db.novels.sortOrder);
+      return _db
+          .into(_db.novels)
+          .insertReturning(
+            NovelsCompanion.insert(
+              title: title,
+              planet: planetForIndex(count),
+              sortOrder: maxOrder + 1,
+              createdAt: DateTime.now(),
+            ),
+          );
+    });
   }
 
   /// 重命名小说

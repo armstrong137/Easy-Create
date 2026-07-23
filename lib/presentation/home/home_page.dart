@@ -7,6 +7,7 @@ import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/creative_energy.dart';
+import '../../core/planet_constants.dart';
 import '../../core/spin_inertia.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
@@ -14,6 +15,7 @@ import '../outline/outline_page.dart';
 import '../settings/settings_page.dart';
 import '../shared/quick_capture/quick_capture_layer.dart'
     show captureSheetOpenProvider;
+import '../shared/soft_toast.dart';
 import 'orbiting_inspirations.dart';
 import 'planet_scene/planet_scene.dart';
 import 'planet_view.dart';
@@ -45,9 +47,6 @@ final globalCreativeCountProvider = StreamProvider<int>(
 final planetAssetsProvider = FutureProvider.family<PlanetShaderAssets, String>(
   (ref, planet) => PlanetShaderAssets.load(planet),
 );
-
-/// 可选行星纹理（新建星球按当前数量轮换分配）
-const kPlanetTextures = ['earth', 'mars', 'jupiter', 'venus', 'saturn'];
 
 /// 3D 星球透明舞台倍率：画布放大同时镜头等比拉远，
 /// 初始视觉大小不变，放大时星球有空间铺开而不撞画布方形边缘。
@@ -276,8 +275,14 @@ class _HomePageState extends ConsumerState<HomePage> {
     return out;
   }
 
-  /// 点击标题创建新星球：输入书名，纹理按现有数量轮换分配
+  /// 点击标题创建新星球：输入书名。纹理循环与 30 颗上限由仓库层原子决定
+  /// （第 6 颗起重复 earth→mars→… 五个一组循环，不再复制上一颗）。
   Future<void> _createNovel() async {
+    // 已满先拦截，连书名都不用输
+    if ((ref.read(novelsProvider).value?.length ?? 0) >= kMaxNovels) {
+      showSoftToast(context, '宇宙已满，最多只能点亮 $kMaxNovels 颗星球');
+      return;
+    }
     final title = await _promptText(
       context: context,
       heading: '创造一颗新星球',
@@ -289,14 +294,13 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     final name = title?.trim() ?? '';
     if (name.isEmpty) return;
-    final count = ref.read(novelsProvider).value?.length ?? 0;
-    final novel = await ref
-        .read(novelRepositoryProvider)
-        .createNovel(
-          title: name,
-          planet: kPlanetTextures[count % kPlanetTextures.length],
-        );
+    final novel = await ref.read(novelRepositoryProvider).createNovel(title: name);
     if (!mounted) return;
+    if (novel == null) {
+      // 输入书名期间被别处建满（并发兜底）
+      showSoftToast(context, '宇宙已满，最多只能点亮 $kMaxNovels 颗星球');
+      return;
+    }
     setState(() => _pendingNovelId = novel.id);
     _scheduleCreatedNovelJump(ref.read(novelsProvider).value ?? const []);
   }
