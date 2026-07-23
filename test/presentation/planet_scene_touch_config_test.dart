@@ -254,6 +254,20 @@ void main() {
     expect(sceneHtml, contains('unmountPlanet(old, true)'));
   });
 
+  test('切星球是前台上传：不被首页自转的活动卡在静默窗口外', () {
+    // 用户实测：新建第 6 颗（地球，5 张重贴图）显示成上一颗，进出大纲才刷新。
+    // 根因是切球贴图上传走后台"静默期才传"，首页星球持续自转刷新
+    // lastActivityTs，静默窗口迟迟不来 → 上传卡很多秒。切球必须走前台通道。
+    expect(sceneHtml, contains('function nextGpuUploadSlot(foreground)'));
+    expect(
+      sceneHtml,
+      contains('preloadPlanetTextureBundle(name, true)'),
+      reason: 'takePlanetTextureBundle（切球）必须以 foreground=true 上传',
+    );
+    // 前台通道只等下一帧、不等静默
+    expect(sceneHtml, contains('foreground ? nextFrameTick : waitForUploadWindow'));
+  });
+
   test('切页时星空亮度延后到 planetReady 后更新，避免和贴图上传抢同一帧', () {
     expect(homePage, contains('_visibleStarfieldPage'));
     expect(homePage, contains('_pendingStarfieldPage'));

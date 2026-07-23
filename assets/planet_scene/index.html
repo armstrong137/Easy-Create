@@ -462,13 +462,18 @@ function waitForUploadWindow() {
     attempt();
   });
 }
-// 所有重 GPU 任务共用的串行预算槽：绝不在同一帧堆两个重活
-function nextGpuUploadSlot() {
-  const slot = gpuUploadChain.then(waitForUploadWindow);
+// 所有重 GPU 任务共用的串行预算槽：绝不在同一帧堆两个重活。
+// foreground=true（用户主动切星球）只等下一帧、不等静默——否则首页星球
+// 一直自转刷新 lastActivityTs，静默窗口迟迟不来，重贴图（地球 5 张）上传
+// 会卡到很多秒，表现为"切到地球却一直显示上一颗，进出大纲才刷新"。
+// foreground=false（后台预热/缩放高清）仍等静默窗口，避免抢主线程。
+function nextGpuUploadSlot(foreground) {
+  const wait = foreground ? nextFrameTick : waitForUploadWindow;
+  const slot = gpuUploadChain.then(wait);
   gpuUploadChain = slot.catch(function () {});
   return slot;
 }
-async function createTextureChunked(bitmap, srgbFlag, mipmaps) {
+async function createTextureChunked(bitmap, srgbFlag, mipmaps, foreground) {
   const w = bitmap.width, h = bitmap.height;
   const tex = new THREE.DataTexture(null, w, h, THREE.RGBAFormat, THREE.UnsignedByteType);
   tex.flipY = false; // ImageBitmap 已在解码阶段翻转
@@ -479,7 +484,7 @@ async function createTextureChunked(bitmap, srgbFlag, mipmaps) {
   tex.magFilter = THREE.LinearFilter;
   tex.needsUpdate = true;
   // 大纹理显存分配本身也是重活（6144 档 ≈75MB），同样排队、不打手势热帧
-  await nextGpuUploadSlot();
+  await nextGpuUploadSlot(foreground);
   if (disposed) { bitmap.close(); return tex; }
   renderer.initTexture(tex); // data 为 null：只分配显存，不搬像素
   const pos = new THREE.Vector2();
@@ -489,7 +494,7 @@ async function createTextureChunked(bitmap, srgbFlag, mipmaps) {
     const bandRows = Math.max(16, Math.floor(adaptiveBandBytes / (w * 4)));
     const bh = Math.min(bandRows, h - y);
     const slice = await createImageBitmap(bitmap, 0, y, w, bh); // 裁剪不占主线程
-    await nextGpuUploadSlot();
+    await nextGpuUploadSlot(foreground);
     if (disposed) { slice.close(); break; }
     // 末带上传完由 copyTextureToTexture 顺手 generateMipmap（只此一次）
     tex.generateMipmaps = !!mipmaps && y + bh >= h;
@@ -717,13 +722,13 @@ function loadTexLegacy(path, srgbFlag) {
     t.anisotropy = renderer.capabilities.getMaxAnisotropy();
   });
 }
-function loadTexAsync(path, srgbFlag) {
+function loadTexAsync(path, srgbFlag, foreground) {
   if (!renderer.capabilities.isWebGL2 || !/\.jpe?g$/i.test(path)) {
     return loadTexLegacy(path, srgbFlag);
   }
   return decodeImageOffMainThread(path)
     .then(function (decoded) { return createImageBitmap(decoded, { imageOrientation: 'flipY' }); })
-    .then(function (bitmap) { return createTextureChunked(bitmap, srgbFlag, true); })
+    .then(function (bitmap) { return createTextureChunked(bitmap, srgbFlag, true, foreground); })
     .catch(function () { return loadTexLegacy(path, srgbFlag); });
 }
 const planetTextureCache = new Map();
@@ -740,14 +745,14 @@ function disposeTextureBundle(bundle) {
   });
 }
 
-function loadPlanetTextureBundle(pcfg) {
+function loadPlanetTextureBundle(pcfg, foreground) {
   const keys = ['map'];
-  const jobs = [loadTexAsync(pcfg.map, true)];
-  if (pcfg.normal) { keys.push('normal'); jobs.push(loadTexAsync(pcfg.normal, false)); }
-  if (pcfg.specular) { keys.push('specular'); jobs.push(loadTexAsync(pcfg.specular, false)); }
-  if (pcfg.clouds) { keys.push('clouds'); jobs.push(loadTexAsync(pcfg.clouds, true)); }
-  if (pcfg.night) { keys.push('night'); jobs.push(loadTexAsync(pcfg.night, true)); }
-  if (pcfg.ring) { keys.push('ring'); jobs.push(loadTexAsync('textures/saturn_ring.png', true)); }
+  const jobs = [loadTexAsync(pcfg.map, true, foreground)];
+  if (pcfg.normal) { keys.push('normal'); jobs.push(loadTexAsync(pcfg.normal, false, foreground)); }
+  if (pcfg.specular) { keys.push('specular'); jobs.push(loadTexAsync(pcfg.specular, false, foreground)); }
+  if (pcfg.clouds) { keys.push('clouds'); jobs.push(loadTexAsync(pcfg.clouds, true, foreground)); }
+  if (pcfg.night) { keys.push('night'); jobs.push(loadTexAsync(pcfg.night, true, foreground)); }
+  if (pcfg.ring) { keys.push('ring'); jobs.push(loadTexAsync('textures/saturn_ring.png', true, foreground)); }
   return Promise.all(jobs).then(function (vals) {
     const out = {};
     keys.forEach(function (k, i) { out[k] = vals[i]; });
@@ -755,7 +760,7 @@ function loadPlanetTextureBundle(pcfg) {
   });
 }
 
-function preloadPlanetTextureBundle(name) {
+function preloadPlanetTextureBundle(name, foreground) {
   if (!name || !PLANETS[name]) return Promise.resolve(null);
   const cached = planetTextureCache.get(name);
   if (cached) {
@@ -768,7 +773,7 @@ function preloadPlanetTextureBundle(name) {
     lastUsed: performance.now(),
     promise: null,
   };
-  record.promise = loadPlanetTextureBundle(PLANETS[name]).then(function (bundle) {
+  record.promise = loadPlanetTextureBundle(PLANETS[name], foreground).then(function (bundle) {
     if (disposed) {
       disposeTextureBundle(bundle);
       return null;
@@ -787,7 +792,9 @@ function takePlanetTextureBundle(name) {
     planetTextureCache.delete(name);
     return cached.promise;
   }
-  return preloadPlanetTextureBundle(name).then(function (bundle) {
+  // 换星球=用户主动前台操作：foreground=true 让重贴图（地球 5 张）
+  // 只等下一帧上传，不被首页自转的活动挡在静默窗口外
+  return preloadPlanetTextureBundle(name, true).then(function (bundle) {
     planetTextureCache.delete(name);
     return bundle;
   });
