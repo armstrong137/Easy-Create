@@ -27,6 +27,7 @@ class PlanetScene extends ConsumerStatefulWidget {
     this.prewarmPlanets = const [],
     this.active = true,
     this.visible = true,
+    this.fullDetail = false,
     this.snapshotRequestId = 0,
     this.onReady,
     this.onSnapshot,
@@ -61,6 +62,10 @@ class PlanetScene extends ConsumerStatefulWidget {
   /// 首页路由是否在最顶（未被大纲页覆盖）。移动端 WebView 全程存活、不销毁；
   /// 覆盖时暂停渲染省电，返回即恢复（接口与 web 端一致）。
   final bool visible;
+
+  /// 本次换星球是否整包前台一次上传（新建星球用），接口与 web 端一致。
+  /// 为真时经 setPlanet 的 state.immediate 让场景整包前台、接管即全清。
+  final bool fullDetail;
 
   /// 快照请求序号（移动端不摘除场景，暂无实际动作，保留同名接口）
   final int snapshotRequestId;
@@ -131,7 +136,9 @@ class _PlanetSceneState extends ConsumerState<PlanetScene> {
       _web?.runJavaScript(
         "setPlanet('${widget.planet}', "
         '{yaw:${widget.yaw}, pitch:${widget.pitch}, '
-        'zoom:${widget.zoom}, spin:${widget.spin}})',
+        'zoom:${widget.zoom}, spin:${widget.spin}, '
+        // 新建星球：整包前台一次上传，接管即全清（场景侧读 state.immediate）
+        'immediate:${widget.fullDetail}})',
       );
     } else {
       if (old.spin != widget.spin) {

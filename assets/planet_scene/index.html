@@ -798,15 +798,18 @@ function preloadPlanetTextureBundle(name, foreground, baseOnly) {
   return record.promise;
 }
 
-function takePlanetTextureBundle(name) {
+function takePlanetTextureBundle(name, full) {
   const cached = planetTextureCache.get(name);
   if (cached) {
     planetTextureCache.delete(name);
     return cached.promise;
   }
   // 换星球=用户主动前台操作：底图 foreground=true 只等下一帧上传，
-  // 不被首页自转的活动挡在静默窗口外；细节相另行后台补（见 attachPlanetDetails）
-  return preloadPlanetTextureBundle(name, true, true).then(function (bundle) {
+  // 不被首页自转的活动挡在静默窗口外。
+  // full=true（新建星球，jumpToPage 无滑页动画）：整包前台一次上传，接管即全清，
+  //   不再走"底图先出、细节后补"两相 → 用户新建时一步到位（见 setPlanet 的 immediate）。
+  // full=false（滑页切换）：只前台上传底图（baseOnly），细节相另行后台补（attachPlanetDetails）。
+  return preloadPlanetTextureBundle(name, true, !full).then(function (bundle) {
     planetTextureCache.delete(name);
     return bundle;
   });
@@ -943,6 +946,9 @@ window.setPlanet = function (nextPlanet, state) {
   noteActivity();
   if (state) applyViewState(state);
   if (!nextPlanet || !PLANETS[nextPlanet] || disposed) return;
+  // immediate（新建星球）：整包前台一次上传，接管即全清，不走两相（消除"低清→高清"）。
+  // 由宿主经消息里的 state.immediate 传入（新建走 jumpToPage、无滑页动画，可整包前台）。
+  const immediate = !!(state && state.immediate);
   if (planetSwapping) {
     // 换球途中又来新目标：记住最新的，本轮结束后接着换（连续快滑不丢帧）
     pendingPlanet = nextPlanet === planetName ? null : nextPlanet;
@@ -952,7 +958,7 @@ window.setPlanet = function (nextPlanet, state) {
   planetSwapping = true;
   const nextName = nextPlanet;
   const nextCfg = PLANETS[nextName];
-  takePlanetTextureBundle(nextName).then(function (pre) {
+  takePlanetTextureBundle(nextName, immediate).then(function (pre) {
     if (disposed) { planetSwapping = false; return; }
     const prevName = planetName;
     const old = { planet: planet, nightShell: nightShell, clouds: clouds, ring: ring, baseTex: baseTex };

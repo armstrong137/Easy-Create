@@ -96,6 +96,11 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   int? _pendingNovelId;
 
+  /// 刚新建、尚未揭幕的星球 id：其场景 config 带 fullDetail=true，
+  /// 让新贴图整包前台一次上传、接管即全清（消除新建时的"低清→高清"）。
+  /// 揭幕（_onPlanetSceneReady）后清空，避免之后滑页回该星球误走前台全量卡顿。
+  int? _immediateDetailNovelId;
+
   _SharedPlanetSceneConfig? _sharedSceneConfig;
 
   /// 翻页动画是否在飞行中。PageView 的 onPageChanged 在动画**中途**（越过半页）
@@ -160,6 +165,8 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   void _onPlanetSceneReady() {
     _scheduleSceneReveal();
+    // 新建星球已整包接管（全清）→ 清除一步到位标记，之后滑页回该星球恢复常规两相
+    if (_immediateDetailNovelId != null) _immediateDetailNovelId = null;
     final pending = _pendingStarfieldPage;
     if (pending != null && pending != _visibleStarfieldPage) {
       setState(() {
@@ -348,7 +355,11 @@ class _HomePageState extends ConsumerState<HomePage> {
       showSoftToast(context, '宇宙已满，最多只能点亮 $kMaxNovels 颗星球');
       return;
     }
-    setState(() => _pendingNovelId = novel.id);
+    setState(() {
+      _pendingNovelId = novel.id;
+      // 新建这颗星球整包前台一次上传，接管即全清（配合替身盖住加载窗口）
+      _immediateDetailNovelId = novel.id;
+    });
     _scheduleCreatedNovelJump(ref.read(novelsProvider).value ?? const []);
   }
 
@@ -496,6 +507,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                           active: i == safePage,
                           sharedSceneReady: _sharedSceneReady,
                           sharedSceneSnapshot: _sharedSceneSnapshot,
+                          immediateDetailNovelId: _immediateDetailNovelId,
                           onSharedSceneConfig: _onSharedSceneConfig,
                           onRequestSnapshotBeforeRoute:
                               _awaitSnapshotBeforeRoute,
@@ -580,7 +592,16 @@ class _HomePageState extends ConsumerState<HomePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _pendingNovelId != pendingId) return;
       _pendingNovelId = null;
-      setState(() => _currentPage = target);
+      setState(() {
+        _currentPage = target;
+        // 新建跳页时复位就绪：让新页正确星球、正确尺寸的替身（_PlanetStandIn）
+        // 不透明盖住共享场景的加载窗口——否则场景仍渲染上一颗星球的贴图、又被塞进
+        // 新星球尺寸框，露出"放大的金星/缩小的土星"。新贴图接管发 planetReady 后
+        // 由 _scheduleSceneReveal 重新置真、替身淡出交叉到活场景。
+        _sharedSceneReady = false;
+      });
+      // 兜底：新星球场景万一不发 planetReady，也 3s 后强制揭幕，替身不永久停留
+      _armSceneRevealFallback();
       if (!_pageController.hasClients) return;
       _pageController.jumpToPage(target);
     });
@@ -663,6 +684,7 @@ class _SharedPlanetSceneConfig {
     required this.zoom,
     required this.yaw,
     required this.pitch,
+    this.fullDetail = false,
   });
 
   final int novelId;
@@ -674,6 +696,10 @@ class _SharedPlanetSceneConfig {
   final double yaw;
   final double pitch;
 
+  /// 本颗为刚新建的星球：换贴图时整包前台一次上传、接管即全清（不走两相）。
+  /// 揭幕后由宿主清除，之后滑页回该星球恢复常规两相（贴图已缓存，两相无关）。
+  final bool fullDetail;
+
   @override
   bool operator ==(Object other) =>
       other is _SharedPlanetSceneConfig &&
@@ -684,7 +710,8 @@ class _SharedPlanetSceneConfig {
       other.stageScale == stageScale &&
       other.zoom == zoom &&
       other.yaw == yaw &&
-      other.pitch == pitch;
+      other.pitch == pitch &&
+      other.fullDetail == fullDetail;
 
   @override
   int get hashCode => Object.hash(
@@ -696,6 +723,7 @@ class _SharedPlanetSceneConfig {
     zoom,
     yaw,
     pitch,
+    fullDetail,
   );
 }
 
@@ -739,6 +767,8 @@ class _SharedPlanetSceneLayer extends StatelessWidget {
               prewarmPlanets: prewarmPlanets,
               active: true,
               visible: visible,
+              // 新建星球：整包前台一次上传、接管即全清（滑页切换恒 false 走两相）
+              fullDetail: config.fullDetail,
               snapshotRequestId: snapshotRequestId,
               onReady: onReady,
               onSnapshot: onSnapshot,
@@ -759,12 +789,16 @@ class _PlanetPage extends ConsumerStatefulWidget {
     required this.active,
     required this.sharedSceneReady,
     required this.sharedSceneSnapshot,
+    required this.immediateDetailNovelId,
     required this.onSharedSceneConfig,
     required this.onRequestSnapshotBeforeRoute,
   });
 
   final Novel novel;
   final List<Inspiration> pool;
+
+  /// 若等于本页 novel.id：本颗是刚新建的星球，换贴图走整包前台一次上传（fullDetail）
+  final int? immediateDetailNovelId;
 
   /// 是否为当前正在看的页（决定谁渲染、谁接管星空亮度/手势）
   final bool active;
@@ -1012,6 +1046,8 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
             zoom: _zoom,
             yaw: _spin.yaw,
             pitch: _spin.pitch,
+            // 刚新建这颗：整包前台一次上传，接管即全清（替身盖住上传窗口）
+            fullDetail: novel.id == widget.immediateDetailNovelId,
           );
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && widget.active) widget.onSharedSceneConfig(config);

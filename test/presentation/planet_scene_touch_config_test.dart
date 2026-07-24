@@ -261,8 +261,8 @@ void main() {
     expect(sceneHtml, contains('function nextGpuUploadSlot(foreground)'));
     expect(
       sceneHtml,
-      contains('preloadPlanetTextureBundle(name, true, true)'),
-      reason: 'takePlanetTextureBundle（切球）必须以 foreground=true 上传基础相',
+      contains('preloadPlanetTextureBundle(name, true, !full)'),
+      reason: 'takePlanetTextureBundle（切球）必须以 foreground=true 上传（滑页只基础相）',
     );
     // 前台通道只等下一帧、不等静默
     expect(sceneHtml, contains('foreground ? nextFrameTick : waitForUploadWindow'));
@@ -332,6 +332,57 @@ void main() {
       contains('_deferredSceneTimer ??= Timer('),
       reason: '滚动结束通知万一没来也要兜底补发，不能把星球永远卡住',
     );
+  });
+
+  test('新建星球时复位就绪：让正确星球/正确尺寸的替身盖住加载窗口', () {
+    // 新建用 jumpToPage 瞬跳新页，Flutter 容器立刻变新星球尺寸（土星 1.4×），
+    // 但共享场景仍渲染上一颗星球贴图 → 露出"放大的金星/缩小的土星"。新建时须复位
+    // _sharedSceneReady，让 _PlanetStandIn（正确星球预渲染快照）不透明盖住加载窗口。
+    final jump = homePage.substring(
+      homePage.indexOf('void _scheduleCreatedNovelJump('),
+      homePage.indexOf('/// 启动封面：静态深空照片'),
+    );
+    expect(
+      jump,
+      contains('_sharedSceneReady = false'),
+      reason: '新建跳页须复位就绪，替身才会盖住上一颗星球的加载窗口',
+    );
+    expect(
+      jump,
+      contains('_armSceneRevealFallback()'),
+      reason: '新星球场景万一不发 planetReady 也要兜底揭幕，替身不永久停留',
+    );
+    // 揭幕后清标记：否则之后滑页回该星球会重走前台全量、又在滑动里卡顿
+    final ready = homePage.substring(
+      homePage.indexOf('void _onPlanetSceneReady('),
+      homePage.indexOf('void _precachePlanetStandIns('),
+    );
+    expect(ready, contains('_immediateDetailNovelId = null'));
+  });
+
+  test('新建星球走整包前台一次上传：接管即全清，消除"低清→高清"', () {
+    // 用户要求新建时一步到位。创建是 jumpToPage、无滑页动画，可整包前台上传，
+    // 不再走"底图前台 + 细节后台"两相（那是为保护滑动帧而设，滑页仍保留）。
+    expect(homePage, contains('int? _immediateDetailNovelId'));
+    expect(
+      homePage,
+      contains('fullDetail: novel.id == widget.immediateDetailNovelId'),
+      reason: '仅刚新建的那颗星球 config 带 fullDetail=true',
+    );
+    expect(homePage, contains('fullDetail: config.fullDetail'));
+    // 两端场景壳都把 fullDetail 经换星球消息里的 immediate 下发
+    expect(webWrapper, contains('final bool fullDetail'));
+    expect(webWrapper, contains("'immediate': widget.fullDetail"));
+    expect(ioWrapper, contains('final bool fullDetail'));
+    expect(ioWrapper, contains('immediate:\${widget.fullDetail}'));
+    // 场景侧：immediate 走整包前台（takePlanetTextureBundle 的 full=true）
+    expect(sceneHtml, contains('function takePlanetTextureBundle(name, full)'));
+    expect(
+      sceneHtml,
+      contains('const immediate = !!(state && state.immediate)'),
+      reason: 'setPlanet 须从宿主消息 state.immediate 读取整包前台标志',
+    );
+    expect(sceneHtml, contains('takePlanetTextureBundle(nextName, immediate)'));
   });
 
   test('切页时星空亮度延后到 planetReady 后更新，避免和贴图上传抢同一帧', () {
