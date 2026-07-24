@@ -74,8 +74,9 @@ class PlanetScene extends StatefulWidget {
   /// 供返回时替身用；不做周期快照——PNG 编码在主线程是固定 jank 源）
   final int snapshotRequestId;
 
-  /// 场景首帧渲染完成（宿主用它淡出加载期的星球替身）
-  final VoidCallback? onReady;
+  /// 场景就绪/换星球接管完成，回传**已接管的星球名**：宿主据此只在场景真正
+  /// 换到当前页星球时才淡出替身（快速新建时串行换球会滞后，不能见 ready 就揭幕）。
+  final ValueChanged<String>? onReady;
 
   /// 场景低清透明快照（宿主返回首页/重建 iframe 时用来兜底，避免露出空白）。
   final ValueChanged<String>? onSnapshot;
@@ -99,10 +100,14 @@ class _PlanetSceneState extends State<PlanetScene> {
     final data = e.data;
     if (!data.isA<JSString>()) return;
     final text = (data as JSString).toDart;
-    // 首帧就绪 / 切星球原地换贴图接管完成——都视作"活场景已在位"
-    if (text == 'sceneReady:$_seq' || text == 'planetReady:$_seq') {
-      widget.onReady?.call();
-      return;
+    // 首帧就绪 / 切星球原地换贴图接管完成——形如 sceneReady:$seq:planet、
+    // planetReady:$seq:planet，尾段是已接管的星球名，回传给宿主判断是否揭幕。
+    final readyPrefixes = ['sceneReady:$_seq:', 'planetReady:$_seq:'];
+    for (final prefix in readyPrefixes) {
+      if (text.startsWith(prefix)) {
+        widget.onReady?.call(text.substring(prefix.length));
+        return;
+      }
     }
     final snapshotPrefix = 'sceneSnapshot:$_seq:';
     if (text.startsWith(snapshotPrefix)) {

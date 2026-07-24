@@ -163,7 +163,12 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   void _onSceneReadyTick() => _maybeRevealCover();
 
-  void _onPlanetSceneReady() {
+  void _onPlanetSceneReady(String readyPlanet) {
+    // 关键：只在场景**真正换到当前页星球**时才揭幕。共享场景是串行换球队列，
+    // 快速新建时会滞后 1~2 颗；若任一次 planetReady 都揭幕，替身会在场景还停在
+    // 滞后的旧星球时淡出，露出错星球（用户实测"新建先出地球 / 后面还出小土星"）。
+    final want = _sharedSceneConfig?.planet;
+    if (want != null && readyPlanet != want) return;
     _scheduleSceneReveal();
     // 新建星球已整包接管（全清）→ 清除一步到位标记，之后滑页回该星球恢复常规两相
     if (_immediateDetailNovelId != null) _immediateDetailNovelId = null;
@@ -297,7 +302,10 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   void _armSceneRevealFallback() {
-    if (_sceneFallbackTimer != null) return;
+    // 每次新建都重置这个兜底（trail 最后一次新建 3s），避免用第一次新建的计时
+    // 在场景尚未追上当前页星球时就强揭幕。正常路径由 planetReady 匹配揭幕；
+    // 这里只是场景彻底不发就绪信号时的安全阀。
+    _sceneFallbackTimer?.cancel();
     _sceneFallbackTimer = Timer(const Duration(milliseconds: 3000), () {
       _sceneFallbackTimer = null;
       if (!mounted || _sharedSceneReady || _sharedSceneConfig == null) return;
@@ -741,7 +749,7 @@ class _SharedPlanetSceneLayer extends StatelessWidget {
   final List<String> prewarmPlanets;
   final bool visible;
   final int snapshotRequestId;
-  final VoidCallback onReady;
+  final ValueChanged<String> onReady;
   final ValueChanged<String> onSnapshot;
 
   @override

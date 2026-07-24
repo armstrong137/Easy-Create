@@ -70,8 +70,9 @@ class PlanetScene extends ConsumerStatefulWidget {
   /// 快照请求序号（移动端不摘除场景，暂无实际动作，保留同名接口）
   final int snapshotRequestId;
 
-  /// 场景首帧渲染完成（宿主用它淡出加载期的星球替身）
-  final VoidCallback? onReady;
+  /// 场景就绪/换星球接管完成，回传**已接管的星球名**：宿主据此只在场景真正
+  /// 换到当前页星球时才淡出替身（快速新建时串行换球会滞后，不能见 ready 就揭幕）。
+  final ValueChanged<String>? onReady;
 
   /// Web 端 iframe 返回的场景快照；移动端 WebView 暂不使用，保留同名接口。
   final ValueChanged<String>? onSnapshot;
@@ -107,9 +108,17 @@ class _PlanetSceneState extends ConsumerState<PlanetScene> {
       ..addJavaScriptChannel(
         'SceneBridge',
         onMessageReceived: (msg) {
-          // 首帧就绪信号（其余为 FPS 遥测，真机验收时读取）
+          // 首帧就绪信号（其余为 FPS 遥测，真机验收时读取）：带回已接管星球名，
+          // 宿主据此只在场景换到当前页星球时才揭幕替身。
           if (msg.message.contains('"ready":true')) {
-            widget.onReady?.call();
+            String? planet;
+            try {
+              final decoded = jsonDecode(msg.message);
+              if (decoded is Map && decoded['planet'] is String) {
+                planet = decoded['planet'] as String;
+              }
+            } catch (_) {}
+            widget.onReady?.call(planet ?? widget.planet);
           }
         },
       )

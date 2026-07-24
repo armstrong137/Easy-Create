@@ -66,7 +66,8 @@ void main() {
       expect(homePage, contains('_sceneRevealTimer'));
       expect(homePage, contains('Duration(milliseconds: 220)'));
       expect(homePage, contains('onReady: _onPlanetSceneReady'));
-      expect(homePage, contains('void _onPlanetSceneReady()'));
+      // 揭幕回调带回已接管星球名：只在场景真正换到当前页星球时才淡出替身
+      expect(homePage, contains('void _onPlanetSceneReady(String readyPlanet)'));
     },
   );
 

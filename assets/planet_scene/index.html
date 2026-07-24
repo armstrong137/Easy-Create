@@ -1006,7 +1006,9 @@ window.setPlanet = function (nextPlanet, state) {
     attachPlanetDetails(nextName, nextCfg);
     // 通知宿主：新星球已接管（宿主据此确认切换完成）
     if (window.parent !== window) {
-      window.parent.postMessage('planetReady:' + (params.get('token') || ''), '*');
+      // 带上接管后的星球名：宿主只在"场景真正换到当前页星球"时才揭幕替身，
+      // 否则快速新建时串行换球滞后，替身会淡出到滞后的错星球（先出地球/小土星）。
+      window.parent.postMessage('planetReady:' + (params.get('token') || '') + ':' + planetName, '*');
     }
     // 若途中又指定了新目标，接着换
     if (pendingPlanet && pendingPlanet !== planetName) {
@@ -1093,11 +1095,12 @@ function animate() {
     notified = true;
     renderer.domElement.style.opacity = '1';
     if (window.SceneBridge) {
-      SceneBridge.postMessage(JSON.stringify({ ready: true }));
+      SceneBridge.postMessage(JSON.stringify({ ready: true, planet: planetName }));
     }
     if (window.parent !== window) {
-      // 带回宿主下发的 token：同页多颗星球时各自只认自己的就绪信号
-      window.parent.postMessage('sceneReady:' + (params.get('token') || ''), '*');
+      // 带回宿主下发的 token + 当前星球名：同页多颗星球各认自己的就绪信号，
+      // 且宿主据星球名判断"场景已换到当前页星球"才揭幕
+      window.parent.postMessage('sceneReady:' + (params.get('token') || '') + ':' + planetName, '*');
       // 就绪拍一张兜底快照。不做周期快照：toDataURL 的 PNG 编码在
       // 主线程（约 20-50ms），每 5 秒一次固定 jank（用户实测"会变卡"）；
       // 之后由宿主在进大纲前请求最新一张（message.snapshot）

@@ -385,6 +385,35 @@ void main() {
     expect(sceneHtml, contains('takePlanetTextureBundle(nextName, immediate)'));
   });
 
+  test('揭幕只认当前页星球：串行换球滞后时替身不淡出到错星球', () {
+    // 根因（用户实测"新建先出地球 / 后面还出小土星"）：共享场景是串行换球队列，
+    // 快速新建时滞后 1~2 颗；旧实现见任一 planetReady 就揭幕，替身在场景仍停在
+    // 滞后旧星球时淡出，露出错星球。修复：ready 信号带回已接管星球名，宿主只在
+    // 场景真正换到当前页星球时才揭幕。
+    // 1) 场景就绪信号必须带星球名
+    expect(sceneHtml, contains("'planetReady:' + (params.get('token') || '') + ':' + planetName"));
+    expect(sceneHtml, contains("'sceneReady:' + (params.get('token') || '') + ':' + planetName"));
+    expect(sceneHtml, contains('ready: true, planet: planetName'));
+    // 2) web 壳按前缀解析出星球名回传（onReady 改为 ValueChanged<String>）
+    expect(webWrapper, contains('ValueChanged<String>? onReady'));
+    expect(webWrapper, contains("'sceneReady:\$_seq:'"));
+    expect(webWrapper, contains("'planetReady:\$_seq:'"));
+    // 3) io 壳从 JSON 里取 planet 回传
+    expect(ioWrapper, contains('ValueChanged<String>? onReady'));
+    expect(ioWrapper, contains("decoded['planet']"));
+    // 4) 宿主只在就绪星球 == 当前页星球时才揭幕
+    final onReady = homePage.substring(
+      homePage.indexOf('void _onPlanetSceneReady('),
+      homePage.indexOf('void _precachePlanetStandIns('),
+    );
+    expect(onReady, contains('void _onPlanetSceneReady(String readyPlanet)'));
+    expect(
+      onReady,
+      contains('if (want != null && readyPlanet != want) return;'),
+      reason: '就绪星球与当前页星球不符（场景滞后）时不得揭幕，替身继续盖',
+    );
+  });
+
   test('切页时星空亮度延后到 planetReady 后更新，避免和贴图上传抢同一帧', () {
     expect(homePage, contains('_visibleStarfieldPage'));
     expect(homePage, contains('_pendingStarfieldPage'));
