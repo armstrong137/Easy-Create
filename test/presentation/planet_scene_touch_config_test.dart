@@ -55,12 +55,20 @@ void main() {
     expect(sceneHtml, contains('if (!baseTextureReady) return;'));
   });
 
-  test('返回首页时用上一帧星球快照兜底，不能调用未定义的 sendSnapshot', () {
+  test('场景快照通道仍在（sendSnapshot 已定义），但替身不再叠这张低清图', () {
     expect(sceneHtml, contains('function sendSnapshot'));
     expect(sceneHtml, contains("toDataURL('image/png')"));
     expect(webWrapper, contains('sceneSnapshot:\$_seq'));
-    expect(homePage, contains('_sharedSceneSnapshot'));
-    expect(homePage, contains('Image.network'));
+    expect(homePage, contains('_handleSharedSceneSnapshot'));
+    // 运行时快照最长边仅 480px 且全局共用一张（拍自初始星球，通常是地球），
+    // 叠在替身上会被拉伸成"很糊的地球"、切土星更被撑大（用户实测）。已移除：
+    // 替身只用 standins/$planet.png（960px、永远是本页正确星球）。
+    expect(
+      homePage,
+      isNot(contains('Image.network')),
+      reason: '替身不得再叠运行时低清快照，否则切星球会露出很糊的错星球',
+    );
+    expect(homePage, isNot(contains('snapshotDataUrl')));
   });
 
   test('启动封面：Easy Create 标题 + 静态同款封面，事件驱动揭开', () {

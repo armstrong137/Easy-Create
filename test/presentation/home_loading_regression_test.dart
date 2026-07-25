@@ -243,8 +243,10 @@ void main() {
     // 视觉一致，消除"平面/简球 → 精球"的 2D 突变（用户录屏残留问题的根治）。
     expect(homePage, contains('planet: novel.planet'));
     expect(homePage, contains("'assets/planet_scene/standins/\$planet.png'"));
-    // 快照补 frameBuilder：解码完成前透明露底快照，杜绝透明缝黑帧
-    expect(homePage, contains('frameBuilder:'));
+    // 替身只有这一层预渲染真身图（预解码的 AssetImage，同步出画、无透明缝）。
+    // 曾叠一层运行时低清快照 + frameBuilder 淡入，已移除——那张图全局共用一张、
+    // 仅 480px，切星球时会露出"很糊的地球"（用户实测），底图更清晰且永远对。
+    expect(homePage, isNot(contains('frameBuilder:')));
     // _PlanetStandIn 内部不再贴平面世界地图裁剪
     final standInClass = homePage.substring(
       homePage.indexOf('class _PlanetStandIn'),

@@ -111,7 +111,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   Timer? _deferredSceneTimer;
 
   bool _sharedSceneReady = false;
-  String? _sharedSceneSnapshot;
   int _sharedSnapshotReq = 0;
   Completer<void>? _sharedSnapshotCompleter;
   Timer? _sceneRevealTimer;
@@ -327,10 +326,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     });
   }
 
+  /// 场景回传快照：只用来结束进大纲前的等待（替身不再叠这张低清图，见 _PlanetStandIn）
   void _handleSharedSceneSnapshot(String snapshot) {
-    if (mounted && snapshot != _sharedSceneSnapshot) {
-      setState(() => _sharedSceneSnapshot = snapshot);
-    }
     final completer = _sharedSnapshotCompleter;
     if (completer != null && !completer.isCompleted) {
       completer.complete();
@@ -539,7 +536,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                           // 成为 active 并把新星球配置发给共享场景，杜绝残留删除前那颗。
                           active: i == safePage,
                           sharedSceneReady: _sharedSceneReady,
-                          sharedSceneSnapshot: _sharedSceneSnapshot,
                           immediateDetailNovelId: _immediateDetailNovelId,
                           onSharedSceneConfig: _onSharedSceneConfig,
                           onRequestSnapshotBeforeRoute:
@@ -821,7 +817,6 @@ class _PlanetPage extends ConsumerStatefulWidget {
     required this.pool,
     required this.active,
     required this.sharedSceneReady,
-    required this.sharedSceneSnapshot,
     required this.immediateDetailNovelId,
     required this.onSharedSceneConfig,
     required this.onRequestSnapshotBeforeRoute,
@@ -836,10 +831,8 @@ class _PlanetPage extends ConsumerStatefulWidget {
   /// 是否为当前正在看的页（决定谁渲染、谁接管星空亮度/手势）
   final bool active;
 
-  /// 是否保活场景：当前页 或 最近看过的星球。为真则场景常驻树中——
-  /// 非当前页只暂停+隐藏 iframe（不销毁），切回即刻恢复，无冷启动窗口。
+  /// 共享场景是否已换到并接管本页星球。为假时本页用替身盖住加载/换贴图窗口。
   final bool sharedSceneReady;
-  final String? sharedSceneSnapshot;
   final ValueChanged<_SharedPlanetSceneConfig> onSharedSceneConfig;
   final Future<void> Function() onRequestSnapshotBeforeRoute;
 
@@ -1086,15 +1079,14 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
             if (mounted && widget.active) widget.onSharedSceneConfig(config);
           });
         }
-        // 替身只在共享场景**未就绪**（真正冷启动/上下文异常兜底）时露出；
-        // 正常切星球场景常就绪 → 替身恒透明，不参与切换（原地换贴图不露替身）。
+        // 替身在共享场景**尚未换到本页星球**时不透明盖住（冷启动、新建、滑动切换
+        // 都算），场景真正接管本页星球后才淡出——见 _onPlanetSceneReady 的星球校验。
         final standIn = AnimatedOpacity(
           duration: const Duration(milliseconds: 350),
           opacity: widget.sharedSceneReady ? 0 : 1,
           child: _PlanetStandIn(
             diameter: sceneDiameter,
             planet: novel.planet,
-            snapshotDataUrl: widget.sharedSceneSnapshot,
           ),
         );
         return SizedBox.square(
@@ -1230,26 +1222,23 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
   }
 }
 
-/// 星球替身：仅在**真正首次加载/切换**（无活场景可复用）时占位。
+/// 星球替身：在加载/换贴图期（场景还没换到本页星球）盖住共享场景。
 ///
-/// 分层（自下而上，均不透明、均非平面裁剪，杜绝"2D 贴纸"与"透明缝黑帧"）：
-/// 1. 底 base = 该星球的**预渲染真身快照** `standins/$planet.png`（three.js 同款
-///    一帧：大气辉光/海面高光/云层，stage=3 同款取景）——与真实场景视觉一致，
-///    加载/切换期不再有"平面/简球 → 精球"的 2D 突变。资源缺失才退到深空渐变球。
-/// 2. 若另有运行时低清快照 [snapshotDataUrl]（更贴合当前角度），叠在底之上，
-///    **解码完成才淡入**，解码期间露出底快照，绝不透出下方黑 iframe。
+/// **只用该星球的预渲染真身快照** `standins/$planet.png`（three.js 同款一帧：
+/// 大气辉光/海面高光/云层，stage=3 同款取景，960px）——与真实场景视觉一致，
+/// 且永远是本页正确星球、正确取景。资源缺失才退到深空渐变球。
+///
+/// 曾在其上叠一层"运行时低清快照"（想更贴合当前角度），已移除：那张快照
+/// 最长边仅 480px、且是**全局共用一张**（拍摄自初始星球，通常是地球），
+/// 被拉伸到本页舞台框后就是"很糊的地球"，切到土星更被撑成"很大的糊地球"
+/// （用户实测）。底图分辨率更高又永远对，叠加层纯粹是劣化。
 class _PlanetStandIn extends StatelessWidget {
-  const _PlanetStandIn({
-    required this.diameter,
-    required this.planet,
-    this.snapshotDataUrl,
-  });
+  const _PlanetStandIn({required this.diameter, required this.planet});
 
   final double diameter;
 
   /// 行星名（earth/mars/venus/jupiter/saturn），决定用哪张预渲染真身快照
   final String planet;
-  final String? snapshotDataUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -1267,32 +1256,8 @@ class _PlanetStandIn extends StatelessWidget {
         child: Center(child: _gradientSphere()),
       ),
     );
-    final snapshot = snapshotDataUrl;
-    final content = snapshot == null
-        ? base
-        : Stack(
-            alignment: Alignment.center,
-            children: [
-              base,
-              Image.network(
-                snapshot,
-                width: full,
-                height: full,
-                fit: BoxFit.fill,
-                filterQuality: FilterQuality.medium,
-                gaplessPlayback: true,
-                // 解码完成前 frame==null → 透明，露出底快照；完成后淡入
-                frameBuilder: (context, child, frame, wasSync) =>
-                    AnimatedOpacity(
-                      opacity: frame == null ? 0 : 1,
-                      duration: const Duration(milliseconds: 120),
-                      child: child,
-                    ),
-              ),
-            ],
-          );
     return IgnorePointer(
-      child: OverflowBox(maxWidth: full, maxHeight: full, child: content),
+      child: OverflowBox(maxWidth: full, maxHeight: full, child: base),
     );
   }
 
