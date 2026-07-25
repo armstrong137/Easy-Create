@@ -1108,10 +1108,15 @@ function animate() {
     }
   }
   if (now - lastPost > 1000) {
+    const fps = Math.round(frames * 1000 / (now - lastPost));
     if (window.SceneBridge) {
-      SceneBridge.postMessage(JSON.stringify({
-        fps: Math.round(frames * 1000 / (now - lastPost)),
-      }));
+      SceneBridge.postMessage(JSON.stringify({ fps: fps }));
+    }
+    // 心跳：本行**只有真正渲染出帧才会执行**（在 render 之后）。宿主据此判活：
+    // 心跳断了就说明画面冻结（丢 WebGL 上下文 / 渲染循环抛错），需要重建场景。
+    // 用户实测：iPhone 上星球会卡死不动，且丢上下文后旧实现永远停在最后一帧。
+    if (window.parent !== window) {
+      window.parent.postMessage('sceneAlive:' + (params.get('token') || '') + ':' + fps, '*');
     }
     frames = 0; lastPost = now;
   }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:js_interop';
 import 'dart:ui_web' as ui_web;
 
@@ -30,6 +31,7 @@ class PlanetScene extends StatefulWidget {
     this.snapshotRequestId = 0,
     this.onReady,
     this.onSnapshot,
+    this.onLost,
   });
 
   /// 行星纹理名（earth/mars/jupiter/venus/saturn）
@@ -81,6 +83,9 @@ class PlanetScene extends StatefulWidget {
   /// 场景低清透明快照（宿主返回首页/重建 iframe 时用来兜底，避免露出空白）。
   final ValueChanged<String>? onSnapshot;
 
+  /// 场景画面冻结、正在自动重建（宿主据此复位就绪、让替身盖住重建窗口）。
+  final VoidCallback? onLost;
+
   @override
   State<PlanetScene> createState() => _PlanetSceneState();
 }
@@ -95,11 +100,31 @@ class _PlanetSceneState extends State<PlanetScene> {
   late final String _viewType = '共享星球场景_$_seq';
   web.HTMLIFrameElement? _iframe;
 
+  /// 最近一次收到场景心跳/就绪的时刻。心跳只在场景**真正渲染出帧后**才发，
+  /// 因此心跳断流即等于画面冻结（丢 WebGL 上下文、渲染循环抛错等）。
+  DateTime _lastAlive = DateTime.now();
+  Timer? _watchdog;
+
+  /// 自动重建次数上限：连续修不好就别无限重载（避免反复闪烁）
+  int _recoverCount = 0;
+  static const _maxRecover = 3;
+
   /// 场景就绪监听（token 匹配本实例，多颗星球互不串扰）
   late final JSFunction _onMessage = ((web.MessageEvent e) {
     final data = e.data;
     if (!data.isA<JSString>()) return;
     final text = (data as JSString).toDart;
+    // 心跳：只更新存活时刻，不做别的
+    if (text.startsWith('sceneAlive:$_seq:')) {
+      _lastAlive = DateTime.now();
+      _recoverCount = 0; // 恢复正常出帧，重置重建配额
+      return;
+    }
+    // 场景自报丢了 WebGL 上下文：立即重建（旧实现无人处理，永久停在最后一帧）
+    if (text == 'sceneContextLost:$_seq') {
+      _recoverScene('WebGL 上下文丢失');
+      return;
+    }
     // 首帧就绪 / 切星球原地换贴图接管完成——形如 sceneReady:$seq:planet、
     // planetReady:$seq:planet，尾段是已接管的星球名，回传给宿主判断是否揭幕。
     final readyPrefixes = ['sceneReady:$_seq:', 'planetReady:$_seq:'];
@@ -115,18 +140,21 @@ class _PlanetSceneState extends State<PlanetScene> {
     }
   }).toJS;
 
+  /// 按**当前**属性拼场景 URL：重建时要沿用现在这颗星球，不能回到初始那颗
+  String _sceneSrc() =>
+      'assets/assets/planet_scene/index.html'
+      '?planet=${widget.planet}&spin=${widget.spin}'
+      '&stage=${widget.stageScale}'
+      '&prewarm=${Uri.encodeComponent(widget.prewarmPlanets.join(','))}'
+      '&token=$_seq';
+
   @override
   void initState() {
     super.initState();
     web.window.addEventListener('message', _onMessage);
     ui_web.platformViewRegistry.registerViewFactory(_viewType, (_) {
       final iframe = web.HTMLIFrameElement()
-        ..src =
-            'assets/assets/planet_scene/index.html'
-            '?planet=${widget.planet}&spin=${widget.spin}'
-            '&stage=${widget.stageScale}'
-            '&prewarm=${Uri.encodeComponent(widget.prewarmPlanets.join(','))}'
-            '&token=$_seq'
+        ..src = _sceneSrc()
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%'
@@ -137,6 +165,33 @@ class _PlanetSceneState extends State<PlanetScene> {
       _iframe = iframe;
       return iframe;
     });
+    // 看门狗：只在"本该出帧"时判活。心跳每秒一次，6 秒无心跳即判定画面冻结
+    // （iPhone 实测会卡死不动：丢 WebGL 上下文后旧实现永远停在最后一帧）。
+    _watchdog = Timer.periodic(const Duration(seconds: 2), (_) {
+      // 页面在后台（锁屏/切走 App）时浏览器会停掉 rAF，心跳本就该断——
+      // 这不是冻结，绝不能误判重建，否则每次切回来都白闪一次。
+      if (!_shouldRender || web.document.hidden) {
+        _lastAlive = DateTime.now();
+        return;
+      }
+      if (DateTime.now().difference(_lastAlive) > const Duration(seconds: 6)) {
+        _recoverScene('连续 6 秒无渲染心跳');
+      }
+    });
+  }
+
+  /// 画面冻结自愈：重载 iframe 拿一个全新的 WebGL 上下文（沿用当前星球）。
+  /// 重建期通知宿主复位就绪，让替身盖住，不给用户看空白。
+  void _recoverScene(String reason) {
+    final frame = _iframe;
+    if (frame == null || !mounted) return;
+    if (_recoverCount >= _maxRecover) return; // 修不好就不再无限重载
+    _recoverCount++;
+    _lastAlive = DateTime.now(); // 给重建留出时间，别立刻二次触发
+    debugPrint('星球场景自愈重建（$reason，第 $_recoverCount 次）');
+    widget.onLost?.call();
+    // 加时间戳绕开缓存，确保拿到全新文档与上下文
+    frame.src = '${_sceneSrc()}&r=${DateTime.now().millisecondsSinceEpoch}';
   }
 
   /// 有效渲染 = 当前页 且 首页在顶。任一为假即暂停 rAF（省 GPU、不抢主线程）
@@ -144,6 +199,7 @@ class _PlanetSceneState extends State<PlanetScene> {
 
   @override
   void dispose() {
+    _watchdog?.cancel();
     _post({'dispose': 1});
     _iframe?.src = 'about:blank';
     _iframe?.remove();

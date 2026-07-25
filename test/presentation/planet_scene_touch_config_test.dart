@@ -422,6 +422,42 @@ void main() {
     );
   });
 
+  test('画面冻结自愈：心跳断流或丢上下文都要自动重建场景，绝不永久停在死画面', () {
+    // 用户录屏实证：iPhone 上星球 17 秒纹丝不动（空星球转速 0.008 圈/秒本应转 50°），
+    // 即渲染已停。场景虽在 webglcontextlost 时上报 sceneContextLost，但宿主从不监听，
+    // 于是永久停在最后一帧。现在两条路都能自愈。
+    // 1) 场景每秒发一次心跳，且**必须在 render 之后**发（没出帧就没有心跳）
+    expect(sceneHtml, contains("'sceneAlive:' + (params.get('token') || '') + ':' + fps"));
+    final animateBody = functionBody(sceneHtml, 'animate');
+    expect(
+      animateBody.indexOf('renderer.render(scene, camera)') <
+          animateBody.indexOf('sceneAlive:'),
+      isTrue,
+      reason: '心跳必须排在真正渲染之后，否则冻结时仍会误报存活',
+    );
+    // 2) 宿主看门狗：只在该出帧时判活，页面在后台不算冻结
+    expect(webWrapper, contains('Timer? _watchdog'));
+    expect(webWrapper, contains("text.startsWith('sceneAlive:\$_seq:')"));
+    expect(webWrapper, contains("text == 'sceneContextLost:\$_seq'"));
+    expect(
+      webWrapper,
+      contains('!_shouldRender || web.document.hidden'),
+      reason: '后台/暂停期心跳本就该断，误判重建会导致切回来白闪',
+    );
+    // 3) 重建：换新 URL 拿全新上下文，且沿用**当前**星球；有次数上限防无限重载
+    expect(webWrapper, contains('void _recoverScene(String reason)'));
+    expect(webWrapper, contains('String _sceneSrc()'));
+    expect(webWrapper, contains('_recoverCount >= _maxRecover'));
+    expect(webWrapper, contains("frame.src = '\${_sceneSrc()}&r="));
+    // 4) 重建期宿主复位就绪，让替身盖住，不给用户看空白
+    expect(webWrapper, contains('widget.onLost?.call()'));
+    expect(homePage, contains('void _handleSceneLost()'));
+    expect(homePage, contains('onLost: _handleSceneLost'));
+    // 5) 移动端同款接口与看门狗
+    expect(ioWrapper, contains('VoidCallback? onLost'));
+    expect(ioWrapper, contains('Timer? _watchdog'));
+  });
+
   test('左右滑动切星球也盖替身：滑到不同星球页复位就绪，避免先闪错星球+大小跳', () {
     // 用户实测：不止新建，左右滑动 3→4、4→5 也"先闪错星球 + 大小/位置跳"。
     // 根因同新建——共享场景串行换球要 ~1s，期间仍显示上一颗（且被塞进新页尺寸框）。

@@ -326,6 +326,14 @@ class _HomePageState extends ConsumerState<HomePage> {
     });
   }
 
+  /// 场景画面冻结、正在自动重建：复位就绪让替身（当前页正确星球）盖住重建窗口，
+  /// 重建完成后由 planetReady 按星球名匹配重新揭幕。
+  void _handleSceneLost() {
+    if (!mounted) return;
+    if (_sharedSceneReady) setState(() => _sharedSceneReady = false);
+    _armSceneRevealFallback();
+  }
+
   /// 场景回传快照：只用来结束进大纲前的等待（替身不再叠这张低清图，见 _PlanetStandIn）
   void _handleSharedSceneSnapshot(String snapshot) {
     final completer = _sharedSnapshotCompleter;
@@ -454,6 +462,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               snapshotRequestId: _sharedSnapshotReq,
               onReady: _onPlanetSceneReady,
               onSnapshot: _handleSharedSceneSnapshot,
+              onLost: _handleSceneLost,
             ),
           if (novels.isEmpty)
             // 空宇宙：邀请创建第一颗星球。字体与全 App 统一——
@@ -764,6 +773,7 @@ class _SharedPlanetSceneLayer extends StatelessWidget {
     required this.snapshotRequestId,
     required this.onReady,
     required this.onSnapshot,
+    required this.onLost,
   });
 
   final _SharedPlanetSceneConfig? config;
@@ -772,6 +782,7 @@ class _SharedPlanetSceneLayer extends StatelessWidget {
   final int snapshotRequestId;
   final ValueChanged<String> onReady;
   final ValueChanged<String> onSnapshot;
+  final VoidCallback onLost;
 
   @override
   Widget build(BuildContext context) {
@@ -801,6 +812,7 @@ class _SharedPlanetSceneLayer extends StatelessWidget {
               snapshotRequestId: snapshotRequestId,
               onReady: onReady,
               onSnapshot: onSnapshot,
+              onLost: onLost,
             ),
           ),
         ),

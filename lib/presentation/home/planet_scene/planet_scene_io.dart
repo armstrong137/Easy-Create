@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -31,6 +32,7 @@ class PlanetScene extends ConsumerStatefulWidget {
     this.snapshotRequestId = 0,
     this.onReady,
     this.onSnapshot,
+    this.onLost,
   });
 
   /// 行星纹理名（earth/mars/jupiter/venus/saturn）
@@ -77,6 +79,9 @@ class PlanetScene extends ConsumerStatefulWidget {
   /// Web 端 iframe 返回的场景快照；移动端 WebView 暂不使用，保留同名接口。
   final ValueChanged<String>? onSnapshot;
 
+  /// 场景画面冻结、正在自动重建（宿主据此复位就绪、让替身盖住重建窗口）。
+  final VoidCallback? onLost;
+
   @override
   ConsumerState<PlanetScene> createState() => _PlanetSceneState();
 }
@@ -84,10 +89,37 @@ class PlanetScene extends ConsumerStatefulWidget {
 class _PlanetSceneState extends ConsumerState<PlanetScene> {
   WebViewController? _web;
 
+  /// 最近一次收到场景消息（含每秒 fps 心跳）的时刻：心跳只在真正出帧后发，
+  /// 断流即画面冻结（与 web 端同策略）。
+  DateTime _lastAlive = DateTime.now();
+  Timer? _watchdog;
+  int _recoverCount = 0;
+  static const _maxRecover = 3;
+
   @override
   void initState() {
     super.initState();
     _load();
+    _watchdog = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (!(widget.active && widget.visible)) {
+        _lastAlive = DateTime.now(); // 暂停期不算冻结
+        return;
+      }
+      if (DateTime.now().difference(_lastAlive) > const Duration(seconds: 6) &&
+          _recoverCount < _maxRecover) {
+        _recoverCount++;
+        _lastAlive = DateTime.now();
+        debugPrint('星球场景自愈重载（连续 6 秒无渲染心跳，第 $_recoverCount 次）');
+        widget.onLost?.call();
+        _web?.reload();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _watchdog?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -108,6 +140,9 @@ class _PlanetSceneState extends ConsumerState<PlanetScene> {
       ..addJavaScriptChannel(
         'SceneBridge',
         onMessageReceived: (msg) {
+          // 任何一条场景消息（含每秒 fps 心跳）都算存活证据，喂看门狗
+          _lastAlive = DateTime.now();
+          _recoverCount = 0;
           // 首帧就绪信号（其余为 FPS 遥测，真机验收时读取）：带回已接管星球名，
           // 宿主据此只在场景换到当前页星球时才揭幕替身。
           if (msg.message.contains('"ready":true')) {

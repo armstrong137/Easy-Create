@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-25 16:00:21　对应提交：2d005bb 之后的工作区状态
+> 生成时间：2026-07-25 16:26:24　对应提交：b2cc94e 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,18 +13,18 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     107
-  Nodes:     4,046
-  Edges:     19,062
+  Nodes:     4,054
+  Edges:     19,078
   DB Size:   20.56 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,558
+  method          1,562
   function        1,371
   class           466
-  import          328
-  constant        193
+  import          330
+  constant        195
   file            99
   variable        14
   type_alias      12
@@ -159,11 +159,11 @@ Project Structure (107 files):
 |   |-- presentation
 |   |   |-- home
 |   |   |   |-- planet_scene
-|   |   |   |   |-- planet_scene_io.dart (dart, 14 symbols)
-|   |   |   |   |-- planet_scene_web.dart (dart, 15 symbols)
+|   |   |   |   |-- planet_scene_io.dart (dart, 17 symbols)
+|   |   |   |   |-- planet_scene_web.dart (dart, 19 symbols)
 |   |   |   |   |-- planet_scene.dart (dart, 6 symbols)
 |   |   |   |   `-- scene_server.dart (dart, 11 symbols)
-|   |   |   |-- home_page.dart (dart, 96 symbols)
+|   |   |   |-- home_page.dart (dart, 97 symbols)
 |   |   |   |-- orbiting_inspirations.dart (dart, 20 symbols)
 |   |   |   |-- planet_view.dart (dart, 19 symbols)
 |   |   |   |-- saturn_rings_painter.dart (dart, 12 symbols)
