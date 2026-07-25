@@ -269,7 +269,10 @@ void main() {
           'if (firstConfig && !_sharedSceneReady) _armSceneRevealFallback()',
         ),
       );
-      expect(homePage, contains('Duration(milliseconds: 3000)'));
+      // 兜底是**周期检查 + 硬上限**：只有场景长时间零就绪信号才最后强揭幕，
+      // 绝不在场景还没换到当前页星球时（慢设备加载中）就淡出替身露出错星球。
+      expect(homePage, contains('Timer.periodic(const Duration(milliseconds: 700)'));
+      expect(homePage, contains('DateTime.now().add(const Duration(seconds: 10))'));
     },
   );
 

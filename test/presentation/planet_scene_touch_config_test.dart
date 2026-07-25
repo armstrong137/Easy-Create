@@ -414,6 +414,24 @@ void main() {
     );
   });
 
+  test('左右滑动切星球也盖替身：滑到不同星球页复位就绪，避免先闪错星球+大小跳', () {
+    // 用户实测：不止新建，左右滑动 3→4、4→5 也"先闪错星球 + 大小/位置跳"。
+    // 根因同新建——共享场景串行换球要 ~1s，期间仍显示上一颗（且被塞进新页尺寸框）。
+    // onPageChanged 落到不同星球页时必须复位 _sharedSceneReady，让该页替身盖住，
+    // 揭幕仍只认场景换到该页星球（planetReady 匹配，与新建同一套机制）。
+    final onPageChanged = homePage.substring(
+      homePage.indexOf('onPageChanged: (i) => setState(() {'),
+      homePage.indexOf('// ClipRect'),
+    );
+    expect(
+      onPageChanged,
+      contains('newPlanet != _sharedSceneConfig?.planet'),
+      reason: '滑到与当前场景不同的星球才盖替身（同星球零打扰）',
+    );
+    expect(onPageChanged, contains('_sharedSceneReady = false'));
+    expect(onPageChanged, contains('_armSceneRevealFallback()'));
+  });
+
   test('切页时星空亮度延后到 planetReady 后更新，避免和贴图上传抢同一帧', () {
     expect(homePage, contains('_visibleStarfieldPage'));
     expect(homePage, contains('_pendingStarfieldPage'));

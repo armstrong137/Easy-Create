@@ -302,15 +302,28 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   void _armSceneRevealFallback() {
-    // 每次新建都重置这个兜底（trail 最后一次新建 3s），避免用第一次新建的计时
-    // 在场景尚未追上当前页星球时就强揭幕。正常路径由 planetReady 匹配揭幕；
-    // 这里只是场景彻底不发就绪信号时的安全阀。
+    // 兜底揭幕：**绝不能**在场景还没换到当前页星球时就揭幕——否则慢设备上
+    // 新星球贴图还在加载（尤其新建第 4/5 颗要整包前台上传），一个固定 3s 定时器
+    // 会强行淡出替身、露出滞后的旧星球（用户实测"先闪错星球 + 大小/位置跳一下"）。
+    // 正常揭幕永远由 planetReady 匹配当前页星球触发（_onPlanetSceneReady →
+    // _scheduleSceneReveal 会取消本兜底）；这里只是场景**彻底坏掉、长时间零就绪
+    // 信号**时的最后安全阀，硬上限内替身（当前页正确星球）一直盖着、耐心等待。
     _sceneFallbackTimer?.cancel();
-    _sceneFallbackTimer = Timer(const Duration(milliseconds: 3000), () {
-      _sceneFallbackTimer = null;
-      if (!mounted || _sharedSceneReady || _sharedSceneConfig == null) return;
-      setState(() => _sharedSceneReady = true);
-      planetSceneReadyTick.value++;
+    final deadline = DateTime.now().add(const Duration(seconds: 10));
+    _sceneFallbackTimer = Timer.periodic(const Duration(milliseconds: 700), (t) {
+      if (!mounted || _sharedSceneReady || _sharedSceneConfig == null) {
+        t.cancel();
+        _sceneFallbackTimer = null;
+        return;
+      }
+      // 到硬上限仍未就绪（iframe 疑似坏了）→ 最后强揭幕，避免永久盖替身
+      if (DateTime.now().isAfter(deadline)) {
+        t.cancel();
+        _sceneFallbackTimer = null;
+        setState(() => _sharedSceneReady = true);
+        planetSceneReadyTick.value++;
+      }
+      // 未到上限、也还没匹配揭幕：继续等，替身盖着正确星球（不露滞后错星球）
     });
   }
 
@@ -490,12 +503,24 @@ class _HomePageState extends ConsumerState<HomePage> {
                       physics: locked
                           ? const NeverScrollableScrollPhysics()
                           : null,
-                      // 切星球**不复位就绪、不盖替身**：共享场景原地换贴图，旧星球
-                      // 持续显示到新贴图就绪再一次性接管（planet_scene/index.html:setPlanet）。
+                      // 滑到不同星球的页：**复位就绪**，让该页替身（正确星球、正确
+                      // 尺寸）盖住换贴图窗口——共享场景是串行换球队列，切球要 ~1s，
+                      // 期间它仍显示上一颗星球（且被塞进新页尺寸框），不盖就会"先闪
+                      // 错星球 + 大小/位置跳"（用户实测滑动 3→4、4→5）。揭幕只认场景
+                      // 真正换到该页星球（planetReady 匹配，见 _onPlanetSceneReady）。
                       onPageChanged: (i) => setState(() {
                         _currentPage = i;
                         if (use3D) {
                           _pendingStarfieldPage = i;
+                          final newPlanet = (i >= 0 && i < novels.length)
+                              ? novels[i].planet
+                              : null;
+                          // 目标星球与当前场景所显星球不同才盖替身（同星球零打扰）
+                          if (newPlanet != null &&
+                              newPlanet != _sharedSceneConfig?.planet) {
+                            _sharedSceneReady = false;
+                            _armSceneRevealFallback();
+                          }
                         } else {
                           _visibleStarfieldPage = i;
                           _pendingStarfieldPage = null;
