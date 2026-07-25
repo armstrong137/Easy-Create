@@ -16,8 +16,11 @@ Set-Location $root
 
 # 1. 构建 Web 版
 if (-not $SkipBuild) {
-    Write-Host "==> 构建 Web 版（release）…" -ForegroundColor Cyan
-    & flutter build web --release
+    Write-Host "==> 构建 Web 版（release，不装 Service Worker）…" -ForegroundColor Cyan
+    # --pwa-strategy=none：不注册 Service Worker。SW 会把整包缓存进 Cache Storage
+    # 且优先于本服务的 no-store 响应，手机上会一直跑**上一版构建**（本项目多次
+    # "改完请复测"实际测的是旧包）。真机联调必须关掉。
+    & flutter build web --release --pwa-strategy=none
     if ($LASTEXITCODE -ne 0) { throw "flutter build web 失败" }
 }
 if (-not (Test-Path "build\web\index.html")) { throw "build/web 不存在，请先构建" }

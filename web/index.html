@@ -109,6 +109,19 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script>
+    // 局域网真机联调：Flutter 的 Service Worker 会把整包构建缓存进 Cache Storage，
+    // 且优先于 HTTP 的 no-store 响应——手机上跑的常常是**上一版构建**（本项目
+    // 多次"改完请复测"实际测的是旧包，导致改对了也看不到效果）。这里主动注销
+    // 已装的 SW 并清空缓存；配合 serve_web.ps1 的 --pwa-strategy=none（不再注册新 SW）。
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations()
+        .then((rs) => rs.forEach((r) => r.unregister()))
+        .catch(() => {});
+    }
+    if (window.caches && caches.keys) {
+      caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => {});
+    }
+
     // iOS Safari 无视 user-scalable=no，必须显式拦截：
     // gesturestart/gesturechange 是 Safari 的双指缩放；多指 touchmove 同理。
     // 拦掉之后双指事件才会落到 Flutter，由星球场景做镜头推进。
