@@ -576,6 +576,34 @@ void main() {
     );
   });
 
+  test('土星环极缓慢开合：自转在跑但贴图看不出来，靠环的摆动让它显得是活的', () {
+    // 实测土星底图沿经度几乎无变化（横移 10° 画面差异仅 2.49，其他星球 12~31），
+    // 所以 planet.rotation.y 一直在加、肉眼却看不出转；环又是轴对称的、静止不动。
+    expect(sceneHtml, contains('const kRingTilt = 0.42'));
+    // 摆幅实测定的：±2° 环高只变 4.2%（约 0.5px/秒，看不出来），±5° 变 11.1%
+    expect(sceneHtml, contains('const kRingWobbleRad = 0.087'));
+    expect(sceneHtml, contains('const kRingWobbleSec = 24'));
+    final animateBody = functionBody(sceneHtml, 'animate');
+    expect(
+      animateBody,
+      contains('ringWobbleT += dt'),
+      reason: '相位按已渲染时长累加，暂停期不推进，返回时不跳',
+    );
+    // 必须是"基准角 + 正弦"的绝对赋值，累加会让倾角随浮点误差越摆越偏
+    expect(
+      animateBody,
+      contains('ring.rotation.x = Math.PI / 2 - kRingTilt +'),
+      reason: '绝对赋值才不会漂移',
+    );
+    expect(
+      animateBody,
+      contains('if (ring) {'),
+      reason: '只有带环的星球才摆，其他星球不受影响',
+    );
+    // 自转本身没被动过：所有星球一视同仁
+    expect(animateBody, contains('planet.rotation.y += w'));
+  });
+
   test('替身素材必须是正方形且够清晰（否则又是椭圆/发虚的影子）', () {
     // 1) 正方形：替身画进正方形框（width/height 都是 full，fit: BoxFit.fill）。
     //    素材若非正方形会被拉伸 → 替身是椭圆、与真实正球对不上，交叉淡入"形状跳一下"。

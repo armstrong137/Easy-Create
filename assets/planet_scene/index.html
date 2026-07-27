@@ -78,6 +78,17 @@ sun.position.copy(sunDir);
 scene.add(sun);
 scene.add(new THREE.AmbientLight(0x334455, 0.42));
 
+// ---------- 土星环：倾角与极缓慢的开合摆动 ----------
+// 土星贴图沿经度几乎无变化（实测横移 10° 的画面差异仅 2.49，其他星球 12~31），
+// 所以自转虽在跑却看不出来，加上环本身轴对称、静止不动，整颗星球像是"死"的。
+// 让环的倾角极缓慢摆动：椭圆开合，一眼能看出星球是活的，又不伪造经度纹理。
+// 摆幅是**实测**定的（900px 无头渲染量环的外框高度）：
+//   ±2° → 环高只变 6px（4.2%），在手机上约 0.5px/秒，看不出来；
+//   ±5° → 环高变 16px（11.1%），明显但仍是"呼吸感"，不会像在乱晃。
+const kRingTilt = 0.42;          // 基准倾角（弧度，约 24°）
+const kRingWobbleRad = 0.087;    // 摆幅（弧度，约 5°）
+const kRingWobbleSec = 24;       // 周期（秒）——一次完整开合，慢到不抢戏
+
 // ---------- 星球材质组配置 ----------
 // LOD 三档：map 常态 / mapMid 手机放大档（6144，显存约 75MB）/
 // mapHi 桌面放大档（源图上限）。手机不能上 8192：单张纹理
@@ -259,7 +270,7 @@ function mountPlanet(pcfg, pre) {
     rg = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({
       map: ringTex, side: THREE.DoubleSide, transparent: true, depthWrite: false,
     }));
-    rg.rotation.x = Math.PI / 2 - 0.42; // 倾角 ~24°
+    rg.rotation.x = Math.PI / 2 - kRingTilt; // 倾角 ~24°
     rg.rotation.y = 0.18;
     pivot.add(rg); // 环随星球一同被拖动（环面与赤道共面）
   }
@@ -987,6 +998,9 @@ window.addEventListener('message', function (e) {
 
 // ---------- 渲染循环 ----------
 let last = performance.now(), frames = 0, lastPost = last, notified = false;
+// 环摆动的相位按**已渲染时长**累加（不用 performance.now）：暂停/进大纲期间不推进，
+// 返回时接着摆，不会因为挂起很久而跳一下。
+let ringWobbleT = 0;
 function animate() {
   rafId = 0;
   if (paused || disposed) return;
@@ -999,6 +1013,13 @@ function animate() {
   const w = spinRevPerSec * Math.PI * 2 * dt;
   planet.rotation.y += w;
   if (clouds) clouds.rotation.y += w * 1.18 + 0.00006; // 云层略快于地表
+  // 土星环极缓慢开合：土星贴图沿经度几乎无变化，自转看不出来，靠这个让它显得是活的。
+  // 绝对赋值（基准角 + 正弦）而非累加，避免浮点漂移把倾角越摆越偏。
+  if (ring) {
+    ringWobbleT += dt;
+    ring.rotation.x = Math.PI / 2 - kRingTilt +
+      kRingWobbleRad * Math.sin(ringWobbleT * 2 * Math.PI / kRingWobbleSec);
+  }
   // 用户拖动的转角平滑趋近（跟手但不生硬）
   const kRot = Math.min(1, dt * 14);
   pivot.rotation.y += (yawTarget - pivot.rotation.y) * kRot;
