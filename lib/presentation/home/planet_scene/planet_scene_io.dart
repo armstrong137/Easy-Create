@@ -28,9 +28,7 @@ class PlanetScene extends ConsumerStatefulWidget {
     this.prewarmPlanets = const [],
     this.active = true,
     this.visible = true,
-    this.snapshotRequestId = 0,
     this.onReady,
-    this.onSnapshot,
     this.onLost,
   });
 
@@ -64,15 +62,9 @@ class PlanetScene extends ConsumerStatefulWidget {
   /// 覆盖时暂停渲染省电，返回即恢复（接口与 web 端一致）。
   final bool visible;
 
-  /// 快照请求序号（移动端不摘除场景，暂无实际动作，保留同名接口）
-  final int snapshotRequestId;
-
   /// 场景就绪/换星球接管完成，回传**已接管的星球名**：宿主据此只在场景真正
   /// 换到当前页星球时才淡出替身（快速新建时串行换球会滞后，不能见 ready 就揭幕）。
   final ValueChanged<String>? onReady;
-
-  /// Web 端 iframe 返回的场景快照；移动端 WebView 暂不使用，保留同名接口。
-  final ValueChanged<String>? onSnapshot;
 
   /// 场景画面冻结、正在自动重建（宿主据此复位就绪、让替身盖住重建窗口）。
   final VoidCallback? onLost;

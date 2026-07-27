@@ -976,8 +976,6 @@ window.addEventListener('message', function (e) {
   if (typeof m.yaw === 'number' && typeof m.pitch === 'number') {
     window.setRotation(m.yaw, m.pitch);
   }
-  // 宿主请求式快照（进大纲前拍一张，供返回时替身用）
-  if (typeof m.snapshot === 'number') sendSnapshot();
   // 非当前星球页暂停渲染：滑过的页被 keepAlive 后 iframe 仍在后台
   // rAF 渲染，多球常驻会越用越卡（用户实测"一段时间后变卡"）
   if (typeof m.render === 'number') {
@@ -986,28 +984,6 @@ window.addEventListener('message', function (e) {
   if (typeof m.dispose === 'number') disposeScene();
 });
 
-function sendSnapshot() {
-  if (window.parent === window) return;
-  try {
-    const source = renderer.domElement;
-    if (!source.width || !source.height) return;
-    const maxSide = 480;
-    const scale = Math.min(1, maxSide / Math.max(source.width, source.height));
-    const w = Math.max(1, Math.round(source.width * scale));
-    const h = Math.max(1, Math.round(source.height * scale));
-    const canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    canvas.getContext('2d').drawImage(source, 0, 0, w, h);
-    window.parent.postMessage(
-      'sceneSnapshot:' + (params.get('token') || '') + ':' +
-        canvas.toDataURL('image/png'),
-      '*'
-    );
-  } catch (e) {
-    // WebGL 画布若被浏览器保护为不可读，快照兜底静默放弃，不影响真实场景渲染。
-  }
-}
 
 // ---------- 渲染循环 ----------
 let last = performance.now(), frames = 0, lastPost = last, notified = false;
@@ -1047,10 +1023,6 @@ function animate() {
       // 带回宿主下发的 token + 当前星球名：同页多颗星球各认自己的就绪信号，
       // 且宿主据星球名判断"场景已换到当前页星球"才揭幕
       window.parent.postMessage('sceneReady:' + (params.get('token') || '') + ':' + planetName, '*');
-      // 就绪拍一张兜底快照。不做周期快照：toDataURL 的 PNG 编码在
-      // 主线程（约 20-50ms），每 5 秒一次固定 jank（用户实测"会变卡"）；
-      // 之后由宿主在进大纲前请求最新一张（message.snapshot）
-      sendSnapshot();
     }
   }
   if (now - lastPost > 1000) {

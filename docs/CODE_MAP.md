@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-27 13:55:38　对应提交：bd6d20a 之后的工作区状态
+> 生成时间：2026-07-27 15:16:16　对应提交：a967f87 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     108
-  Nodes:     4,069
-  Edges:     19,100
-  DB Size:   20.66 MB
+  Files:     109
+  Nodes:     4,077
+  Edges:     19,112
+  DB Size:   20.73 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,563
-  function        1,373
+  method          1,560
+  function        1,375
   class           466
-  import          332
+  import          336
   constant        196
-  file            100
-  variable        22
+  file            101
+  variable        26
   type_alias      12
   enum_member     2
   namespace       2
@@ -40,9 +40,9 @@ Files by Language:
   properties      4
   yaml            4
   swift           3
+  python          2
   typescript      2
   c               1
-  python          1
 
 [OK] Index is up to date
 
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (108 files):
+Project Structure (109 files):
 
 |-- .agents
 |   `-- skills
@@ -164,7 +164,7 @@ Project Structure (108 files):
 |   |   |   |   |-- planet_scene_web.dart (dart, 19 symbols)
 |   |   |   |   |-- planet_scene.dart (dart, 6 symbols)
 |   |   |   |   `-- scene_server.dart (dart, 11 symbols)
-|   |   |   |-- home_page.dart (dart, 99 symbols)
+|   |   |   |-- home_page.dart (dart, 96 symbols)
 |   |   |   |-- orbiting_inspirations.dart (dart, 20 symbols)
 |   |   |   |-- planet_view.dart (dart, 19 symbols)
 |   |   |   |-- saturn_rings_painter.dart (dart, 12 symbols)
@@ -194,6 +194,7 @@ Project Structure (108 files):
 |   |       `-- soft_toast.dart (dart, 11 symbols)
 |   `-- main.dart (dart, 14 symbols)
 |-- scripts
+|   |-- capture_standins.py (python, 11 symbols)
 |   |-- e2e_probe.dart (dart, 12 symbols)
 |   |-- serve_web.dart (dart, 4 symbols)
 |   `-- square_standins.py (python, 11 symbols)

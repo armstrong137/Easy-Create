@@ -63,20 +63,23 @@ void main() {
     expect(sceneHtml, contains('if (!baseTextureReady) return;'));
   });
 
-  test('场景快照通道仍在（sendSnapshot 已定义），但替身不再叠这张低清图', () {
-    expect(sceneHtml, contains('function sendSnapshot'));
-    expect(sceneHtml, contains("toDataURL('image/png')"));
-    expect(webWrapper, contains('sceneSnapshot:\$_seq'));
-    expect(homePage, contains('_handleSharedSceneSnapshot'));
-    // 运行时快照最长边仅 480px 且全局共用一张（拍自初始星球，通常是地球），
-    // 叠在替身上会被拉伸成"很糊的地球"、切土星更被撑大（用户实测）。已移除：
-    // 替身只用 standins/$planet.png（960px、永远是本页正确星球）。
+  test('运行时快照链路已整条删除：替身只用高清预渲染图', () {
+    // 那张运行时快照最长边仅 480px 且全局共用一张（拍自初始星球，通常是地球），
+    // 叠在替身上会被拉伸成"很糊的地球"、切土星更被撑大（用户实测）。移除叠加层后
+    // 它就没有消费方了：连 sendSnapshot（主线程 PNG 编码，20~50ms 启动 jank）、
+    // 请求通道、宿主的 90ms 等待一并删除。
+    expect(sceneHtml, isNot(contains('sendSnapshot')));
+    expect(sceneHtml, isNot(contains("toDataURL('image/png')")));
+    expect(sceneHtml, isNot(contains('sceneSnapshot')));
+    expect(webWrapper, isNot(contains('sceneSnapshot')));
+    expect(webWrapper, isNot(contains('snapshotRequestId')));
+    expect(ioWrapper, isNot(contains('snapshotRequestId')));
+    expect(homePage, isNot(contains('Snapshot')));
     expect(
       homePage,
       isNot(contains('Image.network')),
       reason: '替身不得再叠运行时低清快照，否则切星球会露出很糊的错星球',
     );
-    expect(homePage, isNot(contains('snapshotDataUrl')));
   });
 
   test('启动封面：Easy Create 标题 + 静态同款封面，事件驱动揭开', () {
@@ -134,13 +137,11 @@ void main() {
   });
 
   test('性能护栏：不做周期快照、非当前页暂停渲染', () {
-    // toDataURL 的 PNG 编码在主线程，周期快照是固定 jank 源（用户实测"会变卡"）
-    expect(sceneHtml, isNot(contains('setInterval(sendSnapshot')));
-    expect(sceneHtml, contains('m.snapshot'), reason: '快照改为宿主请求式');
+    // toDataURL 的 PNG 编码在主线程，是固定 jank 源；整条快照链路已删除
+    expect(sceneHtml, isNot(contains('toDataURL')));
     // 滑过的页 keepAlive 后 iframe 仍后台渲染，多球常驻越用越卡
     expect(sceneHtml, contains('m.render'), reason: '渲染暂停通道');
     expect(homePage, contains('active: true'));
-    expect(homePage, contains('_sharedSnapshotReq++'), reason: '进大纲前拍最新快照');
     expect(ioWrapper, contains("'pauseRender()'"));
   });
 
@@ -575,19 +576,22 @@ void main() {
     );
   });
 
-  test('替身素材必须是正方形：否则 BoxFit.fill 会把球拉成椭圆', () {
-    // 替身画进正方形框（width/height 都是 full，fit: BoxFit.fill）。素材原为
-    // 974x907，会被纵向拉伸 7.4% → 替身是椭圆、与真实正球对不上，交叉淡入时
-    // "形状/大小跳一下"（用户实测）。素材已补边为正方形，球心居中。
+  test('替身素材必须是正方形且够清晰（否则又是椭圆/发虚的影子）', () {
+    // 1) 正方形：替身画进正方形框（width/height 都是 full，fit: BoxFit.fill）。
+    //    素材若非正方形会被拉伸 → 替身是椭圆、与真实正球对不上，交叉淡入"形状跳一下"。
+    // 2) 够大：球在手机上要显示到约 654 设备像素（3 倍屏）。旧素材 974 宽、球仅 288px，
+    //    放大 2.3 倍就是用户实测的"很低清晰度的地球"。现按 1600 见方重截（球约 500px，
+    //    放大降到 1.3 倍）。素材由 scripts/capture_standins.py 从真实场景生成。
     for (final name in ['earth', 'mars', 'jupiter', 'venus', 'saturn']) {
       final bytes = File(
         'assets/planet_scene/standins/$name.png',
       ).readAsBytesSync();
-      final decoded = decodePngSize(bytes);
+      final (w, h) = decodePngSize(bytes);
+      expect(w, h, reason: '$name.png 必须是正方形，实际 ${w}x$h');
       expect(
-        decoded.$1,
-        decoded.$2,
-        reason: '$name.png 必须是正方形，实际 ${decoded.$1}x${decoded.$2}',
+        w,
+        greaterThanOrEqualTo(1600),
+        reason: '$name.png 边长不足（$w），替身会在手机上发虚',
       );
     }
   });

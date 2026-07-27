@@ -27,9 +27,7 @@ class PlanetScene extends StatefulWidget {
     this.prewarmPlanets = const [],
     this.active = true,
     this.visible = true,
-    this.snapshotRequestId = 0,
     this.onReady,
-    this.onSnapshot,
     this.onLost,
   });
 
@@ -66,16 +64,9 @@ class PlanetScene extends StatefulWidget {
   /// display:none 让平台视图退出合成，规避"驻留非当前路由 → 丢 canvas → 大纲白屏"。
   final bool visible;
 
-  /// 快照请求序号：+1 即让场景回传一张最新快照（进大纲前调用，
-  /// 供返回时替身用；不做周期快照——PNG 编码在主线程是固定 jank 源）
-  final int snapshotRequestId;
-
   /// 场景就绪/换星球接管完成，回传**已接管的星球名**：宿主据此只在场景真正
   /// 换到当前页星球时才淡出替身（快速新建时串行换球会滞后，不能见 ready 就揭幕）。
   final ValueChanged<String>? onReady;
-
-  /// 场景低清透明快照（宿主返回首页/重建 iframe 时用来兜底，避免露出空白）。
-  final ValueChanged<String>? onSnapshot;
 
   /// 场景画面冻结、正在自动重建（宿主据此复位就绪、让替身盖住重建窗口）。
   final VoidCallback? onLost;
@@ -127,10 +118,6 @@ class _PlanetSceneState extends State<PlanetScene> {
         widget.onReady?.call(text.substring(prefix.length));
         return;
       }
-    }
-    final snapshotPrefix = 'sceneSnapshot:$_seq:';
-    if (text.startsWith(snapshotPrefix)) {
-      widget.onSnapshot?.call(text.substring(snapshotPrefix.length));
     }
   }).toJS;
 
@@ -240,9 +227,6 @@ class _PlanetSceneState extends State<PlanetScene> {
     final was = old.active && old.visible;
     if (was != _shouldRender) {
       _post({'render': _shouldRender ? 1 : 0});
-    }
-    if (old.snapshotRequestId != widget.snapshotRequestId) {
-      _post({'snapshot': 1});
     }
   }
 

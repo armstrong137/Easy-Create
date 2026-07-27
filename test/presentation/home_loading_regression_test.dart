@@ -7,11 +7,13 @@ void main() {
     'lib/presentation/home/home_page.dart',
   ).readAsStringSync();
 
-  test('outline route waits for snapshot and stand-in is not black', () {
+  test('进大纲不再等快照：整条快照链路已废弃（iframe 不销毁、替身不叠快照）', () {
     expect(homePage, contains('_openOutline'));
-    expect(homePage, contains('_awaitSnapshotBeforeRoute'));
-    expect(homePage, contains('_sharedSnapshotCompleter'));
-    expect(homePage, contains('Duration(milliseconds: 90)'));
+    // iframe 只隐藏+暂停、替身也不再叠运行时快照，这条"拍一张再跳路由"的等待
+    // 已没有消费方，删掉可让进大纲少等 90ms，并省掉主线程一次 PNG 编码。
+    expect(homePage, isNot(contains('_awaitSnapshotBeforeRoute')));
+    expect(homePage, isNot(contains('_sharedSnapshotCompleter')));
+    expect(homePage, isNot(contains('Duration(milliseconds: 90)')));
     expect(homePage, contains('planet: novel.planet'));
     expect(homePage, isNot(contains('Color(0xFF0E1B33)')));
   });

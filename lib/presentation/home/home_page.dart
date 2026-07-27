@@ -115,8 +115,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   Timer? _deferredSceneTimer;
 
   bool _sharedSceneReady = false;
-  int _sharedSnapshotReq = 0;
-  Completer<void>? _sharedSnapshotCompleter;
   Timer? _sceneRevealTimer;
   Timer? _sceneFallbackTimer;
 
@@ -166,10 +164,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     _sceneFallbackTimer?.cancel();
     _deferredSceneTimer?.cancel();
     _standInCoverTimer?.cancel();
-    final snapshotCompleter = _sharedSnapshotCompleter;
-    if (snapshotCompleter != null && !snapshotCompleter.isCompleted) {
-      snapshotCompleter.complete();
-    }
     _pageController.dispose();
     super.dispose();
   }
@@ -285,24 +279,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     return false;
   }
 
-  Future<void> _awaitSnapshotBeforeRoute() async {
-    if (!mounted ||
-        !ref.read(advanced3DProvider) ||
-        _sharedSceneConfig == null) {
-      return;
-    }
-    final completer = Completer<void>();
-    _sharedSnapshotCompleter = completer;
-    setState(() => _sharedSnapshotReq++);
-    await completer.future.timeout(
-      const Duration(milliseconds: 90),
-      onTimeout: () {},
-    );
-    if (identical(_sharedSnapshotCompleter, completer)) {
-      _sharedSnapshotCompleter = null;
-    }
-  }
-
   void _scheduleSceneReveal() {
     _sceneFallbackTimer?.cancel();
     _sceneFallbackTimer = null;
@@ -369,14 +345,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (!mounted) return;
     if (_sharedSceneReady) setState(() => _sharedSceneReady = false);
     _armSceneRevealFallback();
-  }
-
-  /// 场景回传快照：只用来结束进大纲前的等待（替身不再叠这张低清图，见 _PlanetStandIn）
-  void _handleSharedSceneSnapshot(String snapshot) {
-    final completer = _sharedSnapshotCompleter;
-    if (completer != null && !completer.isCompleted) {
-      completer.complete();
-    }
   }
 
   List<String> _neighborPlanetsFor(List<Novel> novels, int safePage) {
@@ -494,9 +462,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               config: _sharedSceneConfig,
               prewarmPlanets: _neighborPlanetsFor(novels, safePage),
               visible: routeCurrent || popupOpen,
-              snapshotRequestId: _sharedSnapshotReq,
               onReady: _onPlanetSceneReady,
-              onSnapshot: _handleSharedSceneSnapshot,
               onLost: _handleSceneLost,
             ),
           if (novels.isEmpty)
@@ -582,8 +548,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                           active: i == safePage,
                           sharedSceneReady: _sharedSceneReady,
                           onSharedSceneConfig: _onSharedSceneConfig,
-                          onRequestSnapshotBeforeRoute:
-                              _awaitSnapshotBeforeRoute,
                         ),
                       ),
                     ),
@@ -799,18 +763,14 @@ class _SharedPlanetSceneLayer extends StatelessWidget {
     required this.config,
     required this.prewarmPlanets,
     required this.visible,
-    required this.snapshotRequestId,
     required this.onReady,
-    required this.onSnapshot,
     required this.onLost,
   });
 
   final _SharedPlanetSceneConfig? config;
   final List<String> prewarmPlanets;
   final bool visible;
-  final int snapshotRequestId;
   final ValueChanged<String> onReady;
-  final ValueChanged<String> onSnapshot;
   final VoidCallback onLost;
 
   @override
@@ -836,9 +796,7 @@ class _SharedPlanetSceneLayer extends StatelessWidget {
               prewarmPlanets: prewarmPlanets,
               active: true,
               visible: visible,
-              snapshotRequestId: snapshotRequestId,
               onReady: onReady,
-              onSnapshot: onSnapshot,
               onLost: onLost,
             ),
           ),
@@ -857,7 +815,6 @@ class _PlanetPage extends ConsumerStatefulWidget {
     required this.active,
     required this.sharedSceneReady,
     required this.onSharedSceneConfig,
-    required this.onRequestSnapshotBeforeRoute,
   });
 
   final Novel novel;
@@ -869,7 +826,6 @@ class _PlanetPage extends ConsumerStatefulWidget {
   /// 共享场景是否已换到并接管本页星球。为假时本页用替身盖住加载/换贴图窗口。
   final bool sharedSceneReady;
   final ValueChanged<_SharedPlanetSceneConfig> onSharedSceneConfig;
-  final Future<void> Function() onRequestSnapshotBeforeRoute;
 
   @override
   ConsumerState<_PlanetPage> createState() => _PlanetPageState();
@@ -1060,14 +1016,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
     _syncPageLock();
   }
 
-  Future<void> _awaitSnapshotBeforeRoute() async {
-    await widget.onRequestSnapshotBeforeRoute();
-  }
-
   Future<void> _openOutline(Novel novel) async {
-    // 进大纲前抓一帧快照，供极端情况下（场景被暂停后仍需替身）兜底遮罩。
-    await _awaitSnapshotBeforeRoute();
-    if (!mounted) return;
     // 关键：**不**复位 _sceneReady。iframe 只是被隐藏+暂停（planet_scene_web），
     // 场景全程存活；返回时 _sceneReady 仍为真 → 替身恒透明 → 直接露出活场景，
     // 零重建、零 1 秒加载、零黑帧（旧实现每次导航都拆重建才需要复位+替身）。
