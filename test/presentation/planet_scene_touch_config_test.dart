@@ -275,14 +275,17 @@ void main() {
     // 用户实测：新建第 6 颗（地球，5 张重贴图）显示成上一颗，进出大纲才刷新。
     // 根因是切球贴图上传走后台"静默期才传"，首页星球持续自转刷新
     // lastActivityTs，静默窗口迟迟不来 → 上传卡很多秒。切球必须走前台通道。
-    expect(sceneHtml, contains('function nextGpuUploadSlot(foreground)'));
+    expect(sceneHtml, contains('function nextGpuUploadSlot(fg)'));
     expect(
       sceneHtml,
       contains('preloadPlanetTextureBundle(name, true)'),
       reason: 'takePlanetTextureBundle（切球未命中缓存）必须以 foreground=true 上传',
     );
-    // 前台通道只等下一帧、不等静默
-    expect(sceneHtml, contains('foreground ? nextFrameTick : waitForUploadWindow'));
+    // 前台通道只等下一帧、不等静默（前台判据现读，便于预热中途升级，见下一条测试）
+    expect(
+      sceneHtml,
+      contains('isForeground(fg) ? nextFrameTick : waitForUploadWindow'),
+    );
   });
 
   test('换星球一次取齐整套贴图：不再有"低清晰度地球→高清晰度地球"两级跳', () {
@@ -308,6 +311,35 @@ void main() {
         reason: '$k 必须与底图同批取齐，不能留到之后再补',
       );
     }
+  });
+
+  test('撞上进行中的后台预热要就地升前台：否则换球继续按后台节奏磨', () {
+    // 用户实测"火星→地球，先是几秒钟的火星才变地球"。根因：后台预热是一串分块任务，
+    // 每块都等静默窗口（每槽最多 1 秒）。若用户在预热途中滑到这颗星球，
+    // takePlanetTextureBundle 拿到的是那个**尚未完成的后台 promise**，于是这次换球
+    // 继续按后台节奏传完。地球 5 张贴图分块最多，最容易被撞上，所以只在它身上明显。
+    // 修法：前台标志改成可变上下文，取槽位时现读，取用时就地置真。
+    expect(sceneHtml, contains('function isForeground(fg)'));
+    expect(
+      sceneHtml,
+      contains('const wait = isForeground(fg) ? nextFrameTick : waitForUploadWindow;'),
+      reason: '必须在每个分块取槽位时现读，捕获成布尔就没法中途升级',
+    );
+    expect(sceneHtml, contains('ctx: { fg: !!foreground }'));
+    expect(
+      sceneHtml,
+      contains('loadPlanetTextureBundle(PLANETS[name], record.ctx)'),
+      reason: '整套贴图共用同一个上下文对象，升级才能一次覆盖剩余所有分块',
+    );
+    final take = functionBody(sceneHtml, 'takePlanetTextureBundle');
+    expect(
+      take,
+      contains('if (cached.ctx) cached.ctx.fg = true;'),
+      reason: '取走进行中的预热时必须升前台',
+    );
+    // 进行中的记录不能被缓存淘汰（bundle 还是 null），否则贴图会泄漏且永远等不到
+    final trim = functionBody(sceneHtml, 'trimPlanetTextureCache');
+    expect(trim, contains('!record.bundle'));
   });
 
   test('相邻星球完整预热到 GPU：滑一步命中缓存，没有可见加载窗口', () {

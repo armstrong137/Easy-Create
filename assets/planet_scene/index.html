@@ -503,8 +503,15 @@ function waitForUploadWindow() {
 // 一直自转刷新 lastActivityTs，静默窗口迟迟不来，重贴图（地球 5 张）上传
 // 会卡到很多秒，表现为"切到地球却一直显示上一颗，进出大纲才刷新"。
 // foreground=false（后台预热/缩放高清）仍等静默窗口，避免抢主线程。
-function nextGpuUploadSlot(foreground) {
-  const wait = foreground ? nextFrameTick : waitForUploadWindow;
+// fg 可以是布尔，也可以是 {fg:bool} 上下文对象——**每个分块取槽位时现读**。
+// 之所以要可变：后台预热的整套贴图是一串分块任务，若用户在预热途中滑到这颗星球，
+// 必须当场把剩余分块升级成前台，否则这次换球会继续按后台节奏（每槽最多等 1 秒）
+// 慢慢传，用户就看到"先是几秒钟的火星，然后才是地球"（地球 5 张贴图，分块最多）。
+function isForeground(fg) {
+  return fg === true || (!!fg && fg.fg === true);
+}
+function nextGpuUploadSlot(fg) {
+  const wait = isForeground(fg) ? nextFrameTick : waitForUploadWindow;
   const slot = gpuUploadChain.then(wait);
   gpuUploadChain = slot.catch(function () {});
   return slot;
@@ -810,8 +817,11 @@ function preloadPlanetTextureBundle(name, foreground) {
     bundle: null,
     lastUsed: performance.now(),
     promise: null,
+    // 可变的前台/后台上下文：预热途中被 takePlanetTextureBundle 取走时会被就地
+    // 置为前台，剩余分块立刻改按前台节奏上传（见 nextGpuUploadSlot）
+    ctx: { fg: !!foreground },
   };
-  record.promise = loadPlanetTextureBundle(PLANETS[name], foreground).then(function (bundle) {
+  record.promise = loadPlanetTextureBundle(PLANETS[name], record.ctx).then(function (bundle) {
     if (disposed) {
       disposeTextureBundle(bundle);
       return null;
@@ -828,6 +838,10 @@ function takePlanetTextureBundle(name) {
   const cached = planetTextureCache.get(name);
   if (cached) {
     planetTextureCache.delete(name);
+    // 命中的可能是**尚在后台预热中**的那一份：就地升级为前台，剩余分块立刻
+    // 按前台节奏传完。否则这次换球会一直按后台节奏磨，用户看到的就是
+    // "先是几秒钟的火星，然后才是地球"（地球 5 张贴图，分块最多、最容易被撞上）。
+    if (cached.ctx) cached.ctx.fg = true;
     return cached.promise;
   }
   // 缓存没命中（未被预热过）才走这里：换星球是用户主动的前台操作，foreground=true
