@@ -194,9 +194,8 @@ function makeNightMat(nightMap) {
 // 建一颗星球（本体+夜光+云+环），加入 pivot，更新大气 uniforms，返回派生的
 // LOD/取景值。pre 非空时用**预加载好的纹理**——切星球时旧星球先继续渲染，
 // 新贴图全部就绪后由本函数一次性接管，全程复用同一 renderer / canvas / context。
-// pre 只带 map（基础相）时，本函数只建基础球；normal/specular/云层/夜光
-// 由 attachPlanetDetails 在后台静默期补挂（地球细节贴图共 ~34MB，
-// 和底图一起前台上传会跟滑动动画抢帧）。
+// pre 一定是整套（见 loadPlanetTextureBundle）：曾试过"先底图、细节后补"两相，
+// 但只有地球有细节图，结果换到地球时肉眼可见两级跳，已废弃。
 function mountPlanet(pcfg, pre) {
   const has = pre ? function (k) { return !!pre[k]; } : function () { return true; };
   const tex = function (k, path, isSrgb) {
@@ -763,10 +762,6 @@ const planetTextureCache = new Map();
 // 与从前单颗地球（64MB）同量级。
 const maxPlanetTextureCache = 3;
 
-function planetNameForConfig(pcfg) {
-  return Object.keys(PLANETS).find(function (name) { return PLANETS[name] === pcfg; });
-}
-
 function disposeTextureBundle(bundle) {
   if (!bundle) return;
   Object.keys(bundle).forEach(function (key) {
@@ -774,17 +769,16 @@ function disposeTextureBundle(bundle) {
   });
 }
 
-// baseOnly=true 只取底图(+土星环)：切星球时先出基础球，细节相后台补。
-// 地球细节 4 张（normal/specular/clouds/night）共约 34MB，与 33.5MB 底图
-// 一起前台上传要占十几帧，正压在滑动动画上 → 卡顿（用户实测）。
-function loadPlanetTextureBundle(pcfg, foreground, baseOnly) {
+// **一次取齐整套贴图**：曾经分两相（先底图、细节后台补），但只有地球有 4 张细节图，
+// 于是换到地球时会看见"低清晰度地球 → 高清晰度地球"两级跳（用户实测 2→1）。
+// 现在底图降到 2048、整套仅 40MB，且相邻星球会被提前完整预热，不再需要分相。
+function loadPlanetTextureBundle(pcfg, foreground) {
   const keys = ['map'];
   const jobs = [loadTexAsync(pcfg.map, true, foreground)];
-  if (!baseOnly && pcfg.normal) { keys.push('normal'); jobs.push(loadTexAsync(pcfg.normal, false, foreground)); }
-  if (!baseOnly && pcfg.specular) { keys.push('specular'); jobs.push(loadTexAsync(pcfg.specular, false, foreground)); }
-  if (!baseOnly && pcfg.clouds) { keys.push('clouds'); jobs.push(loadTexAsync(pcfg.clouds, true, foreground)); }
-  if (!baseOnly && pcfg.night) { keys.push('night'); jobs.push(loadTexAsync(pcfg.night, true, foreground)); }
-  // 土星环留在基础相：它是土星的身份特征，且只有一张小图
+  if (pcfg.normal) { keys.push('normal'); jobs.push(loadTexAsync(pcfg.normal, false, foreground)); }
+  if (pcfg.specular) { keys.push('specular'); jobs.push(loadTexAsync(pcfg.specular, false, foreground)); }
+  if (pcfg.clouds) { keys.push('clouds'); jobs.push(loadTexAsync(pcfg.clouds, true, foreground)); }
+  if (pcfg.night) { keys.push('night'); jobs.push(loadTexAsync(pcfg.night, true, foreground)); }
   if (pcfg.ring) { keys.push('ring'); jobs.push(loadTexAsync('textures/saturn_ring.png', true, foreground)); }
   return Promise.all(jobs).then(function (vals) {
     const out = {};
@@ -793,7 +787,7 @@ function loadPlanetTextureBundle(pcfg, foreground, baseOnly) {
   });
 }
 
-function preloadPlanetTextureBundle(name, foreground, baseOnly) {
+function preloadPlanetTextureBundle(name, foreground) {
   if (!name || !PLANETS[name]) return Promise.resolve(null);
   const cached = planetTextureCache.get(name);
   if (cached) {
@@ -806,7 +800,7 @@ function preloadPlanetTextureBundle(name, foreground, baseOnly) {
     lastUsed: performance.now(),
     promise: null,
   };
-  record.promise = loadPlanetTextureBundle(PLANETS[name], foreground, baseOnly).then(function (bundle) {
+  record.promise = loadPlanetTextureBundle(PLANETS[name], foreground).then(function (bundle) {
     if (disposed) {
       disposeTextureBundle(bundle);
       return null;
@@ -819,78 +813,17 @@ function preloadPlanetTextureBundle(name, foreground, baseOnly) {
   return record.promise;
 }
 
-function takePlanetTextureBundle(name, full) {
+function takePlanetTextureBundle(name) {
   const cached = planetTextureCache.get(name);
   if (cached) {
     planetTextureCache.delete(name);
     return cached.promise;
   }
-  // 换星球=用户主动前台操作：底图 foreground=true 只等下一帧上传，
-  // 不被首页自转的活动挡在静默窗口外。
-  // full=true（新建星球，jumpToPage 无滑页动画）：整包前台一次上传，接管即全清，
-  //   不再走"底图先出、细节后补"两相 → 用户新建时一步到位（见 setPlanet 的 immediate）。
-  // full=false（滑页切换）：只前台上传底图（baseOnly），细节相另行后台补（attachPlanetDetails）。
-  return preloadPlanetTextureBundle(name, true, !full).then(function (bundle) {
+  // 缓存没命中（未被预热过）才走这里：换星球是用户主动的前台操作，foreground=true
+  // 只等下一帧就上传，不被首页自转的活动挡在静默窗口外。整套一次取齐，接管即全清。
+  return preloadPlanetTextureBundle(name, true).then(function (bundle) {
     planetTextureCache.delete(name);
     return bundle;
-  });
-}
-
-/// 细节相：基础球已在画面上后，后台静默期补齐 normal/specular/云层/夜光，
-/// 就绪即挂到当前星球上（期间用户已经看到正确的星球，不再和滑动抢帧）。
-function attachPlanetDetails(name, pcfg) {
-  if (disposed || !planetMat) return;
-  // 缓存里若已带全套细节（从上一颗原样回存），mountPlanet 已建好，勿重复加载
-  const needNormal = !!pcfg.normal && !planetMat.normalMap;
-  const needSpec = !!pcfg.specular && !planetMat.specularMap;
-  const needClouds = !!pcfg.clouds && !clouds;
-  const needNight = !!pcfg.night && !nightShell;
-  if (!needNormal && !needSpec && !needClouds && !needNight) return;
-  const jobs = {};
-  if (needNormal) jobs.normal = loadTexAsync(pcfg.normal, false, false);
-  if (needSpec) jobs.specular = loadTexAsync(pcfg.specular, false, false);
-  if (needClouds) jobs.clouds = loadTexAsync(pcfg.clouds, true, false);
-  if (needNight) jobs.night = loadTexAsync(pcfg.night, true, false);
-  const keys = Object.keys(jobs);
-  Promise.all(keys.map(function (k) { return jobs[k]; })).then(function (vals) {
-    const d = {};
-    keys.forEach(function (k, i) { d[k] = vals[i]; });
-    // 期间用户可能又切走了：丢弃，不写到别的星球身上
-    if (disposed || planetName !== name || !planetMat) {
-      disposeTextureBundle(d);
-      return;
-    }
-    if (d.normal) {
-      planetMat.normalMap = d.normal;
-      planetMat.normalScale = new THREE.Vector2(0.85, 0.85);
-      planetMat.needsUpdate = true;
-    }
-    if (d.specular) {
-      planetMat.specularMap = d.specular;
-      planetMat.specular = new THREE.Color(0x66788c);
-      planetMat.shininess = 22;
-      detailBaseShininess = 22;
-      planetMat.needsUpdate = true;
-    }
-    if (d.night && !nightShell && planet) {
-      nightShell = new THREE.Mesh(
-        new THREE.SphereGeometry(1.001, 64, 64),
-        makeNightMat(d.night)
-      );
-      nightShell.name = 'night';
-      planet.add(nightShell);
-    }
-    if (d.clouds && !clouds) {
-      clouds = new THREE.Mesh(
-        new THREE.SphereGeometry(1.012, 64, 64),
-        new THREE.MeshLambertMaterial({
-          map: d.clouds,
-          blending: THREE.AdditiveBlending, transparent: true, opacity: 0.55, depthWrite: false,
-        })
-      );
-      pivot.add(clouds);
-    }
-    applySurfaceDetail();
   });
 }
 
@@ -913,29 +846,6 @@ function trimPlanetTextureCache(keepNames) {
   }
 }
 
-function preloadPlanetTextures(pcfg) {
-  const name = planetNameForConfig(pcfg);
-  return name ? preloadPlanetTextureBundle(name) : loadPlanetTextureBundle(pcfg);
-}
-
-// 邻居星球只预取到 HTTP 缓存层：下载完即丢弃引用，**不解码、不建
-// ImageBitmap、不上传 GPU、不动画布**。可见场景零后台重活——后台偷偷动
-// WebGL 纹理/画布是"切完球几秒后莫名卡一下"的总根源。真正的解码/上传只
-// 发生在切球事务里（takePlanetTextureBundle：旧星球持续显示、img.decode
-// 后台解码、分块上传，就绪后一次性接管）或用户明确放大时。
-function texturePathsForPlanet(pcfg) {
-  const paths = [pcfg.map];
-  if (pcfg.normal) paths.push(pcfg.normal);
-  if (pcfg.specular) paths.push(pcfg.specular);
-  if (pcfg.clouds) paths.push(pcfg.clouds);
-  if (pcfg.night) paths.push(pcfg.night);
-  if (pcfg.ring) paths.push('textures/saturn_ring.png');
-  // 高清 LOD 文件也预取字节：第一次放大不再等文件读取（解码/上传仍只在
-  // 用户明确放大时发生）
-  const lodPath = useMidLod ? pcfg.mapMid : pcfg.mapHi;
-  if (lodPath && lodPath !== pcfg.map) paths.push(lodPath);
-  return paths;
-}
 // 轻量预取：只把文件字节拉进 HTTP 缓存（消费完 body 即丢弃引用），
 // 不解码、不建 ImageBitmap、不上传 GPU、不动画布
 const prefetchedTexturePaths = new Set();
@@ -949,13 +859,21 @@ function prefetchTexturePath(path) {
     });
   });
 }
+// 相邻星球**完整预热到 GPU**（解码 + 分块上传），不再只是预取字节。
+// 这样左右滑一步命中缓存，换球只是引用切换（实测 3ms），根本没有可见的加载窗口——
+// 既不会先停在旧星球，也用不着盖替身（用户实测"先是火星→低清地球→高清地球"正是
+// 加载窗口暴露出来的）。上传走**后台通道**（waitForUploadWindow），只在静默期推进，
+// 不与滑动动画抢帧；星球自转不算活动，故静默窗口正常开启。
 window.prewarmPlanets = function (names) {
   if (!Array.isArray(names) || disposed) return;
   names
     .filter(function (name) { return name && PLANETS[name] && name !== planetName; })
-    .slice(0, maxPlanetTextureCache)
+    .slice(0, maxPlanetTextureCache - 1) // 给当前星球留一个槽位
     .forEach(function (name) {
-      texturePathsForPlanet(PLANETS[name]).forEach(prefetchTexturePath);
+      // 高清放大档仍只预取字节（不解码不上传）：那是放大时才用的大图
+      const lod = useMidLod ? PLANETS[name].mapMid : PLANETS[name].mapHi;
+      if (lod && lod !== PLANETS[name].map) prefetchTexturePath(lod);
+      preloadPlanetTextureBundle(name, false);
     });
 };
 
@@ -967,9 +885,6 @@ window.setPlanet = function (nextPlanet, state) {
   noteActivity();
   if (state) applyViewState(state);
   if (!nextPlanet || !PLANETS[nextPlanet] || disposed) return;
-  // immediate（新建星球）：整包前台一次上传，接管即全清，不走两相（消除"低清→高清"）。
-  // 由宿主经消息里的 state.immediate 传入（新建走 jumpToPage、无滑页动画，可整包前台）。
-  const immediate = !!(state && state.immediate);
   if (planetSwapping) {
     // 换球途中又来新目标：记住最新的，本轮结束后接着换（连续快滑不丢帧）
     pendingPlanet = nextPlanet === planetName ? null : nextPlanet;
@@ -979,7 +894,7 @@ window.setPlanet = function (nextPlanet, state) {
   planetSwapping = true;
   const nextName = nextPlanet;
   const nextCfg = PLANETS[nextName];
-  takePlanetTextureBundle(nextName, immediate).then(function (pre) {
+  takePlanetTextureBundle(nextName).then(function (pre) {
     if (disposed) { planetSwapping = false; return; }
     const prevName = planetName;
     const old = { planet: planet, nightShell: nightShell, clouds: clouds, ring: ring, baseTex: baseTex };
@@ -997,6 +912,12 @@ window.setPlanet = function (nextPlanet, state) {
     // 场景没重建，pivot 转角/缩放本就保留；再据 state 兜一次，确保不复位默认角度
     if (state) applyViewState(state);
     applySurfaceDetail();
+    // 取景倍率与新贴图**同一刻**生效：宿主把 stage 随 planet 一起下发，但绝不能在
+    // 换球前就改——那段时间画面还是旧星球，会被按新取景放大/缩小（用户实测
+    // "先出现变大的金星"）。所以在这里、接管新星球的同一帧才落地。
+    if (state && typeof state.stage === 'number' && isFinite(state.stage)) {
+      stageScale = Math.max(1, state.stage);
+    }
     // 土星←→普通星球取景半径不同：只重算镜头距离。不再借道 setSize——
     // 即使尺寸没变，canvas.width 赋值也会强制重分配 drawing buffer（白冻一下）
     if (lastW > 0 && lastH > 0) {
@@ -1023,8 +944,6 @@ window.setPlanet = function (nextPlanet, state) {
     // 新星球的高清档只预取字节（不解码、不上传、不动画布）：第一次放大不等文件
     prefetchTexturePath(lodSrc);
     planetSwapping = false;
-    // 基础球已接管画面 → 细节相后台补齐（不再和滑动动画抢帧）
-    attachPlanetDetails(nextName, nextCfg);
     // 通知宿主：新星球已接管（宿主据此确认切换完成）
     if (window.parent !== window) {
       // 带上接管后的星球名：宿主只在"场景真正换到当前页星球"时才揭幕替身，
@@ -1044,9 +963,12 @@ window.setPlanet = function (nextPlanet, state) {
 window.addEventListener('message', function (e) {
   const m = e.data;
   if (!m || typeof m !== 'object') return;
-  // stage 必须先于 setPlanet：换球收尾会用当前 stageScale 重算取景，
-  // 顺序颠倒会让新星球先按旧取景亮一帧（跨土星就是大小跳一下）
-  if (typeof m.stage === 'number') window.setStage(m.stage);
+  // 同一条消息里带了 planet 时**不能**提前改 stage：换球要 60~100ms，期间画面还是
+  // 旧星球，提前套上新取景会把旧星球放大/缩小（用户实测"先出现变大的金星"）。
+  // 这种情况交给 setPlanet 在接管新贴图的同一刻原子生效（见其 state.stage 处理）。
+  if (typeof m.stage === 'number' && typeof m.planet !== 'string') {
+    window.setStage(m.stage);
+  }
   if (typeof m.planet === 'string') window.setPlanet(m.planet, m);
   if (typeof m.zoom === 'number') window.setZoom(m.zoom);
   if (typeof m.spin === 'number') window.setSpin(m.spin);

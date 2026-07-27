@@ -28,7 +28,6 @@ class PlanetScene extends ConsumerStatefulWidget {
     this.prewarmPlanets = const [],
     this.active = true,
     this.visible = true,
-    this.fullDetail = false,
     this.snapshotRequestId = 0,
     this.onReady,
     this.onSnapshot,
@@ -64,10 +63,6 @@ class PlanetScene extends ConsumerStatefulWidget {
   /// 首页路由是否在最顶（未被大纲页覆盖）。移动端 WebView 全程存活、不销毁；
   /// 覆盖时暂停渲染省电，返回即恢复（接口与 web 端一致）。
   final bool visible;
-
-  /// 本次换星球是否整包前台一次上传（新建星球用），接口与 web 端一致。
-  /// 为真时经 setPlanet 的 state.immediate 让场景整包前台、接管即全清。
-  final bool fullDetail;
 
   /// 快照请求序号（移动端不摘除场景，暂无实际动作，保留同名接口）
   final int snapshotRequestId;
@@ -177,14 +172,13 @@ class _PlanetSceneState extends ConsumerState<PlanetScene> {
     // 切星球：共享场景**原地换贴图**，并合并下发当前视角，避免新星球先按
     // 默认角度亮一帧再收角度"跳一下"（场景侧 setPlanet 第二参 applyViewState）。
     if (old.planet != widget.planet) {
-      // stage 必须先于 setPlanet（换球收尾按当前 stage 重算取景）
+      // stage 随 state 一起给，由场景在接管新贴图的同一刻落地——**不能**先调
+      // setStage，否则换球那 60~100ms 里旧星球会被按新取景放大（"变大的金星"）
       _web?.runJavaScript(
-        'setStage(${widget.stageScale});'
         "setPlanet('${widget.planet}', "
         '{yaw:${widget.yaw}, pitch:${widget.pitch}, '
         'zoom:${widget.zoom}, spin:${widget.spin}, '
-        // 新建星球：整包前台一次上传，接管即全清（场景侧读 state.immediate）
-        'immediate:${widget.fullDetail}})',
+        'stage:${widget.stageScale}})',
       );
     } else {
       if (old.stageScale != widget.stageScale) {

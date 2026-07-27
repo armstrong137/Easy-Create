@@ -197,7 +197,7 @@ void main() {
     ).readAsStringSync();
     // setPlanet 不再 disposeScene+location.replace（"变脸"根源），而是原地重建本体
     expect(sceneHtml, contains('function mountPlanet'));
-    expect(sceneHtml, contains('function preloadPlanetTextures'));
+    expect(sceneHtml, contains('function preloadPlanetTextureBundle'));
     expect(sceneHtml, contains("postMessage('planetReady:'"));
     final setPlanetStart = sceneHtml.indexOf('window.setPlanet = function');
     final setPlanetBody = sceneHtml.substring(

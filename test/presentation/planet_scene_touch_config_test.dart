@@ -277,45 +277,59 @@ void main() {
     expect(sceneHtml, contains('function nextGpuUploadSlot(foreground)'));
     expect(
       sceneHtml,
-      contains('preloadPlanetTextureBundle(name, true, !full)'),
-      reason: 'takePlanetTextureBundle（切球）必须以 foreground=true 上传（滑页只基础相）',
+      contains('preloadPlanetTextureBundle(name, true)'),
+      reason: 'takePlanetTextureBundle（切球未命中缓存）必须以 foreground=true 上传',
     );
     // 前台通道只等下一帧、不等静默
     expect(sceneHtml, contains('foreground ? nextFrameTick : waitForUploadWindow'));
   });
 
-  test('切球分两相：基础球前台先出，细节贴图后台补挂', () {
-    // 地球 5 张贴图约 67MB 全走前台通道会和滑页动画抢帧（用户实测切换卡顿）。
-    // 只有底图（+土星环）走前台，normal/specular/云层/夜光留到基础球出画面后
-    // 由 attachPlanetDetails 以 foreground=false 补齐。
-    expect(sceneHtml, contains('function loadPlanetTextureBundle(pcfg, foreground, baseOnly)'));
+  test('换星球一次取齐整套贴图：不再有"低清晰度地球→高清晰度地球"两级跳', () {
+    // 曾分两相（先底图、细节后台补），但只有地球带 4 张细节图，于是换到地球时
+    // 肉眼可见两级跳（用户实测 2→1："突然跳变成很低清晰度的地球，然后变成高清晰度"）。
+    // 现在整套一次取齐；相邻星球提前完整预热，所以不需要靠分相来避开滑动帧。
     expect(
       sceneHtml,
-      contains('if (!baseOnly && pcfg.normal)'),
-      reason: '基础相只上传底图，细节贴图必须被 baseOnly 跳过',
+      contains('function loadPlanetTextureBundle(pcfg, foreground)'),
+      reason: '不应再有 baseOnly 参数',
     );
-    expect(sceneHtml, contains('function attachPlanetDetails(name, pcfg)'));
+    expect(sceneHtml, isNot(contains('baseOnly')));
     expect(
       sceneHtml,
-      contains('attachPlanetDetails(nextName, nextCfg)'),
-      reason: '换星球事务收尾必须触发细节相补挂',
+      isNot(contains('attachPlanetDetails')),
+      reason: '细节相补挂机制已废弃，残留会再引入两级跳',
     );
-    final detailBody = functionBody(sceneHtml, 'attachPlanetDetails');
+    final bundle = functionBody(sceneHtml, 'loadPlanetTextureBundle');
+    for (final k in ['normal', 'specular', 'clouds', 'night']) {
+      expect(
+        bundle,
+        contains('pcfg.$k'),
+        reason: '$k 必须与底图同批取齐，不能留到之后再补',
+      );
+    }
+  });
+
+  test('相邻星球完整预热到 GPU：滑一步命中缓存，没有可见加载窗口', () {
+    // 只预取字节（不解码不上传）时，换球仍要现场解码+上传 → 期间画面停在旧星球，
+    // 慢一点就露替身（用户实测"先是火星→低清地球→高清地球"）。改为提前完整预热。
+    final prewarm = homePage.isNotEmpty
+        ? sceneHtml.substring(
+            sceneHtml.indexOf('window.prewarmPlanets = function (names)'),
+            sceneHtml.indexOf('// 切星球：**原地换贴图**'),
+          )
+        : '';
     expect(
-      detailBody,
-      contains('loadTexAsync(pcfg.normal, false, false)'),
-      reason: '细节相走后台通道（foreground=false），不与滑动动画抢帧',
+      prewarm,
+      contains('preloadPlanetTextureBundle(name, false)'),
+      reason: '预热必须真的解码+上传，且走后台通道（foreground=false）不抢滑动帧',
     );
     expect(
-      detailBody,
-      contains('planetName !== name'),
-      reason: '补挂前须校验仍是同一颗星球，否则丢弃（防串台）',
+      prewarm,
+      contains('maxPlanetTextureCache - 1'),
+      reason: '要给当前星球留一个缓存槽位，否则预热会把自己挤掉',
     );
-    expect(
-      detailBody,
-      contains('!planetMat.normalMap'),
-      reason: '缓存里已带全套细节时不得重复加载',
-    );
+    // 放大用的高清大图仍只预取字节
+    expect(prewarm, contains('prefetchTexturePath(lod)'));
   });
 
   test('换星球推迟到滑页落定后：贴图上传不与 PageView 动画抢主线程', () {
@@ -368,37 +382,37 @@ void main() {
       contains('_armSceneRevealFallback()'),
       reason: '新星球场景万一不发 planetReady 也要兜底揭幕，替身不永久停留',
     );
-    // 揭幕后清标记：否则之后滑页回该星球会重走前台全量、又在滑动里卡顿
-    final ready = homePage.substring(
-      homePage.indexOf('void _onPlanetSceneReady('),
-      homePage.indexOf('void _precachePlanetStandIns('),
-    );
-    expect(ready, contains('_immediateDetailNovelId = null'));
   });
 
-  test('新建星球走整包前台一次上传：接管即全清，消除"低清→高清"', () {
-    // 用户要求新建时一步到位。创建是 jumpToPage、无滑页动画，可整包前台上传，
-    // 不再走"底图前台 + 细节后台"两相（那是为保护滑动帧而设，滑页仍保留）。
-    expect(homePage, contains('int? _immediateDetailNovelId'));
-    expect(
-      homePage,
-      contains('fullDetail: novel.id == widget.immediateDetailNovelId'),
-      reason: '仅刚新建的那颗星球 config 带 fullDetail=true',
-    );
-    expect(homePage, contains('fullDetail: config.fullDetail'));
-    // 两端场景壳都把 fullDetail 经换星球消息里的 immediate 下发
-    expect(webWrapper, contains('final bool fullDetail'));
-    expect(webWrapper, contains("'immediate': widget.fullDetail"));
-    expect(ioWrapper, contains('final bool fullDetail'));
-    expect(ioWrapper, contains('immediate:\${widget.fullDetail}'));
-    // 场景侧：immediate 走整包前台（takePlanetTextureBundle 的 full=true）
-    expect(sceneHtml, contains('function takePlanetTextureBundle(name, full)'));
+  test('取景倍率与新贴图原子生效：换球期间旧星球不得被放大（变大的金星）', () {
+    // 用户实测"正序 4→5 先出现变大的金星"：换球要 60~100ms，期间画面还是金星，
+    // 若提前把 stage 改成土星那档，金星就被按新取景放大（1016/(3×1.02×1.09)=305px，
+    // 原本 218px）。所以带 planet 的消息**不能**先改 stage。
     expect(
       sceneHtml,
-      contains('const immediate = !!(state && state.immediate)'),
-      reason: 'setPlanet 须从宿主消息 state.immediate 读取整包前台标志',
+      contains("if (typeof m.stage === 'number' && typeof m.planet !== 'string')"),
+      reason: '同一条消息带 planet 时必须跳过提前 setStage',
     );
-    expect(sceneHtml, contains('takePlanetTextureBundle(nextName, immediate)'));
+    // 改由 setPlanet 在接管新贴图的同一刻落地
+    final swapBody = sceneHtml.substring(
+      sceneHtml.indexOf('window.setPlanet = function (nextPlanet, state)'),
+      sceneHtml.indexOf('// Web 端（iframe 跨文档）经 postMessage 调同一组接口'),
+    );
+    expect(swapBody, contains("if (state && typeof state.stage === 'number'"));
+    expect(
+      swapBody.indexOf('stageScale = Math.max(1, state.stage)') <
+          swapBody.indexOf('d0 = fitDistance(frameRadius, stageScale * 1.02)'),
+      isTrue,
+      reason: 'stage 必须在重算镜头距离之前落地，才能同一帧生效',
+    );
+    // 两端壳都把 stage 随换球消息一起给，而不是单独先发
+    expect(webWrapper, contains("'stage': widget.stageScale"));
+    expect(ioWrapper, contains('stage:\${widget.stageScale}})'));
+    expect(
+      ioWrapper,
+      isNot(contains('setStage(\${widget.stageScale});setPlanet')),
+      reason: 'io 端也不能在 setPlanet 之前先调 setStage',
+    );
   });
 
   test('揭幕只认当前页星球：串行换球滞后时替身不淡出到错星球', () {
@@ -869,14 +883,22 @@ void main() {
     );
     expect(setPlanetBody, isNot(contains('prewarmHiTexture')));
     expect(setPlanetBody, isNot(contains('PixelRatioBoost')));
-    // 邻居星球只预取到 HTTP 缓存层：不解码、不建 ImageBitmap、不上传 GPU
+    // 邻居星球预热必须走**后台上传通道**：可以解码上传（这是消除切换加载窗口的
+    // 关键，见"相邻星球完整预热"那条），但绝不能占用前台帧、跟滑动动画抢主线程。
     final prewarmBody = sceneHtml.substring(
       sceneHtml.indexOf('window.prewarmPlanets = function'),
-      sceneHtml.indexOf('// 切星球'),
+      sceneHtml.indexOf('// 切星球：**原地换贴图**'),
     );
-    expect(prewarmBody, isNot(contains('preloadPlanetTextureBundle')));
-    expect(prewarmBody, isNot(contains('createImageBitmap')));
-    expect(prewarmBody, isNot(contains('createTextureChunked')));
+    expect(
+      prewarmBody,
+      contains('preloadPlanetTextureBundle(name, false)'),
+      reason: '第二参 false = 后台通道（waitForUploadWindow），只在静默期推进',
+    );
+    expect(
+      prewarmBody,
+      isNot(contains('preloadPlanetTextureBundle(name, true)')),
+      reason: '预热绝不能走前台通道，否则又跟滑动动画抢帧',
+    );
     // 预取助手本体也必须是纯字节层：消费完 body 落 HTTP 缓存即止
     final prefetchBody = functionBody(sceneHtml, 'prefetchTexturePath');
     expect(prefetchBody, contains('.blob()'));

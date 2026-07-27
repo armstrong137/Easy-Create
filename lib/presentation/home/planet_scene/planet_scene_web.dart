@@ -27,7 +27,6 @@ class PlanetScene extends StatefulWidget {
     this.prewarmPlanets = const [],
     this.active = true,
     this.visible = true,
-    this.fullDetail = false,
     this.snapshotRequestId = 0,
     this.onReady,
     this.onSnapshot,
@@ -66,11 +65,6 @@ class PlanetScene extends StatefulWidget {
   /// 底图都还在，无重建、无 1 秒加载、无替身黑帧（对齐移动端不销毁的行为）。
   /// display:none 让平台视图退出合成，规避"驻留非当前路由 → 丢 canvas → 大纲白屏"。
   final bool visible;
-
-  /// 本次换星球是否整包前台一次上传（新建星球用）：为真时场景走 immediate，
-  /// 接管即全清、不走"底图先出 → 细节后补"两相（新建无滑页动画，可整包前台）。
-  /// 滑页切换恒为 false，保持两相以保护滑动帧。
-  final bool fullDetail;
 
   /// 快照请求序号：+1 即让场景回传一张最新快照（进大纲前调用，
   /// 供返回时替身用；不做周期快照——PNG 编码在主线程是固定 jank 源）
@@ -223,8 +217,6 @@ class _PlanetSceneState extends State<PlanetScene> {
         'spin': widget.spin,
         // 画布尺寸固定，取景差异随星球一起下发（土星 3、其余 4.2）
         'stage': widget.stageScale,
-        // 新建星球：整包前台一次上传，接管即全清（场景侧 setPlanet 读 state.immediate）
-        'immediate': widget.fullDetail,
       });
     } else {
       if (old.stageScale != widget.stageScale) {
