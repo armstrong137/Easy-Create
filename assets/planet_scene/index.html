@@ -27,7 +27,9 @@
 const params = new URLSearchParams(location.search);
 let planetName = params.get('planet') || 'earth';
 let spinRevPerSec = parseFloat(params.get('spin') || '0.008');
-const stageScale = Math.max(1, parseFloat(params.get('stage') || '1'));
+// 可变：宿主把画布尺寸固定成最大档后，星球间的取景差异靠运行时改 stage 实现
+// （改 stage 只重算镜头距离，不动 canvas.width，故不会重分配绘图缓冲）
+let stageScale = Math.max(1, parseFloat(params.get('stage') || '1'));
 const initialPrewarmPlanets = (params.get('prewarm') || '').split(',').filter(Boolean);
 
 // ---------- 渲染器：透明底叠在 Flutter 星空之上 ----------
@@ -82,7 +84,11 @@ scene.add(new THREE.AmbientLight(0x334455, 0.42));
 // 8192×4096×4B ≈ 134MB，iPhone Safari 直接卡死。
 const PLANETS = {
   earth: {
-    map: 'textures/earth_day_4096.jpg',
+    // 常态底图取 2048（解码 8MB，原 4096 要 32MB）：球在屏上只有约 726 设备像素，
+    // 可见半球用不到 1024×1024，2048 已远够；放大另有 mapMid/mapHi 高清档接管。
+    // 这一刀把地球整套从 64MB 降到 40MB——地球原是"重量级特例"，被纹理缓存挤掉后
+    // 退回第一颗星球要整套重载，正是用户实测"逆序 2→1 有异常"的原因。
+    map: 'textures/earth_day_2048.jpg',
     mapMid: 'textures/earth_day_6144.jpg',
     mapHi: 'textures/earth_day_8192.jpg',
     normal: 'textures/earth_normal_2048.jpg',
@@ -349,6 +355,18 @@ function updateFraming() {
 
 // ---------- Flutter 控制接口 ----------
 window.setSpin = function (revPerSec) { spinRevPerSec = revPerSec; };
+
+/// 改取景倍率（画布尺寸不变）：只重算镜头距离，**不碰 canvas.width**，
+/// 因此不会像 renderer.setSize 那样重分配绘图缓冲、闪一下。
+window.setStage = function (s) {
+  const v = Math.max(1, s);
+  if (!isFinite(v) || v === stageScale) return;
+  stageScale = v;
+  if (lastW > 0 && lastH > 0) {
+    d0 = fitDistance(frameRadius, stageScale * 1.02);
+    camera.position.set(0, 0, d0 / zoom);
+  }
+};
 
 // 缩放 = 镜头沿视线推进（dolly），不是位图放大：
 // 场景按新距离重新渲染，多近都清晰；镜头恒过原点故星球始终居中。
@@ -740,7 +758,10 @@ function loadTexAsync(path, srgbFlag, foreground) {
     .catch(function () { return loadTexLegacy(path, srgbFlag); });
 }
 const planetTextureCache = new Map();
-const maxPlanetTextureCache = 2;
+// 3 份：来回滑动常在 3 颗之间打转，只留 2 份会把刚看过的那颗挤掉，退回去就整套重载
+// （用户实测"逆序第 2 颗退回第 1 颗有异常"）。配合地球降到 40MB，3 份的常驻显存
+// 与从前单颗地球（64MB）同量级。
+const maxPlanetTextureCache = 3;
 
 function planetNameForConfig(pcfg) {
   return Object.keys(PLANETS).find(function (name) { return PLANETS[name] === pcfg; });
@@ -1023,6 +1044,9 @@ window.setPlanet = function (nextPlanet, state) {
 window.addEventListener('message', function (e) {
   const m = e.data;
   if (!m || typeof m !== 'object') return;
+  // stage 必须先于 setPlanet：换球收尾会用当前 stageScale 重算取景，
+  // 顺序颠倒会让新星球先按旧取景亮一帧（跨土星就是大小跳一下）
+  if (typeof m.stage === 'number') window.setStage(m.stage);
   if (typeof m.planet === 'string') window.setPlanet(m.planet, m);
   if (typeof m.zoom === 'number') window.setZoom(m.zoom);
   if (typeof m.spin === 'number') window.setSpin(m.spin);

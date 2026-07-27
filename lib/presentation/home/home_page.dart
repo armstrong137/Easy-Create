@@ -52,6 +52,15 @@ final planetAssetsProvider = FutureProvider.family<PlanetShaderAssets, String>(
 /// 初始视觉大小不变，放大时星球有空间铺开而不撞画布方形边缘。
 const kPlanetSceneStageScale = 3.0;
 
+/// 土星要给环留位，其取景框比别的星球大 1.4 倍。
+///
+/// 但**场景画布恒按这一档（最大档）分配**：切星球时 iframe 尺寸若变化，场景内
+/// `updateFraming()` 会调 `renderer.setSize()` 强制重分配 WebGL 绘图缓冲，跨土星
+/// 那一步就会闪一下（用户实测"正序 4→5 有异常"）。画布固定后，星球间取景差异
+/// 改由下发 stage 解决：非土星 stage = 3×1.4，土星 stage = 3——
+/// 球径 = 画布 /(stage×1.02×frameRadius)，两边算出来与从前逐像素一致。
+const kSaturnSceneBoxFactor = 1.4;
+
 /// 星球最大放大倍率（受舞台倍率约束：超过就会露出画布方边）
 const kPlanetSceneMaxZoom = kPlanetSceneStageScale;
 
@@ -1107,16 +1116,23 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
 
     Widget planetBody() {
       if (use3D) {
-        final sceneDiameter = novel.planet == 'saturn'
-            ? diameter * 1.4
+        final isSaturn = novel.planet == 'saturn';
+        // 本页自身的几何（手势热区、替身取景）仍按各星球原值，不受下面画布固定影响
+        final sceneDiameter = isSaturn
+            ? diameter * kSaturnSceneBoxFactor
             : diameter;
         if (widget.active) {
           final config = _SharedPlanetSceneConfig(
             novelId: novel.id,
             planet: novel.planet,
             spin: planetSpin(count),
-            diameter: sceneDiameter * kPlanetSceneStageScale,
-            stageScale: kPlanetSceneStageScale,
+            // 画布恒为最大档（土星那档）：切星球不再改 iframe 尺寸 → 不触发
+            // renderer.setSize 重分配绘图缓冲（跨土星那一步不再闪）
+            diameter: diameter * kSaturnSceneBoxFactor * kPlanetSceneStageScale,
+            // 取景差异改由 stage 承担，球径与从前一致（见 kSaturnSceneBoxFactor 注释）
+            stageScale: isSaturn
+                ? kPlanetSceneStageScale
+                : kPlanetSceneStageScale * kSaturnSceneBoxFactor,
             zoom: _zoom,
             yaw: _spin.yaw,
             pitch: _spin.pitch,

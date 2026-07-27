@@ -221,10 +221,15 @@ class _PlanetSceneState extends State<PlanetScene> {
         'pitch': widget.pitch,
         'zoom': widget.zoom,
         'spin': widget.spin,
+        // 画布尺寸固定，取景差异随星球一起下发（土星 3、其余 4.2）
+        'stage': widget.stageScale,
         // 新建星球：整包前台一次上传，接管即全清（场景侧 setPlanet 读 state.immediate）
         'immediate': widget.fullDetail,
       });
     } else {
+      if (old.stageScale != widget.stageScale) {
+        _post({'stage': widget.stageScale});
+      }
       if (old.zoom != widget.zoom) {
         _post({'zoom': widget.zoom});
       }

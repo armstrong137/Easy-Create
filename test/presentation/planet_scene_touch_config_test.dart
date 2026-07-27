@@ -466,6 +466,74 @@ void main() {
     expect(ioWrapper, contains('Timer? _watchdog'));
   });
 
+  test('画布尺寸恒定：跨土星换球不再重分配绘图缓冲（正序 4→5 闪一下）', () {
+    // 土星取景框比别的星球大 1.4 倍，旧实现让 iframe 跟着变尺寸 → 场景内
+    // updateFraming() 调 renderer.setSize() 强制重分配 WebGL 绘图缓冲 → 跨土星
+    // 那一步闪一下（用户实测"正序第 4 颗到第 5 颗有异常"）。
+    // 现在画布恒按最大档分配，取景差异改由运行时下发 stage 承担。
+    expect(homePage, contains('const kSaturnSceneBoxFactor = 1.4'));
+    expect(
+      homePage,
+      contains('diameter: diameter * kSaturnSceneBoxFactor * kPlanetSceneStageScale'),
+      reason: '画布必须与星球无关（恒为最大档），否则切星球仍会 setSize',
+    );
+    // stage 随星球给：土星 3，其余 3×1.4
+    expect(homePage, contains('kPlanetSceneStageScale * kSaturnSceneBoxFactor'));
+    // 场景侧：stage 可运行时改，且只重算镜头、不碰 canvas
+    expect(sceneHtml, contains('let stageScale'));
+    expect(sceneHtml, contains('window.setStage = function (s)'));
+    final setStage = sceneHtml.substring(
+      sceneHtml.indexOf('window.setStage = function (s)'),
+      sceneHtml.indexOf('let zoom = 1, zoomTarget = 1;'),
+    );
+    expect(
+      setStage,
+      isNot(contains('setSize')),
+      reason: '改 stage 绝不能碰 canvas 尺寸，否则又回到重分配老路',
+    );
+    // 顺序：stage 必须先于 setPlanet（换球收尾按当前 stage 重算取景）
+    expect(
+      sceneHtml.indexOf("if (typeof m.stage === 'number') window.setStage(m.stage);") <
+          sceneHtml.indexOf("if (typeof m.planet === 'string') window.setPlanet(m.planet, m);"),
+      isTrue,
+    );
+    // 两端壳都随换球下发 stage
+    expect(webWrapper, contains("'stage': widget.stageScale"));
+    expect(ioWrapper, contains('setStage(\${widget.stageScale})'));
+  });
+
+  test('球径不因画布固定而改变：画布/stage 恒等于该星球原取景框', () {
+    // 球径 = 画布 /(stage×1.02×frameRadius)，frameRadius 由星球决定。
+    // 故只要"画布/stage"与从前的取景框一致，屏上大小就逐像素不变。
+    const stage = 3.0, saturnFactor = 1.4;
+    const d = 242.0; // 手机上 diameter ≈ 屏宽 62%
+    for (final saturn in [false, true]) {
+      final oldFrame = saturn ? d * saturnFactor : d; // 旧 sceneDiameter
+      final oldCanvas = oldFrame * stage;
+      const newCanvas = d * saturnFactor * stage; // 与星球无关
+      final newStage = saturn ? stage : stage * saturnFactor;
+      expect(
+        oldCanvas / stage,
+        closeTo(newCanvas / newStage, 0.001),
+        reason: '${saturn ? "土星" : "非土星"}的取景框（画布/stage）必须不变',
+      );
+    }
+  });
+
+  test('地球不再是重量级特例：底图降到 2048 + 纹理缓存 3 份（逆序 2→1 卡顿）', () {
+    // 地球原来解码占 64MB（4096×2048 底图 32MB + 4 张 2048×1024 各 8MB），
+    // 而纹理缓存只留 2 份，看过几颗后地球必被淘汰 → 退回第一颗整套重载。
+    expect(sceneHtml, contains("map: 'textures/earth_day_2048.jpg'"));
+    expect(sceneHtml, contains('const maxPlanetTextureCache = 3'));
+    // 放大档仍走高清，画质不受影响
+    expect(sceneHtml, contains("mapMid: 'textures/earth_day_6144.jpg'"));
+    expect(
+      File('assets/planet_scene/textures/earth_day_2048.jpg').existsSync(),
+      isTrue,
+      reason: '2048 底图素材必须随代码一起提交',
+    );
+  });
+
   test('缓存命中的换星球全程不盖替身：替身改为延迟 180ms 才盖', () {
     // 替身图里球体只有 300px 真实像素，画到手机上约 726 设备像素（3 倍屏）＝放大
     // 2.4 倍，一盖就是一团发虚的影子。用户实测"两个星球之间切换都先出现地球的模糊

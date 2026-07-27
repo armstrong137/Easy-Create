@@ -177,7 +177,9 @@ class _PlanetSceneState extends ConsumerState<PlanetScene> {
     // 切星球：共享场景**原地换贴图**，并合并下发当前视角，避免新星球先按
     // 默认角度亮一帧再收角度"跳一下"（场景侧 setPlanet 第二参 applyViewState）。
     if (old.planet != widget.planet) {
+      // stage 必须先于 setPlanet（换球收尾按当前 stage 重算取景）
       _web?.runJavaScript(
+        'setStage(${widget.stageScale});'
         "setPlanet('${widget.planet}', "
         '{yaw:${widget.yaw}, pitch:${widget.pitch}, '
         'zoom:${widget.zoom}, spin:${widget.spin}, '
@@ -185,6 +187,9 @@ class _PlanetSceneState extends ConsumerState<PlanetScene> {
         'immediate:${widget.fullDetail}})',
       );
     } else {
+      if (old.stageScale != widget.stageScale) {
+        _web?.runJavaScript('setStage(${widget.stageScale})');
+      }
       if (old.spin != widget.spin) {
         _web?.runJavaScript('setSpin(${widget.spin})');
       }
