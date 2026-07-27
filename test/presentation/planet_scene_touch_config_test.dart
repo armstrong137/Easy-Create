@@ -17,6 +17,14 @@ String functionBody(String source, String name) {
   fail('函数 $name 没有闭合');
 }
 
+/// 读 PNG 头里的宽高（IHDR 紧跟 8 字节签名，宽高各 4 字节大端）
+(int, int) decodePngSize(List<int> bytes) {
+  int be32(int at) =>
+      (bytes[at] << 24) | (bytes[at + 1] << 16) | (bytes[at + 2] << 8) |
+      bytes[at + 3];
+  return (be32(16), be32(20));
+}
+
 void main() {
   final webWrapper = File(
     'lib/presentation/home/planet_scene/planet_scene_web.dart',
@@ -458,11 +466,55 @@ void main() {
     expect(ioWrapper, contains('Timer? _watchdog'));
   });
 
-  test('左右滑动切星球也盖替身：滑到不同星球页复位就绪，避免先闪错星球+大小跳', () {
+  test('缓存命中的换星球全程不盖替身：替身改为延迟 180ms 才盖', () {
+    // 替身图里球体只有 300px 真实像素，画到手机上约 726 设备像素（3 倍屏）＝放大
+    // 2.4 倍，一盖就是一团发虚的影子。用户实测"两个星球之间切换都先出现地球的模糊
+    // 影子，一点都不流畅"。而贴图已在场景缓存里时换球只需一帧，本就不需要替身。
+    expect(homePage, contains('Timer? _standInCoverTimer'));
+    expect(homePage, contains('void _armStandInCover()'));
+    expect(homePage, contains('Duration(milliseconds: 180)'));
+    // 场景追上当前页星球即撤销待盖，于是缓存命中时压根不盖
+    final onReady = homePage.substring(
+      homePage.indexOf('void _onPlanetSceneReady('),
+      homePage.indexOf('void _precachePlanetStandIns('),
+    );
+    expect(onReady, contains('_sceneShownPlanet = readyPlanet'));
+    expect(onReady, contains('_standInCoverTimer?.cancel()'));
+    // 滑页走"待盖"而不是立刻盖
+    final onPageChanged = homePage.substring(
+      homePage.indexOf('onPageChanged: (i) => setState(() {'),
+      homePage.indexOf('// ClipRect'),
+    );
+    expect(onPageChanged, contains('_armStandInCover()'));
+    expect(
+      onPageChanged,
+      isNot(contains('_sharedSceneReady = false')),
+      reason: '滑页不得立刻盖替身，否则缓存命中也要闪一下模糊影子',
+    );
+  });
+
+  test('替身素材必须是正方形：否则 BoxFit.fill 会把球拉成椭圆', () {
+    // 替身画进正方形框（width/height 都是 full，fit: BoxFit.fill）。素材原为
+    // 974x907，会被纵向拉伸 7.4% → 替身是椭圆、与真实正球对不上，交叉淡入时
+    // "形状/大小跳一下"（用户实测）。素材已补边为正方形，球心居中。
+    for (final name in ['earth', 'mars', 'jupiter', 'venus', 'saturn']) {
+      final bytes = File(
+        'assets/planet_scene/standins/$name.png',
+      ).readAsBytesSync();
+      final decoded = decodePngSize(bytes);
+      expect(
+        decoded.$1,
+        decoded.$2,
+        reason: '$name.png 必须是正方形，实际 ${decoded.$1}x${decoded.$2}',
+      );
+    }
+  });
+
+  test('左右滑动切到未缓存星球时才盖替身：避免露出滞后的错星球', () {
     // 用户实测：不止新建，左右滑动 3→4、4→5 也"先闪错星球 + 大小/位置跳"。
-    // 根因同新建——共享场景串行换球要 ~1s，期间仍显示上一颗（且被塞进新页尺寸框）。
-    // onPageChanged 落到不同星球页时必须复位 _sharedSceneReady，让该页替身盖住，
-    // 揭幕仍只认场景换到该页星球（planetReady 匹配，与新建同一套机制）。
+    // 根因——共享场景串行换球，首次访问某颗要 ~1s，期间仍显示上一颗（且被塞进新页
+    // 尺寸框）。所以滑到不同星球时要**待盖**替身；但贴图已缓存时换球只需一帧，
+    // 180ms 内就绪就不盖（否则每次切换都闪一团模糊影子，见上一条测试）。
     final onPageChanged = homePage.substring(
       homePage.indexOf('onPageChanged: (i) => setState(() {'),
       homePage.indexOf('// ClipRect'),
@@ -470,10 +522,16 @@ void main() {
     expect(
       onPageChanged,
       contains('newPlanet != _sharedSceneConfig?.planet'),
-      reason: '滑到与当前场景不同的星球才盖替身（同星球零打扰）',
+      reason: '滑到与当前场景不同的星球才待盖替身（同星球零打扰）',
     );
-    expect(onPageChanged, contains('_sharedSceneReady = false'));
-    expect(onPageChanged, contains('_armSceneRevealFallback()'));
+    expect(onPageChanged, contains('_armStandInCover()'));
+    // 真的等久了才盖，并同时武装兜底揭幕
+    final coverBody = homePage.substring(
+      homePage.indexOf('void _armStandInCover()'),
+      homePage.indexOf('void _armSceneRevealFallback()'),
+    );
+    expect(coverBody, contains('_sharedSceneReady = false'));
+    expect(coverBody, contains('_armSceneRevealFallback()'));
   });
 
   test('切页时星空亮度延后到 planetReady 后更新，避免和贴图上传抢同一帧', () {

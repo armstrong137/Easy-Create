@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-25 16:26:24　对应提交：b2cc94e 之后的工作区状态
+> 生成时间：2026-07-27 10:02:08　对应提交：0ad3892 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     107
-  Nodes:     4,054
-  Edges:     19,078
-  DB Size:   20.56 MB
+  Files:     108
+  Nodes:     4,068
+  Edges:     19,096
+  DB Size:   20.64 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,562
-  function        1,371
+  method          1,563
+  function        1,373
   class           466
-  import          330
+  import          332
   constant        195
-  file            99
-  variable        14
+  file            100
+  variable        22
   type_alias      12
   enum_member     2
   namespace       2
@@ -42,6 +42,7 @@ Files by Language:
   swift           3
   typescript      2
   c               1
+  python          1
 
 [OK] Index is up to date
 
@@ -51,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (107 files):
+Project Structure (108 files):
 
 |-- .agents
 |   `-- skills
@@ -163,7 +164,7 @@ Project Structure (107 files):
 |   |   |   |   |-- planet_scene_web.dart (dart, 19 symbols)
 |   |   |   |   |-- planet_scene.dart (dart, 6 symbols)
 |   |   |   |   `-- scene_server.dart (dart, 11 symbols)
-|   |   |   |-- home_page.dart (dart, 97 symbols)
+|   |   |   |-- home_page.dart (dart, 98 symbols)
 |   |   |   |-- orbiting_inspirations.dart (dart, 20 symbols)
 |   |   |   |-- planet_view.dart (dart, 19 symbols)
 |   |   |   |-- saturn_rings_painter.dart (dart, 12 symbols)
@@ -194,7 +195,8 @@ Project Structure (107 files):
 |   `-- main.dart (dart, 14 symbols)
 |-- scripts
 |   |-- e2e_probe.dart (dart, 12 symbols)
-|   `-- serve_web.dart (dart, 4 symbols)
+|   |-- serve_web.dart (dart, 4 symbols)
+|   `-- square_standins.py (python, 11 symbols)
 |-- test
 |   |-- core
 |   |   |-- chinese_numbers_test.dart (dart, 4 symbols)
@@ -211,7 +213,7 @@ Project Structure (107 files):
 |   |   |-- magic_tree_model_test.dart (dart, 18 symbols)
 |   |   |-- orbiting_inspirations_test.dart (dart, 11 symbols)
 |   |   |-- outline_page_test.dart (dart, 24 symbols)
-|   |   |-- planet_scene_touch_config_test.dart (dart, 5 symbols)
+|   |   |-- planet_scene_touch_config_test.dart (dart, 8 symbols)
 |   |   |-- quick_capture_test.dart (dart, 16 symbols)
 |   |   |-- section_page_test.dart (dart, 24 symbols)
 |   |   |-- starfield_motion_test.dart (dart, 6 symbols)

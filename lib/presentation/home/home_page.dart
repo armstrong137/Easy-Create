@@ -116,6 +116,15 @@ class _HomePageState extends ConsumerState<HomePage> {
   Timer? _sceneRevealTimer;
   Timer? _sceneFallbackTimer;
 
+  /// 场景最近一次上报"已接管"的星球名（与当前页星球比对，判断要不要盖替身）
+  String? _sceneShownPlanet;
+
+  /// 延迟盖替身的计时器。替身图里球体只有 300px 真实像素，画到手机上约 726
+  /// 设备像素（3 倍屏）＝放大 2.4 倍，必然发虚——所以**只有真的等得久才盖**：
+  /// 贴图已在场景缓存里时换球只需一帧，180ms 内就绪就压根不盖，切换干净利落
+  /// （用户实测"两个星球之间切换都先出现地球的模糊影子，一点都不流畅"）。
+  Timer? _standInCoverTimer;
+
   /// 启动封面：事件驱动揭开——等星球场景真正就绪（而非拍脑袋定时），
   /// 封面期间 iframe 初始化/贴图上传/星云编译全部做完，揭开即流畅。
   /// 只在冷启动出现一次；从魔树页返回不再盖（快照替身已兜住重建期）。
@@ -152,6 +161,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     _sceneRevealTimer?.cancel();
     _sceneFallbackTimer?.cancel();
     _deferredSceneTimer?.cancel();
+    _standInCoverTimer?.cancel();
     final snapshotCompleter = _sharedSnapshotCompleter;
     if (snapshotCompleter != null && !snapshotCompleter.isCompleted) {
       snapshotCompleter.complete();
@@ -166,8 +176,12 @@ class _HomePageState extends ConsumerState<HomePage> {
     // 关键：只在场景**真正换到当前页星球**时才揭幕。共享场景是串行换球队列，
     // 快速新建时会滞后 1~2 颗；若任一次 planetReady 都揭幕，替身会在场景还停在
     // 滞后的旧星球时淡出，露出错星球（用户实测"新建先出地球 / 后面还出小土星"）。
+    _sceneShownPlanet = readyPlanet;
     final want = _sharedSceneConfig?.planet;
     if (want != null && readyPlanet != want) return;
+    // 场景已追上当前页：撤销"待盖替身"，缓存命中的换球因此全程不露替身
+    _standInCoverTimer?.cancel();
+    _standInCoverTimer = null;
     _scheduleSceneReveal();
     // 新建星球已整包接管（全清）→ 清除一步到位标记，之后滑页回该星球恢复常规两相
     if (_immediateDetailNovelId != null) _immediateDetailNovelId = null;
@@ -297,6 +311,27 @@ class _HomePageState extends ConsumerState<HomePage> {
         setState(() => _sharedSceneReady = true);
       }
       planetSceneReadyTick.value++;
+    });
+  }
+
+  /// 换星球时**延迟**盖替身：贴图已在场景缓存里（滑回看过的星球）时换球只需一帧，
+  /// 180ms 内就绪就压根不盖，切换干净利落；只有真的加载慢（首次访问该星球）才盖上
+  /// 当前页正确星球的替身，避免露出滞后的错星球。
+  ///
+  /// 之所以不再"一律立刻盖"：替身图里球体只有 300px 真实像素，在手机上要放大约
+  /// 2.4 倍，一盖就是一团发虚的影子——用户实测"两个星球之间切换都先出现地球的
+  /// 模糊影子，一点都不流畅"。
+  void _armStandInCover() {
+    _standInCoverTimer?.cancel();
+    _standInCoverTimer = Timer(const Duration(milliseconds: 180), () {
+      _standInCoverTimer = null;
+      if (!mounted) return;
+      final want = _sharedSceneConfig?.planet;
+      // 场景已经显示的就是当前页星球 → 无需替身
+      if (want == null || _sceneShownPlanet == want) return;
+      if (!_sharedSceneReady) return; // 已经在盖了
+      setState(() => _sharedSceneReady = false);
+      _armSceneRevealFallback();
     });
   }
 
@@ -521,11 +556,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                           final newPlanet = (i >= 0 && i < novels.length)
                               ? novels[i].planet
                               : null;
-                          // 目标星球与当前场景所显星球不同才盖替身（同星球零打扰）
+                          // 目标星球与当前场景所显星球不同才**待盖**替身（同星球零打扰）。
+                          // 注意是"待盖"：贴图已缓存时换球只需一帧，180ms 内就绪就不盖，
+                          // 于是常规两球来回切换全程是真实画面，无模糊影子、无闪动。
                           if (newPlanet != null &&
                               newPlanet != _sharedSceneConfig?.planet) {
-                            _sharedSceneReady = false;
-                            _armSceneRevealFallback();
+                            _armStandInCover();
                           }
                         } else {
                           _visibleStarfieldPage = i;
