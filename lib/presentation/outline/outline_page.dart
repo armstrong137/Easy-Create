@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/inspiration_font.dart';
+import '../../core/content_font.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import '../../domain/entities/outline_chapter.dart';
@@ -609,8 +609,8 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
       overflow: TextOverflow.ellipsis,
       // 行高留 1.3，避免楷体字底被容器裁掉（用户反馈"部分内容被遮住"）
       style: TextStyle(
-        fontFamily: inspirationFontFamily(n.content) ?? 'LXGWWenKai',
-        fontStyle: inspirationIsBrand(n.content)
+        fontFamily: contentFontFamily(n.content) ?? 'LXGWWenKai',
+        fontStyle: contentUsesBrandFont(n.content)
             ? FontStyle.italic
             : FontStyle.normal,
         fontSize: 11,
@@ -637,8 +637,8 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          fontFamily: inspirationFontFamily(n.content) ?? 'LXGWWenKai',
-          fontStyle: inspirationIsBrand(n.content)
+          fontFamily: contentFontFamily(n.content) ?? 'LXGWWenKai',
+          fontStyle: contentUsesBrandFont(n.content)
               ? FontStyle.italic
               : FontStyle.normal,
           fontSize: 12,
@@ -706,7 +706,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                     label.text,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: labelStyle(bold: label.bold),
+                    style: labelStyle(bold: label.bold, text: label.text),
                   ),
                 ),
               ),

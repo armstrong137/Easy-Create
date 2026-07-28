@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/inspiration_font.dart';
+import '../../core/content_font.dart';
 
 /// 小节页配色（羊皮纸暖调，跟随全局魔树/魔毯基调）
 const kSectionParchment = Color(0xFFFDF6EC); // 页面底
@@ -58,8 +58,8 @@ class InspirationCard extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           // 英文灵感用品牌斜体，中文用楷体
           style: TextStyle(
-            fontFamily: inspirationFontFamily(content) ?? 'LXGWWenKai',
-            fontStyle: inspirationIsBrand(content)
+            fontFamily: contentFontFamily(content) ?? 'LXGWWenKai',
+            fontStyle: contentUsesBrandFont(content)
                 ? FontStyle.italic
                 : FontStyle.normal,
             fontSize: 16,
@@ -98,8 +98,8 @@ class InspirationDragFeedback extends StatelessWidget {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            fontFamily: inspirationFontFamily(content) ?? 'LXGWWenKai',
-            fontStyle: inspirationIsBrand(content)
+            fontFamily: contentFontFamily(content) ?? 'LXGWWenKai',
+            fontStyle: contentUsesBrandFont(content)
                 ? FontStyle.italic
                 : FontStyle.normal,
             fontSize: 13,

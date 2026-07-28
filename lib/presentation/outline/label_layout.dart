@@ -1,5 +1,6 @@
 import 'package:flutter/painting.dart';
 
+import '../../core/content_font.dart';
 import 'magic_tree_model.dart';
 
 /// 一枚已放置的枝端标签：几何 + 归属（交互热区与绘制共用）
@@ -25,15 +26,18 @@ class PlacedLabel {
   final int? sectionId;
 }
 
-/// 标签文字样式（绘制与测量必须一致）
+/// 标签文字样式（绘制与测量必须一致——两边都要把同一段 [text] 传进来，
+/// 否则英文章节名按楷体量宽、按衬线斜体画，标签会被截断）
 /// 字号 17/15：用户反馈"标签胶囊太小"，加大一档
 /// 字重 w700/w600：用户定稿"章节和小节建议加粗"，章比节再重一档
-TextStyle labelStyle({required bool bold}) => TextStyle(
-  fontFamily: 'LXGWWenKai',
-  fontSize: bold ? 17 : 15,
-  fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
-  color: const Color(0xFF3A2A18), // 深树皮色，配魔树
-);
+/// 字体：章/节名属**内容文本**，按方案 A 依语言选族（见 core/content_font.dart）
+TextStyle labelStyle({required bool bold, required String text}) =>
+    contentTextStyle(
+      text: text,
+      fontSize: bold ? 17 : 15,
+      fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
+      color: const Color(0xFF3A2A18), // 深树皮色，配魔树
+    );
 
 /// 为魔树放置全部标签（含碰撞规避）：
 /// 章标签在左枝端外侧、节标签在右枝端外侧；候选位依次为
@@ -54,7 +58,7 @@ List<PlacedLabel> placeMagicLabels(
     final painter = TextPainter(
       text: TextSpan(
         text: vine.title,
-        style: labelStyle(bold: bold),
+        style: labelStyle(bold: bold, text: vine.title),
       ),
       textDirection: TextDirection.ltr,
       maxLines: 2,

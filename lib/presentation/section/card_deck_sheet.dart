@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/inspiration_font.dart';
+import '../../core/content_font.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import 'card_editor_page.dart';
@@ -186,8 +186,8 @@ class _DeckTile extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontFamily:
-                      inspirationFontFamily(card.content) ?? 'LXGWWenKai',
-                  fontStyle: inspirationIsBrand(card.content)
+                      contentFontFamily(card.content) ?? 'LXGWWenKai',
+                  fontStyle: contentUsesBrandFont(card.content)
                       ? FontStyle.italic
                       : FontStyle.normal,
                   fontSize: 14,

@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-28 13:49:54　对应提交：27c2b2f 之后的工作区状态
+> 生成时间：2026-07-28 15:59:27　对应提交：edfbfc5 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,18 +13,18 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     109
-  Nodes:     4,077
-  Edges:     19,116
-  DB Size:   20.73 MB
+  Nodes:     4,084
+  Edges:     19,139
+  DB Size:   20.75 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,560
-  function        1,375
+  function        1,376
   class           466
-  import          336
-  constant        196
+  import          340
+  constant        198
   file            101
   variable        26
   type_alias      12
@@ -141,8 +141,8 @@ Project Structure (109 files):
 |   |   |-- app_keys.dart (dart, 4 symbols)
 |   |   |-- carpet_constants.dart (dart, 10 symbols)
 |   |   |-- chinese_numbers.dart (dart, 5 symbols)
+|   |   |-- content_font.dart (dart, 9 symbols)
 |   |   |-- creative_energy.dart (dart, 15 symbols)
-|   |   |-- inspiration_font.dart (dart, 5 symbols)
 |   |   |-- planet_constants.dart (dart, 4 symbols)
 |   |   `-- spin_inertia.dart (dart, 9 symbols)
 |   |-- data
@@ -164,14 +164,14 @@ Project Structure (109 files):
 |   |   |   |   |-- planet_scene_web.dart (dart, 19 symbols)
 |   |   |   |   |-- planet_scene.dart (dart, 6 symbols)
 |   |   |   |   `-- scene_server.dart (dart, 11 symbols)
-|   |   |   |-- home_page.dart (dart, 96 symbols)
+|   |   |   |-- home_page.dart (dart, 97 symbols)
 |   |   |   |-- orbiting_inspirations.dart (dart, 20 symbols)
 |   |   |   |-- planet_view.dart (dart, 19 symbols)
 |   |   |   |-- saturn_rings_painter.dart (dart, 12 symbols)
 |   |   |   |-- starfield_motion.dart (dart, 7 symbols)
 |   |   |   `-- starfield.dart (dart, 31 symbols)
 |   |   |-- outline
-|   |   |   |-- label_layout.dart (dart, 12 symbols)
+|   |   |   |-- label_layout.dart (dart, 13 symbols)
 |   |   |   |-- magic_carpet.dart (dart, 67 symbols)
 |   |   |   |-- magic_tree_model.dart (dart, 41 symbols)
 |   |   |   |-- outline_page.dart (dart, 57 symbols)
@@ -201,8 +201,8 @@ Project Structure (109 files):
 |-- test
 |   |-- core
 |   |   |-- chinese_numbers_test.dart (dart, 4 symbols)
+|   |   |-- content_font_test.dart (dart, 5 symbols)
 |   |   |-- creative_energy_test.dart (dart, 4 symbols)
-|   |   |-- inspiration_font_test.dart (dart, 4 symbols)
 |   |   `-- spin_inertia_test.dart (dart, 7 symbols)
 |   |-- data
 |   |   |-- app_database_config_test.dart (dart, 4 symbols)

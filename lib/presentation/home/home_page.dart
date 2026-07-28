@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/content_font.dart';
 import '../../core/creative_energy.dart';
 import '../../core/planet_constants.dart';
 import '../../core/spin_inertia.dart';
@@ -1148,10 +1149,13 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
                 onTap: () => _renameNovel(context, ref),
                 child: Text(
                   novel.title,
-                  style: const TextStyle(
-                    fontFamily: 'LXGWWenKai',
-                    fontSize: 18,
-                    color: Colors.white,
+                  // 方案 A：西文/数字走品牌衬线斜体（与 Create Something 同族），
+                  // 中文走楷体正体；字距比正文更舒展一点，像星图上的标注。
+                  style: contentTextStyle(
+                    text: novel.title,
+                    fontSize: 21,
+                    letterSpacing: 1.2,
+                    color: Colors.white.withValues(alpha: 0.94),
                   ),
                 ),
               ),

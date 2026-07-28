@@ -8,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/carpet_constants.dart';
 import '../../core/app_keys.dart';
-import '../../core/inspiration_font.dart';
+import '../../core/content_font.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart' show inspirationRepositoryProvider;
 import '../home/home_page.dart' show inspirationPoolProvider;
@@ -847,8 +847,8 @@ class CarpetItem extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontFamily:
-                  inspirationFontFamily(inspiration.content) ?? 'LXGWWenKai',
-              fontStyle: inspirationIsBrand(inspiration.content)
+                  contentFontFamily(inspiration.content) ?? 'LXGWWenKai',
+              fontStyle: contentUsesBrandFont(inspiration.content)
                   ? FontStyle.italic
                   : FontStyle.normal,
               color: _ink,
@@ -876,8 +876,8 @@ class CarpetItem extends StatelessWidget {
         textAlign: big ? TextAlign.center : TextAlign.start,
         style: TextStyle(
           fontFamily:
-              inspirationFontFamily(inspiration.content) ?? 'LXGWWenKai',
-          fontStyle: inspirationIsBrand(inspiration.content)
+              contentFontFamily(inspiration.content) ?? 'LXGWWenKai',
+          fontStyle: contentUsesBrandFont(inspiration.content)
               ? FontStyle.italic
               : FontStyle.normal,
           color: _ink,

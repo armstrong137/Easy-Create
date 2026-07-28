@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../../core/inspiration_font.dart';
+import '../../core/content_font.dart';
 import '../../data/database/app_database.dart';
 
 /// 环绕星球飞行的灵感文字（轻量 2.5D 卫星轨道）。
@@ -153,22 +153,21 @@ class _OrbitText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final brand = inspirationIsBrand(content);
-    final style = TextStyle(
-      fontFamily: brand ? 'EasyCreateBrand' : 'LXGWWenKai',
-      fontStyle: brand ? FontStyle.italic : FontStyle.normal,
-      fontSize: 15,
-      fontWeight: brand ? FontWeight.w600 : FontWeight.w500,
-      height: 1.2,
-      color: Colors.black.withValues(alpha: opacity),
+    // 方案 A：深空背景上用**白字 + 淡蓝辉光**。旧实现是黑字加白色描边，等于
+    // 在暗底上"黑底描白边"，天生发糊（用户实测不喜欢）。
+    final style = contentTextStyle(
+      text: content,
+      fontSize: 16,
+      height: 1.25,
+      color: Colors.white.withValues(alpha: opacity * 0.86),
       shadows: [
         Shadow(
-          color: Colors.white.withValues(alpha: opacity * 0.90),
-          blurRadius: 2,
+          color: const Color(0xFF9AC0FF).withValues(alpha: opacity * 0.45),
+          blurRadius: 10,
         ),
         Shadow(
-          color: Colors.white.withValues(alpha: opacity * 0.55),
-          blurRadius: 5,
+          color: Colors.black.withValues(alpha: opacity * 0.35),
+          blurRadius: 3,
         ),
       ],
     );
