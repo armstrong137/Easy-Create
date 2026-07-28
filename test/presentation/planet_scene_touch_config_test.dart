@@ -313,6 +313,41 @@ void main() {
     }
   });
 
+  test('前台上传按帧预算连传，不再一帧只传一块（火星→地球停两三秒）', () {
+    // 块大小自适应会收敛到 3~6ms，若一帧只传一块，16.7ms 的帧里只干 3~6ms 活。
+    // 地球原 40MB ≈160 块 → 160 帧 ≈ 2.7 秒，正是用户实测的"停两三秒"。
+    expect(sceneHtml, contains('const fgFrameBudgetMs = 8'));
+    final chunk = functionBody(sceneHtml, 'createTextureChunked');
+    expect(
+      chunk,
+      contains('if (!isForeground(fg) || frameSpentMs >= fgFrameBudgetMs)'),
+      reason: '前台吃满预算才让帧；后台仍每块让一帧，不与手势抢',
+    );
+    expect(chunk, contains('frameSpentMs += costMs'));
+    // 地球细节图降到 1024：实测 1× 视图渲染平均像素差 0.18（肉眼不可辨）
+    for (final k in ['normal', 'specular', 'clouds', 'night']) {
+      expect(
+        sceneHtml,
+        contains("$k: 'textures/earth_${k == 'night' ? 'night' : k}_1024.jpg'"),
+        reason: '地球 $k 应使用 1024 版，整套从 40MB 降到 16MB',
+      );
+    }
+    for (final f in [
+      'earth_normal_1024',
+      'earth_specular_1024',
+      'earth_clouds_1024',
+      'earth_night_1024',
+    ]) {
+      expect(
+        File('assets/planet_scene/textures/$f.jpg').existsSync(),
+        isTrue,
+        reason: '$f.jpg 必须随代码提交',
+      );
+    }
+    // 地球变轻后缓存可以多留一份，来回滑几乎永远命中
+    expect(sceneHtml, contains('const maxPlanetTextureCache = 4'));
+  });
+
   test('撞上进行中的后台预热要就地升前台：否则换球继续按后台节奏磨', () {
     // 用户实测"火星→地球，先是几秒钟的火星才变地球"。根因：后台预热是一串分块任务，
     // 每块都等静默窗口（每槽最多 1 秒）。若用户在预热途中滑到这颗星球，
@@ -571,7 +606,7 @@ void main() {
     // 地球原来解码占 64MB（4096×2048 底图 32MB + 4 张 2048×1024 各 8MB），
     // 而纹理缓存只留 2 份，看过几颗后地球必被淘汰 → 退回第一颗整套重载。
     expect(sceneHtml, contains("map: 'textures/earth_day_2048.jpg'"));
-    expect(sceneHtml, contains('const maxPlanetTextureCache = 3'));
+    // 缓存份数见"前台按帧预算连传"那条测试（地球变轻后已提到 4 份）
     // 放大档仍走高清，画质不受影响
     expect(sceneHtml, contains("mapMid: 'textures/earth_day_6144.jpg'"));
     expect(

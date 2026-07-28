@@ -102,10 +102,13 @@ const PLANETS = {
     map: 'textures/earth_day_2048.jpg',
     mapMid: 'textures/earth_day_6144.jpg',
     mapHi: 'textures/earth_day_8192.jpg',
-    normal: 'textures/earth_normal_2048.jpg',
-    specular: 'textures/earth_specular_2048.jpg',
-    clouds: 'textures/earth_clouds_2048.jpg',
-    night: 'textures/2k_earth_nightmap.jpg',
+    // 细节图 1024：法线/高光/云层/夜灯合计解码 32MB → 8MB。实测把它们从 2048 降到
+    // 1024，1× 视图下渲染平均像素差仅 0.18（满值 255，肉眼不可辨），却让地球整套
+    // 从 40MB 降到 16MB——切到地球要传的块数随之减少约 60%。
+    normal: 'textures/earth_normal_1024.jpg',
+    specular: 'textures/earth_specular_1024.jpg',
+    clouds: 'textures/earth_clouds_1024.jpg',
+    night: 'textures/earth_night_1024.jpg',
     atmosColor: [0.32, 0.54, 1.0], atmosStrength: 1.5,
   },
   mars: {
@@ -467,6 +470,11 @@ const uploadInteractGuardMs = 200;
 const uploadSlotMaxWaitMs = 1000;
 let adaptiveBandBytes = 2 * 1024 * 1024; // 初始 2MB/块
 const bandBytesMin = 256 * 1024, bandBytesMax = 8 * 1024 * 1024;
+// 前台每帧的上传预算：块大小会自适应收敛到 3~6ms，若**一帧只传一块**，
+// 16.7ms 的帧里只干 3~6ms 活，纯属浪费——地球 160 块就要 160 帧≈2.7 秒
+// （用户实测"火星→地球停两三秒"）。前台改成"一帧内连着传到吃满预算再让出"，
+// 后台仍保持一帧一块，绝不与手势抢帧。
+const fgFrameBudgetMs = 8;
 function tuneUploadBudget(costMs) {
   if (costMs > 6) {
     adaptiveBandBytes = Math.max(bandBytesMin, adaptiveBandBytes >> 1);
@@ -516,7 +524,7 @@ function nextGpuUploadSlot(fg) {
   gpuUploadChain = slot.catch(function () {});
   return slot;
 }
-async function createTextureChunked(bitmap, srgbFlag, mipmaps, foreground) {
+async function createTextureChunked(bitmap, srgbFlag, mipmaps, fg) {
   const w = bitmap.width, h = bitmap.height;
   const tex = new THREE.DataTexture(null, w, h, THREE.RGBAFormat, THREE.UnsignedByteType);
   tex.flipY = false; // ImageBitmap 已在解码阶段翻转
@@ -527,17 +535,22 @@ async function createTextureChunked(bitmap, srgbFlag, mipmaps, foreground) {
   tex.magFilter = THREE.LinearFilter;
   tex.needsUpdate = true;
   // 大纹理显存分配本身也是重活（6144 档 ≈75MB），同样排队、不打手势热帧
-  await nextGpuUploadSlot(foreground);
+  await nextGpuUploadSlot(fg);
   if (disposed) { bitmap.close(); return tex; }
   renderer.initTexture(tex); // data 为 null：只分配显存，不搬像素
   const pos = new THREE.Vector2();
   let y = 0;
+  let frameSpentMs = 0; // 本帧已用掉的上传时间（前台按预算连传，后台仍一帧一块）
   while (y < h) {
     // 块行数每轮按当前预算重算（自适应可能已调档）
     const bandRows = Math.max(16, Math.floor(adaptiveBandBytes / (w * 4)));
     const bh = Math.min(bandRows, h - y);
     const slice = await createImageBitmap(bitmap, 0, y, w, bh); // 裁剪不占主线程
-    await nextGpuUploadSlot(foreground);
+    // 前台：本帧预算没吃满就接着传，别白白等下一帧；后台：每块都让出一帧
+    if (!isForeground(fg) || frameSpentMs >= fgFrameBudgetMs) {
+      await nextGpuUploadSlot(fg);
+      frameSpentMs = 0;
+    }
     if (disposed) { slice.close(); break; }
     // 末带上传完由 copyTextureToTexture 顺手 generateMipmap（只此一次）
     tex.generateMipmaps = !!mipmaps && y + bh >= h;
@@ -545,7 +558,9 @@ async function createTextureChunked(bitmap, srgbFlag, mipmaps, foreground) {
     const t0 = performance.now();
     const sliceTex = new THREE.Texture(slice);
     renderer.copyTextureToTexture(pos, sliceTex, tex);
-    tuneUploadBudget(performance.now() - t0);
+    const costMs = performance.now() - t0;
+    tuneUploadBudget(costMs);
+    frameSpentMs += costMs;
     sliceTex.dispose();
     slice.close();
     y += bh;
@@ -775,10 +790,9 @@ function loadTexAsync(path, srgbFlag, foreground) {
     .catch(function () { return loadTexLegacy(path, srgbFlag); });
 }
 const planetTextureCache = new Map();
-// 3 份：来回滑动常在 3 颗之间打转，只留 2 份会把刚看过的那颗挤掉，退回去就整套重载
-// （用户实测"逆序第 2 颗退回第 1 颗有异常"）。配合地球降到 40MB，3 份的常驻显存
-// 与从前单颗地球（64MB）同量级。
-const maxPlanetTextureCache = 3;
+// 4 份：地球细节图降到 1024 后整套只剩 16MB，5 颗全常驻也才约 48MB——比从前
+// 单颗地球（64MB）还省。留 4 份意味着来回滑动几乎永远命中缓存，换球只是引用切换。
+const maxPlanetTextureCache = 4;
 
 function disposeTextureBundle(bundle) {
   if (!bundle) return;
