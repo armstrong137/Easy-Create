@@ -12,6 +12,8 @@ import 'package:novel_app/presentation/home/home_page.dart'
     show inspirationPoolProvider;
 import 'package:novel_app/presentation/outline/magic_carpet.dart'
     show CarpetOverlay;
+import 'package:novel_app/presentation/outline/magic_tree_model.dart'
+    show kSoilAsset;
 import 'package:novel_app/presentation/outline/outline_page.dart';
 import 'package:novel_app/presentation/section/section_page.dart'
     show sectionCardsProvider;
@@ -249,18 +251,33 @@ void main() {
     expect(find.byType(ShaderMask), findsNothing);
   });
 
-  test('档位切换平滑：整树用 AnimatedSwitcher 交叉淡入 + 预解码五档防卡顿', () {
+  test('换档用自下而上的生长擦除，不得回到交叉淡入淡出', () {
     final src = File(
       'lib/presentation/outline/outline_page.dart',
     ).readAsStringSync();
-    // 淡切（像 PPT 换页），不是硬切
-    expect(src, contains('AnimatedSwitcher'));
-    expect(src, contains('ValueKey(pieces.asset)'));
+    // 用户 2026-07-29 反馈：两张不同照片对叠必出半透明双影，读作 PPT 翻页。
+    // 改成新档从土壤线自下而上擦除覆盖旧档——没有半透明，读作生长沿藤上行。
+    expect(src, contains('kGrowWipeDuration'), reason: '换档必须走生长擦除');
+    expect(
+      src,
+      isNot(contains('AnimatedSwitcher')),
+      reason: '整树交叉淡入淡出=PPT 翻页，禁止回流',
+    );
     // 五档素材页面进入即预解码，切档时无临时解码卡顿
     expect(
       src,
       contains("precacheImage(AssetImage('assets/textures/magic_tree_"),
     );
+  });
+
+  test('土层五档共用同一张素材（换档时泥土不得跳）', () {
+    final src = File(
+      'lib/presentation/outline/outline_page.dart',
+    ).readAsStringSync();
+    // 五张照片的土堆本就不一样大（底边 0.974/0.943/0.980/0.989/0.980，
+    // 宽度 0.871/0.717/0.747/0.677/0.743），各画各的换档时泥土会当场跳。
+    expect(src, contains('kSoilAsset,'), reason: '土层必须画 kSoilAsset，不能跟着档位换图');
+    expect(kSoilAsset, 'assets/textures/magic_tree_1.jpg');
   });
 
   test('窗口模式止血：代码禁止分段平铺、镜像、羽化路线回流', () {
@@ -270,7 +287,6 @@ void main() {
     expect(src, isNot(contains('_SegmentedMagicTreeImage')));
     expect(src, isNot(contains('_TreeMiddleTiles')));
     expect(src, isNot(contains('_FeatheredTreeMiddleTile')));
-    expect(src, isNot(contains('ShaderMask')));
     expect(
       src,
       isNot(contains('Matrix4.diagonal3Values(1, index.isOdd ? -1 : 1, 1)')),

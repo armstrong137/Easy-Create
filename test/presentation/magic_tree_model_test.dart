@@ -100,9 +100,9 @@ void main() {
       chapterOffset: 3,
     );
     expect(
-      bottom.soilRect.bottom,
-      closeTo(size.height, 0.5),
-      reason: '镜头在末章 → 看到土壤（土层贴底，树层可越出屏外被土层盖住）',
+      bottom.soilBottomY,
+      closeTo(size.height - 8, 0.5),
+      reason: '镜头在末章 → 看到土壤（土堆底贴屏底）',
     );
     expect(bottom.chapterBands.keys, contains(4));
     expect(bottom.chapterBands.keys, contains(5));
@@ -152,8 +152,8 @@ void main() {
       expect(bottom.width, closeTo(top.width, 0.5), reason: '镜头滚动时树宽不变');
       expect(bottom.height, closeTo(top.height, 0.5), reason: '镜头滚动时树高不变');
       expect(
-        bottomLayout.soilRect.bottom,
-        closeTo(size.height, 0.5),
+        bottomLayout.soilBottomY,
+        closeTo(size.height - 8, 0.5),
         reason: '末章镜头要看到泥土',
       );
       expect(
@@ -603,7 +603,7 @@ void main() {
     double treeH(int nodes) => layoutMagicTree(
       size: size,
       outline: [chapterWith(1, math.max(0, nodes - 1))],
-    ).imageRect.height;
+    ).visibleTreeHeight;
 
     // 第 2 档（1~3 节点）档内逐级长高
     expect(treeH(2), greaterThan(treeH(1)), reason: '1→2 节点必须长高');
@@ -612,11 +612,12 @@ void main() {
     final before = layoutMagicTree(size: size, outline: [chapterWith(1, 2)]);
     final after = layoutMagicTree(size: size, outline: [chapterWith(1, 3)]);
     expect(after.stage, before.stage + 1, reason: '3→4 节点应跨档换图');
-    double trunkSpan(MagicTreeLayout l) => l.trunkRect.height;
     expect(
-      trunkSpan(after),
-      closeTo(trunkSpan(before), 1.0),
-      reason: '跨档瞬间两棵树等高，交叉溶解才不会读成跳变',
+      after.visibleTreeHeight,
+      closeTo(before.visibleTreeHeight, 1.0),
+      reason:
+          '跨档瞬间两棵**整株**等高，换图动效才读作生长而不是换幻灯片。'
+          '按茎干对齐是不够的：茎顶之上还有一大片枝叶，各档比例差得远',
     );
   });
 
@@ -655,9 +656,9 @@ void main() {
     expect(frozen.stage, 2);
     expect(natural.stage, 3);
     expect(
-      frozen.trunkRect.height,
-      closeTo(natural.trunkRect.height, 1.0),
-      reason: '同一时刻两张照片必须画成同样高的树',
+      frozen.visibleTreeHeight,
+      closeTo(natural.visibleTreeHeight, 1.0),
+      reason: '同一时刻两张照片必须画成同样高的整株',
     );
   });
 
@@ -677,7 +678,11 @@ void main() {
     for (final count in [4, 8, 11]) {
       final (image, soil) = imageFor(count);
       expect(soil, soil3, reason: '$count 章土层完全不动（贴底、同尺寸、同位置）');
-      expect(soil.bottom, closeTo(size.height, 0.5), reason: '$count 章泥土应贴底');
+      expect(
+        soil.top + kSoilBottomFrac * soil.height,
+        closeTo(size.height - 8, 0.5),
+        reason: '$count 章土堆底应贴屏底',
+      );
       expect(image.left, closeTo(image3.left, 0.5), reason: '$count 章横向不漂移');
       expect(image.width, closeTo(image3.width, 0.5), reason: '$count 章宽度不变');
     }

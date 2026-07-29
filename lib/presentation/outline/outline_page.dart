@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -962,65 +964,128 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   }
 }
 
-class _MagicTreeImage extends StatelessWidget {
+/// 魔树画面 = 固定土层 + 会长高的树层。
+///
+/// 换档（加章跨阈值）时**不做交叉淡入淡出**：两张不同照片对叠必出半透明双影，
+/// 读作 PPT 翻页（用户 2026-07-29 反馈）。改成新档照片从土壤线**自下而上擦除**
+/// 覆盖旧档，没有半透明，读作一波生长沿着藤往上走。
+class _MagicTreeImage extends StatefulWidget {
   const _MagicTreeImage({required this.layout});
 
   final MagicTreeLayout layout;
 
   @override
+  State<_MagicTreeImage> createState() => _MagicTreeImageState();
+}
+
+class _MagicTreeImageState extends State<_MagicTreeImage>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _wipe = AnimationController(
+    vsync: this,
+    duration: kGrowWipeDuration,
+    value: 1,
+  );
+
+  /// 正在被新档覆盖的旧档素材，及它当时的画幅（冻结，保证擦除期间不变形）
+  String? _fromAsset;
+  Rect _fromBounds = Rect.zero;
+  late String _asset = _piecesOf(widget.layout).asset;
+
+  static WholeTreeImagePieces _piecesOf(MagicTreeLayout l) =>
+      layoutMagicTreeImagePieces(l) as WholeTreeImagePieces;
+
+  @override
+  void dispose() {
+    _wipe.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _MagicTreeImage old) {
+    super.didUpdateWidget(old);
+    final next = _piecesOf(widget.layout).asset;
+    if (next == _asset) return;
+    // 旧档连同它此刻的画幅一起冻结：跨档时两档树高本就相等，
+    // 冻结后擦除期间旧树纹丝不动，只是被新树自下而上盖掉。
+    _fromAsset = _asset;
+    _fromBounds = _piecesOf(old.layout).bounds;
+    _asset = next;
+    _wipe.forward(from: 0);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final pieces = layoutMagicTreeImagePieces(layout) as WholeTreeImagePieces;
-    // 同一张素材画两层（方案乙）：土壤线以上是**随章节连续长高**的树，
-    // 以下是原尺寸土堆——所以每加一章树都在长，泥土纹丝不动。
-    // 分界线取土堆最高点：此线以上素材里恰好没有土，且两层横向尺寸一致，
-    // 树干跨线时宽度连续，接缝为零。
-    Widget layer(Rect rect, Rect clip) => Positioned.fromRect(
-      rect: clip,
-      child: ClipRect(
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned.fromRect(
-              rect: rect.shift(-clip.topLeft),
-              child: Image.asset(
-                pieces.asset,
-                fit: BoxFit.fill,
-                gaplessPlayback: true,
-                filterQuality: FilterQuality.medium,
-              ),
-            ),
-          ],
-        ),
-      ),
+    final pieces = _piecesOf(widget.layout);
+    // 树层裁到土壤线以上（此线以上素材里恰好没有土），土层画原尺寸土堆。
+    // 两层横向尺寸一致，树干跨线时宽度连续，接缝为零。
+    final treeClip = Rect.fromLTRB(
+      pieces.bounds.left,
+      math.min(pieces.bounds.top, _fromBounds.top),
+      pieces.bounds.right,
+      pieces.soilLineY,
     );
 
-    // 档位切换（加章跨阈值）时整树照片**交叉淡入淡出**：两棵同泥土、同中轴
-    // 的完整树对叠溶解。因为树高连续、跨档瞬间两棵树等高，溶解只换质感不换大小。
-    // 素材已在 didChangeDependencies 预解码，切换时不再临时解码，无卡顿。
+    Widget layer(String asset, Rect rect, Rect clip, {double? wipe}) {
+      Widget img = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fromRect(
+            rect: rect.shift(-clip.topLeft),
+            child: Image.asset(
+              asset,
+              fit: BoxFit.fill,
+              gaplessPlayback: true,
+              filterQuality: FilterQuality.medium,
+            ),
+          ),
+        ],
+      );
+      if (wipe != null) {
+        // 擦除线自下而上扫过，带软边；线以下露出新档，线以上仍是旧档
+        final feather = (kGrowWipeFeather / clip.height).clamp(0.02, 0.5);
+        final line = (1 - wipe) * (1 + feather);
+        img = ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (r) => LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: const [Color(0x00FFFFFF), Color(0xFFFFFFFF)],
+            stops: [(line - feather).clamp(0.0, 1.0), line.clamp(0.0, 1.0)],
+          ).createShader(r),
+          child: img,
+        );
+      }
+      return Positioned.fromRect(
+        rect: clip,
+        child: ClipRect(child: img),
+      );
+    }
+
     return Positioned.fill(
-      child: AnimatedSwitcher(
+      child: AnimatedBuilder(
         key: const Key('魔树完整图'),
-        duration: const Duration(milliseconds: 650),
-        switchInCurve: Curves.easeInOut,
-        switchOutCurve: Curves.easeInOut,
-        child: Stack(
-          key: ValueKey(pieces.asset),
+        animation: _wipe,
+        builder: (context, _) => Stack(
           clipBehavior: Clip.none,
           children: [
+            if (_fromAsset != null && _wipe.value < 1)
+              layer(_fromAsset!, _fromBounds, treeClip),
             layer(
+              pieces.asset,
               pieces.bounds,
-              Rect.fromLTRB(
-                pieces.bounds.left,
-                pieces.bounds.top,
-                pieces.bounds.right,
-                pieces.soilLineY,
-              ),
+              treeClip,
+              wipe: _wipe.value < 1 && _fromAsset != null ? _wipe.value : null,
             ),
+            // 土层五档共用同一张（见 kSoilAsset）：各档照片的土堆本就不一样大，
+            // 各画各的会在换档时让泥土当场跳一下
             layer(
+              kSoilAsset,
               pieces.soilBounds,
               Rect.fromLTRB(
                 pieces.soilBounds.left,
-                pieces.soilLineY,
+                // 上沿多压 1.5px：两层各自取整时留下的亚像素缝会露出页面底色，
+                // 在土壤线上显出一条亮线。这 1.5px 里素材恰好只有米白底，压上无害
+                pieces.soilLineY - 1.5,
                 pieces.soilBounds.right,
                 pieces.soilBounds.bottom,
               ),
