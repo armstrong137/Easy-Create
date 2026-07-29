@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
@@ -91,8 +92,9 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   /// 正在生长的枝（章/节分开记，避免章节撞 id）
   ({bool isChapter, int id})? _growing;
 
-  /// 新增章节生长期间冻结旧视觉阶段，避免 11→12 章时整树鬼影切换。
-  int? _visualStageOverride;
+  /// 上一帧的成长档位：换档那一帧要让树高**瞬间就位**（不补间），
+  /// 视觉过渡交给自下而上的擦除。
+  int? _lastStage;
 
   /// 最近一次布局（手势换算用）
   MagicTreeLayout? _layout;
@@ -110,8 +112,8 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // 预解码全部 5 档完整树照片：加章跨阈值淡切时素材已在内存，
-    // 交叉淡入淡出全程零解码卡顿（用户要求"像 PPT 一样流畅"）。
+    // 预解码全部 5 档完整树照片：加章跨档做生长擦除时素材已在内存，
+    // 擦除全程零解码卡顿。
     if (_treesPrecached) return;
     _treesPrecached = true;
     for (var s = 1; s <= 5; s++) {
@@ -122,22 +124,50 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   @override
   void dispose() {
     carpetTucked.value = false; // 离开大纲页恢复完整魔毯球
+    _trunkWait?.cancel();
     _grow.dispose();
     _camera.dispose();
     super.dispose();
   }
 
-  Future<void> _playGrow({required bool isChapter, required int id}) async {
+  /// 给新枝占位并**先藏起来**：`_growing` 一置上，该枝的卷须与标签就按
+  /// `_grow.value`（此刻为 0）渲染，即完全不可见。
+  void _holdGrow({required bool isChapter, required int id}) {
+    _grow.value = 0;
     setState(() => _growing = (isChapter: isChapter, id: id));
+  }
+
+  Future<void> _playGrow() async {
     await _grow.forward(from: 0);
     if (mounted) setState(() => _growing = null);
+  }
+
+  /// 等树干这一轮变化播完再放枝丫（用户 2026-07-29 定稿："至少要等树干变了
+  /// 之后，枝丫再变化"）。跨档要等擦除扫完，同档只等高度补间。
+  /// 多留一点余量：树干动画要等大纲流推送到页面才真正开始。
+  ///
+  /// 用可取消的 Timer 而不是 Future.delayed：页面在等待期间被销毁时必须能撤销，
+  /// 否则定时器活过 widget 树（测试里直接报 pending timer）。
+  Timer? _trunkWait;
+
+  Future<void> _awaitTrunk({required int oldNodes, required int newNodes}) {
+    _trunkWait?.cancel();
+    final done = Completer<void>();
+    _trunkWait = Timer(
+      (stageForNodes(oldNodes) != stageForNodes(newNodes)
+              ? kGrowWipeDuration
+              : kTreeGrowTween) +
+          const Duration(milliseconds: 120),
+      done.complete,
+    );
+    return done.future;
   }
 
   /// 点左侧空白：长出章枝（仓库按新序号原子命名：引子 → 第一章 → …），镜头滑到新章
   Future<void> _addChapter(List<OutlineChapter> outline) async {
     HapticFeedback.lightImpact();
     final oldCount = outline.length;
-    final frozenStage = _layout?.stage;
+    final oldNodes = totalTreeNodes(outline);
 
     final chapter = await ref
         .read(novelRepositoryProvider)
@@ -149,7 +179,10 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
       currentOffset: _camera.value,
     );
 
-    setState(() => _visualStageOverride = frozenStage);
+    if (!mounted) return;
+    _holdGrow(isChapter: true, id: chapter.id);
+    await _awaitTrunk(oldNodes: oldNodes, newNodes: oldNodes + 1);
+
     for (final step in motion.steps) {
       if (!mounted) return;
       switch (step) {
@@ -160,11 +193,9 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
             curve: Curves.easeInOutCubic,
           );
         case ChapterGrowthStep.growBranch:
-          await _playGrow(isChapter: true, id: chapter.id);
+          await _playGrow();
       }
     }
-
-    if (mounted) setState(() => _visualStageOverride = null);
   }
 
   /// 点右侧空白：按点击高度找对应章，长出节枝
@@ -180,12 +211,17 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     final chapterId = layout.chapterForY(y);
     if (chapterId == null) return;
     HapticFeedback.lightImpact();
+    final oldNodes = totalTreeNodes(outline);
     final section = await ref
         .read(novelRepositoryProvider)
         .createSection(chapterId: chapterId);
     // 新节加入后回到默认自动滚动：从第一节向下长，放不下时显示最新一段
     _sectionScrolls.remove(chapterId);
-    await _playGrow(isChapter: false, id: section.id);
+    if (!mounted) return;
+    _holdGrow(isChapter: false, id: section.id);
+    await _awaitTrunk(oldNodes: oldNodes, newNodes: oldNodes + 1);
+    if (!mounted) return;
+    await _playGrow();
   }
 
   // ── 镜头与小节滚动手势 ──────────────────────────────
@@ -728,8 +764,14 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     final outline = outlineAsync.value ?? const <OutlineChapter>[];
     // 首次拿到真实大纲时树要**直接就位**：加载态是空大纲（嫩芽），
     // 若也走补间，每次进大纲页都会看树从嫩芽重新长一遍。
-    final animateGrowth = _treeSettled;
+    var animateGrowth = _treeSettled;
     if (outlineAsync.hasValue) _treeSettled = true;
+    // 跨档时高度**不补间**：换的是照片，补间只会把旧照片纵向抻长（0→1 章要抻
+    // 1.89 倍，嫩芽被拉成细面条）或把新照片压扁。高度直接就位，视觉过渡全交给
+    // 自下而上的擦除——旧图冻结在旧高度，新图已在新高度，擦除线扫过即完成。
+    final stage = stageForNodes(totalTreeNodes(outline));
+    if (_lastStage != null && _lastStage != stage) animateGrowth = false;
+    _lastStage = stage;
 
     // 章节多（>2 = 进入窗口模式）时把魔毯球缩到右边栏，避免挡住右上角小节标签；
     // 章少时恢复完整球。只在状态变化时设，避免每帧刷。
@@ -769,9 +811,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                     tween: Tween<double>(
                       end: treeHeightFrac(totalTreeNodes(outline)),
                     ),
-                    duration: animateGrowth
-                        ? const Duration(milliseconds: 700)
-                        : Duration.zero,
+                    duration: animateGrowth ? kTreeGrowTween : Duration.zero,
                     curve: Curves.easeOutCubic,
                     builder: (context, heightFrac, _) => AnimatedBuilder(
                       animation: Listenable.merge([_grow, _camera]),
@@ -782,7 +822,6 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                           chapterOffset: _camera.value,
                           sectionScrolls: _sectionScrolls,
                           sectionNoteCounts: noteCounts,
-                          visualStageOverride: _visualStageOverride,
                           visualHeightFrac: heightFrac,
                         );
                         _layout = layout;

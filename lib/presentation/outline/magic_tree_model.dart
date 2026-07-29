@@ -227,6 +227,9 @@ const kGrowWipeDuration = Duration(milliseconds: 1100);
 /// 擦除线的软边高度（画布像素）：硬切会看出一条横线
 const kGrowWipeFeather = 26.0;
 
+/// 同档内加章/加节时树高补间的时长（跨档不补间，见 outline_page）
+const kTreeGrowTween = Duration(milliseconds: 700);
+
 /// 每阶段茎干轮廓（归一化到素材图：y 相对图高，半宽相对图宽）
 class _Stalk {
   const _Stalk(this.topY, this.botY, this.topHalfW, this.botHalfW);
@@ -366,17 +369,15 @@ MagicTreeLayout layoutMagicTree({
   double chapterOffset = 0,
   Map<int, double> sectionScrolls = const {},
   Map<int, int> sectionNoteCounts = const {},
-  int? visualStageOverride,
   double? visualHeightFrac,
 }) {
   final n = outline.length;
   final totalNodes = totalTreeNodes(outline);
   final age = treeAge(totalNodes);
-  final computedStage = stageForNodes(totalNodes);
-  final stage = visualStageOverride ?? computedStage;
+  final stage = stageForNodes(totalNodes);
   // 成长倍数 = 目标树高 ÷ 当前这张素材自带的树高。
-  // 换图动画期间 stage 被冻结在旧档，但目标树高不变，所以倍数会自动补上差额，
-  // 冻结解除前后树高完全一致——这正是"跨档不跳"的实现方式。
+  // 跨档时高度瞬间就位（页面不补间），所以这个倍数在换档前后都贴合各自素材，
+  // 旧照片绝不会被抻长、新照片也不会被压扁——过渡全交给擦除。
   final growth =
       (visualHeightFrac ?? treeHeightFrac(totalNodes)) /
       _stageVisibleFrac(stage);

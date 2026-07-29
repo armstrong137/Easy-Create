@@ -553,23 +553,15 @@ void main() {
     }
   });
 
-  test('窗口模式：新增章节跨阶段时可冻结视觉阶段，避免整树鬼影切换', () {
-    // 方案 A 五档：7 节=第3档、8 节=第4档，加章跨档正好换更大的整树图。
+  test('跨档立刻换档位：不再冻结旧档（冻结会把旧照片抻到新高度）', () {
+    // 早先加章时会冻结旧档播交叉溶解，但目标树高已经跳到新值，
+    // 旧照片就被纵向抻长（0→1 章要抻 1.89 倍，嫩芽拉成细面条）。
+    // 现在换档即刻生效，视觉过渡交给自下而上的擦除。
     final before = [for (var i = 1; i <= 7; i++) chapterWith(i, 0)];
     final after = [for (var i = 1; i <= 8; i++) chapterWith(i, 0)];
 
-    final oldLayout = layoutMagicTree(size: size, outline: before);
-    expect(oldLayout.stage, 3);
-
-    final frozenLayout = layoutMagicTree(
-      size: size,
-      outline: after,
-      visualStageOverride: oldLayout.stage,
-    );
-    expect(frozenLayout.stage, 3, reason: '新增章节生长期间必须沿用旧视觉阶段');
-
-    final settledLayout = layoutMagicTree(size: size, outline: after);
-    expect(settledLayout.stage, 4, reason: '动画结束后才允许切到新视觉阶段');
+    expect(layoutMagicTree(size: size, outline: before).stage, 3);
+    expect(layoutMagicTree(size: size, outline: after).stage, 4);
   });
 
   test('方案A五档成长：加章跨阈值时整树照片依次换大（章多树长大）', () {
@@ -644,22 +636,24 @@ void main() {
     );
   });
 
-  test('方案乙：冻结视觉档位期间树高不变（换图动画不抖）', () {
-    // 加章跨档时 outline_page 会冻结旧档播交叉溶解；
-    // 树高由 visualHeightFrac 独立表达，所以冻结与否画面必须一样高。
-    final frozen = layoutMagicTree(
-      size: size,
-      outline: [chapterWith(1, 3)], // 4 节点 → 第 3 档
-      visualStageOverride: 2, // 但仍显示第 2 档的照片
-    );
-    final natural = layoutMagicTree(size: size, outline: [chapterWith(1, 3)]);
-    expect(frozen.stage, 2);
-    expect(natural.stage, 3);
-    expect(
-      frozen.visibleTreeHeight,
-      closeTo(natural.visibleTreeHeight, 1.0),
-      reason: '同一时刻两张照片必须画成同样高的整株',
-    );
+  test('每档照片都按各自比例作画，绝不被抻长或压扁', () {
+    // 成长倍数 = 目标整株高 ÷ 本档素材自带的整株高。档内该倍数从 1 起步、
+    // 有界上探；跨档瞬间回到贴合新素材的值——任何时候都不会出现压扁（<1）。
+    for (var n = 0; n <= 30; n++) {
+      final outline = n == 0 ? <OutlineChapter>[] : [chapterWith(1, n - 1)];
+      final l = layoutMagicTree(size: size, outline: outline);
+      final growth = l.imageRect.height / l.soilRect.height;
+      expect(
+        growth,
+        greaterThanOrEqualTo(0.999),
+        reason: '$n 节点：素材被压扁了（成长倍数 $growth < 1）',
+      );
+      expect(
+        growth,
+        lessThanOrEqualTo(1.29),
+        reason: '$n 节点：素材被抻得太长（成长倍数 $growth）',
+      );
+    }
   });
 
   test('窗口模式止血：完整魔树图首尾镜头同尺寸，末章贴底', () {

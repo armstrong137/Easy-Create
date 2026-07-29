@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:drift/native.dart';
@@ -141,6 +142,63 @@ void main() {
     final chapters = await db.select(db.chapters).get();
     expect(chapters.single.title, '引子');
     await tester.pump(const Duration(milliseconds: 800)); // 播完生长
+  });
+
+  testWidgets('加章：树干变完之前，枝丫和标签不得出现', (tester) async {
+    // 用户 2026-07-29 定稿："至少要等树干变了之后，枝丫再变化"。
+    // 实拍里新枝在树干还在长的时候就冒出来，还挂在被抻长的旧照片上。
+    await seedNovel();
+    final outline = StreamController<List<OutlineChapter>>();
+    addTearDown(outline.close);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          outlineProvider.overrideWith((ref, novelId) => outline.stream),
+          sectionInspirationsProvider.overrideWith(
+            (ref, novelId) => Stream.value(const {}),
+          ),
+          chapterInspirationsProvider.overrideWith(
+            (ref, novelId) => Stream.value(const {}),
+          ),
+          inspirationPoolProvider.overrideWith((ref) => Stream.value(const [])),
+          sectionCardsProvider.overrideWith(
+            (ref, sectionId) => Stream.value(const []),
+          ),
+        ],
+        child: MaterialApp(
+          builder: (context, child) => CarpetOverlay(child: child!),
+          home: const OutlinePage(novelId: 1, title: '测试小说'),
+        ),
+      ),
+    );
+    outline.add(const []);
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final size = tester.getSize(find.byType(Scaffold));
+    await doubleTapAt(tester, Offset(size.width * 0.05, size.height * 0.5));
+    // 大纲流推来新章：枝已在树上，但树干这一轮（0→1 章要跨档）还没播完
+    outline.add([fakeChapter(1, '引子', 0)]);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    double capsuleOpacity() => tester
+        .widget<Opacity>(
+          find
+              .descendant(
+                of: find.byKey(const Key('章热区_1')),
+                matching: find.byType(Opacity),
+              )
+              .first,
+        )
+        .opacity;
+
+    expect(find.byKey(const Key('章热区_1')), findsOneWidget);
+    expect(capsuleOpacity(), 0, reason: '树干还在变，标签必须还看不见');
+
+    // 擦除 1.1s + 余量播完 → 枝丫生长动画启动 → 后段标签浮现
+    await tester.pump(const Duration(milliseconds: 1300));
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(capsuleOpacity(), 1, reason: '树干动完后枝丫与标签才长出来');
   });
 
   testWidgets('已有一章时点左空白命名"第一章"', (tester) async {
