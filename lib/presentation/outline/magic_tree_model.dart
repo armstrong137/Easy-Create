@@ -333,6 +333,7 @@ MagicTreeLayout layoutMagicTree({
           outline,
           stage,
           age,
+          growth,
           chapterOffset,
           sectionScrolls,
           sectionNoteCounts,
@@ -694,6 +695,7 @@ MagicTreeLayout _layoutWindow(
   List<OutlineChapter> outline,
   int stage,
   double age,
+  double growth,
   double chapterOffset,
   Map<int, double> sectionScrolls,
   Map<int, int> sectionNoteCounts,
@@ -702,27 +704,24 @@ MagicTreeLayout _layoutWindow(
   final maxOffset = (n - 2).toDouble();
   final offset = chapterOffset.clamp(0.0, maxOffset);
 
-  // 方案 B 止血：完整照片保持一屏高度，不再拉伸或切片平铺。
-  // 多章节仍通过一屏两章的标签窗口表达，树背景只在首尾镜头间平移。
-  // 窗口模式**不参与连续成长**：树已撑满整屏，再放大只会切掉树顶
-  // （首章镜头必须看得到树顶），成长在此改由"章带变多"表达。
+  // 方案 B 止血：完整照片保持一屏高度，不再按章数任意拉伸或切片平铺。
+  // 多章节仍通过一屏两章的标签窗口表达，树背景不再平移（画幅恒等于一屏）。
+  // 窗口模式同样参与连续长高：档尾最高时树**冠**最多长出画外约 4.5%（第 3 档），
+  // 但树干（trunkRect，决定能挂几个小节）始终完整可见，反而比原来更长一点。
   final baseDispH = size.height;
-  final dispH = baseDispH;
-  final dispW = math.min(
+  final baseDispW = math.min(
     baseDispH * (kStageImageWidth / kStageImageHeight),
     size.width,
   );
-  final travel = math.max(0.0, dispH - size.height);
-  final imageTop = maxOffset <= 0
-      ? size.height - dispH
-      : -travel * offset / maxOffset;
-  final imageRect = Rect.fromLTWH(
-    (size.width - dispW) / 2,
-    imageTop,
-    dispW,
-    dispH,
+  final (imageRect, soilRect) = _stageRects(
+    size: size,
+    baseW: baseDispW,
+    baseH: baseDispH,
+    baseTop: size.height - baseDispH,
+    growth: growth,
   );
-  final soilRect = imageRect;
+  final dispW = imageRect.width;
+  final dispH = imageRect.height;
 
   final stalk = _stalks[stage]!;
   final stalkTopY = imageRect.top + stalk.topY * dispH;

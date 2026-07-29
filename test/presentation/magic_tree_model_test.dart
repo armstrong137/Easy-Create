@@ -85,7 +85,11 @@ void main() {
     final top = layoutMagicTree(size: size, outline: outline);
     expect(top.windowMode, isTrue);
     expect(top.maxChapterOffset, 3);
-    expect(top.imageRect.top, 0, reason: '镜头在首章 → 看到树顶');
+    expect(
+      top.trunkRect.top,
+      greaterThanOrEqualTo(0),
+      reason: '镜头在首章 → 树顶留在画内（画幅留了成长余量，故不再恒等于 0）',
+    );
     expect(top.chapterBands.keys, contains(1));
     expect(top.chapterBands.keys, contains(2));
     expect(top.chapterBands.keys, isNot(contains(5)), reason: '一屏只两章');
@@ -96,9 +100,9 @@ void main() {
       chapterOffset: 3,
     );
     expect(
-      bottom.imageRect.bottom,
+      bottom.soilRect.bottom,
       closeTo(size.height, 0.5),
-      reason: '镜头在末章 → 看到土壤',
+      reason: '镜头在末章 → 看到土壤（土层贴底，树层可越出屏外被土层盖住）',
     );
     expect(bottom.chapterBands.keys, contains(4));
     expect(bottom.chapterBands.keys, contains(5));
@@ -106,10 +110,13 @@ void main() {
   });
 
   test('窗口模式止血：完整魔树图恒定显示，不再随章数拉伸或分段拼接', () {
+    // 止血的本意：禁止"按章数任意拉伸画幅"造假高树 + 禁止分段拼接。
+    // 方案乙的连续成长是**有界**的（档内最多长到下一档素材的树高），
+    // 且横向恒定、土层恒定，所以这里改成校验这些不变量。
     final first = layoutMagicTree(
       size: size,
       outline: [for (var i = 1; i <= 3; i++) chapterWith(i, 1)],
-    ).imageRect;
+    );
 
     for (final count in [3, 8, 19, 40]) {
       final outline = [for (var i = 1; i <= count; i++) chapterWith(i, 1)];
@@ -122,12 +129,33 @@ void main() {
       );
       final bottom = bottomLayout.imageRect;
 
-      expect(top.width, closeTo(first.width, 0.5), reason: '$count 章时树宽应恒定');
-      expect(top.height, closeTo(first.height, 0.5), reason: '$count 章时树高应恒定');
-      expect(top.top, closeTo(0, 0.5), reason: '首章镜头要看到树顶');
+      expect(
+        top.width,
+        closeTo(first.imageRect.width, 0.5),
+        reason: '$count 章树宽恒定',
+      );
+      expect(
+        topLayout.soilRect,
+        first.soilRect,
+        reason: '$count 章时土层完全不动（泥土红线）',
+      );
+      expect(
+        top.height,
+        lessThanOrEqualTo(first.imageRect.height * 1.25 + 0.5),
+        reason: '$count 章：成长有界，绝不按章数无限拉伸',
+      );
+      expect(
+        topLayout.trunkRect.top,
+        greaterThanOrEqualTo(0),
+        reason: '$count 章：长到档尾时树冠仍在画内',
+      );
       expect(bottom.width, closeTo(top.width, 0.5), reason: '镜头滚动时树宽不变');
       expect(bottom.height, closeTo(top.height, 0.5), reason: '镜头滚动时树高不变');
-      expect(bottom.bottom, closeTo(size.height, 0.5), reason: '末章镜头要看到泥土');
+      expect(
+        bottomLayout.soilRect.bottom,
+        closeTo(size.height, 0.5),
+        reason: '末章镜头要看到泥土',
+      );
       expect(
         layoutMagicTreeImagePieces(topLayout),
         isA<WholeTreeImagePieces>(),
@@ -634,29 +662,24 @@ void main() {
   });
 
   test('窗口模式止血：完整魔树图首尾镜头同尺寸，末章贴底', () {
-    Rect imageFor(int count) {
+    (Rect, Rect) imageFor(int count) {
       final outline = [for (var i = 1; i <= count; i++) chapterWith(i, 0)];
       final layout = layoutMagicTree(
         size: size,
         outline: outline,
         chapterOffset: (count - 2).toDouble(),
       );
-      final pieces = layoutMagicTreeImagePieces(layout);
-      expect(pieces, isA<WholeTreeImagePieces>());
-      return pieces.bounds;
+      final pieces = layoutMagicTreeImagePieces(layout) as WholeTreeImagePieces;
+      return (pieces.bounds, pieces.soilBounds);
     }
 
-    final image3 = imageFor(3);
+    final (image3, soil3) = imageFor(3);
     for (final count in [4, 8, 11]) {
-      final image = imageFor(count);
-      expect(
-        image.bottom,
-        closeTo(size.height, 0.5),
-        reason: '$count 章末章镜头应贴底',
-      );
+      final (image, soil) = imageFor(count);
+      expect(soil, soil3, reason: '$count 章土层完全不动（贴底、同尺寸、同位置）');
+      expect(soil.bottom, closeTo(size.height, 0.5), reason: '$count 章泥土应贴底');
       expect(image.left, closeTo(image3.left, 0.5), reason: '$count 章横向不漂移');
       expect(image.width, closeTo(image3.width, 0.5), reason: '$count 章宽度不变');
-      expect(image.height, closeTo(image3.height, 0.5), reason: '$count 章高度不变');
     }
   });
 

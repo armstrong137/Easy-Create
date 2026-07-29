@@ -102,6 +102,9 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   /// 五档树素材只预解码一次（避免每次依赖变化重复触发）
   bool _treesPrecached = false;
 
+  /// 已按真实大纲画过一次树 → 之后树高变化才播成长补间（见 build）
+  bool _treeSettled = false;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -719,8 +722,12 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
 
   @override
   Widget build(BuildContext context) {
-    final outline =
-        ref.watch(outlineProvider(widget.novelId)).value ?? const [];
+    final outlineAsync = ref.watch(outlineProvider(widget.novelId));
+    final outline = outlineAsync.value ?? const <OutlineChapter>[];
+    // 首次拿到真实大纲时树要**直接就位**：加载态是空大纲（嫩芽），
+    // 若也走补间，每次进大纲页都会看树从嫩芽重新长一遍。
+    final animateGrowth = _treeSettled;
+    if (outlineAsync.hasValue) _treeSettled = true;
 
     // 章节多（>2 = 进入窗口模式）时把魔毯球缩到右边栏，避免挡住右上角小节标签；
     // 章少时恢复完整球。只在状态变化时设，避免每帧刷。
@@ -760,7 +767,9 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                     tween: Tween<double>(
                       end: treeHeightFrac(totalTreeNodes(outline)),
                     ),
-                    duration: const Duration(milliseconds: 700),
+                    duration: animateGrowth
+                        ? const Duration(milliseconds: 700)
+                        : Duration.zero,
                     curve: Curves.easeOutCubic,
                     builder: (context, heightFrac, _) => AnimatedBuilder(
                       animation: Listenable.merge([_grow, _camera]),
