@@ -39,6 +39,34 @@ TextStyle labelStyle({required bool bold, required String text}) =>
       color: const Color(0xFF3A2A18), // 深树皮色，配魔树
     );
 
+/// 标签尺寸缓存。镜头平移时每帧都要重排所有标签，而 `TextPainter.layout` 要做
+/// 完整字形整形——实测每帧 0.90ms 里 0.89ms 花在这儿（布局本身只 0.01ms），
+/// 手机 web 上字形整形更贵，于是"树枝移动时有点卡"（用户 2026-07-29 反馈）。
+///
+/// 尺寸只取决于文字、字重、系统字体缩放，平移期间三者都不变，缓存即可。
+final _labelSizes = <(String, bool, double), Size>{};
+
+Size _measureLabel(String text, bool bold, TextScaler textScaler) {
+  final key = (text, bold, textScaler.scale(100));
+  final hit = _labelSizes[key];
+  if (hit != null) return hit;
+  final painter = TextPainter(
+    text: TextSpan(
+      text: text,
+      style: labelStyle(bold: bold, text: text),
+    ),
+    textDirection: TextDirection.ltr,
+    maxLines: 2,
+    ellipsis: '…',
+    textScaler: textScaler,
+  )..layout(maxWidth: 118);
+  final size = painter.size;
+  painter.dispose();
+  // 改名/增删章节会不断产生新键，超过上限直接清空重建（几十条的量级，无所谓）
+  if (_labelSizes.length > 512) _labelSizes.clear();
+  return _labelSizes[key] = size;
+}
+
 /// 为魔树放置全部标签（含碰撞规避）：
 /// 章标签在左枝端外侧、节标签在右枝端外侧；候选位依次为
 /// 端部外上方 → 下方 → 更高 → 更低，取首个不重叠位置。
@@ -55,30 +83,21 @@ List<PlacedLabel> placeMagicLabels(
     final bold = vine.isChapter;
     // 名字长时最多换两行（限宽 118），不再横向拉长、不再单行省略；
     // 宽度受限后整枚标签自然更靠树干（用户定稿：字数多往树干方向靠）
-    final painter = TextPainter(
-      text: TextSpan(
-        text: vine.title,
-        style: labelStyle(bold: bold, text: vine.title),
-      ),
-      textDirection: TextDirection.ltr,
-      maxLines: 2,
-      ellipsis: '…',
-      textScaler: textScaler,
-    )..layout(maxWidth: 118);
+    final size = _measureLabel(vine.title, bold, textScaler);
 
     final anchor = vine.tip;
     // 章枝朝左 → 标签放端点左侧；节枝朝右 → 端点右侧
-    var dx = vine.isChapter ? anchor.dx - painter.width - 6 : anchor.dx + 6;
+    var dx = vine.isChapter ? anchor.dx - size.width - 6 : anchor.dx + 6;
     double clampX(double x) {
       if (canvasWidth == null) return x;
-      final hi = canvasWidth - painter.width - 4;
+      final hi = canvasWidth - size.width - 4;
       return hi > 4 ? x.clamp(4.0, hi) : 4.0;
     }
 
     dx = clampX(dx);
     // 密集时首列四个纵向槽位不够，再开一列"内侧列"（横向完全错开）。
     // 但可滚小节（clipChapterId 非空）已经由布局控制可见数量，必须保持单列。
-    final inner = clampX(dx + (vine.isChapter ? 1 : -1) * (painter.width + 22));
+    final inner = clampX(dx + (vine.isChapter ? 1 : -1) * (size.width + 22));
     final columns = !vine.isChapter && vine.clipChapterId != null
         ? [dx]
         : [dx, inner];
@@ -87,9 +106,9 @@ List<PlacedLabel> placeMagicLabels(
         : null;
     final candidates = <Offset>[
       for (final col in columns) ...[
-        Offset(col, anchor.dy - painter.height - 16), // 端部上方（避开卷勾）
+        Offset(col, anchor.dy - size.height - 16), // 端部上方（避开卷勾）
         Offset(col, anchor.dy + 8),
-        Offset(col, anchor.dy - painter.height - 34),
+        Offset(col, anchor.dy - size.height - 34),
         Offset(col, anchor.dy + 26),
       ],
     ];
@@ -100,8 +119,8 @@ List<PlacedLabel> placeMagicLabels(
       final rect = Rect.fromLTWH(
         c.dx,
         c.dy,
-        painter.width,
-        painter.height,
+        size.width,
+        size.height,
       ).inflate(8);
       if (clip != null &&
           (rect.top < clip.$1 + 2 || rect.bottom > clip.$2 - 2)) {
@@ -120,8 +139,8 @@ List<PlacedLabel> placeMagicLabels(
         rect: Rect.fromLTWH(
           pos.dx,
           pos.dy,
-          painter.width.ceilToDouble() + 2,
-          painter.height,
+          size.width.ceilToDouble() + 2,
+          size.height,
         ),
         bold: bold,
         chapterId: vine.isChapter ? vine.id : null,

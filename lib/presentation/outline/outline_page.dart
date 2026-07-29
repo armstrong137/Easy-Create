@@ -1115,21 +1115,27 @@ class _MagicTreeImageState extends State<_MagicTreeImage>
       );
     }
 
+    // RepaintBoundary：窗口模式滚章节时树背景其实完全不动（imageRect 与镜头档位
+    // 无关），但标签每帧重建会带着整树照片一起重栅格化——941×1672 的图按中等
+    // 过滤质量逐帧重采样，手机上就是"树枝移动时有点卡"。隔离成独立图层后，
+    // 平移期间只重绘标签，树照片直接复用缓存。
     return Positioned.fill(
-      child: AnimatedBuilder(
-        key: const Key('魔树完整图'),
-        animation: _wipe,
-        builder: (context, _) => Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // 旧档（含它的土）垫在下面，等着被自下而上盖掉
-            if (_fromAsset != null && _wipe.value < 1) ...[
-              layer(_fromAsset!, _fromBounds, treeClip),
-              layer(_fromAsset!, pieces.soilBounds, soilClip),
+      child: RepaintBoundary(
+        child: AnimatedBuilder(
+          key: const Key('魔树完整图'),
+          animation: _wipe,
+          builder: (context, _) => Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // 旧档（含它的土）垫在下面，等着被自下而上盖掉
+              if (_fromAsset != null && _wipe.value < 1) ...[
+                layer(_fromAsset!, _fromBounds, treeClip),
+                layer(_fromAsset!, pieces.soilBounds, soilClip),
+              ],
+              layer(pieces.asset, pieces.bounds, treeClip, wiped: true),
+              layer(pieces.asset, pieces.soilBounds, soilClip, wiped: true),
             ],
-            layer(pieces.asset, pieces.bounds, treeClip, wiped: true),
-            layer(pieces.asset, pieces.soilBounds, soilClip, wiped: true),
-          ],
+          ),
         ),
       ),
     );
