@@ -19,6 +19,12 @@ const kParchment = Color(0xFFFDF6EC);
 const kStageImageWidth = 941.0;
 const kStageImageHeight = 1672.0;
 
+/// 土堆最高点在素材图中的纵向位置（第 1 档实测最顶端土色像素 0.807，
+/// 五张图土堆同形同位）。它是"树层 / 固定土层"的分界线：
+/// 该线以上画放大后的树，以下画**原尺寸**的土堆——泥土永不随成长变大。
+/// 锚点取土堆最高点而非图底，正因为此线以上素材里恰好没有土。
+const kSoilTopFrac = 0.807;
+
 /// 卷须精灵图（tendril_chapter.png 实测 130x106，节图为其镜像）：
 /// 根茬在右缘 31% 高度处，螺旋端在左上角附近
 const kTendrilAspect = 106 / 130;
@@ -59,6 +65,41 @@ int stageForNodes(int totalNodes) {
   if (totalNodes <= 7) return 3;
   if (totalNodes <= 13) return 4;
   return 5;
+}
+
+/// 各档覆盖的节点数区间（与 [stageForNodes] 一一对应）
+const _stageSpans = <int, (int, int)>{
+  1: (0, 0),
+  2: (1, 3),
+  3: (4, 7),
+  4: (8, 13),
+  5: (14, 14), // 末档没有"下一张更大的图"，恒定不再长
+};
+
+/// 该档素材里树占画幅高度的比例（茎干顶到底）
+double _stageHeightFrac(int stage) {
+  final s = _stalks[stage]!;
+  return s.botY - s.topY;
+}
+
+/// 章+节总数（树的"体量"，成长与档位都看它）
+int totalTreeNodes(List<OutlineChapter> outline) =>
+    outline.length + outline.fold<int>(0, (sum, c) => sum + c.sections.length);
+
+/// 树高占画幅的比例，随节点数**连续**变化（方案乙，2026-07-28 用户定稿：
+/// 泥土钉死不动，只有树连续长高）。
+///
+/// 档内从本档素材的树高线性长到下一档素材的树高，所以跨档换图那一刻
+/// 两棵树**一样高**——交叉溶解读作"同一棵树换了张更清楚的照片"，而不是跳变。
+/// 唯一保留的跳变是 0 章 → 第 1 章（0.37→0.62），那是破土时刻，交给补间动画演。
+double treeHeightFrac(int totalNodes) {
+  final stage = stageForNodes(totalNodes);
+  final here = _stageHeightFrac(stage);
+  if (stage >= 5) return here;
+  final (lo, hi) = _stageSpans[stage]!;
+  if (hi <= lo) return here;
+  final p = ((totalNodes - lo) / (hi - lo)).clamp(0.0, 1.0);
+  return here + (_stageHeightFrac(stage + 1) - here) * p;
 }
 
 /// 新增章节的视觉流程：先让新枝生长，再移动镜头。
@@ -106,15 +147,28 @@ sealed class TreeImagePieces {
 }
 
 class WholeTreeImagePieces extends TreeImagePieces {
-  const WholeTreeImagePieces({required super.bounds, required this.asset});
+  const WholeTreeImagePieces({
+    required super.bounds,
+    required this.asset,
+    required this.soilBounds,
+    required this.soilLineY,
+  });
 
   final String asset;
+
+  /// 固定土层的绘制区域（**不随成长缩放**的基准矩形）
+  final Rect soilBounds;
+
+  /// 分界线：此线以上画 [bounds]（放大后的树），以下画 [soilBounds]（原尺寸土堆）
+  final double soilLineY;
 }
 
 TreeImagePieces layoutMagicTreeImagePieces(MagicTreeLayout layout) =>
     WholeTreeImagePieces(
       bounds: layout.imageRect,
       asset: 'assets/textures/magic_tree_${layout.stage}.jpg',
+      soilBounds: layout.soilRect,
+      soilLineY: layout.soilLineY,
     );
 
 /// 每阶段茎干轮廓（归一化到素材图：y 相对图高，半宽相对图宽）
@@ -177,6 +231,7 @@ class MagicTreeLayout {
     required this.windowMode,
     required this.viewportHeight,
     required this.imageRect,
+    required this.soilRect,
     required this.trunkRect,
     required this.chapters,
     required this.sections,
@@ -196,8 +251,15 @@ class MagicTreeLayout {
   /// 当前视口高度；固定土壤层需要脱离虚拟树高来对齐屏幕底部。
   final double viewportHeight;
 
-  /// 阶段素材整图的显示区域（窗口模式下高于画布，随章滚动上下平移）
+  /// 阶段素材整图的显示区域（窗口模式下高于画布，随章滚动上下平移）；
+  /// 随成长以土壤线为锚点放大，所以枝条/标签坐标自动跟着树长
   final Rect imageRect;
+
+  /// 同一张素材在**成长倍数=1** 时的矩形——固定土层照此画，泥土永不动
+  final Rect soilRect;
+
+  /// 树层与土层的分界线（画布坐标），恒等于两个矩形的 [kSoilTopFrac] 处
+  double get soilLineY => soilRect.top + kSoilTopFrac * soilRect.height;
 
   /// 茎干柱区域（枝根吸附范围）
   final Rect trunkRect;
@@ -241,13 +303,19 @@ MagicTreeLayout layoutMagicTree({
   Map<int, double> sectionScrolls = const {},
   Map<int, int> sectionNoteCounts = const {},
   int? visualStageOverride,
+  double? visualHeightFrac,
 }) {
   final n = outline.length;
-  final totalNodes =
-      n + outline.fold<int>(0, (sum, c) => sum + c.sections.length);
+  final totalNodes = totalTreeNodes(outline);
   final age = treeAge(totalNodes);
   final computedStage = stageForNodes(totalNodes);
   final stage = visualStageOverride ?? computedStage;
+  // 成长倍数 = 目标树高 ÷ 当前这张素材自带的树高。
+  // 换图动画期间 stage 被冻结在旧档，但目标树高不变，所以倍数会自动补上差额，
+  // 冻结解除前后树高完全一致——这正是"跨档不跳"的实现方式。
+  final growth =
+      (visualHeightFrac ?? treeHeightFrac(totalNodes)) /
+      _stageHeightFrac(stage);
 
   return n == 1
       ? _layoutSingleChapter(
@@ -255,6 +323,7 @@ MagicTreeLayout layoutMagicTree({
           outline.single,
           stage,
           age,
+          growth,
           sectionScrolls,
           sectionNoteCounts,
         )
@@ -273,9 +342,32 @@ MagicTreeLayout layoutMagicTree({
           outline,
           stage,
           age,
+          growth,
           sectionScrolls,
           sectionNoteCounts,
         );
+}
+
+/// 整树模式共用的画幅几何：**土壤线钉死**，树以它为锚点按 [growth] **只长高**。
+///
+/// 横向恒定不放大——这不是偷懒，是接缝所迫：土层永远是原尺寸，
+/// 若树层等比放大，树干在分界线上宽下窄会露出台阶（实测 1.24 倍时肉眼可见，
+/// 加渐变融合也只能糊成一团雾）。只拉高则分界线两侧宽度天然一致，接缝为零。
+///
+/// 返回 (树层矩形, 土层基准矩形)。growth=1 时两者相等，且与改造前完全一致。
+(Rect, Rect) _stageRects({
+  required Size size,
+  required double baseW,
+  required double baseH,
+  required double baseTop,
+  required double growth,
+}) {
+  final left = (size.width - baseW) / 2;
+  final soil = Rect.fromLTWH(left, baseTop, baseW, baseH);
+  final soilLineY = baseTop + kSoilTopFrac * baseH;
+  final h = baseH * growth;
+  final tree = Rect.fromLTWH(left, soilLineY - kSoilTopFrac * h, baseW, h);
+  return (tree, soil);
 }
 
 /// 单章：整棵树仍随小节数量成长，但小节始终只在右侧一列中向下生长。
@@ -285,6 +377,7 @@ MagicTreeLayout _layoutSingleChapter(
   OutlineChapter outline,
   int stage,
   double age,
+  double growth,
   Map<int, double> sectionScrolls,
   Map<int, int> sectionNoteCounts,
 ) {
@@ -292,14 +385,15 @@ MagicTreeLayout _layoutSingleChapter(
     size.width / kStageImageWidth,
     size.height * 0.84 / kStageImageHeight,
   );
-  final dispW = kStageImageWidth * scale;
-  final dispH = kStageImageHeight * scale;
-  final imageRect = Rect.fromLTWH(
-    (size.width - dispW) / 2,
-    size.height - 8 - dispH,
-    dispW,
-    dispH,
+  final (imageRect, soilRect) = _stageRects(
+    size: size,
+    baseW: kStageImageWidth * scale,
+    baseH: kStageImageHeight * scale,
+    baseTop: size.height - 8 - kStageImageHeight * scale,
+    growth: growth,
   );
+  final dispW = imageRect.width;
+  final dispH = imageRect.height;
 
   final stalk = _stalks[stage]!;
   final topY = imageRect.top + stalk.topY * dispH;
@@ -411,6 +505,7 @@ MagicTreeLayout _layoutSingleChapter(
     windowMode: true,
     viewportHeight: size.height,
     imageRect: imageRect,
+    soilRect: soilRect,
     trunkRect: trunkRect,
     chapters: chapters,
     sections: sections,
@@ -426,6 +521,7 @@ MagicTreeLayout _layoutWholeTree(
   List<OutlineChapter> outline,
   int stage,
   double age,
+  double growth,
   Map<int, double> sectionScrolls,
   Map<int, int> sectionNoteCounts,
 ) {
@@ -434,14 +530,15 @@ MagicTreeLayout _layoutWholeTree(
     size.width / kStageImageWidth,
     size.height * 0.84 / kStageImageHeight,
   );
-  final dispW = kStageImageWidth * scale;
-  final dispH = kStageImageHeight * scale;
-  final imageRect = Rect.fromLTWH(
-    (size.width - dispW) / 2,
-    size.height - 8 - dispH,
-    dispW,
-    dispH,
+  final (imageRect, soilRect) = _stageRects(
+    size: size,
+    baseW: kStageImageWidth * scale,
+    baseH: kStageImageHeight * scale,
+    baseTop: size.height - 8 - kStageImageHeight * scale,
+    growth: growth,
   );
+  final dispW = imageRect.width;
+  final dispH = imageRect.height;
 
   final stalk = _stalks[stage]!;
   final topY = imageRect.top + stalk.topY * dispH;
@@ -581,6 +678,7 @@ MagicTreeLayout _layoutWholeTree(
     windowMode: outline.isNotEmpty,
     viewportHeight: size.height,
     imageRect: imageRect,
+    soilRect: soilRect,
     trunkRect: trunkRect,
     chapters: chapters,
     sections: sections,
@@ -606,6 +704,8 @@ MagicTreeLayout _layoutWindow(
 
   // 方案 B 止血：完整照片保持一屏高度，不再拉伸或切片平铺。
   // 多章节仍通过一屏两章的标签窗口表达，树背景只在首尾镜头间平移。
+  // 窗口模式**不参与连续成长**：树已撑满整屏，再放大只会切掉树顶
+  // （首章镜头必须看得到树顶），成长在此改由"章带变多"表达。
   final baseDispH = size.height;
   final dispH = baseDispH;
   final dispW = math.min(
@@ -622,6 +722,7 @@ MagicTreeLayout _layoutWindow(
     dispW,
     dispH,
   );
+  final soilRect = imageRect;
 
   final stalk = _stalks[stage]!;
   final stalkTopY = imageRect.top + stalk.topY * dispH;
@@ -774,6 +875,7 @@ MagicTreeLayout _layoutWindow(
     windowMode: true,
     viewportHeight: size.height,
     imageRect: imageRect,
+    soilRect: soilRect,
     trunkRect: trunkRect,
     chapters: chapters,
     sections: sections,

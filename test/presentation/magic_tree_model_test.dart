@@ -569,6 +569,70 @@ void main() {
     }
   });
 
+  test('方案乙连续成长：档内每加一节树都长高，且跨档换图时树高不跳', () {
+    // 用户 2026-07-28 反馈"生长不连续"的根治：树高不再只跟档位走，
+    // 而是随节点数连续变化，一档内加节也看得见长高。
+    double treeH(int nodes) => layoutMagicTree(
+      size: size,
+      outline: [chapterWith(1, math.max(0, nodes - 1))],
+    ).imageRect.height;
+
+    // 第 2 档（1~3 节点）档内逐级长高
+    expect(treeH(2), greaterThan(treeH(1)), reason: '1→2 节点必须长高');
+    expect(treeH(3), greaterThan(treeH(2)), reason: '2→3 节点必须长高');
+    // 跨档（3→4 节点，第2档→第3档）换的是照片，树的**实际高度**必须连续
+    final before = layoutMagicTree(size: size, outline: [chapterWith(1, 2)]);
+    final after = layoutMagicTree(size: size, outline: [chapterWith(1, 3)]);
+    expect(after.stage, before.stage + 1, reason: '3→4 节点应跨档换图');
+    double trunkSpan(MagicTreeLayout l) => l.trunkRect.height;
+    expect(
+      trunkSpan(after),
+      closeTo(trunkSpan(before), 1.0),
+      reason: '跨档瞬间两棵树等高，交叉溶解才不会读成跳变',
+    );
+  });
+
+  test('方案乙：泥土钉死不动，树只纵向长高（横向恒定，接缝零台阶）', () {
+    // 用户红线"泥土就不要动"：土层矩形与树的成长完全无关。
+    final small = layoutMagicTree(size: size, outline: [chapterWith(1, 0)]);
+    final big = layoutMagicTree(size: size, outline: [chapterWith(1, 2)]);
+    expect(big.soilRect, small.soilRect, reason: '土层矩形不得随成长变化');
+    expect(big.soilLineY, closeTo(small.soilLineY, 0.001));
+    expect(
+      big.imageRect.height,
+      greaterThan(small.imageRect.height),
+      reason: '树层必须长高',
+    );
+    expect(
+      big.imageRect.width,
+      closeTo(small.imageRect.width, 0.001),
+      reason: '横向恒定：等比放大会让树干在土壤线上宽下窄，露出台阶',
+    );
+    // 分界线恒落在两个矩形的同一比例处 → 树干跨线宽度连续
+    expect(
+      small.soilLineY,
+      closeTo(big.imageRect.top + kSoilTopFrac * big.imageRect.height, 0.001),
+    );
+  });
+
+  test('方案乙：冻结视觉档位期间树高不变（换图动画不抖）', () {
+    // 加章跨档时 outline_page 会冻结旧档播交叉溶解；
+    // 树高由 visualHeightFrac 独立表达，所以冻结与否画面必须一样高。
+    final frozen = layoutMagicTree(
+      size: size,
+      outline: [chapterWith(1, 3)], // 4 节点 → 第 3 档
+      visualStageOverride: 2, // 但仍显示第 2 档的照片
+    );
+    final natural = layoutMagicTree(size: size, outline: [chapterWith(1, 3)]);
+    expect(frozen.stage, 2);
+    expect(natural.stage, 3);
+    expect(
+      frozen.trunkRect.height,
+      closeTo(natural.trunkRect.height, 1.0),
+      reason: '同一时刻两张照片必须画成同样高的树',
+    );
+  });
+
   test('窗口模式止血：完整魔树图首尾镜头同尺寸，末章贴底', () {
     Rect imageFor(int count) {
       final outline = [for (var i = 1; i <= count; i++) chapterWith(i, 0)];
