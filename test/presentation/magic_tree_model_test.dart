@@ -113,7 +113,7 @@ void main() {
     // 用户 2026-07-29 截图实证：分界线取在土堆冒头处（0.807）时那一行土堆只有
     // 63px 宽，而幼藤树干 150px、巨藤 292px，切口整条露出来，整株浮在泥土上面。
     // 0.845 实测该行土堆宽 0.403，宽过所有档最粗的树干（0.310）。
-    expect(kSoilSplitFrac, greaterThan(kSoilCrestFrac));
+    expect(kSoilSplitFrac, greaterThan(0.80));
     expect(kSoilSplitFrac, greaterThanOrEqualTo(0.84));
     expect(kSoilSplitFrac, lessThan(kSoilBottomFrac));
   });

@@ -13,8 +13,6 @@ import 'package:novel_app/presentation/home/home_page.dart'
     show inspirationPoolProvider;
 import 'package:novel_app/presentation/outline/magic_carpet.dart'
     show CarpetOverlay;
-import 'package:novel_app/presentation/outline/magic_tree_model.dart'
-    show kSoilAsset;
 import 'package:novel_app/presentation/outline/outline_page.dart';
 import 'package:novel_app/presentation/section/section_page.dart'
     show sectionCardsProvider;
@@ -328,14 +326,19 @@ void main() {
     );
   });
 
-  test('土层五档共用同一张素材（换档时泥土不得跳）', () {
+  test('树层与土层必须同图，且擦除连土一起扫', () {
     final src = File(
       'lib/presentation/outline/outline_page.dart',
     ).readAsStringSync();
-    // 五张照片的土堆本就不一样大（底边 0.974/0.943/0.980/0.989/0.980，
-    // 宽度 0.871/0.717/0.747/0.677/0.743），各画各的换档时泥土会当场跳。
-    expect(src, contains('kSoilAsset,'), reason: '土层必须画 kSoilAsset，不能跟着档位换图');
-    expect(kSoilAsset, 'assets/textures/magic_tree_1.jpg');
+    // 换过一版"共用第 1 档土堆"：土层用别档照片就得抠图，而硬边矩形裁切会把
+    // 土堆顶切平、低垂的叶子齐刷刷切断，横贯一条直线（用户 2026-07-29 截图实证）。
+    // 同图同横向比例才有零接缝；跨档的土堆差异交给擦除吸收。
+    expect(src, isNot(contains('kSoilAsset')), reason: '土层不得换用别档素材');
+    expect(
+      src,
+      contains('layer(pieces.asset, pieces.soilBounds, soilClip, wiped: true)'),
+      reason: '土层画本档素材，且必须参与擦除',
+    );
   });
 
   test('窗口模式止血：代码禁止分段平铺、镜像、羽化路线回流', () {

@@ -1055,16 +1055,31 @@ class _MagicTreeImageState extends State<_MagicTreeImage>
   @override
   Widget build(BuildContext context) {
     final pieces = _piecesOf(widget.layout);
-    // 树层裁到土壤线以上（此线以上素材里恰好没有土），土层画原尺寸土堆。
-    // 两层横向尺寸一致，树干跨线时宽度连续，接缝为零。
+    // 两层都画**同一张**素材：分界线以上是随章节长高的植株，以下是原尺寸土堆。
+    // 同图同横向比例 → 树干跨线宽度天然连续，接缝为零，不存在平切口。
     final treeClip = Rect.fromLTRB(
       pieces.bounds.left,
       math.min(pieces.bounds.top, _fromBounds.top),
       pieces.bounds.right,
       pieces.soilLineY,
     );
+    final soilClip = Rect.fromLTRB(
+      pieces.soilBounds.left,
+      // 上沿多压 2px：两层各自取整时留下的亚像素缝会露出页面底色，
+      // 在分界线上显出一条亮线（合成复核确认 2px 足够堵住）
+      pieces.soilLineY - 2,
+      pieces.soilBounds.right,
+      pieces.soilBounds.bottom,
+    );
+    // 擦除线的绝对位置：从土堆底一路扫到树冠。**连土一起扫**——各档土堆本就
+    // 略有差异，让这点差异随生长波一起被替换掉，而不是在换档瞬间跳一下。
+    final wipeY = _wipe.value >= 1 || _fromAsset == null
+        ? null
+        : soilClip.bottom +
+              kGrowWipeFeather -
+              (soilClip.bottom + kGrowWipeFeather - treeClip.top) * _wipe.value;
 
-    Widget layer(String asset, Rect rect, Rect clip, {double? wipe}) {
+    Widget layer(String asset, Rect rect, Rect clip, {bool wiped = false}) {
       Widget img = Stack(
         clipBehavior: Clip.none,
         children: [
@@ -1079,17 +1094,17 @@ class _MagicTreeImageState extends State<_MagicTreeImage>
           ),
         ],
       );
-      if (wipe != null) {
-        // 擦除线自下而上扫过，带软边；线以下露出新档，线以上仍是旧档
-        final feather = (kGrowWipeFeather / clip.height).clamp(0.02, 0.5);
-        final line = (1 - wipe) * (1 + feather);
+      if (wiped && wipeY != null) {
+        // 擦除线以下露出新档、以上仍是旧档；软边避免看出一条横线
+        final f = (kGrowWipeFeather / clip.height).clamp(0.02, 0.5);
+        final t = (wipeY - clip.top) / clip.height;
         img = ShaderMask(
           blendMode: BlendMode.dstIn,
           shaderCallback: (r) => LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: const [Color(0x00FFFFFF), Color(0xFFFFFFFF)],
-            stops: [(line - feather).clamp(0.0, 1.0), line.clamp(0.0, 1.0)],
+            stops: [(t - f).clamp(0.0, 1.0), t.clamp(0.0, 1.0)],
           ).createShader(r),
           child: img,
         );
@@ -1107,28 +1122,13 @@ class _MagicTreeImageState extends State<_MagicTreeImage>
         builder: (context, _) => Stack(
           clipBehavior: Clip.none,
           children: [
-            if (_fromAsset != null && _wipe.value < 1)
+            // 旧档（含它的土）垫在下面，等着被自下而上盖掉
+            if (_fromAsset != null && _wipe.value < 1) ...[
               layer(_fromAsset!, _fromBounds, treeClip),
-            layer(
-              pieces.asset,
-              pieces.bounds,
-              treeClip,
-              wipe: _wipe.value < 1 && _fromAsset != null ? _wipe.value : null,
-            ),
-            // 土层五档共用同一张（见 kSoilAsset）：各档照片的土堆本就不一样大，
-            // 各画各的会在换档时让泥土当场跳一下
-            layer(
-              kSoilAsset,
-              pieces.soilBounds,
-              Rect.fromLTRB(
-                pieces.soilBounds.left,
-                // 上沿多压 1.5px：两层各自取整时留下的亚像素缝会露出页面底色，
-                // 在土壤线上显出一条亮线。这 1.5px 里素材恰好只有米白底，压上无害
-                pieces.soilLineY - 1.5,
-                pieces.soilBounds.right,
-                pieces.soilBounds.bottom,
-              ),
-            ),
+              layer(_fromAsset!, pieces.soilBounds, soilClip),
+            ],
+            layer(pieces.asset, pieces.bounds, treeClip, wiped: true),
+            layer(pieces.asset, pieces.soilBounds, soilClip, wiped: true),
           ],
         ),
       ),

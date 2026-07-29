@@ -19,25 +19,22 @@ const kParchment = Color(0xFFFDF6EC);
 const kStageImageWidth = 941.0;
 const kStageImageHeight = 1672.0;
 
-/// 土堆最高点（冒头处）在素材图中的纵向位置——第 1 档实测最顶端土色像素。
-/// 枝丫不得低于这条线，否则会长进土里。
-const kSoilCrestFrac = 0.807;
-
 /// 树层 / 固定土层的**分界线**：此线以上画长高后的树，以下画原尺寸土堆。
 ///
-/// 不能取土堆冒头处（0.807）：那一行土堆只有 63px 宽，而幼藤树干 150px、
-/// 巨藤 292px，树干的平切口会整条露在土堆之上，整株看着浮在泥土上面
-/// （用户 2026-07-29 截图实证）。取 0.845——实测该行土堆宽 0.403，
-/// 宽过所有档最粗的树干（最宽 0.310），切口一定被土盖住。
-const kSoilSplitFrac = 0.845;
+/// 两层用的是**同一张**素材、同一个横向比例，所以树干跨线时宽度天然连续，
+/// 接缝为零——不存在"平切口"，树干是直接续下去的。
+///
+/// 取 0.85：实测五档在中央树干带之外的泥土最高只到 0.856/0.865/0.903/
+/// 0.919/0.900，所以这条线以上基本没有土，被拉伸的只有植株。
+/// 早先试过共用第 1 档土堆再硬边裁切，结果土堆顶被切平、低垂的叶子被齐刷刷
+/// 切断，横贯一条直线（用户 2026-07-29 截图实证）——矩形硬裁这条路走不通。
+const kSoilSplitFrac = 0.85;
 
-/// 第 1 档土堆底边在素材图中的位置（土层贴屏底用）
+/// 素材里土堆底边的大致位置（用来把土堆摆到贴屏底）。各档略有差异
+/// （0.974/0.943/0.980/0.989/0.980），统一按第 1 档定位：画幅位置对所有档一致，
+/// 分界线因此恒定，植株换档时不会上下跳；各档土堆底自然落在稍有出入的位置，
+/// 这点差异由擦除（连土一起自下而上扫）吸收。
 const kSoilBottomFrac = 0.974;
-
-/// **五档共用第 1 档的土堆**。五张照片的土堆其实各不相同（实测底边
-/// 0.974/0.943/0.980/0.989/0.980，宽度 0.871/0.717/0.747/0.677/0.743），
-/// 各画各的会在换档时让泥土当场变形跳动。第 1 档土堆最宽，盖得住所有档的树干。
-const kSoilAsset = 'assets/textures/magic_tree_1.jpg';
 
 /// 每档"整株最高点"在素材图中的位置（实测非背景像素的首行）。
 ///
@@ -332,8 +329,8 @@ class MagicTreeLayout {
   /// [kSoilBottomFrac] 处；这条线才是"泥土贴屏底"的判据。
   double get soilBottomY => soilRect.top + kSoilBottomFrac * soilRect.height;
 
-  /// 土堆冒头处（画布坐标）：枝丫的下界，低于它就长进土里了
-  double get soilCrestY => soilRect.top + kSoilCrestFrac * soilRect.height;
+  /// 枝丫下界（画布坐标）＝分界线：低于它就长进土里了
+  double get soilCrestY => soilLineY;
 
   /// **整株**（含枝叶）当前的可见高度：土堆顶 → 树冠。
   /// 连续成长按这个量对齐——不是茎干，因为眼睛看的是整株。
@@ -483,7 +480,7 @@ MagicTreeLayout _layoutSingleChapter(
   // 只按树干底算会把枝根放进土里（用户截图里"第一章"的卷须贴在土堆边上）
   final soilSafeBottom = math.min(
     botY - span * 0.12,
-    soilRect.top + kSoilCrestFrac * soilRect.height - 10,
+    soilRect.top + kSoilSplitFrac * soilRect.height - 10,
   );
   final rootY = attachTop + (attachBot - attachTop) * 0.15;
   final chapter = outline.chapter;
@@ -623,7 +620,7 @@ MagicTreeLayout _layoutWholeTree(
   // 只按树干底算会把枝根放进土里（用户截图里"第一章"的卷须贴在土堆边上）
   final soilSafeBottom = math.min(
     botY - span * 0.12,
-    soilRect.top + kSoilCrestFrac * soilRect.height - 10,
+    soilRect.top + kSoilSplitFrac * soilRect.height - 10,
   );
   final attachRange = attachBot - attachTop;
 
@@ -794,7 +791,7 @@ MagicTreeLayout _layoutWindow(
   // 同上：枝丫不得低于土堆冒头处
   final soilSafeBottom = math.min(
     trunkRect.bottom - trunkRect.height * 0.12,
-    soilRect.top + kSoilCrestFrac * soilRect.height - 10,
+    soilRect.top + kSoilSplitFrac * soilRect.height - 10,
   );
   final branchBottom = math.min(soilSafeBottom, stalkBotY - trunkSpan * 0.06);
 
