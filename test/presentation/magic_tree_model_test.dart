@@ -109,6 +109,35 @@ void main() {
     expect(bottom.chapterBands.keys, isNot(contains(1)));
   });
 
+  test('树土分界线必须深过土堆冒头处（否则树干平切口露在泥土上）', () {
+    // 用户 2026-07-29 截图实证：分界线取在土堆冒头处（0.807）时那一行土堆只有
+    // 63px 宽，而幼藤树干 150px、巨藤 292px，切口整条露出来，整株浮在泥土上面。
+    // 0.845 实测该行土堆宽 0.403，宽过所有档最粗的树干（0.310）。
+    expect(kSoilSplitFrac, greaterThan(kSoilCrestFrac));
+    expect(kSoilSplitFrac, greaterThanOrEqualTo(0.84));
+    expect(kSoilSplitFrac, lessThan(kSoilBottomFrac));
+  });
+
+  test('枝丫绝不长进土里：所有枝根都在土堆冒头处之上', () {
+    for (final n in [1, 2, 3, 6, 10, 18]) {
+      final outline = [for (var i = 1; i <= n; i++) chapterWith(i, 1)];
+      for (final offset in [0.0, (n - 2).clamp(0, 99).toDouble()]) {
+        final l = layoutMagicTree(
+          size: size,
+          outline: outline,
+          chapterOffset: offset,
+        );
+        for (final b in [...l.chapters, ...l.sections]) {
+          expect(
+            b.root.dy,
+            lessThanOrEqualTo(l.soilCrestY),
+            reason: '$n 章 镜头$offset：${b.title} 的枝根落到土堆里了',
+          );
+        }
+      }
+    }
+  });
+
   test('窗口模式止血：完整魔树图恒定显示，不再随章数拉伸或分段拼接', () {
     // 止血的本意：禁止"按章数任意拉伸画幅"造假高树 + 禁止分段拼接。
     // 方案乙的连续成长是**有界**的（档内最多长到下一档素材的树高），
@@ -632,7 +661,7 @@ void main() {
     // 分界线恒落在两个矩形的同一比例处 → 树干跨线宽度连续
     expect(
       small.soilLineY,
-      closeTo(big.imageRect.top + kSoilTopFrac * big.imageRect.height, 0.001),
+      closeTo(big.imageRect.top + kSoilSplitFrac * big.imageRect.height, 0.001),
     );
   });
 

@@ -19,10 +19,17 @@ const kParchment = Color(0xFFFDF6EC);
 const kStageImageWidth = 941.0;
 const kStageImageHeight = 1672.0;
 
-/// 土堆最高点在素材图中的纵向位置（第 1 档实测最顶端土色像素）。
-/// 它是"树层 / 固定土层"的分界线：该线以上画长高后的树，以下画原尺寸土堆。
-/// 锚点取土堆最高点而非图底，正因为此线以上素材里恰好没有土。
-const kSoilTopFrac = 0.807;
+/// 土堆最高点（冒头处）在素材图中的纵向位置——第 1 档实测最顶端土色像素。
+/// 枝丫不得低于这条线，否则会长进土里。
+const kSoilCrestFrac = 0.807;
+
+/// 树层 / 固定土层的**分界线**：此线以上画长高后的树，以下画原尺寸土堆。
+///
+/// 不能取土堆冒头处（0.807）：那一行土堆只有 63px 宽，而幼藤树干 150px、
+/// 巨藤 292px，树干的平切口会整条露在土堆之上，整株看着浮在泥土上面
+/// （用户 2026-07-29 截图实证）。取 0.845——实测该行土堆宽 0.403，
+/// 宽过所有档最粗的树干（最宽 0.310），切口一定被土盖住。
+const kSoilSplitFrac = 0.845;
 
 /// 第 1 档土堆底边在素材图中的位置（土层贴屏底用）
 const kSoilBottomFrac = 0.974;
@@ -46,7 +53,8 @@ const _stageContentTop = <int, double>{
 };
 
 /// 该档整株可见高度占图高的比例（土堆顶 → 整株最高点）
-double _stageVisibleFrac(int stage) => kSoilTopFrac - _stageContentTop[stage]!;
+double _stageVisibleFrac(int stage) =>
+    kSoilSplitFrac - _stageContentTop[stage]!;
 
 /// 第 3 档之后素材本身几乎不再变高（整株 0.777/0.782/0.791，差不到 2%），
 /// 只靠换图会让第 4 章往后每章只长 0.2%，等于又不长了。所以第 3 档起
@@ -59,7 +67,7 @@ const _kLateGrowTau = 9.0;
 
 /// 全生命周期最高的整株高度——用来反推基准尺寸，
 /// 保证树长到最高时树冠仍留在画内（实拍里树冠被画布顶切掉就是缺了这一步）。
-const _maxVisibleFrac = (kSoilTopFrac - 0.030) * _kLateGrowMax;
+const _maxVisibleFrac = (kSoilSplitFrac - 0.030) * _kLateGrowMax;
 
 /// 画布上下留白
 const _kFramePadTop = 12.0;
@@ -70,7 +78,7 @@ const _kFramePadBottom = 8.0;
 /// 由两条约束反推：土堆底贴屏底、整株长到最高时树冠不出画；再受画布宽度封顶。
 double _baseFrameHeight(Size size) => math.min(
   (size.height - _kFramePadTop - _kFramePadBottom) /
-      (_maxVisibleFrac + (kSoilBottomFrac - kSoilTopFrac)),
+      (_maxVisibleFrac + (kSoilBottomFrac - kSoilSplitFrac)),
   size.width * (kStageImageHeight / kStageImageWidth),
 );
 
@@ -317,12 +325,15 @@ class MagicTreeLayout {
   /// 同一张素材在**成长倍数=1** 时的矩形——固定土层照此画，泥土永不动
   final Rect soilRect;
 
-  /// 树层与土层的分界线（画布坐标），恒等于两个矩形的 [kSoilTopFrac] 处
-  double get soilLineY => soilRect.top + kSoilTopFrac * soilRect.height;
+  /// 树层与土层的分界线（画布坐标），恒等于两个矩形的 [kSoilSplitFrac] 处
+  double get soilLineY => soilRect.top + kSoilSplitFrac * soilRect.height;
 
   /// 土堆底边（画布坐标）。土层矩形是整张素材的画幅，底边在它的
   /// [kSoilBottomFrac] 处；这条线才是"泥土贴屏底"的判据。
   double get soilBottomY => soilRect.top + kSoilBottomFrac * soilRect.height;
+
+  /// 土堆冒头处（画布坐标）：枝丫的下界，低于它就长进土里了
+  double get soilCrestY => soilRect.top + kSoilCrestFrac * soilRect.height;
 
   /// **整株**（含枝叶）当前的可见高度：土堆顶 → 树冠。
   /// 连续成长按这个量对齐——不是茎干，因为眼睛看的是整株。
@@ -428,9 +439,9 @@ MagicTreeLayout layoutMagicTree({
   final baseTop = size.height - _kFramePadBottom - kSoilBottomFrac * baseH;
   final left = (size.width - baseW) / 2;
   final soil = Rect.fromLTWH(left, baseTop, baseW, baseH);
-  final soilLineY = baseTop + kSoilTopFrac * baseH;
+  final soilLineY = baseTop + kSoilSplitFrac * baseH;
   final h = baseH * growth;
-  final tree = Rect.fromLTWH(left, soilLineY - kSoilTopFrac * h, baseW, h);
+  final tree = Rect.fromLTWH(left, soilLineY - kSoilSplitFrac * h, baseW, h);
   return (tree, soil);
 }
 
@@ -468,7 +479,12 @@ MagicTreeLayout _layoutSingleChapter(
 
   final attachTop = topY + span * 0.14;
   final attachBot = botY - span * 0.10;
-  final soilSafeBottom = botY - span * 0.12;
+  // 枝丫下界：离树干底留 12%，且**绝不低于土堆冒头处**——分界线在土堆内部，
+  // 只按树干底算会把枝根放进土里（用户截图里"第一章"的卷须贴在土堆边上）
+  final soilSafeBottom = math.min(
+    botY - span * 0.12,
+    soilRect.top + kSoilCrestFrac * soilRect.height - 10,
+  );
   final rootY = attachTop + (attachBot - attachTop) * 0.15;
   final chapter = outline.chapter;
   final root = Offset(cx - halfWAt(rootY) + dispW * 0.006, rootY);
@@ -603,7 +619,12 @@ MagicTreeLayout _layoutWholeTree(
   // 枝根吸附段（避开顶部细梢与底部土堆）
   final attachTop = topY + span * 0.14;
   final attachBot = botY - span * 0.10;
-  final soilSafeBottom = botY - span * 0.12;
+  // 枝丫下界：离树干底留 12%，且**绝不低于土堆冒头处**——分界线在土堆内部，
+  // 只按树干底算会把枝根放进土里（用户截图里"第一章"的卷须贴在土堆边上）
+  final soilSafeBottom = math.min(
+    botY - span * 0.12,
+    soilRect.top + kSoilCrestFrac * soilRect.height - 10,
+  );
   final attachRange = attachBot - attachTop;
 
   final n = outline.length;
@@ -770,7 +791,11 @@ MagicTreeLayout _layoutWindow(
 
   final trunkSpan = stalkBotY - stalkTopY;
   final branchTop = math.max(trunkRect.top, stalkTopY + trunkSpan * 0.06);
-  final soilSafeBottom = trunkRect.bottom - trunkRect.height * 0.12;
+  // 同上：枝丫不得低于土堆冒头处
+  final soilSafeBottom = math.min(
+    trunkRect.bottom - trunkRect.height * 0.12,
+    soilRect.top + kSoilCrestFrac * soilRect.height - 10,
+  );
   final branchBottom = math.min(soilSafeBottom, stalkBotY - trunkSpan * 0.06);
 
   // 高度带：一屏恰好两章
