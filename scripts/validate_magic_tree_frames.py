@@ -28,6 +28,20 @@ def luminance(arr: np.ndarray) -> np.ndarray:
     return arr.astype(np.float32) @ LUMA_WEIGHTS
 
 
+def saturation(arr: np.ndarray) -> np.ndarray:
+    rgb = arr.astype(np.float32) / 255.0
+    max_channel = rgb.max(axis=2)
+    min_channel = rgb.min(axis=2)
+    sat = np.zeros_like(max_channel)
+    non_black = max_channel > 0
+    sat[non_black] = (
+        (max_channel[non_black] - min_channel[non_black])
+        / max_channel[non_black]
+        * 255.0
+    )
+    return sat
+
+
 def foreground_mask(arr: np.ndarray) -> np.ndarray:
     diff = np.abs(arr.astype(np.float32) - BG).sum(axis=2)
     return diff > 34
@@ -128,6 +142,44 @@ def crown_smear_ratio(arr: np.ndarray, plant_top: float) -> float:
     return float(np.count_nonzero(bright_content) / np.count_nonzero(content))
 
 
+def crown_saturation_metrics(
+    arr: np.ndarray,
+    plant_top: float,
+    green_box: tuple[int, int, int, int] | None,
+) -> tuple[float, float]:
+    h = arr.shape[0]
+    top = min(h - 1, max(0, int(round(plant_top * h))))
+    crown_bottom = min(h, top + 90)
+    fg = foreground_mask(arr)
+    sat = saturation(arr)
+
+    crown_content = fg[top:crown_bottom]
+    crown_sat = sat[top:crown_bottom][crown_content]
+    if len(crown_sat) == 0:
+        return 1.0, 0.0
+
+    if green_box:
+        mid_y = int(green_box[1] + (green_box[3] - green_box[1]) * 0.45)
+    else:
+        mid_y = top + 160
+
+    mid_sat = None
+    for offset in (0, 90, 180, -90, 270, -180, 360, 450, -270):
+        y0 = max(0, min(h - 90, mid_y + offset))
+        values = sat[y0 : y0 + 90][fg[y0 : y0 + 90]]
+        if len(values) > 20:
+            mid_sat = values
+            break
+
+    if mid_sat is None or len(mid_sat) == 0:
+        return 1.0, float(np.mean(crown_sat < 60))
+
+    return (
+        float(np.mean(crown_sat) / max(1.0, float(np.mean(mid_sat)))),
+        float(np.mean(crown_sat < 60)),
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("frame_dir", type=Path)
@@ -139,6 +191,8 @@ def main() -> None:
     parser.add_argument("--max-leaf-diameter-drift", type=float, default=0.2)
     parser.add_argument("--max-crown-smear-ratio", type=float, default=0.03)
     parser.add_argument("--max-brightness-over-bg", type=float, default=10.0)
+    parser.add_argument("--min-crown-saturation-ratio", type=float, default=0.85)
+    parser.add_argument("--max-crown-gray-ratio", type=float, default=0.20)
     args = parser.parse_args()
 
     paths = load_frames(args.frame_dir)
@@ -159,6 +213,7 @@ def main() -> None:
     leaf_counts: list[int] = []
     bg_means: list[list[float]] = []
     brightness_over_bg: list[float] = []
+    green_boxes: list[tuple[int, int, int, int] | None] = []
 
     for arr in arrays:
         fg = foreground_mask(arr)
@@ -168,6 +223,7 @@ def main() -> None:
         gb = bbox(gm)
         sb = bbox(sm)
         h, w = arr.shape[:2]
+        green_boxes.append(gb)
         content_boxes.append(fb if fb else (0, 0, 0, 0))
         plant_tops.append((gb[1] / h) if gb else 1.0)
         if sb:
@@ -196,6 +252,12 @@ def main() -> None:
         crown_smear_ratio(arr, plant_top)
         for arr, plant_top in zip(arrays, plant_tops, strict=True)
     ]
+    crown_saturation = [
+        crown_saturation_metrics(arr, plant_top, green_box)
+        for arr, plant_top, green_box in zip(arrays, plant_tops, green_boxes, strict=True)
+    ]
+    crown_saturation_ratios = [v[0] for v in crown_saturation]
+    crown_gray_ratios = [v[1] for v in crown_saturation]
 
     top_regressions = [
         i + 1
@@ -241,6 +303,9 @@ def main() -> None:
         "background_stable": max(bg_range) <= 2.0,
         "crown_smear": max(crown_smears) <= args.max_crown_smear_ratio,
         "brightness_not_over_bg": max(brightness_over_bg) <= args.max_brightness_over_bg,
+        "crown_saturation_ratio": min(crown_saturation_ratios)
+        >= args.min_crown_saturation_ratio,
+        "crown_gray_ratio": max(crown_gray_ratios) <= args.max_crown_gray_ratio,
         "format_and_size": len(sizes) == 1
         and sizes[0] == (941, 1672)
         and paths[0].suffix.lower() == ".jpg",
@@ -273,6 +338,12 @@ def main() -> None:
         "crown_smear_ratio_values": [round(v, 4) for v in crown_smears],
         "brightness_over_bg_max": round(max(brightness_over_bg), 3),
         "brightness_over_bg_values": [round(v, 3) for v in brightness_over_bg],
+        "crown_saturation_ratio_min": round(min(crown_saturation_ratios), 4),
+        "crown_saturation_ratio_values": [
+            round(v, 4) for v in crown_saturation_ratios
+        ],
+        "crown_gray_ratio_max": round(max(crown_gray_ratios), 4),
+        "crown_gray_ratio_values": [round(v, 4) for v in crown_gray_ratios],
         "checks": pass_checks,
         "pass": all(pass_checks.values()),
     }
