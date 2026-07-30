@@ -100,22 +100,81 @@ void main() {
       chapterOffset: 3,
     );
     expect(
-      bottom.soilBottomY,
-      closeTo(size.height - 8, 0.5),
-      reason: '镜头在末章 → 看到土壤（土堆底贴屏底）',
+      bottom.imageRect,
+      top.imageRect,
+      reason: '画幅与镜头档位无关：帧序列自己表达生长，代码不缩放不平移',
     );
     expect(bottom.chapterBands.keys, contains(4));
     expect(bottom.chapterBands.keys, contains(5));
     expect(bottom.chapterBands.keys, isNot(contains(1)));
   });
 
-  test('树土分界线必须深过土堆冒头处（否则树干平切口露在泥土上）', () {
-    // 用户 2026-07-29 截图实证：分界线取在土堆冒头处（0.807）时那一行土堆只有
-    // 63px 宽，而幼藤树干 150px、巨藤 292px，切口整条露出来，整株浮在泥土上面。
-    // 0.845 实测该行土堆宽 0.403，宽过所有档最粗的树干（0.310）。
-    expect(kSoilSplitFrac, greaterThan(0.80));
-    expect(kSoilSplitFrac, greaterThanOrEqualTo(0.84));
-    expect(kSoilSplitFrac, lessThan(kSoilBottomFrac));
+  test('帧号映射：0 节点用首帧，每加一个节点前进一帧，到末帧封顶', () {
+    int frameOf(int nodes) => layoutMagicTree(
+      size: size,
+      outline: nodes == 0 ? const [] : [chapterWith(1, nodes - 1)],
+    ).frame;
+    expect(frameOf(0), kTreeFrameFirst, reason: '空书用首帧');
+    for (var n = 1; n <= kTreeFrameLast - kTreeFrameFirst; n++) {
+      expect(
+        frameOf(n),
+        frameOf(n - 1) + 1,
+        reason: '第 $n 个节点必须正好前进一帧——每一步都看得见在长',
+      );
+    }
+    expect(frameOf(100), kTreeFrameLast, reason: '超出序列后封顶，不越界');
+  });
+
+  test('画幅随帧单调放大，且内容始终留在画布内', () {
+    // 素材 f05→f26 内容高度差 5.9 倍。若所有帧共用同一画幅，2 章时树只占屏高
+    // 19%、上方 80% 空白、标签挤在矮树干上（实测）。改为按帧等比放大到
+    // 45%→92% 屏高：观感成长压到约 2 倍，但树永不显小，也绝不回弹。
+    // 单调的是**屏上内容高度**（土堆底 − 树冠），不是画幅高度：
+    // 画幅 = 目标占比 ÷ 该帧内容占图比例，后者涨得更快，所以画幅本身会变小。
+    double onScreenHeight(int nodes) {
+      final l = layoutMagicTree(
+        size: size,
+        outline: nodes == 0 ? const [] : [chapterWith(1, nodes - 1)],
+      );
+      return l.imageRect.top +
+          kFrameContentBottom * l.imageRect.height -
+          l.plantTopY;
+    }
+
+    for (var n = 1; n <= kTreeFrameLast - kTreeFrameFirst; n++) {
+      expect(
+        onScreenHeight(n),
+        greaterThan(onScreenHeight(n - 1)),
+        reason: '第 $n 个节点树在屏上必须比上一步高',
+      );
+    }
+    for (var n = 0; n <= 30; n++) {
+      final l = layoutMagicTree(
+        size: size,
+        outline: n == 0 ? const [] : [chapterWith(1, n - 1)],
+      );
+      expect(l.plantTopY, greaterThanOrEqualTo(0), reason: '$n 节点：树冠出画布了');
+      expect(
+        l.imageRect.top + kFrameContentBottom * l.imageRect.height,
+        closeTo(size.height - 8, 0.5),
+        reason: '$n 节点：土堆底必须贴屏底',
+      );
+    }
+  });
+
+  test('每一帧都有茎干轮廓，且素材文件都在（否则运行时直接崩）', () {
+    for (var f = kTreeFrameFirst; f <= kTreeFrameLast; f++) {
+      final l = layoutMagicTree(
+        size: size,
+        outline: [chapterWith(1, f - kTreeFrameFirst)],
+      );
+      expect(l.trunkRect.height, greaterThan(0), reason: '第 $f 帧缺茎干轮廓');
+      expect(
+        File(treeFrameAsset(f)).existsSync(),
+        isTrue,
+        reason: '${treeFrameAsset(f)} 必须存在',
+      );
+    }
   });
 
   test('枝丫绝不长进土里：所有枝根都在土堆冒头处之上', () {
@@ -142,11 +201,6 @@ void main() {
     // 止血的本意：禁止"按章数任意拉伸画幅"造假高树 + 禁止分段拼接。
     // 方案乙的连续成长是**有界**的（档内最多长到下一档素材的树高），
     // 且横向恒定、土层恒定，所以这里改成校验这些不变量。
-    final first = layoutMagicTree(
-      size: size,
-      outline: [for (var i = 1; i <= 3; i++) chapterWith(i, 1)],
-    );
-
     for (final count in [3, 8, 19, 40]) {
       final outline = [for (var i = 1; i <= count; i++) chapterWith(i, 1)];
       final topLayout = layoutMagicTree(size: size, outline: outline);
@@ -159,32 +213,11 @@ void main() {
       final bottom = bottomLayout.imageRect;
 
       expect(
-        top.width,
-        closeTo(first.imageRect.width, 0.5),
-        reason: '$count 章树宽恒定',
-      );
-      expect(
-        topLayout.soilRect,
-        first.soilRect,
-        reason: '$count 章时土层完全不动（泥土红线）',
-      );
-      expect(
-        top.height,
-        lessThanOrEqualTo(first.imageRect.height * 1.25 + 0.5),
-        reason: '$count 章：成长有界，绝不按章数无限拉伸',
-      );
-      expect(
-        topLayout.trunkRect.top,
+        topLayout.plantTopY,
         greaterThanOrEqualTo(0),
-        reason: '$count 章：长到档尾时树冠仍在画内',
+        reason: '$count 章：树冠留在画内',
       );
-      expect(bottom.width, closeTo(top.width, 0.5), reason: '镜头滚动时树宽不变');
-      expect(bottom.height, closeTo(top.height, 0.5), reason: '镜头滚动时树高不变');
-      expect(
-        bottomLayout.soilBottomY,
-        closeTo(size.height - 8, 0.5),
-        reason: '末章镜头要看到泥土',
-      );
+      expect(bottom, top, reason: '$count 章：画幅只由帧号决定，与镜头档位无关');
       expect(
         layoutMagicTreeImagePieces(topLayout),
         isA<WholeTreeImagePieces>(),
@@ -207,7 +240,7 @@ void main() {
       expect(pieces, isA<WholeTreeImagePieces>());
       expect(
         (pieces as WholeTreeImagePieces).asset,
-        startsWith('assets/textures/magic_tree_'),
+        startsWith('$kTreeFrameDir/magic_tree_f'),
       );
     }
   });
@@ -293,7 +326,9 @@ void main() {
   });
 
   test('窗口模式：靠近泥土的小节只隐藏枝丫不隐藏标签', () {
-    final outline = [chapterWith(1, 0), chapterWith(2, 0), chapterWith(3, 6)];
+    // 用"写了不少"的书：节点多 → 帧号靠后 → 树干长，章带才放得下多条小节。
+    // （帧序列在节点少时树干很短，这是设定而非缺陷——书小树就小。）
+    final outline = [chapterWith(1, 6), chapterWith(2, 6), chapterWith(3, 6)];
     final layout = layoutMagicTree(
       size: size,
       outline: outline,
@@ -582,132 +617,23 @@ void main() {
     }
   });
 
-  test('跨档立刻换档位：不再冻结旧档（冻结会把旧照片抻到新高度）', () {
-    // 早先加章时会冻结旧档播交叉溶解，但目标树高已经跳到新值，
-    // 旧照片就被纵向抻长（0→1 章要抻 1.89 倍，嫩芽拉成细面条）。
-    // 现在换档即刻生效，视觉过渡交给自下而上的擦除。
-    final before = [for (var i = 1; i <= 7; i++) chapterWith(i, 0)];
-    final after = [for (var i = 1; i <= 8; i++) chapterWith(i, 0)];
-
-    expect(layoutMagicTree(size: size, outline: before).stage, 3);
-    expect(layoutMagicTree(size: size, outline: after).stage, 4);
-  });
-
-  test('方案A五档成长：加章跨阈值时整树照片依次换大（章多树长大）', () {
-    // 用户反馈"第二章到第九章树木一点变化都没有"的根治：档位随创作量铺开，
-    // 前十来章要能看到多次成长跨档（每档一张不同大小的完整树照片）。
-    int stageOf(int chapters) => layoutMagicTree(
-      size: size,
-      outline: [for (var i = 1; i <= chapters; i++) chapterWith(i, 0)],
-    ).stage;
-    expect(stageOf(0), 1, reason: '空树=破土嫩芽');
-    expect(stageOf(2), 2);
-    expect(stageOf(5), 3);
-    expect(stageOf(9), 4);
-    expect(stageOf(20), 5, reason: '海量创作=巨藤封顶');
-    // 2→9 章至少跨 2 次档（不再一动不动）
-    final tiers = {stageOf(2), stageOf(5), stageOf(9)};
-    expect(tiers.length, greaterThanOrEqualTo(3), reason: '2/5/9 章应各不相同');
-    // 五张完整树素材都存在
-    for (var s = 1; s <= 5; s++) {
-      expect(
-        File('assets/textures/magic_tree_$s.jpg').existsSync(),
-        isTrue,
-        reason: 'magic_tree_$s.jpg 必须存在',
-      );
-    }
-  });
-
-  test('方案乙连续成长：档内每加一节树都长高，且跨档换图时树高不跳', () {
-    // 用户 2026-07-28 反馈"生长不连续"的根治：树高不再只跟档位走，
-    // 而是随节点数连续变化，一档内加节也看得见长高。
-    double treeH(int nodes) => layoutMagicTree(
-      size: size,
-      outline: [chapterWith(1, math.max(0, nodes - 1))],
-    ).visibleTreeHeight;
-
-    // 第 2 档（1~3 节点）档内逐级长高
-    expect(treeH(2), greaterThan(treeH(1)), reason: '1→2 节点必须长高');
-    expect(treeH(3), greaterThan(treeH(2)), reason: '2→3 节点必须长高');
-    // 跨档（3→4 节点，第2档→第3档）换的是照片，树的**实际高度**必须连续
-    final before = layoutMagicTree(size: size, outline: [chapterWith(1, 2)]);
-    final after = layoutMagicTree(size: size, outline: [chapterWith(1, 3)]);
-    expect(after.stage, before.stage + 1, reason: '3→4 节点应跨档换图');
-    expect(
-      after.visibleTreeHeight,
-      closeTo(before.visibleTreeHeight, 1.0),
-      reason:
-          '跨档瞬间两棵**整株**等高，换图动效才读作生长而不是换幻灯片。'
-          '按茎干对齐是不够的：茎顶之上还有一大片枝叶，各档比例差得远',
-    );
-  });
-
-  test('方案乙：泥土钉死不动，树只纵向长高（横向恒定，接缝零台阶）', () {
-    // 用户红线"泥土就不要动"：土层矩形与树的成长完全无关。
-    final small = layoutMagicTree(size: size, outline: [chapterWith(1, 0)]);
-    final big = layoutMagicTree(size: size, outline: [chapterWith(1, 2)]);
-    expect(big.soilRect, small.soilRect, reason: '土层矩形不得随成长变化');
-    expect(big.soilLineY, closeTo(small.soilLineY, 0.001));
-    expect(
-      big.imageRect.height,
-      greaterThan(small.imageRect.height),
-      reason: '树层必须长高',
-    );
-    expect(
-      big.imageRect.width,
-      closeTo(small.imageRect.width, 0.001),
-      reason: '横向恒定：等比放大会让树干在土壤线上宽下窄，露出台阶',
-    );
-    // 分界线恒落在两个矩形的同一比例处 → 树干跨线宽度连续
-    expect(
-      small.soilLineY,
-      closeTo(big.imageRect.top + kSoilSplitFrac * big.imageRect.height, 0.001),
-    );
-  });
-
-  test('每档照片都按各自比例作画，绝不被抻长或压扁', () {
-    // 成长倍数 = 目标整株高 ÷ 本档素材自带的整株高。档内该倍数从 1 起步、
-    // 有界上探；跨档瞬间回到贴合新素材的值——任何时候都不会出现压扁（<1）。
-    for (var n = 0; n <= 30; n++) {
-      final outline = n == 0 ? <OutlineChapter>[] : [chapterWith(1, n - 1)];
-      final l = layoutMagicTree(size: size, outline: outline);
-      final growth = l.imageRect.height / l.soilRect.height;
-      expect(
-        growth,
-        greaterThanOrEqualTo(0.999),
-        reason: '$n 节点：素材被压扁了（成长倍数 $growth < 1）',
-      );
-      expect(
-        growth,
-        lessThanOrEqualTo(1.29),
-        reason: '$n 节点：素材被抻得太长（成长倍数 $growth）',
-      );
-    }
-  });
-
-  test('窗口模式止血：完整魔树图首尾镜头同尺寸，末章贴底', () {
-    (Rect, Rect) imageFor(int count) {
+  test('窗口模式止血：画幅与章数、镜头档位都无关', () {
+    // 画幅由帧号（=节点数）决定，同一本书在不同镜头档位下必须完全一致
+    for (final count in [3, 4, 8, 11]) {
       final outline = [for (var i = 1; i <= count; i++) chapterWith(i, 0)];
-      final layout = layoutMagicTree(
+      final a = layoutMagicTree(size: size, outline: outline).imageRect;
+      final b = layoutMagicTree(
         size: size,
         outline: outline,
         chapterOffset: (count - 2).toDouble(),
-      );
-      final pieces = layoutMagicTreeImagePieces(layout) as WholeTreeImagePieces;
-      return (pieces.bounds, pieces.soilBounds);
-    }
-
-    final (image3, soil3) = imageFor(3);
-    for (final count in [4, 8, 11]) {
-      final (image, soil) = imageFor(count);
-      expect(soil, soil3, reason: '$count 章土层完全不动（贴底、同尺寸、同位置）');
-      expect(
-        soil.top + kSoilBottomFrac * soil.height,
-        closeTo(size.height - 8, 0.5),
-        reason: '$count 章土堆底应贴屏底',
-      );
-      expect(image.left, closeTo(image3.left, 0.5), reason: '$count 章横向不漂移');
-      expect(image.width, closeTo(image3.width, 0.5), reason: '$count 章宽度不变');
+      ).imageRect;
+      expect(b, a, reason: '$count 章：滚镜头不得改变画幅');
+      final pieces =
+          layoutMagicTreeImagePieces(
+                layoutMagicTree(size: size, outline: outline),
+              )
+              as WholeTreeImagePieces;
+      expect(pieces.asset, startsWith(kTreeFrameDir));
     }
   });
 

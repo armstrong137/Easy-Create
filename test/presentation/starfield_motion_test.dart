@@ -19,15 +19,16 @@ void main() {
         // 找到该周期内流星出现的时刻
         double? firstSeen;
         double lastProgress = -1;
-        for (var t = cycle * period;
-            t < (cycle + 1) * period;
-            t += 0.05) {
+        for (var t = cycle * period; t < (cycle + 1) * period; t += 0.05) {
           final m = meteorAt(t, period: period, duration: duration);
           if (m == null) continue;
           expect(m.cycle, cycle);
           expect(m.progress, inInclusiveRange(0, 1));
-          expect(m.progress, greaterThanOrEqualTo(lastProgress),
-              reason: '生命周期内 progress 必须单调递增');
+          expect(
+            m.progress,
+            greaterThanOrEqualTo(lastProgress),
+            reason: '生命周期内 progress 必须单调递增',
+          );
           lastProgress = m.progress;
           firstSeen ??= t;
         }
@@ -40,8 +41,11 @@ void main() {
       for (var cycle = 0; cycle < 20; cycle++) {
         final m = meteorAt(cycle * period + 0.0);
         // 周期首帧若有流星，说明起始为 0——合法；只需保证周期尾部无残留
-        final tail = meteorAt((cycle + 1) * period - 1e-6,
-            period: period, duration: duration);
+        final tail = meteorAt(
+          (cycle + 1) * period - 1e-6,
+          period: period,
+          duration: duration,
+        );
         if (tail != null) {
           expect(tail.progress, lessThanOrEqualTo(1));
         }
@@ -77,9 +81,7 @@ void main() {
 
   group('星点闪烁 twinkle', () {
     test('亮度恒为正（星不会闪没）且有随时间的起伏', () {
-      final samples = [
-        for (var t = 0.0; t < 20; t += 0.5) twinkle(t, 31, 5),
-      ];
+      final samples = [for (var t = 0.0; t < 20; t += 0.5) twinkle(t, 31, 5)];
       expect(samples.every((v) => v > 0.05 && v <= 1.0), isTrue);
       expect(samples.toSet().length, greaterThan(10), reason: '亮度应随时间变化');
     });

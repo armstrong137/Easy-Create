@@ -12,72 +12,109 @@ import 'dart:ui';
 
 import '../../domain/entities/outline_chapter.dart';
 
-/// 素材米白底色（三张魔树图角像素实测），页面底色与之一致使整图无缝
+/// 素材米白底色（帧序列角像素实测 253,247,235 ~ 253,246,236），页面底色与之一致
 const kParchment = Color(0xFFFDF6EC);
 
-/// 素材原始尺寸（三张魔树图同尺寸）
+/// 单帧原始尺寸（28 帧同尺寸）
 const kStageImageWidth = 941.0;
 const kStageImageHeight = 1672.0;
 
-/// 树层 / 固定土层的**分界线**：此线以上画长高后的树，以下画原尺寸土堆。
-///
-/// 两层用的是**同一张**素材、同一个横向比例，所以树干跨线时宽度天然连续，
-/// 接缝为零——不存在"平切口"，树干是直接续下去的。
-///
-/// 取 0.85：实测五档在中央树干带之外的泥土最高只到 0.856/0.865/0.903/
-/// 0.919/0.900，所以这条线以上基本没有土，被拉伸的只有植株。
-/// 早先试过共用第 1 档土堆再硬边裁切，结果土堆顶被切平、低垂的叶子被齐刷刷
-/// 切断，横贯一条直线（用户 2026-07-29 截图实证）——矩形硬裁这条路走不通。
-const kSoilSplitFrac = 0.85;
+/// 生长帧序列目录
+const kTreeFrameDir = 'assets/textures/tree_frames';
 
-/// 素材里土堆底边的大致位置（用来把土堆摆到贴屏底）。各档略有差异
-/// （0.974/0.943/0.980/0.989/0.980），统一按第 1 档定位：画幅位置对所有档一致，
-/// 分界线因此恒定，植株换档时不会上下跳；各档土堆底自然落在稍有出入的位置，
-/// 这点差异由擦除（连土一起自下而上扫）吸收。
-const kSoilBottomFrac = 0.974;
+/// 只用 f05..f26 这 22 帧。逐帧实测：f01~f04 土堆**反向缩小**（最宽 0.276→0.139）、
+/// f27/f28 植株**反而变矮**（0.721→0.719→0.702）；这两段素材修好后
+/// 改这两个常量即可启用，代码无需其它改动。
+const kTreeFrameFirst = 5;
+const kTreeFrameLast = 26;
 
-/// 每档"整株最高点"在素材图中的位置（实测非背景像素的首行）。
-///
-/// 连续成长必须按**整株**（含枝叶）对齐，不能按茎干：两者在各档照片里差得远
-/// （第 2 档叶顶 0.142 而茎顶 0.24，第 3 档叶顶 0.030 而茎顶 0.10）。
-/// 早先按茎干对齐，结果换档时整株会缩 6~8%（实拍第 3→4 档实测 −7.2%）。
-const _stageContentTop = <int, double>{
-  1: 0.455,
-  2: 0.142,
-  3: 0.030,
-  4: 0.025,
-  5: 0.016,
+/// 节点数（章+节）→ 帧号：0 个节点用首帧，之后**每加一个节点正好前进一帧**，
+/// 到末帧封顶。生长的连贯度因此等于素材本身的连贯度——不再有拉伸、不再有换档。
+int treeFrameFor(int totalNodes) =>
+    (kTreeFrameFirst + totalNodes).clamp(kTreeFrameFirst, kTreeFrameLast);
+
+String treeFrameAsset(int frame) =>
+    '$kTreeFrameDir/magic_tree_f${frame.toString().padLeft(2, '0')}.jpg';
+
+/// 素材里土堆底边的位置（逐帧实测 0.875~0.904，取最低值），用来把土堆摆到贴屏底
+const kFrameContentBottom = 0.904;
+
+/// 每帧内容的横向占比（含叶与土堆，逐帧实测取最宽行）——放大时据此防止出画布
+const _frameContentWidth = <int, double>{
+  5: 0.148,
+  6: 0.158,
+  7: 0.168,
+  8: 0.238,
+  9: 0.239,
+  10: 0.255,
+  11: 0.282,
+  12: 0.316,
+  13: 0.336,
+  14: 0.374,
+  15: 0.414,
+  16: 0.456,
+  17: 0.494,
+  18: 0.539,
+  19: 0.582,
+  20: 0.618,
+  21: 0.661,
+  22: 0.682,
+  23: 0.718,
+  24: 0.739,
+  25: 0.762,
+  26: 0.781,
 };
 
-/// 该档整株可见高度占图高的比例（土堆顶 → 整株最高点）
-double _stageVisibleFrac(int stage) =>
-    kSoilSplitFrac - _stageContentTop[stage]!;
-
-/// 第 3 档之后素材本身几乎不再变高（整株 0.777/0.782/0.791，差不到 2%），
-/// 只靠换图会让第 4 章往后每章只长 0.2%，等于又不长了。所以第 3 档起
-/// 目标高度改为**继续按曲线上探**，最多把素材纵向拉到 [_kLateGrowMax]。
-/// 真正要更大的成长量得靠更高的新素材，这里只是把现有素材榨到不失真的上限。
-const _kLateGrowMax = 1.28;
-
-/// 后期成长的饱和常数：q(n) = 1 − exp(−(n − 4) / _kLateGrowTau)
-const _kLateGrowTau = 9.0;
-
-/// 全生命周期最高的整株高度——用来反推基准尺寸，
-/// 保证树长到最高时树冠仍留在画内（实拍里树冠被画布顶切掉就是缺了这一步）。
-const _maxVisibleFrac = (kSoilSplitFrac - 0.030) * _kLateGrowMax;
+/// 每帧内容占画布可用高度的目标比例：从首帧的 [kFrameFillFirst] 长到末帧的
+/// [kFrameFillLast]。
+///
+/// 不能让所有帧共用"最大帧塞得进屏幕"的同一个画幅：素材从 f05 到 f26 内容高度
+/// 差 5.9 倍，那样 2 章时树只占屏高 19%、上方 80% 全是空白，标签也挤在一截
+/// 134px 的矮树干上（实测）。按帧自适应放大后，观感成长压到约 2 倍，
+/// 但树永远不显小、树干一直有放标签的余量。等比放大、随帧单调递增，不会回弹。
+const kFrameFillFirst = 0.45;
+const kFrameFillLast = 0.92;
 
 /// 画布上下留白
 const _kFramePadTop = 12.0;
 const _kFramePadBottom = 8.0;
 
-/// 基准画幅高度：**与章节数无关**，只由画布尺寸决定（止血红线：绝不按章数拉伸）。
-///
-/// 由两条约束反推：土堆底贴屏底、整株长到最高时树冠不出画；再受画布宽度封顶。
-double _baseFrameHeight(Size size) => math.min(
-  (size.height - _kFramePadTop - _kFramePadBottom) /
-      (_maxVisibleFrac + (kSoilBottomFrac - kSoilSplitFrac)),
-  size.width * (kStageImageHeight / kStageImageWidth),
-);
+/// 该帧的目标"屏上内容高度"占画布可用高度的比例（随帧线性上升）
+double _fillFor(int frame) {
+  final t = (frame - kTreeFrameFirst) / (kTreeFrameLast - kTreeFrameFirst);
+  return kFrameFillFirst + (kFrameFillLast - kFrameFillFirst) * t;
+}
+
+/// 全序列**统一**的收缩系数：窄画布上后段几帧植株很宽，按目标比例放大会横向
+/// 出画布。逐帧各自缩会破坏单调（实测 f25→f26 屏上高度反降 0.7%），
+/// 所以取"所有帧都不出画布"的统一系数，整条曲线等比压低，单调性不受影响。
+double _fillShrink(Size size) {
+  final avail = size.height - _kFramePadTop - _kFramePadBottom;
+  const aspect = kStageImageHeight / kStageImageWidth;
+  var k = 1.0;
+  for (var f = kTreeFrameFirst; f <= kTreeFrameLast; f++) {
+    final desired =
+        _fillFor(f) * avail / (kFrameContentBottom - _stalks[f]!.topY);
+    final maxH = size.width / _frameContentWidth[f]! * aspect;
+    if (maxH < desired) k = math.min(k, maxH / desired);
+  }
+  return k;
+}
+
+/// 某一帧的画幅：等比放大到目标占屏比例，土堆底贴屏底。
+/// **绝不做非等比拉伸**——生长由序列自己表达。
+Rect _frameRect(Size size, int frame) {
+  final avail = size.height - _kFramePadTop - _kFramePadBottom;
+  final contentH = kFrameContentBottom - _stalks[frame]!.topY;
+  final h = _fillFor(frame) * _fillShrink(size) * avail / contentH;
+  final w = h * (kStageImageWidth / kStageImageHeight);
+  return Rect.fromLTWH(
+    (size.width - w) / 2,
+    size.height - _kFramePadBottom - kFrameContentBottom * h,
+    w,
+    h,
+  );
+}
 
 /// 卷须精灵图（tendril_chapter.png 实测 130x106，节图为其镜像）：
 /// 根茬在右缘 31% 高度处，螺旋端在左上角附近
@@ -109,51 +146,9 @@ double treeAge(int totalNodes) {
   return 1 - math.exp(-totalNodes / 12);
 }
 
-/// 成长阶段 1..5（方案 A，2026-07-20 定稿）：每档一张完整树照片
-/// （魔树1~5：破土嫩芽 → 幼藤 → 缠绕藤 → 参天藤 → 巨藤），加章跨档时
-/// 整图淡换成更大的完整树——零拼接、零变形，真正"章多树长大"。
-/// 阈值按创作量（章+节）铺开，使前十来章就能看到多次成长跨档。
-int stageForNodes(int totalNodes) {
-  if (totalNodes <= 0) return 1;
-  if (totalNodes <= 3) return 2;
-  if (totalNodes <= 7) return 3;
-  if (totalNodes <= 13) return 4;
-  return 5;
-}
-
-/// 各档覆盖的节点数区间（与 [stageForNodes] 一一对应）
-const _stageSpans = <int, (int, int)>{
-  1: (0, 0),
-  2: (1, 3),
-  3: (4, 7),
-  4: (8, 13),
-  5: (14, 14), // 末档没有"下一张更大的图"，恒定不再长
-};
-
 /// 章+节总数（树的"体量"，成长与档位都看它）
 int totalTreeNodes(List<OutlineChapter> outline) =>
     outline.length + outline.fold<int>(0, (sum, c) => sum + c.sections.length);
-
-/// 整株可见高度占画幅的比例，随节点数**连续**变化（方案乙，2026-07-28 用户定稿：
-/// 泥土钉死不动，只有树连续长高）。
-///
-/// 档内从本档素材的整株高度线性长到下一档素材的整株高度，所以跨档换图那一刻
-/// 两棵树**一样高**，换图动效才能读作生长而不是换幻灯片。
-/// 唯一保留的跳变是 0 章 → 第 1 章（0.352→0.665），那是破土时刻，交给补间演。
-double treeHeightFrac(int totalNodes) {
-  final stage = stageForNodes(totalNodes);
-  final here = _stageVisibleFrac(stage);
-  // 第 3 档起（4 节点以上）素材高度已到顶，改走饱和曲线继续上探。
-  // n=4 时正好等于第 3 档的自然高度，与第 2 档档尾无缝接上。
-  if (stage >= 3) {
-    final q = 1 - math.exp(-(totalNodes - 4) / _kLateGrowTau);
-    return _stageVisibleFrac(3) * (1 + (_kLateGrowMax - 1) * q);
-  }
-  final (lo, hi) = _stageSpans[stage]!;
-  if (hi <= lo) return here;
-  final p = ((totalNodes - lo) / (hi - lo)).clamp(0.0, 1.0);
-  return here + (_stageVisibleFrac(stage + 1) - here) * p;
-}
 
 /// 新增章节的视觉流程：先让新枝生长，再移动镜头。
 enum ChapterGrowthStep { growBranch, panCamera }
@@ -200,57 +195,67 @@ sealed class TreeImagePieces {
 }
 
 class WholeTreeImagePieces extends TreeImagePieces {
-  const WholeTreeImagePieces({
-    required super.bounds,
-    required this.asset,
-    required this.soilBounds,
-    required this.soilLineY,
-  });
+  const WholeTreeImagePieces({required super.bounds, required this.asset});
 
   final String asset;
-
-  /// 固定土层的绘制区域（**不随成长缩放**的基准矩形）
-  final Rect soilBounds;
-
-  /// 分界线：此线以上画 [bounds]（放大后的树），以下画 [soilBounds]（原尺寸土堆）
-  final double soilLineY;
 }
 
 TreeImagePieces layoutMagicTreeImagePieces(MagicTreeLayout layout) =>
     WholeTreeImagePieces(
       bounds: layout.imageRect,
-      asset: 'assets/textures/magic_tree_${layout.stage}.jpg',
-      soilBounds: layout.soilRect,
-      soilLineY: layout.soilLineY,
+      asset: treeFrameAsset(layout.frame),
     );
 
-/// 换档时"这一波生长"扫到哪儿了：0=还在土里，1=已扫过树冠。
-/// 用擦除而非交叉淡入淡出——两张不同照片对叠必出半透明双影，读作 PPT 翻页
-/// （用户 2026-07-29 反馈"像 PPT 一样"）。擦除没有半透明，读作生长沿藤上行。
-const kGrowWipeDuration = Duration(milliseconds: 1100);
+/// 换帧时"这一波生长"扫到哪儿了：0=还在土里，1=已扫过树冠。
+///
+/// 用擦除而非交叉淡入淡出：相邻帧各 50% 混合时叶子会半透明重叠（实测 f19/f20
+/// 明显鬼影），读作 PPT 翻页。擦除没有半透明，且相邻帧差异本就小，
+/// 擦除线扫过几乎看不出来，读作一波生长沿藤上行。
+const kGrowWipeDuration = Duration(milliseconds: 700);
 
 /// 擦除线的软边高度（画布像素）：硬切会看出一条横线
 const kGrowWipeFeather = 26.0;
 
-/// 同档内加章/加节时树高补间的时长（跨档不补间，见 outline_page）
-const kTreeGrowTween = Duration(milliseconds: 700);
-
-/// 每阶段茎干轮廓（归一化到素材图：y 相对图高，半宽相对图宽）
+/// 每帧的茎干轮廓（归一化到素材图：y 相对图高，半宽相对图宽）。
+/// 枝丫锚点全靠它——章/节枝要挂在**这一帧实际的树干**上。
 class _Stalk {
   const _Stalk(this.topY, this.botY, this.topHalfW, this.botHalfW);
 
+  /// 植株最高点
   final double topY;
+
+  /// 土堆冒头处（树干扎进土里的位置）——枝丫下界据此算，不会长进土里
   final double botY;
   final double topHalfW;
   final double botHalfW;
 }
 
+/// 逐帧实测（脚本量中轴连通段：顶部取 12% 处、底部取土堆上方 6% 处）。
+/// 半宽经**保序回归 + 3 点平滑**：原始测量在 0.006~0.020 之间来回跳（量到叶子
+/// 还是量到藤的差别），直接用会让枝丫锚点逐帧左右抖。
 const _stalks = <int, _Stalk>{
-  1: _Stalk(0.46, 0.83, 0.018, 0.028), // 破土嫩芽（细茎，占下半幅）
-  2: _Stalk(0.24, 0.86, 0.035, 0.080), // 幼藤
-  3: _Stalk(0.10, 0.87, 0.045, 0.110), // 缠绕藤
-  4: _Stalk(0.045, 0.89, 0.052, 0.140), // 参天藤
-  5: _Stalk(0.03, 0.90, 0.058, 0.155), // 巨藤（几乎撑满全幅）
+  5: _Stalk(0.777, 0.882, 0.0032, 0.0135),
+  6: _Stalk(0.756, 0.880, 0.0037, 0.0161),
+  7: _Stalk(0.732, 0.879, 0.0059, 0.0259),
+  8: _Stalk(0.708, 0.868, 0.0081, 0.0352),
+  9: _Stalk(0.678, 0.868, 0.0097, 0.0428),
+  10: _Stalk(0.646, 0.867, 0.0105, 0.0478),
+  11: _Stalk(0.614, 0.866, 0.0112, 0.0605),
+  12: _Stalk(0.578, 0.861, 0.0145, 0.0728),
+  13: _Stalk(0.542, 0.859, 0.0176, 0.0838),
+  14: _Stalk(0.500, 0.857, 0.0215, 0.0901),
+  15: _Stalk(0.471, 0.854, 0.0232, 0.1093),
+  16: _Stalk(0.435, 0.850, 0.0268, 0.1282),
+  17: _Stalk(0.401, 0.847, 0.0310, 0.1436),
+  18: _Stalk(0.355, 0.840, 0.0346, 0.1587),
+  19: _Stalk(0.314, 0.839, 0.0360, 0.1748),
+  20: _Stalk(0.281, 0.833, 0.0360, 0.1980),
+  21: _Stalk(0.249, 0.831, 0.0360, 0.2087),
+  22: _Stalk(0.231, 0.825, 0.0438, 0.2157),
+  23: _Stalk(0.209, 0.823, 0.0515, 0.2157),
+  24: _Stalk(0.188, 0.819, 0.0593, 0.2222),
+  25: _Stalk(0.169, 0.818, 0.0593, 0.2286),
+  26: _Stalk(0.156, 0.816, 0.0593, 0.2351),
 };
 
 /// 一根卷须枝（章或节共用）：精灵图矩形 + 根/端锚点
@@ -291,11 +296,10 @@ class VineBranch {
 class MagicTreeLayout {
   const MagicTreeLayout({
     required this.age,
-    required this.stage,
+    required this.frame,
     required this.windowMode,
     required this.viewportHeight,
     required this.imageRect,
-    required this.soilRect,
     required this.trunkRect,
     required this.chapters,
     required this.sections,
@@ -306,35 +310,26 @@ class MagicTreeLayout {
 
   final double age;
 
-  /// 成长阶段 1..3（决定用哪张素材）
-  final int stage;
+  /// 当前生长帧号（决定用哪一帧素材）
+  final int frame;
 
   /// true = 镜头窗口模式（>2 章）
   final bool windowMode;
 
-  /// 当前视口高度；固定土壤层需要脱离虚拟树高来对齐屏幕底部。
+  /// 当前视口高度
   final double viewportHeight;
 
-  /// 阶段素材整图的显示区域（窗口模式下高于画布，随章滚动上下平移）；
-  /// 随成长以土壤线为锚点放大，所以枝条/标签坐标自动跟着树长
+  /// 帧素材整图的显示区域。**对所有帧完全相同**——序列自己表达生长，
+  /// 代码一律照原样画，所以换帧时植株不会整体上下跳。
   final Rect imageRect;
 
-  /// 同一张素材在**成长倍数=1** 时的矩形——固定土层照此画，泥土永不动
-  final Rect soilRect;
+  /// 土堆冒头处（画布坐标）：枝丫的下界，低于它就长进土里了
+  double get soilCrestY =>
+      imageRect.top + _stalks[frame]!.botY * imageRect.height;
 
-  /// 树层与土层的分界线（画布坐标），恒等于两个矩形的 [kSoilSplitFrac] 处
-  double get soilLineY => soilRect.top + kSoilSplitFrac * soilRect.height;
-
-  /// 土堆底边（画布坐标）。土层矩形是整张素材的画幅，底边在它的
-  /// [kSoilBottomFrac] 处；这条线才是"泥土贴屏底"的判据。
-  double get soilBottomY => soilRect.top + kSoilBottomFrac * soilRect.height;
-
-  /// 枝丫下界（画布坐标）＝分界线：低于它就长进土里了
-  double get soilCrestY => soilLineY;
-
-  /// **整株**（含枝叶）当前的可见高度：土堆顶 → 树冠。
-  /// 连续成长按这个量对齐——不是茎干，因为眼睛看的是整株。
-  double get visibleTreeHeight => imageRect.height * _stageVisibleFrac(stage);
+  /// 植株最高点（画布坐标）：生长擦除扫到这儿就结束，再往上素材里只有米白底
+  double get plantTopY =>
+      imageRect.top + _stalks[frame]!.topY * imageRect.height;
 
   /// 茎干柱区域（枝根吸附范围）
   final Rect trunkRect;
@@ -377,26 +372,19 @@ MagicTreeLayout layoutMagicTree({
   double chapterOffset = 0,
   Map<int, double> sectionScrolls = const {},
   Map<int, int> sectionNoteCounts = const {},
-  double? visualHeightFrac,
+  int? visualFrameOverride,
 }) {
   final n = outline.length;
   final totalNodes = totalTreeNodes(outline);
   final age = treeAge(totalNodes);
-  final stage = stageForNodes(totalNodes);
-  // 成长倍数 = 目标树高 ÷ 当前这张素材自带的树高。
-  // 跨档时高度瞬间就位（页面不补间），所以这个倍数在换档前后都贴合各自素材，
-  // 旧照片绝不会被抻长、新照片也不会被压扁——过渡全交给擦除。
-  final growth =
-      (visualHeightFrac ?? treeHeightFrac(totalNodes)) /
-      _stageVisibleFrac(stage);
+  final frame = visualFrameOverride ?? treeFrameFor(totalNodes);
 
   return n == 1
       ? _layoutSingleChapter(
           size,
           outline.single,
-          stage,
+          frame,
           age,
-          growth,
           sectionScrolls,
           sectionNoteCounts,
         )
@@ -404,9 +392,8 @@ MagicTreeLayout layoutMagicTree({
       ? _layoutWindow(
           size,
           outline,
-          stage,
+          frame,
           age,
-          growth,
           chapterOffset,
           sectionScrolls,
           sectionNoteCounts,
@@ -414,32 +401,11 @@ MagicTreeLayout layoutMagicTree({
       : _layoutWholeTree(
           size,
           outline,
-          stage,
+          frame,
           age,
-          growth,
           sectionScrolls,
           sectionNoteCounts,
         );
-}
-
-/// 整树模式共用的画幅几何：**土壤线钉死**，树以它为锚点按 [growth] **只长高**。
-///
-/// 横向恒定不放大——这不是偷懒，是接缝所迫：土层永远是原尺寸，
-/// 若树层等比放大，树干在分界线上宽下窄会露出台阶（实测 1.24 倍时肉眼可见，
-/// 加渐变融合也只能糊成一团雾）。只拉高则分界线两侧宽度天然一致，接缝为零。
-///
-/// 返回 (树层矩形, 土层基准矩形)。growth=1 时两者相等，且与改造前完全一致。
-(Rect, Rect) _stageRects({required Size size, required double growth}) {
-  final baseH = _baseFrameHeight(size);
-  final baseW = baseH * (kStageImageWidth / kStageImageHeight);
-  // 土堆底贴屏底（第 1 档土堆是唯一的土层，所以按它的底边定位）
-  final baseTop = size.height - _kFramePadBottom - kSoilBottomFrac * baseH;
-  final left = (size.width - baseW) / 2;
-  final soil = Rect.fromLTWH(left, baseTop, baseW, baseH);
-  final soilLineY = baseTop + kSoilSplitFrac * baseH;
-  final h = baseH * growth;
-  final tree = Rect.fromLTWH(left, soilLineY - kSoilSplitFrac * h, baseW, h);
-  return (tree, soil);
 }
 
 /// 单章：整棵树仍随小节数量成长，但小节始终只在右侧一列中向下生长。
@@ -447,17 +413,16 @@ MagicTreeLayout layoutMagicTree({
 MagicTreeLayout _layoutSingleChapter(
   Size size,
   OutlineChapter outline,
-  int stage,
+  int frame,
   double age,
-  double growth,
   Map<int, double> sectionScrolls,
   Map<int, int> sectionNoteCounts,
 ) {
-  final (imageRect, soilRect) = _stageRects(size: size, growth: growth);
+  final imageRect = _frameRect(size, frame);
   final dispW = imageRect.width;
   final dispH = imageRect.height;
 
-  final stalk = _stalks[stage]!;
+  final stalk = _stalks[frame]!;
   final topY = imageRect.top + stalk.topY * dispH;
   final botY = imageRect.top + stalk.botY * dispH;
   final span = botY - topY;
@@ -478,10 +443,8 @@ MagicTreeLayout _layoutSingleChapter(
   final attachBot = botY - span * 0.10;
   // 枝丫下界：离树干底留 12%，且**绝不低于土堆冒头处**——分界线在土堆内部，
   // 只按树干底算会把枝根放进土里（用户截图里"第一章"的卷须贴在土堆边上）
-  final soilSafeBottom = math.min(
-    botY - span * 0.12,
-    soilRect.top + kSoilSplitFrac * soilRect.height - 10,
-  );
+  // botY 就是这一帧土堆的冒头处，离它留 12% 即可，枝丫不会长进土里
+  final soilSafeBottom = botY - span * 0.12;
   final rootY = attachTop + (attachBot - attachTop) * 0.15;
   final chapter = outline.chapter;
   final root = Offset(cx - halfWAt(rootY) + dispW * 0.006, rootY);
@@ -568,11 +531,10 @@ MagicTreeLayout _layoutSingleChapter(
 
   return MagicTreeLayout(
     age: age,
-    stage: stage,
+    frame: frame,
     windowMode: true,
     viewportHeight: size.height,
     imageRect: imageRect,
-    soilRect: soilRect,
     trunkRect: trunkRect,
     chapters: chapters,
     sections: sections,
@@ -586,17 +548,16 @@ MagicTreeLayout _layoutSingleChapter(
 MagicTreeLayout _layoutWholeTree(
   Size size,
   List<OutlineChapter> outline,
-  int stage,
+  int frame,
   double age,
-  double growth,
   Map<int, double> sectionScrolls,
   Map<int, int> sectionNoteCounts,
 ) {
-  final (imageRect, soilRect) = _stageRects(size: size, growth: growth);
+  final imageRect = _frameRect(size, frame);
   final dispW = imageRect.width;
   final dispH = imageRect.height;
 
-  final stalk = _stalks[stage]!;
+  final stalk = _stalks[frame]!;
   final topY = imageRect.top + stalk.topY * dispH;
   final botY = imageRect.top + stalk.botY * dispH;
   final span = botY - topY;
@@ -618,10 +579,8 @@ MagicTreeLayout _layoutWholeTree(
   final attachBot = botY - span * 0.10;
   // 枝丫下界：离树干底留 12%，且**绝不低于土堆冒头处**——分界线在土堆内部，
   // 只按树干底算会把枝根放进土里（用户截图里"第一章"的卷须贴在土堆边上）
-  final soilSafeBottom = math.min(
-    botY - span * 0.12,
-    soilRect.top + kSoilSplitFrac * soilRect.height - 10,
-  );
+  // botY 就是这一帧土堆的冒头处，离它留 12% 即可，枝丫不会长进土里
+  final soilSafeBottom = botY - span * 0.12;
   final attachRange = attachBot - attachTop;
 
   final n = outline.length;
@@ -735,11 +694,10 @@ MagicTreeLayout _layoutWholeTree(
 
   return MagicTreeLayout(
     age: age,
-    stage: stage,
+    frame: frame,
     windowMode: outline.isNotEmpty,
     viewportHeight: size.height,
     imageRect: imageRect,
-    soilRect: soilRect,
     trunkRect: trunkRect,
     chapters: chapters,
     sections: sections,
@@ -753,9 +711,8 @@ MagicTreeLayout _layoutWholeTree(
 MagicTreeLayout _layoutWindow(
   Size size,
   List<OutlineChapter> outline,
-  int stage,
+  int frame,
   double age,
-  double growth,
   double chapterOffset,
   Map<int, double> sectionScrolls,
   Map<int, int> sectionNoteCounts,
@@ -766,11 +723,11 @@ MagicTreeLayout _layoutWindow(
 
   // 方案 B 止血：画幅由 _baseFrameHeight 按画布尺寸算死，**与章数无关**，
   // 不再按章数拉伸或切片平铺；树背景也不再平移（三种布局共用同一基准）。
-  final (imageRect, soilRect) = _stageRects(size: size, growth: growth);
+  final imageRect = _frameRect(size, frame);
   final dispW = imageRect.width;
   final dispH = imageRect.height;
 
-  final stalk = _stalks[stage]!;
+  final stalk = _stalks[frame]!;
   final stalkTopY = imageRect.top + stalk.topY * dispH;
   final stalkBotY = imageRect.top + stalk.botY * dispH;
   final cx = imageRect.center.dx;
@@ -788,16 +745,15 @@ MagicTreeLayout _layoutWindow(
 
   final trunkSpan = stalkBotY - stalkTopY;
   final branchTop = math.max(trunkRect.top, stalkTopY + trunkSpan * 0.06);
-  // 同上：枝丫不得低于土堆冒头处
-  final soilSafeBottom = math.min(
-    trunkRect.bottom - trunkRect.height * 0.12,
-    soilRect.top + kSoilSplitFrac * soilRect.height - 10,
-  );
+  // trunkRect.bottom 即这一帧土堆的冒头处，离它留 12%
+  final soilSafeBottom = trunkRect.bottom - trunkRect.height * 0.12;
   final branchBottom = math.min(soilSafeBottom, stalkBotY - trunkSpan * 0.06);
 
-  // 高度带：一屏恰好两章
-  const topPad = 6.0;
-  final bandH = (size.height - topPad * 2) / 2;
+  // 高度带：一屏恰好两章，且**跟着树干走**而不是按整屏切。
+  // 帧序列在节点少时树干很短（6 个节点只占画幅 25%），按整屏切会让章带远高于
+  // 树干，枝根被钳到树干外、小节全部落到画外。跟着树干走则一切随树一起长大。
+  final topPad = math.max(6.0, trunkRect.top);
+  final bandH = math.max(kSectionRowHeight, trunkRect.height / 2);
 
   final chapters = <VineBranch>[];
   final sections = <VineBranch>[];
@@ -817,7 +773,10 @@ MagicTreeLayout _layoutWindow(
     // 章枝锚点：带顶往下一行，但**必须钳制在可见树干范围内**——
     // 否则首章的枝根会落在树顶细梢上方的空白区、与树脱离
     // （用户反馈"引子的树枝都和大树脱离了"）。
-    final rootY = (bandTop + 40).clamp(branchTop, branchBottom);
+    final rootY = (bandTop + math.min(40.0, bandH * 0.18)).clamp(
+      branchTop,
+      branchBottom,
+    );
     // 根深埋进树干（宽度 42% 处而非边缘），进一步防止与弯曲树干有缝
     final root = Offset(cx - halfWAt(rootY) * 0.42, rootY);
     var len = math.min(root.dx - 10, size.width * 0.26);
@@ -850,11 +809,15 @@ MagicTreeLayout _layoutWindow(
     // 终点也钳在树干底之内，末章小节不落到土壤上。
     final sectionList = outline[i].sections;
     final m = sectionList.length;
-    // 小节区顶端：落在"章根之下"，且相对带顶至少留 kSectionAddZone 的空白。
+    // 小节区顶端：落在"章根之下"，且相对带顶留出加节空白（按带高取比例——
+    // 固定 96px 在矮树干上会把整条带吃光，小节一个都放不下）。
     // 这条带顶空白（[bandTop, contentTop]）恒落在本章带内，双击即可给本章加节
     // （用户定稿：保留双击空白加节；底部对齐后加节区从"带底"移到"带顶"）。
     final contentTop = math.max(
-      math.max(bandTop + kSectionAddZone, rootY + kSectionRowHeight * 0.5),
+      math.max(
+        bandTop + math.min(kSectionAddZone, bandH * 0.35),
+        rootY + kSectionRowHeight * 0.5,
+      ),
       branchTop,
     );
     final labelBottom = math.min(
@@ -921,11 +884,10 @@ MagicTreeLayout _layoutWindow(
 
   return MagicTreeLayout(
     age: age,
-    stage: stage,
+    frame: frame,
     windowMode: true,
     viewportHeight: size.height,
     imageRect: imageRect,
-    soilRect: soilRect,
     trunkRect: trunkRect,
     chapters: chapters,
     sections: sections,

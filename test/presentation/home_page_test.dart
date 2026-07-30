@@ -78,9 +78,7 @@ void main() {
     expect(find.textContaining('点亮第一颗星球'), findsOneWidget);
 
     // 字体与全 App 统一：中文用霞鹜文楷，"Create Something" 用品牌衬线斜体
-    final invite = tester.widget<Text>(
-      find.textContaining('点亮第一颗星球'),
-    );
+    final invite = tester.widget<Text>(find.textContaining('点亮第一颗星球'));
     expect(invite.textSpan?.style?.fontFamily, 'LXGWWenKai');
     final brandSpan = (invite.textSpan! as TextSpan).children!
         .whereType<TextSpan>()

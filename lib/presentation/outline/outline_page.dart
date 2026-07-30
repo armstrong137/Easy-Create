@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -92,34 +91,12 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   /// 正在生长的枝（章/节分开记，避免章节撞 id）
   ({bool isChapter, int id})? _growing;
 
-  /// 上一帧的成长档位：换档那一帧要让树高**瞬间就位**（不补间），
-  /// 视觉过渡交给自下而上的擦除。
-  int? _lastStage;
-
   /// 最近一次布局（手势换算用）
   MagicTreeLayout? _layout;
   Size _bodySize = Size.zero;
 
   /// 上次设给魔毯的缩边栏状态（避免每帧重复设）
   bool _lastTuck = false;
-
-  /// 五档树素材只预解码一次（避免每次依赖变化重复触发）
-  bool _treesPrecached = false;
-
-  /// 已按真实大纲画过一次树 → 之后树高变化才播成长补间（见 build）
-  bool _treeSettled = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // 预解码全部 5 档完整树照片：加章跨档做生长擦除时素材已在内存，
-    // 擦除全程零解码卡顿。
-    if (_treesPrecached) return;
-    _treesPrecached = true;
-    for (var s = 1; s <= 5; s++) {
-      precacheImage(AssetImage('assets/textures/magic_tree_$s.jpg'), context);
-    }
-  }
 
   @override
   void dispose() {
@@ -143,21 +120,18 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   }
 
   /// 等树干这一轮变化播完再放枝丫（用户 2026-07-29 定稿："至少要等树干变了
-  /// 之后，枝丫再变化"）。跨档要等擦除扫完，同档只等高度补间。
+  /// 之后，枝丫再变化"）。每加一个节点正好换一帧，所以恒等擦除时长。
   /// 多留一点余量：树干动画要等大纲流推送到页面才真正开始。
   ///
   /// 用可取消的 Timer 而不是 Future.delayed：页面在等待期间被销毁时必须能撤销，
   /// 否则定时器活过 widget 树（测试里直接报 pending timer）。
   Timer? _trunkWait;
 
-  Future<void> _awaitTrunk({required int oldNodes, required int newNodes}) {
+  Future<void> _awaitTrunk() {
     _trunkWait?.cancel();
     final done = Completer<void>();
     _trunkWait = Timer(
-      (stageForNodes(oldNodes) != stageForNodes(newNodes)
-              ? kGrowWipeDuration
-              : kTreeGrowTween) +
-          const Duration(milliseconds: 120),
+      kGrowWipeDuration + const Duration(milliseconds: 120),
       done.complete,
     );
     return done.future;
@@ -167,8 +141,6 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   Future<void> _addChapter(List<OutlineChapter> outline) async {
     HapticFeedback.lightImpact();
     final oldCount = outline.length;
-    final oldNodes = totalTreeNodes(outline);
-
     final chapter = await ref
         .read(novelRepositoryProvider)
         .createChapter(novelId: widget.novelId);
@@ -181,7 +153,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
 
     if (!mounted) return;
     _holdGrow(isChapter: true, id: chapter.id);
-    await _awaitTrunk(oldNodes: oldNodes, newNodes: oldNodes + 1);
+    await _awaitTrunk();
 
     for (final step in motion.steps) {
       if (!mounted) return;
@@ -211,7 +183,6 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     final chapterId = layout.chapterForY(y);
     if (chapterId == null) return;
     HapticFeedback.lightImpact();
-    final oldNodes = totalTreeNodes(outline);
     final section = await ref
         .read(novelRepositoryProvider)
         .createSection(chapterId: chapterId);
@@ -219,7 +190,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     _sectionScrolls.remove(chapterId);
     if (!mounted) return;
     _holdGrow(isChapter: false, id: section.id);
-    await _awaitTrunk(oldNodes: oldNodes, newNodes: oldNodes + 1);
+    await _awaitTrunk();
     if (!mounted) return;
     await _playGrow();
   }
@@ -760,18 +731,9 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
 
   @override
   Widget build(BuildContext context) {
-    final outlineAsync = ref.watch(outlineProvider(widget.novelId));
-    final outline = outlineAsync.value ?? const <OutlineChapter>[];
-    // 首次拿到真实大纲时树要**直接就位**：加载态是空大纲（嫩芽），
-    // 若也走补间，每次进大纲页都会看树从嫩芽重新长一遍。
-    var animateGrowth = _treeSettled;
-    if (outlineAsync.hasValue) _treeSettled = true;
-    // 跨档时高度**不补间**：换的是照片，补间只会把旧照片纵向抻长（0→1 章要抻
-    // 1.89 倍，嫩芽被拉成细面条）或把新照片压扁。高度直接就位，视觉过渡全交给
-    // 自下而上的擦除——旧图冻结在旧高度，新图已在新高度，擦除线扫过即完成。
-    final stage = stageForNodes(totalTreeNodes(outline));
-    if (_lastStage != null && _lastStage != stage) animateGrowth = false;
-    _lastStage = stage;
+    final outline =
+        ref.watch(outlineProvider(widget.novelId)).value ??
+        const <OutlineChapter>[];
 
     // 章节多（>2 = 进入窗口模式）时把魔毯球缩到右边栏，避免挡住右上角小节标签；
     // 章少时恢复完整球。只在状态变化时设，避免每帧刷。
@@ -805,176 +767,166 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                 _bodySize = size;
 
                 return ClipRect(
-                  // 树高随章节数**连续**变化：加一章就补间长高 700ms，
-                  // 而不是只在跨档换图那 4 次才动（用户 2026-07-28 定稿方案乙）
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween<double>(
-                      end: treeHeightFrac(totalTreeNodes(outline)),
-                    ),
-                    duration: animateGrowth ? kTreeGrowTween : Duration.zero,
-                    curve: Curves.easeOutCubic,
-                    builder: (context, heightFrac, _) => AnimatedBuilder(
-                      animation: Listenable.merge([_grow, _camera]),
-                      builder: (context, _) {
-                        final layout = layoutMagicTree(
-                          size: size,
-                          outline: outline,
-                          chapterOffset: _camera.value,
-                          sectionScrolls: _sectionScrolls,
-                          sectionNoteCounts: noteCounts,
-                          visualHeightFrac: heightFrac,
-                        );
-                        _layout = layout;
-                        final labels = placeMagicLabels(
-                          layout,
-                          canvasWidth: size.width,
-                          textScaler: MediaQuery.textScalerOf(context),
-                        );
-                        _labels = labels;
-                        // 窗口模式：节按章分组，滚动时裁剪在本章高度带内
-                        final secClip = {
-                          for (final s in layout.sections)
-                            s.id: s.clipChapterId,
-                        };
-                        final clipRects = <int, Rect>{
-                          if (layout.windowMode)
-                            for (final e in layout.chapterBands.entries)
-                              // 上边缘只留 2px（原 20px 会切掉第一节的上置标签），
-                              // 与上一章带的裁剪下沿恰好错开、互不重叠
-                              e.key: Rect.fromLTRB(
-                                0,
-                                e.value.$1 + 2,
-                                size.width,
-                                e.value.$2 - 2,
-                              ),
-                        };
+                  // 画幅与节点数无关：生长由帧序列自己表达，代码不缩放不拉伸，
+                  // 所以这里不再需要任何高度补间
+                  child: AnimatedBuilder(
+                    animation: Listenable.merge([_grow, _camera]),
+                    builder: (context, _) {
+                      final layout = layoutMagicTree(
+                        size: size,
+                        outline: outline,
+                        chapterOffset: _camera.value,
+                        sectionScrolls: _sectionScrolls,
+                        sectionNoteCounts: noteCounts,
+                      );
+                      _layout = layout;
+                      final labels = placeMagicLabels(
+                        layout,
+                        canvasWidth: size.width,
+                        textScaler: MediaQuery.textScalerOf(context),
+                      );
+                      _labels = labels;
+                      // 窗口模式：节按章分组，滚动时裁剪在本章高度带内
+                      final secClip = {
+                        for (final s in layout.sections) s.id: s.clipChapterId,
+                      };
+                      final clipRects = <int, Rect>{
+                        if (layout.windowMode)
+                          for (final e in layout.chapterBands.entries)
+                            // 上边缘只留 2px（原 20px 会切掉第一节的上置标签），
+                            // 与上一章带的裁剪下沿恰好错开、互不重叠
+                            e.key: Rect.fromLTRB(
+                              0,
+                              e.value.$1 + 2,
+                              size.width,
+                              e.value.$2 - 2,
+                            ),
+                      };
 
-                        Widget clipped(int chapterId, List<Widget> children) {
-                          final rect = clipRects[chapterId]!;
-                          return Positioned.fromRect(
-                            rect: rect,
-                            child: ClipRect(child: Stack(children: children)),
-                          );
-                        }
+                      Widget clipped(int chapterId, List<Widget> children) {
+                        final rect = clipRects[chapterId]!;
+                        return Positioned.fromRect(
+                          rect: rect,
+                          child: ClipRect(child: Stack(children: children)),
+                        );
+                      }
 
-                        // 整棵树 = 一个大磁吸落点：灵感拖到附近即吸附到最近章/节，
-                        // 松手挂靠（用户定稿：小标签太难精准命中，改磁吸）
-                        return DragTarget<Inspiration>(
-                          onWillAcceptWithDetails: (_) => outline.isNotEmpty,
-                          onMove: (d) => _onMagnetMove(d.offset),
-                          onLeave: (_) => _clearMagnet(),
-                          onAcceptWithDetails: (d) =>
-                              _onMagnetDrop(d.data, outline),
-                          builder: (context, candidates, rejected) => Stack(
-                            key: _treeKey,
-                            children: [
-                              // 魔树本体：方案 B 止血，窗口模式只用完整图，禁止切片平铺。
-                              _MagicTreeImage(layout: layout),
-                              // 左半空白：双击长章枝（用户定稿：改双击避免误建）；
-                              // 纵向拖动滚章节（树背景跟随）
-                              Positioned(
-                                left: 0,
-                                top: 0,
-                                bottom: 0,
-                                width: size.width / 2,
-                                child: GestureDetector(
-                                  key: const Key('左空白区'),
-                                  behavior: HitTestBehavior.opaque,
-                                  onDoubleTap: () => _addChapter(outline),
-                                  onVerticalDragUpdate: _onChapterDrag,
-                                  onVerticalDragEnd: _onChapterDragEnd,
-                                ),
+                      // 整棵树 = 一个大磁吸落点：灵感拖到附近即吸附到最近章/节，
+                      // 松手挂靠（用户定稿：小标签太难精准命中，改磁吸）
+                      return DragTarget<Inspiration>(
+                        onWillAcceptWithDetails: (_) => outline.isNotEmpty,
+                        onMove: (d) => _onMagnetMove(d.offset),
+                        onLeave: (_) => _clearMagnet(),
+                        onAcceptWithDetails: (d) =>
+                            _onMagnetDrop(d.data, outline),
+                        builder: (context, candidates, rejected) => Stack(
+                          key: _treeKey,
+                          children: [
+                            // 魔树本体：方案 B 止血，窗口模式只用完整图，禁止切片平铺。
+                            _MagicTreeImage(layout: layout),
+                            // 左半空白：双击长章枝（用户定稿：改双击避免误建）；
+                            // 纵向拖动滚章节（树背景跟随）
+                            Positioned(
+                              left: 0,
+                              top: 0,
+                              bottom: 0,
+                              width: size.width / 2,
+                              child: GestureDetector(
+                                key: const Key('左空白区'),
+                                behavior: HitTestBehavior.opaque,
+                                onDoubleTap: () => _addChapter(outline),
+                                onVerticalDragUpdate: _onChapterDrag,
+                                onVerticalDragEnd: _onChapterDragEnd,
                               ),
-                              // 右半空白：双击给对应高度的章长节枝；
-                              // 纵向拖动滚小节（树背景不动）
-                              Positioned(
-                                right: 0,
-                                top: 0,
-                                bottom: 0,
-                                width: size.width / 2,
-                                child: GestureDetector(
-                                  key: const Key('右空白区'),
-                                  behavior: HitTestBehavior.opaque,
-                                  onDoubleTapDown: (d) =>
-                                      _rightDoubleTapY = d.localPosition.dy,
-                                  onDoubleTap: () => _addSection(
-                                    outline,
-                                    layout,
-                                    _rightDoubleTapY,
-                                  ),
-                                  onVerticalDragStart: _onSectionDragStart,
-                                  onVerticalDragUpdate: _onSectionDrag,
+                            ),
+                            // 右半空白：双击给对应高度的章长节枝；
+                            // 纵向拖动滚小节（树背景不动）
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              bottom: 0,
+                              width: size.width / 2,
+                              child: GestureDetector(
+                                key: const Key('右空白区'),
+                                behavior: HitTestBehavior.opaque,
+                                onDoubleTapDown: (d) =>
+                                    _rightDoubleTapY = d.localPosition.dy,
+                                onDoubleTap: () => _addSection(
+                                  outline,
+                                  layout,
+                                  _rightDoubleTapY,
                                 ),
+                                onVerticalDragStart: _onSectionDragStart,
+                                onVerticalDragUpdate: _onSectionDrag,
                               ),
-                              // 卷须与标签（窗口模式的节裁剪在本章带内）
-                              IgnorePointer(
-                                child: Stack(
-                                  children: [
-                                    for (final b in layout.chapters)
+                            ),
+                            // 卷须与标签（窗口模式的节裁剪在本章带内）
+                            IgnorePointer(
+                              child: Stack(
+                                children: [
+                                  for (final b in layout.chapters)
+                                    _tendril(b, Offset.zero),
+                                  for (final b in layout.sections)
+                                    if (b.clipChapterId == null &&
+                                        b.showTendril)
                                       _tendril(b, Offset.zero),
-                                    for (final b in layout.sections)
-                                      if (b.clipChapterId == null &&
-                                          b.showTendril)
-                                        _tendril(b, Offset.zero),
-                                    for (final e in clipRects.entries)
-                                      clipped(e.key, [
-                                        for (final b in layout.sections)
-                                          if (b.clipChapterId == e.key &&
-                                              b.showTendril)
-                                            _tendril(b, e.value.topLeft),
-                                      ]),
-                                  ],
-                                ),
+                                  for (final e in clipRects.entries)
+                                    clipped(e.key, [
+                                      for (final b in layout.sections)
+                                        if (b.clipChapterId == e.key &&
+                                            b.showTendril)
+                                          _tendril(b, e.value.topLeft),
+                                    ]),
+                                ],
                               ),
-                              // 章标签下直接挂靠的灵感小卡（章不裁剪，直接放）
-                              for (final label in labels)
-                                if (label.chapterId != null)
-                                  _sectionNotes(
-                                    label,
-                                    chapterInsp[label.chapterId] ?? const [],
-                                    Offset.zero,
-                                    size.width,
-                                  ),
-                              // 小节标签下的灵感小卡（与标签同裁剪规则）
-                              for (final label in labels)
-                                if (label.sectionId != null &&
-                                    secClip[label.sectionId] == null)
-                                  _sectionNotes(
-                                    label,
-                                    sectionInsp[label.sectionId] ?? const [],
-                                    Offset.zero,
-                                    size.width,
-                                  ),
-                              for (final e in clipRects.entries)
-                                clipped(e.key, [
-                                  for (final label in labels)
-                                    if (label.sectionId != null &&
-                                        secClip[label.sectionId] == e.key)
-                                      _sectionNotes(
-                                        label,
-                                        sectionInsp[label.sectionId] ??
-                                            const [],
-                                        e.value.topLeft,
-                                        size.width,
-                                      ),
-                                ]),
-                              // 标签热区：章与整树模式的节直接放；窗口模式的节按带裁剪
-                              for (final label in labels)
-                                if (label.chapterId != null ||
-                                    secClip[label.sectionId] == null)
-                                  _labelCapsule(label, Offset.zero),
-                              for (final e in clipRects.entries)
-                                clipped(e.key, [
-                                  for (final label in labels)
-                                    if (label.sectionId != null &&
-                                        secClip[label.sectionId] == e.key)
-                                      _labelCapsule(label, e.value.topLeft),
-                                ]),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
+                            ),
+                            // 章标签下直接挂靠的灵感小卡（章不裁剪，直接放）
+                            for (final label in labels)
+                              if (label.chapterId != null)
+                                _sectionNotes(
+                                  label,
+                                  chapterInsp[label.chapterId] ?? const [],
+                                  Offset.zero,
+                                  size.width,
+                                ),
+                            // 小节标签下的灵感小卡（与标签同裁剪规则）
+                            for (final label in labels)
+                              if (label.sectionId != null &&
+                                  secClip[label.sectionId] == null)
+                                _sectionNotes(
+                                  label,
+                                  sectionInsp[label.sectionId] ?? const [],
+                                  Offset.zero,
+                                  size.width,
+                                ),
+                            for (final e in clipRects.entries)
+                              clipped(e.key, [
+                                for (final label in labels)
+                                  if (label.sectionId != null &&
+                                      secClip[label.sectionId] == e.key)
+                                    _sectionNotes(
+                                      label,
+                                      sectionInsp[label.sectionId] ?? const [],
+                                      e.value.topLeft,
+                                      size.width,
+                                    ),
+                              ]),
+                            // 标签热区：章与整树模式的节直接放；窗口模式的节按带裁剪
+                            for (final label in labels)
+                              if (label.chapterId != null ||
+                                  secClip[label.sectionId] == null)
+                                _labelCapsule(label, Offset.zero),
+                            for (final e in clipRects.entries)
+                              clipped(e.key, [
+                                for (final label in labels)
+                                  if (label.sectionId != null &&
+                                      secClip[label.sectionId] == e.key)
+                                    _labelCapsule(label, e.value.topLeft),
+                              ]),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 );
               },
@@ -1003,11 +955,11 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   }
 }
 
-/// 魔树画面 = 固定土层 + 会长高的树层。
+/// 魔树画面 = 生长帧序列的一帧。
 ///
-/// 换档（加章跨阈值）时**不做交叉淡入淡出**：两张不同照片对叠必出半透明双影，
-/// 读作 PPT 翻页（用户 2026-07-29 反馈）。改成新档照片从土壤线**自下而上擦除**
-/// 覆盖旧档，没有半透明，读作一波生长沿着藤往上走。
+/// 每加一个节点前进一帧，靠**自下而上的擦除**换帧：相邻帧各 50% 混合会让叶子
+/// 半透明重叠（实测 f19/f20 明显鬼影），读作 PPT 翻页；擦除没有半透明，
+/// 而相邻帧差异本就小，擦除线扫过几乎看不出来，读作一波生长沿藤上行。
 class _MagicTreeImage extends StatefulWidget {
   const _MagicTreeImage({required this.layout});
 
@@ -1025,13 +977,13 @@ class _MagicTreeImageState extends State<_MagicTreeImage>
     value: 1,
   );
 
-  /// 正在被新档覆盖的旧档素材，及它当时的画幅（冻结，保证擦除期间不变形）
-  String? _fromAsset;
-  Rect _fromBounds = Rect.zero;
-  late String _asset = _piecesOf(widget.layout).asset;
+  /// 正在被新帧盖掉的旧帧
+  int? _fromFrame;
+  late int _frame = widget.layout.frame;
 
-  static WholeTreeImagePieces _piecesOf(MagicTreeLayout l) =>
-      layoutMagicTreeImagePieces(l) as WholeTreeImagePieces;
+  /// 已请求预解码的帧。整帧解码后是 941×1672×4 ≈ 6.3MB，22 帧全预解码要 138MB，
+  /// 所以只预解码当前帧附近的窗口，且按显示宽度解码（cacheWidth）。
+  final _decoded = <int>{};
 
   @override
   void dispose() {
@@ -1042,62 +994,57 @@ class _MagicTreeImageState extends State<_MagicTreeImage>
   @override
   void didUpdateWidget(covariant _MagicTreeImage old) {
     super.didUpdateWidget(old);
-    final next = _piecesOf(widget.layout).asset;
-    if (next == _asset) return;
-    // 旧档连同它此刻的画幅一起冻结：跨档时两档树高本就相等，
-    // 冻结后擦除期间旧树纹丝不动，只是被新树自下而上盖掉。
-    _fromAsset = _asset;
-    _fromBounds = _piecesOf(old.layout).bounds;
-    _asset = next;
+    if (widget.layout.frame == _frame) return;
+    _fromFrame = _frame;
+    _frame = widget.layout.frame;
     _wipe.forward(from: 0);
+  }
+
+  void _decodeWindow(int cacheWidth) {
+    final want = <int>[];
+    for (var f = _frame - 1; f <= _frame + 2; f++) {
+      if (f < kTreeFrameFirst || f > kTreeFrameLast) continue;
+      if (_decoded.add(f)) want.add(f);
+    }
+    if (want.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      for (final f in want) {
+        precacheImage(
+          ResizeImage(AssetImage(treeFrameAsset(f)), width: cacheWidth),
+          context,
+        );
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final pieces = _piecesOf(widget.layout);
-    // 两层都画**同一张**素材：分界线以上是随章节长高的植株，以下是原尺寸土堆。
-    // 同图同横向比例 → 树干跨线宽度天然连续，接缝为零，不存在平切口。
-    final treeClip = Rect.fromLTRB(
-      pieces.bounds.left,
-      math.min(pieces.bounds.top, _fromBounds.top),
-      pieces.bounds.right,
-      pieces.soilLineY,
-    );
-    final soilClip = Rect.fromLTRB(
-      pieces.soilBounds.left,
-      // 上沿多压 2px：两层各自取整时留下的亚像素缝会露出页面底色，
-      // 在分界线上显出一条亮线（合成复核确认 2px 足够堵住）
-      pieces.soilLineY - 2,
-      pieces.soilBounds.right,
-      pieces.soilBounds.bottom,
-    );
-    // 擦除线的绝对位置：从土堆底一路扫到树冠。**连土一起扫**——各档土堆本就
-    // 略有差异，让这点差异随生长波一起被替换掉，而不是在换档瞬间跳一下。
-    final wipeY = _wipe.value >= 1 || _fromAsset == null
-        ? null
-        : soilClip.bottom +
-              kGrowWipeFeather -
-              (soilClip.bottom + kGrowWipeFeather - treeClip.top) * _wipe.value;
+    final rect = widget.layout.imageRect;
+    // 按显示尺寸解码：原图 941 宽在手机上只画到 ~430 逻辑像素，
+    // 整幅解码等于白烧 5 倍内存与采样开销
+    final cacheWidth = (rect.width * MediaQuery.devicePixelRatioOf(context))
+        .round();
+    _decodeWindow(cacheWidth);
 
-    Widget layer(String asset, Rect rect, Rect clip, {bool wiped = false}) {
-      Widget img = Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fromRect(
-            rect: rect.shift(-clip.topLeft),
-            child: Image.asset(
-              asset,
-              fit: BoxFit.fill,
-              gaplessPlayback: true,
-              filterQuality: FilterQuality.medium,
-            ),
-          ),
-        ],
+    final wiping = _fromFrame != null && _wipe.value < 1;
+    // 擦除线从土堆底扫到本帧树冠：这两条线之外素材里只有米白底，扫过去是空转
+    final startY =
+        rect.top + kFrameContentBottom * rect.height + kGrowWipeFeather;
+    final endY = widget.layout.plantTopY;
+
+    Widget layer(int frame, {bool wiped = false}) {
+      Widget img = Image.asset(
+        treeFrameAsset(frame),
+        fit: BoxFit.fill,
+        gaplessPlayback: true,
+        filterQuality: FilterQuality.medium,
+        cacheWidth: cacheWidth,
       );
-      if (wiped && wipeY != null) {
-        // 擦除线以下露出新档、以上仍是旧档；软边避免看出一条横线
-        final f = (kGrowWipeFeather / clip.height).clamp(0.02, 0.5);
-        final t = (wipeY - clip.top) / clip.height;
+      if (wiped) {
+        final y = startY - (startY - endY) * _wipe.value;
+        final f = (kGrowWipeFeather / rect.height).clamp(0.02, 0.5);
+        final t = (y - rect.top) / rect.height;
         img = ShaderMask(
           blendMode: BlendMode.dstIn,
           shaderCallback: (r) => LinearGradient(
@@ -1109,16 +1056,11 @@ class _MagicTreeImageState extends State<_MagicTreeImage>
           child: img,
         );
       }
-      return Positioned.fromRect(
-        rect: clip,
-        child: ClipRect(child: img),
-      );
+      return Positioned.fromRect(rect: rect, child: img);
     }
 
-    // RepaintBoundary：窗口模式滚章节时树背景其实完全不动（imageRect 与镜头档位
-    // 无关），但标签每帧重建会带着整树照片一起重栅格化——941×1672 的图按中等
-    // 过滤质量逐帧重采样，手机上就是"树枝移动时有点卡"。隔离成独立图层后，
-    // 平移期间只重绘标签，树照片直接复用缓存。
+    // RepaintBoundary：窗口模式滚章节时树背景完全不动（画幅与镜头档位无关），
+    // 但标签每帧重建会带着整帧照片一起重栅格化。隔离后平移只重绘标签。
     return Positioned.fill(
       child: RepaintBoundary(
         child: AnimatedBuilder(
@@ -1127,13 +1069,8 @@ class _MagicTreeImageState extends State<_MagicTreeImage>
           builder: (context, _) => Stack(
             clipBehavior: Clip.none,
             children: [
-              // 旧档（含它的土）垫在下面，等着被自下而上盖掉
-              if (_fromAsset != null && _wipe.value < 1) ...[
-                layer(_fromAsset!, _fromBounds, treeClip),
-                layer(_fromAsset!, pieces.soilBounds, soilClip),
-              ],
-              layer(pieces.asset, pieces.bounds, treeClip, wiped: true),
-              layer(pieces.asset, pieces.soilBounds, soilClip, wiped: true),
+              if (wiping) layer(_fromFrame!),
+              layer(_frame, wiped: wiping),
             ],
           ),
         ),

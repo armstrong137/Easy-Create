@@ -304,40 +304,45 @@ void main() {
     expect(find.byKey(const Key('魔树顶段')), findsNothing);
     expect(find.byKey(const Key('魔树中段裁剪')), findsNothing);
     expect(find.byKey(const Key('魔树固定土壤层')), findsNothing);
-    expect(find.byType(ShaderMask), findsNothing);
+    // 注：ShaderMask 现在是生长擦除的正当用法（换帧时自下而上扫），
+    // 早先禁它是为了封掉"羽化拼接分段素材"那条路——该路由上面几个 key 守住
   });
 
   test('换档用自下而上的生长擦除，不得回到交叉淡入淡出', () {
     final src = File(
       'lib/presentation/outline/outline_page.dart',
     ).readAsStringSync();
-    // 用户 2026-07-29 反馈：两张不同照片对叠必出半透明双影，读作 PPT 翻页。
-    // 改成新档从土壤线自下而上擦除覆盖旧档——没有半透明，读作生长沿藤上行。
-    expect(src, contains('kGrowWipeDuration'), reason: '换档必须走生长擦除');
+    // 相邻帧各 50% 混合时叶子会半透明重叠（实测 f19/f20 明显鬼影），读作 PPT
+    // 翻页。改成新帧自下而上擦除覆盖旧帧——没有半透明，读作生长沿藤上行。
+    expect(src, contains('kGrowWipeDuration'), reason: '换帧必须走生长擦除');
     expect(
       src,
       isNot(contains('AnimatedSwitcher')),
       reason: '整树交叉淡入淡出=PPT 翻页，禁止回流',
     );
-    // 五档素材页面进入即预解码，切档时无临时解码卡顿
+    // 整帧解码 941×1672×4 ≈ 6.3MB，22 帧全预解码要 138MB：
+    // 必须只预解码当前帧附近的窗口，且按显示宽度解码
+    expect(src, contains('cacheWidth'), reason: '必须按显示宽度解码');
     expect(
       src,
-      contains("precacheImage(AssetImage('assets/textures/magic_tree_"),
+      contains('ResizeImage(AssetImage(treeFrameAsset(f))'),
+      reason: '预解码要与绘制用同一个 ImageProvider key，否则白解码一遍',
     );
   });
 
-  test('树层与土层必须同图，且擦除连土一起扫', () {
+  test('整帧照原样画：不得再拆树层/土层、不得缩放拉伸', () {
     final src = File(
       'lib/presentation/outline/outline_page.dart',
     ).readAsStringSync();
-    // 换过一版"共用第 1 档土堆"：土层用别档照片就得抠图，而硬边矩形裁切会把
-    // 土堆顶切平、低垂的叶子齐刷刷切断，横贯一条直线（用户 2026-07-29 截图实证）。
-    // 同图同横向比例才有零接缝；跨档的土堆差异交给擦除吸收。
-    expect(src, isNot(contains('kSoilAsset')), reason: '土层不得换用别档素材');
+    // 五档时代为了"泥土不动"把素材拆成树层+土层并纵向拉伸，一路衍生出
+    // 平切口、土堆被切平、叶子被切断等一串问题。帧序列自己表达生长，
+    // 代码只需照原样画整帧。
+    expect(src, isNot(contains('soilClip')), reason: '不得再拆土层');
+    expect(src, isNot(contains('kSoilAsset')));
     expect(
       src,
-      contains('layer(pieces.asset, pieces.soilBounds, soilClip, wiped: true)'),
-      reason: '土层画本档素材，且必须参与擦除',
+      contains('Positioned.fromRect(rect: rect, child: img)'),
+      reason: '整帧照 imageRect 原样画',
     );
   });
 

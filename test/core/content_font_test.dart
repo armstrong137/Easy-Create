@@ -11,8 +11,10 @@ void main() {
     });
 
     test('纯英文 → 品牌字体', () {
-      expect(contentFontFamily('Midnight metro, orange seller'),
-          'EasyCreateBrand');
+      expect(
+        contentFontFamily('Midnight metro, orange seller'),
+        'EasyCreateBrand',
+      );
       expect(contentFontFamily('The Thirteenth Moon'), 'EasyCreateBrand');
     });
 
@@ -28,8 +30,7 @@ void main() {
     });
 
     test('英文带标点数字仍算英文', () {
-      expect(contentFontFamily('Chapter 1: the beginning.'),
-          'EasyCreateBrand');
+      expect(contentFontFamily('Chapter 1: the beginning.'), 'EasyCreateBrand');
     });
 
     test('contentUsesBrandFont 与 family 一致', () {
@@ -65,8 +66,11 @@ void main() {
       expect(contentTextStyle(text: 'Sea', fontSize: 16).letterSpacing, 0.4);
       // 显式传入可覆盖（星球名要更舒展）
       expect(
-        contentTextStyle(text: '山海', fontSize: 21, letterSpacing: 1.2)
-            .letterSpacing,
+        contentTextStyle(
+          text: '山海',
+          fontSize: 21,
+          letterSpacing: 1.2,
+        ).letterSpacing,
         1.2,
       );
     });

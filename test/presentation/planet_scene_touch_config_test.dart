@@ -20,7 +20,9 @@ String functionBody(String source, String name) {
 /// 读 PNG 头里的宽高（IHDR 紧跟 8 字节签名，宽高各 4 字节大端）
 (int, int) decodePngSize(List<int> bytes) {
   int be32(int at) =>
-      (bytes[at] << 24) | (bytes[at + 1] << 16) | (bytes[at + 2] << 8) |
+      (bytes[at] << 24) |
+      (bytes[at + 1] << 16) |
+      (bytes[at + 2] << 8) |
       bytes[at + 3];
   return (be32(16), be32(20));
 }
@@ -305,11 +307,7 @@ void main() {
     );
     final bundle = functionBody(sceneHtml, 'loadPlanetTextureBundle');
     for (final k in ['normal', 'specular', 'clouds', 'night']) {
-      expect(
-        bundle,
-        contains('pcfg.$k'),
-        reason: '$k 必须与底图同批取齐，不能留到之后再补',
-      );
+      expect(bundle, contains('pcfg.$k'), reason: '$k 必须与底图同批取齐，不能留到之后再补');
     }
   });
 
@@ -357,7 +355,9 @@ void main() {
     expect(sceneHtml, contains('function isForeground(fg)'));
     expect(
       sceneHtml,
-      contains('const wait = isForeground(fg) ? nextFrameTick : waitForUploadWindow;'),
+      contains(
+        'const wait = isForeground(fg) ? nextFrameTick : waitForUploadWindow;',
+      ),
       reason: '必须在每个分块取槽位时现读，捕获成布尔就没法中途升级',
     );
     expect(sceneHtml, contains('ctx: { fg: !!foreground }'));
@@ -458,7 +458,9 @@ void main() {
     // 原本 218px）。所以带 planet 的消息**不能**先改 stage。
     expect(
       sceneHtml,
-      contains("if (typeof m.stage === 'number' && typeof m.planet !== 'string')"),
+      contains(
+        "if (typeof m.stage === 'number' && typeof m.planet !== 'string')",
+      ),
       reason: '同一条消息带 planet 时必须跳过提前 setStage',
     );
     // 改由 setPlanet 在接管新贴图的同一刻落地
@@ -489,8 +491,18 @@ void main() {
     // 滞后旧星球时淡出，露出错星球。修复：ready 信号带回已接管星球名，宿主只在
     // 场景真正换到当前页星球时才揭幕。
     // 1) 场景就绪信号必须带星球名
-    expect(sceneHtml, contains("'planetReady:' + (params.get('token') || '') + ':' + planetName"));
-    expect(sceneHtml, contains("'sceneReady:' + (params.get('token') || '') + ':' + planetName"));
+    expect(
+      sceneHtml,
+      contains(
+        "'planetReady:' + (params.get('token') || '') + ':' + planetName",
+      ),
+    );
+    expect(
+      sceneHtml,
+      contains(
+        "'sceneReady:' + (params.get('token') || '') + ':' + planetName",
+      ),
+    );
     expect(sceneHtml, contains('ready: true, planet: planetName'));
     // 2) web 壳按前缀解析出星球名回传（onReady 改为 ValueChanged<String>）
     expect(webWrapper, contains('ValueChanged<String>? onReady'));
@@ -517,7 +529,10 @@ void main() {
     // 即渲染已停。场景虽在 webglcontextlost 时上报 sceneContextLost，但宿主从不监听，
     // 于是永久停在最后一帧。现在两条路都能自愈。
     // 1) 场景每秒发一次心跳，且**必须在 render 之后**发（没出帧就没有心跳）
-    expect(sceneHtml, contains("'sceneAlive:' + (params.get('token') || '') + ':' + fps"));
+    expect(
+      sceneHtml,
+      contains("'sceneAlive:' + (params.get('token') || '') + ':' + fps"),
+    );
     final animateBody = functionBody(sceneHtml, 'animate');
     expect(
       animateBody.indexOf('renderer.render(scene, camera)') <
@@ -556,11 +571,16 @@ void main() {
     expect(homePage, contains('const kSaturnSceneBoxFactor = 1.4'));
     expect(
       homePage,
-      contains('diameter: diameter * kSaturnSceneBoxFactor * kPlanetSceneStageScale'),
+      contains(
+        'diameter: diameter * kSaturnSceneBoxFactor * kPlanetSceneStageScale',
+      ),
       reason: '画布必须与星球无关（恒为最大档），否则切星球仍会 setSize',
     );
     // stage 随星球给：土星 3，其余 3×1.4
-    expect(homePage, contains('kPlanetSceneStageScale * kSaturnSceneBoxFactor'));
+    expect(
+      homePage,
+      contains('kPlanetSceneStageScale * kSaturnSceneBoxFactor'),
+    );
     // 场景侧：stage 可运行时改，且只重算镜头、不碰 canvas
     expect(sceneHtml, contains('let stageScale'));
     expect(sceneHtml, contains('window.setStage = function (s)'));
@@ -575,8 +595,12 @@ void main() {
     );
     // 顺序：stage 必须先于 setPlanet（换球收尾按当前 stage 重算取景）
     expect(
-      sceneHtml.indexOf("if (typeof m.stage === 'number') window.setStage(m.stage);") <
-          sceneHtml.indexOf("if (typeof m.planet === 'string') window.setPlanet(m.planet, m);"),
+      sceneHtml.indexOf(
+            "if (typeof m.stage === 'number') window.setStage(m.stage);",
+          ) <
+          sceneHtml.indexOf(
+            "if (typeof m.planet === 'string') window.setPlanet(m.planet, m);",
+          ),
       isTrue,
     );
     // 两端壳都随换球下发 stage
@@ -662,11 +686,7 @@ void main() {
       contains('ring.rotation.x = Math.PI / 2 - kRingTilt +'),
       reason: '绝对赋值才不会漂移',
     );
-    expect(
-      animateBody,
-      contains('if (ring) {'),
-      reason: '只有带环的星球才摆，其他星球不受影响',
-    );
+    expect(animateBody, contains('if (ring) {'), reason: '只有带环的星球才摆，其他星球不受影响');
     // 自转本身没被动过：所有星球一视同仁
     expect(animateBody, contains('planet.rotation.y += w'));
   });
@@ -1026,7 +1046,11 @@ void main() {
     // 实测耗时自适应（>6ms 减半、<3ms 加倍）。
     expect(sceneHtml, contains('waitForUploadWindow'));
     expect(sceneHtml, contains('uploadInteractGuardMs'));
-    expect(sceneHtml, contains('uploadSlotMaxWaitMs'), reason: '连续滑页/转球不能把切球事务饿死');
+    expect(
+      sceneHtml,
+      contains('uploadSlotMaxWaitMs'),
+      reason: '连续滑页/转球不能把切球事务饿死',
+    );
     expect(sceneHtml, contains('adaptiveBandBytes'));
     expect(sceneHtml, contains('tuneUploadBudget'));
     // 显存大分配（initTexture ≈75MB）也要先拿预算槽，不打手势热帧
