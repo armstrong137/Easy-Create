@@ -1,13 +1,14 @@
 {
-  "name": "magic_tree_growth_sequence_coherent_jpeg_q90_v2",
+  "version": "magic_tree_growth_highres_single_anchor_v5",
+  "source": "C:\\Users\\yunhao.zhou1\\.codex\\generated_images\\019f2a9d-7fed-7743-a98c-9348960da917\\call_RMvc9L2hXxhvPICLSWsJxK47.png",
   "frame_count": 28,
-  "format": "jpg",
-  "quality": 90,
   "size": [
     941,
     1672
   ],
-  "source": "assets/textures/tree_frames, coherent in-app sequence",
+  "format": "JPEG q90",
+  "background": "#FDF6EC",
+  "method": "single approved high-resolution tree anchor; stable soil underneath; plant anchored into soil bottom; equal-ratio scale growth; no tiling, no slicing, no vertical stretch",
   "files": [
     "magic_tree_f01.jpg",
     "magic_tree_f02.jpg",
@@ -37,8 +38,5 @@
     "magic_tree_f26.jpg",
     "magic_tree_f27.jpg",
     "magic_tree_f28.jpg"
-  ],
-  "preview": "preview_contact_sheet.jpg",
-  "gif_preview": "magic_tree_sequence_preview.gif",
-  "notes_cn": "???? 28 ????? PNG??????????????????????? JPEG q90?????????????????????"
+  ]
 }
