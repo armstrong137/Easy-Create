@@ -1,6 +1,6 @@
 {
-  "version": "magic_tree_growth_highres_single_anchor_v5",
-  "source": "C:\\Users\\yunhao.zhou1\\.codex\\generated_images\\019f2a9d-7fed-7743-a98c-9348960da917\\call_RMvc9L2hXxhvPICLSWsJxK47.png",
+  "version": "magic_tree_growth_highres_whole_object_v1",
+  "source": "C:\\Users\\yunhao.zhou1\\Desktop\\Easy Create\\picture\\魔树动画素材\\approved_highres_reference.png",
   "frame_count": 28,
   "size": [
     941,
@@ -8,7 +8,8 @@
   ],
   "format": "JPEG q90",
   "background": "#FDF6EC",
-  "method": "single approved high-resolution tree anchor; stable soil underneath; plant anchored into soil bottom; equal-ratio scale growth; no tiling, no slicing, no vertical stretch",
+  "method": "single approved high-resolution full foreground object; soil and plant stay in one layer; equal-ratio scale growth; no layer split, no tiling, no slicing, no vertical stretch",
+  "known_tradeoff": "soil mound scales with the tree to remove the visible horizontal cut caused by layer separation",
   "files": [
     "magic_tree_f01.jpg",
     "magic_tree_f02.jpg",
