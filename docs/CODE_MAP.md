@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-30 11:17:46　对应提交：6a01113 之后的工作区状态
+> 生成时间：2026-07-30 14:38:51　对应提交：b8765eb 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     109
-  Nodes:     4,114
-  Edges:     19,227
+  Files:     110
+  Nodes:     4,126
+  Edges:     19,244
   DB Size:   21.05 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,567
-  function        1,384
+  function        1,389
   class           467
-  import          342
+  import          347
   constant        210
-  file            101
-  variable        26
+  file            102
+  variable        27
   type_alias      12
   enum_member     2
   namespace       2
@@ -39,8 +39,8 @@ Files by Language:
   xml             6
   properties      4
   yaml            4
+  python          3
   swift           3
-  python          2
   typescript      2
   c               1
 
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (109 files):
+Project Structure (110 files):
 
 |-- .agents
 |   `-- skills
@@ -197,7 +197,8 @@ Project Structure (109 files):
 |   |-- capture_standins.py (python, 11 symbols)
 |   |-- e2e_probe.dart (dart, 12 symbols)
 |   |-- serve_web.dart (dart, 4 symbols)
-|   `-- square_standins.py (python, 11 symbols)
+|   |-- square_standins.py (python, 11 symbols)
+|   `-- validate_magic_tree_frames.py (python, 12 symbols)
 |-- test
 |   |-- core
 |   |   |-- chinese_numbers_test.dart (dart, 4 symbols)

@@ -1,0 +1,55 @@
+{
+  "frame_count": 28,
+  "sizes": [
+    [
+      941,
+      1672
+    ]
+  ],
+  "avg_neighbor_diff_min": 0.478,
+  "avg_neighbor_diff_max": 17.31,
+  "avg_neighbor_diff_values": [
+    0.99,
+    0.775,
+    0.607,
+    0.478,
+    0.664,
+    1.025,
+    1.975,
+    1.386,
+    1.936,
+    2.702,
+    4.545,
+    5.22,
+    6.523,
+    7.017,
+    8.891,
+    9.726,
+    13.629,
+    14.413,
+    15.63,
+    14.946,
+    14.833,
+    17.003,
+    14.762,
+    17.31,
+    16.187,
+    14.263,
+    15.045
+  ],
+  "plant_top_regressions": [
+    26
+  ],
+  "soil_width_min": 0.1424,
+  "soil_width_max": 0.7832,
+  "soil_width_drift": 0.6408,
+  "soil_bottom_min": 0.8768,
+  "soil_bottom_max": 0.9007,
+  "soil_bottom_drift": 0.0239,
+  "background_mean_range": [
+    1.0,
+    2.0,
+    2.0
+  ],
+  "pass": false
+}
