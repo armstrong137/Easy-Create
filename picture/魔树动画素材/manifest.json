@@ -1,5 +1,5 @@
 {
-  "version": "magic_tree_growth_highres_fixed_soil_reveal_v2",
+  "version": "magic_tree_growth_highres_fixed_soil_clean_crown_v2",
   "source": "C:\\Users\\yunhao.zhou1\\Desktop\\Easy Create\\picture\\魔树动画素材\\approved_highres_reference.png",
   "frame_count": 28,
   "size": [
@@ -8,7 +8,18 @@
   ],
   "format": "JPEG q90",
   "background": "#FDF6EC",
-  "method": "fixed soil layer; full-size plant revealed upward with narrower soft irregular growth frontier and widening side branches; no object zoom, no tiling, no slicing, no vertical stretch",
+  "method": "fixed soil layer; full-size plant revealed upward; pale near-background crown halos removed; no object zoom, no tiling, no slicing, no vertical stretch",
+  "validation": {
+    "pass": true,
+    "max_neighbor_diff": 4.649,
+    "scaled_final_diff_min": 54.579,
+    "width_height_growth_ratio": 0.199,
+    "leaf_diameter_drift": 0.063,
+    "soil_width_drift": 0.0,
+    "soil_bottom_drift": 0.0,
+    "crown_smear_ratio_max": 0.0293,
+    "brightness_over_bg_max": 8.234
+  },
   "files": [
     "magic_tree_f01.jpg",
     "magic_tree_f02.jpg",

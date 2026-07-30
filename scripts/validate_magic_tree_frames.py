@@ -7,10 +7,12 @@ from collections import deque
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageStat
+from PIL import Image
 
 
 BG = np.array([253, 246, 236], dtype=np.float32)
+LUMA_WEIGHTS = np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
+BG_LUMA = float(np.dot(BG, LUMA_WEIGHTS))
 
 
 def load_frames(frame_dir: Path) -> list[Path]:
@@ -20,6 +22,10 @@ def load_frames(frame_dir: Path) -> list[Path]:
     if len(frames) != 28:
         raise SystemExit(f"需要 28 帧，当前 {len(frames)} 帧")
     return frames
+
+
+def luminance(arr: np.ndarray) -> np.ndarray:
+    return arr.astype(np.float32) @ LUMA_WEIGHTS
 
 
 def foreground_mask(arr: np.ndarray) -> np.ndarray:
@@ -76,7 +82,7 @@ def scaled_final_diff(
 
 
 def connected_component_diameters(mask: np.ndarray) -> list[float]:
-    # 粗略叶片代理：只统计中等面积绿色连通块，避免把主藤整根算进去。
+    # 粗略叶片代理：只统计较大的绿色连通块，避免把藤须碎片算进去。
     h, w = mask.shape
     seen = np.zeros_like(mask, dtype=bool)
     diameters: list[float] = []
@@ -107,6 +113,21 @@ def connected_component_diameters(mask: np.ndarray) -> list[float]:
     return diameters
 
 
+def crown_smear_ratio(arr: np.ndarray, plant_top: float) -> float:
+    h = arr.shape[0]
+    top = min(h - 1, max(0, int(round(plant_top * h))))
+    bottom = min(h, top + 120)
+    if bottom <= top:
+        return 0.0
+    band = arr[top:bottom]
+    content = foreground_mask(band)
+    if not np.any(content):
+        return 0.0
+    bg_distance = np.abs(band.astype(np.float32) - BG).sum(axis=2)
+    bright_content = content & (luminance(band) >= BG_LUMA - 90) & (bg_distance <= 95)
+    return float(np.count_nonzero(bright_content) / np.count_nonzero(content))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("frame_dir", type=Path)
@@ -116,6 +137,8 @@ def main() -> None:
     parser.add_argument("--min-scaled-final-diff", type=float, default=15.0)
     parser.add_argument("--max-width-height-growth-ratio", type=float, default=0.5)
     parser.add_argument("--max-leaf-diameter-drift", type=float, default=0.2)
+    parser.add_argument("--max-crown-smear-ratio", type=float, default=0.03)
+    parser.add_argument("--max-brightness-over-bg", type=float, default=10.0)
     args = parser.parse_args()
 
     paths = load_frames(args.frame_dir)
@@ -135,6 +158,7 @@ def main() -> None:
     leaf_medians: list[float | None] = []
     leaf_counts: list[int] = []
     bg_means: list[list[float]] = []
+    brightness_over_bg: list[float] = []
 
     for arr in arrays:
         fg = foreground_mask(arr)
@@ -166,6 +190,12 @@ def main() -> None:
             axis=0,
         )
         bg_means.append([round(float(v), 2) for v in bg_sample.mean(axis=0)])
+        brightness_over_bg.append(float(np.max(luminance(arr)) - BG_LUMA))
+
+    crown_smears = [
+        crown_smear_ratio(arr, plant_top)
+        for arr, plant_top in zip(arrays, plant_tops, strict=True)
+    ]
 
     top_regressions = [
         i + 1
@@ -209,7 +239,11 @@ def main() -> None:
         "soil_bottom_stable": soil_bottom_drift <= args.max_soil_drift,
         "plant_top_monotonic": not top_regressions,
         "background_stable": max(bg_range) <= 2.0,
-        "format_and_size": len(sizes) == 1 and sizes[0] == (941, 1672) and paths[0].suffix.lower() == ".jpg",
+        "crown_smear": max(crown_smears) <= args.max_crown_smear_ratio,
+        "brightness_not_over_bg": max(brightness_over_bg) <= args.max_brightness_over_bg,
+        "format_and_size": len(sizes) == 1
+        and sizes[0] == (941, 1672)
+        and paths[0].suffix.lower() == ".jpg",
     }
 
     result = {
@@ -235,6 +269,10 @@ def main() -> None:
         "soil_bottom_max": round(max(soil_bottoms), 4),
         "soil_bottom_drift": round(soil_bottom_drift, 4),
         "background_mean_range": [round(float(v), 3) for v in bg_range],
+        "crown_smear_ratio_max": round(max(crown_smears), 4),
+        "crown_smear_ratio_values": [round(v, 4) for v in crown_smears],
+        "brightness_over_bg_max": round(max(brightness_over_bg), 3),
+        "brightness_over_bg_values": [round(v, 3) for v in brightness_over_bg],
         "checks": pass_checks,
         "pass": all(pass_checks.values()),
     }
