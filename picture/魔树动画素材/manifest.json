@@ -1,5 +1,5 @@
 {
-  "version": "magic_tree_growth_highres_whole_object_v1",
+  "version": "magic_tree_growth_highres_fixed_soil_reveal_v2",
   "source": "C:\\Users\\yunhao.zhou1\\Desktop\\Easy Create\\picture\\魔树动画素材\\approved_highres_reference.png",
   "frame_count": 28,
   "size": [
@@ -8,8 +8,7 @@
   ],
   "format": "JPEG q90",
   "background": "#FDF6EC",
-  "method": "single approved high-resolution full foreground object; soil and plant stay in one layer; equal-ratio scale growth; no layer split, no tiling, no slicing, no vertical stretch",
-  "known_tradeoff": "soil mound scales with the tree to remove the visible horizontal cut caused by layer separation",
+  "method": "fixed soil layer; full-size plant revealed upward with narrower soft irregular growth frontier and widening side branches; no object zoom, no tiling, no slicing, no vertical stretch",
   "files": [
     "magic_tree_f01.jpg",
     "magic_tree_f02.jpg",
