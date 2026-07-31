@@ -110,21 +110,21 @@ void main() {
   });
 
   test('帧号映射：每加一个节点都前进，单调不退，到末帧封顶', () {
-    // 前段走得比线性快：素材前几帧植株很小，线性推进时 2 个节点树干只有 52px，
-    // 连"章根 + 一条小节"都放不下。曲线要保证每一步都在长。
+    // 从 f08 起用（前 7 帧内容太小、且只是"根伏在土堆上"），之后一节点一帧。
     int frameOf(int nodes) => layoutMagicTree(
       size: size,
       outline: nodes == 0 ? const [] : [chapterWith(1, nodes - 1)],
     ).frame;
     expect(frameOf(0), kTreeFrameFirst, reason: '空书用首帧');
-    for (var n = 1; n <= kTreeGrowSaturateNodes; n++) {
+    final span = kTreeFrameLast - kTreeFrameFirst;
+    for (var n = 1; n <= span; n++) {
       expect(
         frameOf(n),
-        greaterThan(frameOf(n - 1)),
-        reason: '第 $n 个节点必须前进至少一帧——每一步都要看得见在长',
+        frameOf(n - 1) + 1,
+        reason: '第 $n 个节点必须正好前进一帧——每一步都要看得见在长',
       );
     }
-    expect(frameOf(kTreeGrowSaturateNodes), kTreeFrameLast, reason: '饱和点到末帧');
+    expect(frameOf(span), kTreeFrameLast, reason: '$span 个节点长到末帧');
     expect(frameOf(200), kTreeFrameLast, reason: '超出后封顶，不越界');
   });
 
@@ -140,7 +140,7 @@ void main() {
       expect(at(n).imageRect, base, reason: '$n 节点的画幅必须与首帧一致');
     }
     double onScreen(int n) => at(n).soilCrestY - at(n).plantTopY;
-    for (var n = 1; n <= kTreeGrowSaturateNodes; n++) {
+    for (var n = 1; n <= kTreeFrameLast - kTreeFrameFirst; n++) {
       expect(
         onScreen(n),
         greaterThan(onScreen(n - 1)),

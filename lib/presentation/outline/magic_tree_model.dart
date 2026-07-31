@@ -22,29 +22,21 @@ const kStageImageHeight = 1672.0;
 /// 生长帧序列目录
 const kTreeFrameDir = 'assets/textures/tree_frames';
 
-/// 可用帧区间（2026-07-31 定稿素材：28 帧全部可用）。
-/// 逐帧复验：植株顶严格单调（每帧长高 8~130px）、土堆逐帧一致、
-/// 相邻帧平均差 0.12~4.92、无抠图亮边、树冠无灰烟。
-const kTreeFrameFirst = 1;
+/// 可用帧区间。**从 f08 起用**：f01~f07 的内容只占画幅 18.5%~28.5%，
+/// 而画幅是按末帧塞满屏定的，用它们时空书状态下树只有屏高 15%、上方一片空白
+/// （用户 2026-07-31 实拍反馈）；而且那几帧还只是"一堆根伏在土堆上"，
+/// 没有向上的芽，当"空书"图也不合适。
+///
+/// 逐帧复验通过：植株顶严格单调（每帧长高 8~130px）、土堆逐帧完全一致
+/// （宽 0.930/底 0.975，各帧与首帧差 0.27~0.57）、相邻帧平均差 0.12~4.92、
+/// 无抠图亮边、树冠无灰烟。
+const kTreeFrameFirst = 8;
 const kTreeFrameLast = 28;
 
-/// 生长饱和点：到这么多节点时树长到末帧
-const kTreeGrowSaturateNodes = 20;
-
-/// 节点数（章+节）→ 帧号。前段走得比线性快：素材前几帧的植株很小，
-/// 若按"一节点一帧"线性推进，2 个节点时树干只有 52px，连"章根 + 一条小节"
-/// 都放不下（实测标签会被整条丢掉）。幂曲线让树干尽早达到可用长度，
-/// 同时保证**每加一个节点都至少前进一帧**。
-int treeFrameFor(int totalNodes) {
-  if (totalNodes <= 0) return kTreeFrameFirst;
-  final span = kTreeFrameLast - kTreeFrameFirst;
-  final t = (totalNodes / kTreeGrowSaturateNodes).clamp(0.0, 1.0);
-  final f = kTreeFrameFirst + (span * math.pow(t, 0.7)).round();
-  // 兜底：曲线在尾段可能连续取到同一帧，逐节点至少 +1 直到封顶
-  return math
-      .max(f, math.min(kTreeFrameLast, kTreeFrameFirst + totalNodes ~/ 3))
-      .clamp(kTreeFrameFirst, kTreeFrameLast);
-}
+/// 节点数（章+节）→ 帧号：0 个节点用首帧，之后**每加一个节点正好前进一帧**，
+/// 到末帧封顶（20 个节点长满）。生长的连贯度等于素材本身的连贯度。
+int treeFrameFor(int totalNodes) =>
+    (kTreeFrameFirst + totalNodes).clamp(kTreeFrameFirst, kTreeFrameLast);
 
 String treeFrameAsset(int frame) =>
     '$kTreeFrameDir/magic_tree_f${frame.toString().padLeft(2, '0')}.jpg';
