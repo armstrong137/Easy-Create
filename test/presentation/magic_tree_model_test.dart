@@ -109,55 +109,51 @@ void main() {
     expect(bottom.chapterBands.keys, isNot(contains(1)));
   });
 
-  test('帧号映射：0 节点用首帧，每加一个节点前进一帧，到末帧封顶', () {
+  test('帧号映射：每加一个节点都前进，单调不退，到末帧封顶', () {
+    // 前段走得比线性快：素材前几帧植株很小，线性推进时 2 个节点树干只有 52px，
+    // 连"章根 + 一条小节"都放不下。曲线要保证每一步都在长。
     int frameOf(int nodes) => layoutMagicTree(
       size: size,
       outline: nodes == 0 ? const [] : [chapterWith(1, nodes - 1)],
     ).frame;
     expect(frameOf(0), kTreeFrameFirst, reason: '空书用首帧');
-    for (var n = 1; n <= kTreeFrameLast - kTreeFrameFirst; n++) {
+    for (var n = 1; n <= kTreeGrowSaturateNodes; n++) {
       expect(
         frameOf(n),
-        frameOf(n - 1) + 1,
-        reason: '第 $n 个节点必须正好前进一帧——每一步都看得见在长',
+        greaterThan(frameOf(n - 1)),
+        reason: '第 $n 个节点必须前进至少一帧——每一步都要看得见在长',
       );
     }
-    expect(frameOf(100), kTreeFrameLast, reason: '超出序列后封顶，不越界');
+    expect(frameOf(kTreeGrowSaturateNodes), kTreeFrameLast, reason: '饱和点到末帧');
+    expect(frameOf(200), kTreeFrameLast, reason: '超出后封顶，不越界');
   });
 
-  test('画幅随帧单调放大，且内容始终留在画布内', () {
-    // 素材 f05→f26 内容高度差 5.9 倍。若所有帧共用同一画幅，2 章时树只占屏高
-    // 19%、上方 80% 空白、标签挤在矮树干上（实测）。改为按帧等比放大到
-    // 45%→92% 屏高：观感成长压到约 2 倍，但树永不显小，也绝不回弹。
-    // 单调的是**屏上内容高度**（土堆底 − 树冠），不是画幅高度：
-    // 画幅 = 目标占比 ÷ 该帧内容占图比例，后者涨得更快，所以画幅本身会变小。
-    double onScreenHeight(int nodes) {
-      final l = layoutMagicTree(
-        size: size,
-        outline: nodes == 0 ? const [] : [chapterWith(1, nodes - 1)],
-      );
-      return l.imageRect.top +
-          kFrameContentBottom * l.imageRect.height -
-          l.plantTopY;
+  test('画幅对所有帧完全相同；树在屏上逐节点长高', () {
+    // 这套素材土堆与内容宽度逐帧恒定、生长完全由序列表达，
+    // 所以画幅是死的（整帧照原样画），屏上变高的是植株本身。
+    MagicTreeLayout at(int nodes) => layoutMagicTree(
+      size: size,
+      outline: nodes == 0 ? const [] : [chapterWith(1, nodes - 1)],
+    );
+    final base = at(0).imageRect;
+    for (final n in [1, 3, 8, 15, 20, 40]) {
+      expect(at(n).imageRect, base, reason: '$n 节点的画幅必须与首帧一致');
     }
-
-    for (var n = 1; n <= kTreeFrameLast - kTreeFrameFirst; n++) {
+    double onScreen(int n) => at(n).soilCrestY - at(n).plantTopY;
+    for (var n = 1; n <= kTreeGrowSaturateNodes; n++) {
       expect(
-        onScreenHeight(n),
-        greaterThan(onScreenHeight(n - 1)),
+        onScreen(n),
+        greaterThan(onScreen(n - 1)),
         reason: '第 $n 个节点树在屏上必须比上一步高',
       );
     }
-    for (var n = 0; n <= 30; n++) {
-      final l = layoutMagicTree(
-        size: size,
-        outline: n == 0 ? const [] : [chapterWith(1, n - 1)],
-      );
+    for (var n = 0; n <= 40; n++) {
+      final l = at(n);
       expect(l.plantTopY, greaterThanOrEqualTo(0), reason: '$n 节点：树冠出画布了');
       expect(
         l.imageRect.top + kFrameContentBottom * l.imageRect.height,
-        closeTo(size.height - 8, 0.5),
-        reason: '$n 节点：土堆底必须贴屏底',
+        lessThanOrEqualTo(size.height + 0.5),
+        reason: '$n 节点：土堆底出画布了',
       );
     }
   });
@@ -362,9 +358,12 @@ void main() {
     );
 
     final chapter4Sections = layout.sections.where((s) => s.id ~/ 100 == 4);
+    // 阈值随帧序列素材下调：章带跟着树干走，18 个节点时树干 0.594 画幅，
+    // 一屏两章 → 每带约 224px，放得下 4 行。原来的 5 是按旧五档素材（树干几乎
+    // 满幅）定的。守住"不得被裁到只剩三枚"这条本意即可。
     expect(
       chapter4Sections.length,
-      greaterThanOrEqualTo(5),
+      greaterThanOrEqualTo(4),
       reason: '靠近泥土只应隐藏枝丫，不能把小节标签也裁到只剩三枚',
     );
   });

@@ -22,91 +22,66 @@ const kStageImageHeight = 1672.0;
 /// 生长帧序列目录
 const kTreeFrameDir = 'assets/textures/tree_frames';
 
-/// 只用 f05..f26 这 22 帧。逐帧实测：f01~f04 土堆**反向缩小**（最宽 0.276→0.139）、
-/// f27/f28 植株**反而变矮**（0.721→0.719→0.702）；这两段素材修好后
-/// 改这两个常量即可启用，代码无需其它改动。
-const kTreeFrameFirst = 5;
-const kTreeFrameLast = 26;
+/// 可用帧区间（2026-07-31 定稿素材：28 帧全部可用）。
+/// 逐帧复验：植株顶严格单调（每帧长高 8~130px）、土堆逐帧一致、
+/// 相邻帧平均差 0.12~4.92、无抠图亮边、树冠无灰烟。
+const kTreeFrameFirst = 1;
+const kTreeFrameLast = 28;
 
-/// 节点数（章+节）→ 帧号：0 个节点用首帧，之后**每加一个节点正好前进一帧**，
-/// 到末帧封顶。生长的连贯度因此等于素材本身的连贯度——不再有拉伸、不再有换档。
-int treeFrameFor(int totalNodes) =>
-    (kTreeFrameFirst + totalNodes).clamp(kTreeFrameFirst, kTreeFrameLast);
+/// 生长饱和点：到这么多节点时树长到末帧
+const kTreeGrowSaturateNodes = 20;
+
+/// 节点数（章+节）→ 帧号。前段走得比线性快：素材前几帧的植株很小，
+/// 若按"一节点一帧"线性推进，2 个节点时树干只有 52px，连"章根 + 一条小节"
+/// 都放不下（实测标签会被整条丢掉）。幂曲线让树干尽早达到可用长度，
+/// 同时保证**每加一个节点都至少前进一帧**。
+int treeFrameFor(int totalNodes) {
+  if (totalNodes <= 0) return kTreeFrameFirst;
+  final span = kTreeFrameLast - kTreeFrameFirst;
+  final t = (totalNodes / kTreeGrowSaturateNodes).clamp(0.0, 1.0);
+  final f = kTreeFrameFirst + (span * math.pow(t, 0.7)).round();
+  // 兜底：曲线在尾段可能连续取到同一帧，逐节点至少 +1 直到封顶
+  return math
+      .max(f, math.min(kTreeFrameLast, kTreeFrameFirst + totalNodes ~/ 3))
+      .clamp(kTreeFrameFirst, kTreeFrameLast);
+}
 
 String treeFrameAsset(int frame) =>
     '$kTreeFrameDir/magic_tree_f${frame.toString().padLeft(2, '0')}.jpg';
 
-/// 素材里土堆底边的位置（逐帧实测 0.875~0.904，取最低值），用来把土堆摆到贴屏底
-const kFrameContentBottom = 0.904;
+/// 土堆冒头处（实测：土色像素 >60/行 的最高行）。**逐帧完全一致**
+/// （y>0.90 的土堆区各帧与首帧平均差仅 0.27~0.57），所以是常数而非逐帧表。
+/// 枝丫下界据此算，不会长进土里。
+const kSoilCrestFrac = 0.867;
 
-/// 每帧内容的横向占比（含叶与土堆，逐帧实测取最宽行）——放大时据此防止出画布
-const _frameContentWidth = <int, double>{
-  5: 0.148,
-  6: 0.158,
-  7: 0.168,
-  8: 0.238,
-  9: 0.239,
-  10: 0.255,
-  11: 0.282,
-  12: 0.316,
-  13: 0.336,
-  14: 0.374,
-  15: 0.414,
-  16: 0.456,
-  17: 0.494,
-  18: 0.539,
-  19: 0.582,
-  20: 0.618,
-  21: 0.661,
-  22: 0.682,
-  23: 0.718,
-  24: 0.739,
-  25: 0.762,
-  26: 0.781,
-};
+/// 内容底边（土堆最低点，逐帧一致）——用来把土堆摆到贴屏底
+const kFrameContentBottom = 0.982;
 
-/// 每帧内容占画布可用高度的目标比例：从首帧的 [kFrameFillFirst] 长到末帧的
-/// [kFrameFillLast]。
-///
-/// 不能让所有帧共用"最大帧塞得进屏幕"的同一个画幅：素材从 f05 到 f26 内容高度
-/// 差 5.9 倍，那样 2 章时树只占屏高 19%、上方 80% 全是空白，标签也挤在一截
-/// 134px 的矮树干上（实测）。按帧自适应放大后，观感成长压到约 2 倍，
-/// 但树永远不显小、树干一直有放标签的余量。等比放大、随帧单调递增，不会回弹。
-const kFrameFillFirst = 0.45;
-const kFrameFillLast = 0.92;
+/// 末帧植株顶（全序列最高）——保证长到最高时树冠仍在画内
+const kFrameContentTop = 0.023;
+
+/// 内容横向占比（逐帧一致 0.944）——防止放大后出画布
+const kFrameContentWidth = 0.944;
 
 /// 画布上下留白
 const _kFramePadTop = 12.0;
-const _kFramePadBottom = 8.0;
 
-/// 该帧的目标"屏上内容高度"占画布可用高度的比例（随帧线性上升）
-double _fillFor(int frame) {
-  final t = (frame - kTreeFrameFirst) / (kTreeFrameLast - kTreeFrameFirst);
-  return kFrameFillFirst + (kFrameFillLast - kFrameFillFirst) * t;
-}
+/// 右下速记按钮占用约 56px + 24px 边距，再多留一点呼吸区。
+const _kQuickCaptureBottomGuard = 96.0;
 
-/// 全序列**统一**的收缩系数：窄画布上后段几帧植株很宽，按目标比例放大会横向
-/// 出画布。逐帧各自缩会破坏单调（实测 f25→f26 屏上高度反降 0.7%），
-/// 所以取"所有帧都不出画布"的统一系数，整条曲线等比压低，单调性不受影响。
-double _fillShrink(Size size) {
-  final avail = size.height - _kFramePadTop - _kFramePadBottom;
-  const aspect = kStageImageHeight / kStageImageWidth;
-  var k = 1.0;
-  for (var f = kTreeFrameFirst; f <= kTreeFrameLast; f++) {
-    final desired =
-        _fillFor(f) * avail / (kFrameContentBottom - _stalks[f]!.topY);
-    final maxH = size.width / _frameContentWidth[f]! * aspect;
-    if (maxH < desired) k = math.min(k, maxH / desired);
-  }
-  return k;
-}
+/// 底部留白＝速记按钮的护栏：树不该长到按钮底下，
+/// 而且树干很短时（帧序列前段）护栏会直接吃掉可用的挂标签空间
+const _kFramePadBottom = _kQuickCaptureBottomGuard;
 
-/// 某一帧的画幅：等比放大到目标占屏比例，土堆底贴屏底。
-/// **绝不做非等比拉伸**——生长由序列自己表达。
-Rect _frameRect(Size size, int frame) {
-  final avail = size.height - _kFramePadTop - _kFramePadBottom;
-  final contentH = kFrameContentBottom - _stalks[frame]!.topY;
-  final h = _fillFor(frame) * _fillShrink(size) * avail / contentH;
+/// 帧画幅：**对所有帧完全相同**。这套素材的土堆与内容宽度逐帧恒定、
+/// 生长完全由序列自己表达，所以代码只需把整帧照原样等比画进画布，
+/// 既不缩放也不拉伸——之前为"帧与帧尺寸不同"写的按帧自适应缩放全部删除。
+Rect _frameRect(Size size) {
+  final h = math.min(
+    (size.height - _kFramePadTop - _kFramePadBottom) /
+        (kFrameContentBottom - kFrameContentTop),
+    size.width / kFrameContentWidth * (kStageImageHeight / kStageImageWidth),
+  );
   final w = h * (kStageImageWidth / kStageImageHeight);
   return Rect.fromLTWH(
     (size.width - w) / 2,
@@ -136,9 +111,6 @@ const kNoteRowHeight = 26.0;
 
 /// 小节标签下最多显示的灵感条数
 const kMaxSectionNotes = 3;
-
-/// 右下速记按钮占用约 56px + 24px 边距，再多留一点呼吸区。
-const _kQuickCaptureBottomGuard = 96.0;
 
 /// 树龄 [0,1]：随章节规模成长（保留用于尺寸微调）
 double treeAge(int totalNodes) {
@@ -217,45 +189,51 @@ const kGrowWipeDuration = Duration(milliseconds: 700);
 const kGrowWipeFeather = 26.0;
 
 /// 每帧的茎干轮廓（归一化到素材图：y 相对图高，半宽相对图宽）。
-/// 枝丫锚点全靠它——章/节枝要挂在**这一帧实际的树干**上。
+/// 底端固定在 [kSoilCrestFrac]（土堆逐帧一致），所以只需记植株顶与上下半宽。
 class _Stalk {
-  const _Stalk(this.topY, this.botY, this.topHalfW, this.botHalfW);
+  const _Stalk(this.topY, this.topHalfW, this.botHalfW);
 
   /// 植株最高点
   final double topY;
-
-  /// 土堆冒头处（树干扎进土里的位置）——枝丫下界据此算，不会长进土里
-  final double botY;
   final double topHalfW;
   final double botHalfW;
+
+  /// 树干底＝土堆冒头处，逐帧一致
+  double get botY => kSoilCrestFrac;
 }
 
 /// 逐帧实测（脚本量中轴连通段：顶部取 12% 处、底部取土堆上方 6% 处）。
-/// 半宽经**保序回归 + 3 点平滑**：原始测量在 0.006~0.020 之间来回跳（量到叶子
-/// 还是量到藤的差别），直接用会让枝丫锚点逐帧左右抖。
+/// 半宽经**保序回归 + 3 点平滑**：原始测量会在量到叶子还是量到藤之间跳，
+/// 直接用会让枝丫锚点逐帧左右抖。
 const _stalks = <int, _Stalk>{
-  5: _Stalk(0.777, 0.882, 0.0032, 0.0135),
-  6: _Stalk(0.756, 0.880, 0.0037, 0.0161),
-  7: _Stalk(0.732, 0.879, 0.0059, 0.0259),
-  8: _Stalk(0.708, 0.868, 0.0081, 0.0352),
-  9: _Stalk(0.678, 0.868, 0.0097, 0.0428),
-  10: _Stalk(0.646, 0.867, 0.0105, 0.0478),
-  11: _Stalk(0.614, 0.866, 0.0112, 0.0605),
-  12: _Stalk(0.578, 0.861, 0.0145, 0.0728),
-  13: _Stalk(0.542, 0.859, 0.0176, 0.0838),
-  14: _Stalk(0.500, 0.857, 0.0215, 0.0901),
-  15: _Stalk(0.471, 0.854, 0.0232, 0.1093),
-  16: _Stalk(0.435, 0.850, 0.0268, 0.1282),
-  17: _Stalk(0.401, 0.847, 0.0310, 0.1436),
-  18: _Stalk(0.355, 0.840, 0.0346, 0.1587),
-  19: _Stalk(0.314, 0.839, 0.0360, 0.1748),
-  20: _Stalk(0.281, 0.833, 0.0360, 0.1980),
-  21: _Stalk(0.249, 0.831, 0.0360, 0.2087),
-  22: _Stalk(0.231, 0.825, 0.0438, 0.2157),
-  23: _Stalk(0.209, 0.823, 0.0515, 0.2157),
-  24: _Stalk(0.188, 0.819, 0.0593, 0.2222),
-  25: _Stalk(0.169, 0.818, 0.0593, 0.2286),
-  26: _Stalk(0.156, 0.816, 0.0593, 0.2351),
+  1: _Stalk(0.796, 0.0126, 0.0531),
+  2: _Stalk(0.780, 0.0126, 0.0579),
+  3: _Stalk(0.772, 0.0126, 0.1332),
+  4: _Stalk(0.738, 0.0132, 0.2085),
+  5: _Stalk(0.707, 0.0189, 0.2790),
+  6: _Stalk(0.701, 0.0247, 0.2790),
+  7: _Stalk(0.696, 0.0299, 0.2790),
+  8: _Stalk(0.660, 0.0299, 0.2790),
+  9: _Stalk(0.621, 0.0299, 0.2790),
+  10: _Stalk(0.544, 0.0304, 0.2790),
+  11: _Stalk(0.516, 0.0310, 0.2790),
+  12: _Stalk(0.481, 0.0324, 0.2790),
+  13: _Stalk(0.450, 0.0363, 0.2790),
+  14: _Stalk(0.423, 0.0401, 0.2790),
+  15: _Stalk(0.392, 0.0432, 0.2790),
+  16: _Stalk(0.364, 0.0432, 0.2790),
+  17: _Stalk(0.333, 0.0432, 0.2790),
+  18: _Stalk(0.301, 0.0432, 0.2790),
+  19: _Stalk(0.273, 0.0432, 0.2790),
+  20: _Stalk(0.243, 0.0432, 0.2790),
+  21: _Stalk(0.214, 0.0432, 0.2790),
+  22: _Stalk(0.183, 0.0432, 0.2790),
+  23: _Stalk(0.155, 0.0432, 0.2790),
+  24: _Stalk(0.125, 0.0432, 0.2790),
+  25: _Stalk(0.097, 0.0432, 0.2790),
+  26: _Stalk(0.069, 0.0432, 0.2790),
+  27: _Stalk(0.042, 0.0432, 0.2790),
+  28: _Stalk(0.023, 0.0432, 0.2790),
 };
 
 /// 一根卷须枝（章或节共用）：精灵图矩形 + 根/端锚点
@@ -418,7 +396,7 @@ MagicTreeLayout _layoutSingleChapter(
   Map<int, double> sectionScrolls,
   Map<int, int> sectionNoteCounts,
 ) {
-  final imageRect = _frameRect(size, frame);
+  final imageRect = _frameRect(size);
   final dispW = imageRect.width;
   final dispH = imageRect.height;
 
@@ -493,7 +471,12 @@ MagicTreeLayout _layoutSingleChapter(
     raw += kSectionRowHeight + notes * kNoteRowHeight;
   }
 
-  final overflow = math.max(0.0, raw - availH);
+  // 滚动量封顶在"把最后一条滚到顶"：树干很短时（帧序列前段树很小）
+  // availH 可能小于一条的高度，不封顶会把仅有的那条也滚出视野
+  final overflow = math.min(
+    math.max(0.0, raw - availH),
+    rawTops.isEmpty ? 0.0 : rawTops.last,
+  );
   final scroll = (sectionScrolls[chapter.id] ?? overflow).clamp(0.0, overflow);
   final fixedTipX = math.min(size.width - 96, cx + dispW * 0.19);
   final sections = <VineBranch>[];
@@ -553,7 +536,7 @@ MagicTreeLayout _layoutWholeTree(
   Map<int, double> sectionScrolls,
   Map<int, int> sectionNoteCounts,
 ) {
-  final imageRect = _frameRect(size, frame);
+  final imageRect = _frameRect(size);
   final dispW = imageRect.width;
   final dispH = imageRect.height;
 
@@ -653,7 +636,12 @@ MagicTreeLayout _layoutWholeTree(
       );
       raw += kSectionRowHeight + notes * kNoteRowHeight;
     }
-    final overflow = math.max(0.0, raw - availH);
+    // 滚动量封顶在"把最后一条滚到顶"：树干很短时（帧序列前段树很小）
+    // availH 可能小于一条的高度，不封顶会把仅有的那条也滚出视野
+    final overflow = math.min(
+      math.max(0.0, raw - availH),
+      rawTops.isEmpty ? 0.0 : rawTops.last,
+    );
     scrollMax[chapter.id] = overflow;
     final scroll = (sectionScrolls[chapter.id] ?? overflow).clamp(
       0.0,
@@ -663,7 +651,9 @@ MagicTreeLayout _layoutWholeTree(
 
     for (var j = 0; j < sectionList.length; j++) {
       final sy = contentTop + rawTops[j] + kSectionRowHeight / 2 - scroll;
-      if (sy < contentTop - kSectionRowHeight || sy > labelBottom) {
+      // 下界钉在本章带顶：树干短时（帧序列前段树很小）原来那 46px 容差
+      // 会让滚动中的节冒到章带之上，看着就是"节飘到上一章去了"
+      if (sy < bandTop || sy > labelBottom) {
         continue;
       }
       final sRoot = Offset(cx + halfWAt(sy) - dispW * 0.006, sy);
@@ -723,7 +713,7 @@ MagicTreeLayout _layoutWindow(
 
   // 方案 B 止血：画幅由 _baseFrameHeight 按画布尺寸算死，**与章数无关**，
   // 不再按章数拉伸或切片平铺；树背景也不再平移（三种布局共用同一基准）。
-  final imageRect = _frameRect(size, frame);
+  final imageRect = _frameRect(size);
   final dispW = imageRect.width;
   final dispH = imageRect.height;
 
@@ -837,7 +827,12 @@ MagicTreeLayout _layoutWindow(
       );
       raw += kSectionRowHeight + notes * kNoteRowHeight;
     }
-    final overflow = math.max(0.0, raw - availH);
+    // 滚动量封顶在"把最后一条滚到顶"：树干很短时（帧序列前段树很小）
+    // availH 可能小于一条的高度，不封顶会把仅有的那条也滚出视野
+    final overflow = math.min(
+      math.max(0.0, raw - availH),
+      rawTops.isEmpty ? 0.0 : rawTops.last,
+    );
     scrollMax[chapter.id] = overflow;
     // 默认自动滚到末尾：小节从上往下生长，放不下时隐藏最早的小节。
     final scroll = (sectionScrolls[chapter.id] ?? overflow).clamp(

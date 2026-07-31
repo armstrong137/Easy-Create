@@ -249,9 +249,11 @@ void main() {
       fakeChapter(2, '第一章', 0),
     ]);
 
-    // 章序自上而下：引子在上、第一章在下 → 双击右侧靠下挂到第一章
+    // 章序自上而下：引子在上、第一章在下 → 双击右侧靠下挂到第一章。
+    // 取 0.93：帧序列素材在 2 个节点时树很小、章带集中在画面下部，
+    // 落在所有带之下会走"更下方归最后一章"的兜底，正是要验的语义。
     final size = tester.getSize(find.byType(Scaffold));
-    await doubleTapAt(tester, Offset(size.width * 0.85, size.height * 0.78));
+    await doubleTapAt(tester, Offset(size.width * 0.72, size.height * 0.93));
 
     final sections = await db.select(db.sections).get();
     expect(sections.single.chapterId, 2, reason: '靠下高度对应最后一章（第一章）');
