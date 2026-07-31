@@ -57,6 +57,36 @@ def matting_halo_ratio(arr: np.ndarray) -> float:
     return float(np.count_nonzero(halo) / np.count_nonzero(fg))
 
 
+def reveal_overlap_diff(final_arr: np.ndarray, arr: np.ndarray) -> float:
+    fg = foreground_mask(arr)
+    final_fg = foreground_mask(final_arr)
+    box = bbox(fg)
+    if not box:
+        return 255.0
+    _, y0, _, _ = box
+    yy = np.arange(arr.shape[0])[:, None]
+    overlap = fg & final_fg & (yy >= y0)
+    if np.count_nonzero(overlap) < 100:
+        return 255.0
+    diff = np.abs(final_arr.astype(np.float32) - arr.astype(np.float32))
+    return float(np.mean(diff[overlap]))
+
+
+def crown_green_coverage(arr: np.ndarray) -> float:
+    fg = foreground_mask(arr)
+    box = bbox(fg)
+    if not box:
+        return 0.0
+    x0, y0, x1, y1 = box
+    height = max(1, y1 - y0 + 1)
+    band_bottom = min(arr.shape[0], y0 + max(20, int(round(height * 0.15))))
+    content = fg[y0:band_bottom, x0 : x1 + 1]
+    if np.count_nonzero(content) < 20:
+        return 0.0
+    green = green_mask(arr)[y0:band_bottom, x0 : x1 + 1]
+    return float(np.count_nonzero(green & content) / np.count_nonzero(content))
+
+
 def green_mask(arr: np.ndarray) -> np.ndarray:
     r = arr[:, :, 0].astype(np.int16)
     g = arr[:, :, 1].astype(np.int16)
@@ -206,6 +236,8 @@ def main() -> None:
     parser.add_argument("--max-matting-halo-ratio", type=float, default=0.005)
     parser.add_argument("--min-distinct-neighbor-diff", type=float, default=0.10)
     parser.add_argument("--max-content-top-regression", type=float, default=0.001)
+    parser.add_argument("--min-non-reveal-overlap-diff", type=float, default=20.0)
+    parser.add_argument("--min-crown-green-coverage", type=float, default=0.30)
     args = parser.parse_args()
 
     paths = load_frames(args.frame_dir)
@@ -275,6 +307,12 @@ def main() -> None:
     ]
     crown_saturation_ratios = [v[0] for v in crown_saturation]
     crown_gray_ratios = [v[1] for v in crown_saturation]
+    reveal_check_indexes = [7, 9, 13, 17, 21, 25]
+    non_reveal_diffs = {
+        f"f{i + 1:02d}": reveal_overlap_diff(arrays[-1], arrays[i])
+        for i in reveal_check_indexes
+    }
+    crown_green_coverages = [crown_green_coverage(arr) for arr in arrays]
 
     top_regressions = [
         i + 1
@@ -331,6 +369,10 @@ def main() -> None:
         "matting_halo_ratio": max(matting_halos) <= args.max_matting_halo_ratio,
         "content_top_monotonic": not content_top_regressions,
         "distinct_neighbor_frames": min(diffs) >= args.min_distinct_neighbor_diff,
+        "not_reveal_sequence": min(non_reveal_diffs.values())
+        >= args.min_non_reveal_overlap_diff,
+        "crown_present_every_frame": min(crown_green_coverages)
+        >= args.min_crown_green_coverage,
         "format_and_size": len(sizes) == 1
         and sizes[0] == (941, 1672)
         and paths[0].suffix.lower() == ".jpg",
@@ -373,6 +415,14 @@ def main() -> None:
         "crown_gray_ratio_values": [round(v, 4) for v in crown_gray_ratios],
         "matting_halo_ratio_max": round(max(matting_halos), 4),
         "matting_halo_ratio_values": [round(v, 4) for v in matting_halos],
+        "non_reveal_overlap_diff_min": round(min(non_reveal_diffs.values()), 3),
+        "non_reveal_overlap_diff_values": {
+            k: round(v, 3) for k, v in non_reveal_diffs.items()
+        },
+        "crown_green_coverage_min": round(min(crown_green_coverages), 4),
+        "crown_green_coverage_values": [
+            round(v, 4) for v in crown_green_coverages
+        ],
         "checks": pass_checks,
         "pass": all(pass_checks.values()),
     }
