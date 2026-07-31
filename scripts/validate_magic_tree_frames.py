@@ -47,6 +47,16 @@ def foreground_mask(arr: np.ndarray) -> np.ndarray:
     return diff > 34
 
 
+def matting_halo_ratio(arr: np.ndarray) -> float:
+    fg = foreground_mask(arr)
+    if not np.any(fg):
+        return 0.0
+    sat = saturation(arr)
+    value = arr.astype(np.float32).max(axis=2)
+    halo = fg & (sat < 45) & (value > 195)
+    return float(np.count_nonzero(halo) / np.count_nonzero(fg))
+
+
 def green_mask(arr: np.ndarray) -> np.ndarray:
     r = arr[:, :, 0].astype(np.int16)
     g = arr[:, :, 1].astype(np.int16)
@@ -193,6 +203,9 @@ def main() -> None:
     parser.add_argument("--max-brightness-over-bg", type=float, default=10.0)
     parser.add_argument("--min-crown-saturation-ratio", type=float, default=0.85)
     parser.add_argument("--max-crown-gray-ratio", type=float, default=0.20)
+    parser.add_argument("--max-matting-halo-ratio", type=float, default=0.005)
+    parser.add_argument("--min-distinct-neighbor-diff", type=float, default=0.10)
+    parser.add_argument("--max-content-top-regression", type=float, default=0.001)
     args = parser.parse_args()
 
     paths = load_frames(args.frame_dir)
@@ -214,6 +227,8 @@ def main() -> None:
     bg_means: list[list[float]] = []
     brightness_over_bg: list[float] = []
     green_boxes: list[tuple[int, int, int, int] | None] = []
+    matting_halos: list[float] = []
+    content_tops: list[float] = []
 
     for arr in arrays:
         fg = foreground_mask(arr)
@@ -225,6 +240,7 @@ def main() -> None:
         h, w = arr.shape[:2]
         green_boxes.append(gb)
         content_boxes.append(fb if fb else (0, 0, 0, 0))
+        content_tops.append((fb[1] / h) if fb else 1.0)
         plant_tops.append((gb[1] / h) if gb else 1.0)
         if sb:
             soil_widths.append((sb[2] - sb[0] + 1) / w)
@@ -247,6 +263,7 @@ def main() -> None:
         )
         bg_means.append([round(float(v), 2) for v in bg_sample.mean(axis=0)])
         brightness_over_bg.append(float(np.max(luminance(arr)) - BG_LUMA))
+        matting_halos.append(matting_halo_ratio(arr))
 
     crown_smears = [
         crown_smear_ratio(arr, plant_top)
@@ -263,6 +280,11 @@ def main() -> None:
         i + 1
         for i in range(len(plant_tops) - 1)
         if plant_tops[i + 1] > plant_tops[i] + 0.006
+    ]
+    content_top_regressions = [
+        i + 1
+        for i in range(len(content_tops) - 1)
+        if content_tops[i + 1] > content_tops[i] + args.max_content_top_regression
     ]
     soil_width_drift = max(soil_widths) - min(soil_widths)
     soil_bottom_drift = max(soil_bottoms) - min(soil_bottoms)
@@ -306,6 +328,9 @@ def main() -> None:
         "crown_saturation_ratio": min(crown_saturation_ratios)
         >= args.min_crown_saturation_ratio,
         "crown_gray_ratio": max(crown_gray_ratios) <= args.max_crown_gray_ratio,
+        "matting_halo_ratio": max(matting_halos) <= args.max_matting_halo_ratio,
+        "content_top_monotonic": not content_top_regressions,
+        "distinct_neighbor_frames": min(diffs) >= args.min_distinct_neighbor_diff,
         "format_and_size": len(sizes) == 1
         and sizes[0] == (941, 1672)
         and paths[0].suffix.lower() == ".jpg",
@@ -326,6 +351,8 @@ def main() -> None:
         "leaf_diameter_medians": [None if v is None else round(v, 3) for v in leaf_medians],
         "leaf_component_counts": leaf_counts,
         "leaf_diameter_drift": round(leaf_drift, 3),
+        "content_top_values": [round(v, 4) for v in content_tops],
+        "content_top_regressions": content_top_regressions,
         "plant_top_regressions": top_regressions,
         "soil_width_min": round(min(soil_widths), 4),
         "soil_width_max": round(max(soil_widths), 4),
@@ -344,6 +371,8 @@ def main() -> None:
         ],
         "crown_gray_ratio_max": round(max(crown_gray_ratios), 4),
         "crown_gray_ratio_values": [round(v, 4) for v in crown_gray_ratios],
+        "matting_halo_ratio_max": round(max(matting_halos), 4),
+        "matting_halo_ratio_values": [round(v, 4) for v in matting_halos],
         "checks": pass_checks,
         "pass": all(pass_checks.values()),
     }

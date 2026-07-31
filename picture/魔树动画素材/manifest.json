@@ -1,5 +1,5 @@
 {
-  "version": "magic_tree_growth_highres_clean_crown_f06_f09_v4",
+  "version": "magic_tree_growth_highres_dehalo_monotonic_distinct_v5",
   "source": "C:\\Users\\yunhao.zhou1\\Desktop\\Easy Create\\picture\\魔树动画素材\\approved_highres_reference.png",
   "frame_count": 28,
   "size": [
@@ -8,19 +8,23 @@
   ],
   "format": "JPEG q95",
   "background": "#FDF6EC",
-  "method": "fixed soil layer; full-size plant revealed upward; f06-f09 crown cut line moved to real vine texture gaps by removing the bad hard crown pixels only; no object zoom, no tiling, no slicing, no vertical stretch",
+  "method": "fixed soil layer; full-size plant revealed upward; final JPEG pixels decontaminated to remove low-saturation near-white matting halo; f02, f06, and f28 adjusted with real neighboring/reference vine pixels to keep every frame distinct and content-top monotonic; no object zoom, no tiling, no slicing, no vertical stretch",
   "validation": {
     "pass": true,
-    "max_neighbor_diff": 4.889,
-    "scaled_final_diff_min": 54.849,
-    "width_height_growth_ratio": 0.199,
-    "leaf_diameter_drift": 0.039,
+    "max_neighbor_diff": 4.918,
+    "min_neighbor_diff": 0.117,
+    "scaled_final_diff_min": 56.44,
+    "width_height_growth_ratio": 0.196,
+    "leaf_diameter_drift": 0.012,
     "soil_width_drift": 0.0,
     "soil_bottom_drift": 0.0,
-    "crown_smear_ratio_max": 0.0134,
+    "crown_smear_ratio_max": 0.0176,
     "brightness_over_bg_max": 8.234,
-    "crown_saturation_ratio_min": 1.0187,
-    "crown_gray_ratio_max": 0.0178
+    "crown_saturation_ratio_min": 1.0138,
+    "crown_gray_ratio_max": 0.0361,
+    "matting_halo_ratio_max": 0.002,
+    "content_top_regressions": [],
+    "distinct_neighbor_frames": true
   },
   "files": [
     "magic_tree_f01.jpg",
