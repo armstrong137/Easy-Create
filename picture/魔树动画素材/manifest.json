@@ -1,5 +1,5 @@
 {
-  "version": "magic_tree_growth_highres_clean_crown_saturation_v3",
+  "version": "magic_tree_growth_highres_clean_crown_f06_f09_v4",
   "source": "C:\\Users\\yunhao.zhou1\\Desktop\\Easy Create\\picture\\魔树动画素材\\approved_highres_reference.png",
   "frame_count": 28,
   "size": [
@@ -8,7 +8,7 @@
   ],
   "format": "JPEG q95",
   "background": "#FDF6EC",
-  "method": "fixed soil layer; full-size plant revealed upward; final JPEG crown pixels cleaned by saturation and near-background checks; no object zoom, no tiling, no slicing, no vertical stretch",
+  "method": "fixed soil layer; full-size plant revealed upward; f06-f09 crown cut line moved to real vine texture gaps by removing the bad hard crown pixels only; no object zoom, no tiling, no slicing, no vertical stretch",
   "validation": {
     "pass": true,
     "max_neighbor_diff": 4.889,
