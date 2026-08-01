@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-07-31 15:09:14　对应提交：6a6e885 之后的工作区状态
+> 生成时间：2026-08-01 09:14:02　对应提交：ead130d 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     110
-  Nodes:     4,141
-  Edges:     19,287
+  Files:     111
+  Nodes:     4,168
+  Edges:     19,338
   DB Size:   21.13 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,568
-  function        1,399
+  function        1,411
   class           467
-  import          349
+  import          356
   constant        210
-  file            102
-  variable        29
+  file            103
+  variable        36
   type_alias      12
   enum_member     2
   namespace       2
@@ -38,8 +38,8 @@ Files by Language:
   kotlin          8
   xml             6
   properties      4
+  python          4
   yaml            4
-  python          3
   swift           3
   typescript      2
   c               1
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (110 files):
+Project Structure (111 files):
 
 |-- .agents
 |   `-- skills
@@ -196,6 +196,7 @@ Project Structure (110 files):
 |-- scripts
 |   |-- capture_standins.py (python, 11 symbols)
 |   |-- e2e_probe.dart (dart, 12 symbols)
+|   |-- magic_tree_img2img_pipeline.py (python, 27 symbols)
 |   |-- serve_web.dart (dart, 4 symbols)
 |   |-- square_standins.py (python, 11 symbols)
 |   `-- validate_magic_tree_frames.py (python, 27 symbols)
