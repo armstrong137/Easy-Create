@@ -13,6 +13,8 @@ import 'package:novel_app/presentation/home/home_page.dart'
     show inspirationPoolProvider;
 import 'package:novel_app/presentation/outline/magic_carpet.dart'
     show CarpetOverlay;
+import 'package:novel_app/presentation/outline/magic_tree_model.dart'
+    show kMagicTreeArtEnabled;
 import 'package:novel_app/presentation/outline/outline_page.dart';
 import 'package:novel_app/presentation/section/section_page.dart'
     show sectionCardsProvider;
@@ -302,7 +304,12 @@ void main() {
       for (var i = 1; i <= 4; i++) fakeChapter(i, '第$i章', 0),
     ]);
 
-    expect(find.byKey(const Key('魔树完整图')), findsOneWidget);
+    // 过渡期素材停用时整个组件不建（见 kMagicTreeArtEnabled），
+    // 素材恢复后这条自动变回"必须有一张完整图"
+    expect(
+      find.byKey(const Key('魔树完整图')),
+      kMagicTreeArtEnabled ? findsOneWidget : findsNothing,
+    );
     expect(find.byKey(const Key('魔树顶段')), findsNothing);
     expect(find.byKey(const Key('魔树中段裁剪')), findsNothing);
     expect(find.byKey(const Key('魔树固定土壤层')), findsNothing);

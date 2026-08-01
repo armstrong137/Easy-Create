@@ -875,8 +875,7 @@ class CarpetItem extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         textAlign: big ? TextAlign.center : TextAlign.start,
         style: TextStyle(
-          fontFamily:
-              contentFontFamily(inspiration.content) ?? 'LXGWWenKai',
+          fontFamily: contentFontFamily(inspiration.content) ?? 'LXGWWenKai',
           fontStyle: contentUsesBrandFont(inspiration.content)
               ? FontStyle.italic
               : FontStyle.normal,

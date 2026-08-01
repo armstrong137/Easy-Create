@@ -19,6 +19,17 @@ const kParchment = Color(0xFFFDF6EC);
 const kStageImageWidth = 941.0;
 const kStageImageHeight = 1672.0;
 
+/// **过渡期开关：暂不绘制魔树素材**（用户 2026-08-01 定稿）。
+///
+/// 现有 28 帧是"一株成熟大树自下而上揭开"，早期帧只有下半截、没有树冠，
+/// 与"完整小树苗长成完整大树"的目标不符（验证器 `not_reveal_sequence`
+/// 实测重叠差仅 0.826，阈值 20）。在 img2img 链式素材到位前先不画，
+/// 免得一直看到错的形态。
+///
+/// **布局几何照常计算**：枝丫锚点、章带、点击热区、标签全部不受影响，
+/// 只是不画那张底图。新素材到位后把这里改回 true 即可，无其它改动。
+const kMagicTreeArtEnabled = false;
+
 /// 生长帧序列目录
 const kTreeFrameDir = 'assets/textures/tree_frames';
 

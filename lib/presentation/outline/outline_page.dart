@@ -822,8 +822,10 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                         builder: (context, candidates, rejected) => Stack(
                           key: _treeKey,
                           children: [
-                            // 魔树本体：方案 B 止血，窗口模式只用完整图，禁止切片平铺。
-                            _MagicTreeImage(layout: layout),
+                            // 魔树本体。过渡期整个不建（见 kMagicTreeArtEnabled）：
+                            // 布局几何、枝丫锚点、热区照常，只是不画底图
+                            if (kMagicTreeArtEnabled)
+                              _MagicTreeImage(layout: layout),
                             // 左半空白：双击长章枝（用户定稿：改双击避免误建）；
                             // 纵向拖动滚章节（树背景跟随）
                             Positioned(

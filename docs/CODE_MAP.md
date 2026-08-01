@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-08-01 09:14:02　对应提交：ead130d 之后的工作区状态
+> 生成时间：2026-08-01 16:29:17　对应提交：265aac3 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,8 +13,8 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     111
-  Nodes:     4,168
-  Edges:     19,338
+  Nodes:     4,170
+  Edges:     19,341
   DB Size:   21.13 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
@@ -23,8 +23,8 @@ Nodes by Kind:
   method          1,568
   function        1,411
   class           467
-  import          356
-  constant        210
+  import          357
+  constant        211
   file            103
   variable        36
   type_alias      12
@@ -173,7 +173,7 @@ Project Structure (111 files):
 |   |   |-- outline
 |   |   |   |-- label_layout.dart (dart, 15 symbols)
 |   |   |   |-- magic_carpet.dart (dart, 67 symbols)
-|   |   |   |-- magic_tree_model.dart (dart, 58 symbols)
+|   |   |   |-- magic_tree_model.dart (dart, 59 symbols)
 |   |   |   |-- outline_page.dart (dart, 66 symbols)
 |   |   |   `-- scroll_carpet.dart (dart, 38 symbols)
 |   |   |-- section
@@ -215,7 +215,7 @@ Project Structure (111 files):
 |   |   |-- magic_carpet_test.dart (dart, 18 symbols)
 |   |   |-- magic_tree_model_test.dart (dart, 20 symbols)
 |   |   |-- orbiting_inspirations_test.dart (dart, 11 symbols)
-|   |   |-- outline_page_test.dart (dart, 27 symbols)
+|   |   |-- outline_page_test.dart (dart, 28 symbols)
 |   |   |-- planet_scene_touch_config_test.dart (dart, 8 symbols)
 |   |   |-- quick_capture_test.dart (dart, 16 symbols)
 |   |   |-- section_page_test.dart (dart, 24 symbols)
