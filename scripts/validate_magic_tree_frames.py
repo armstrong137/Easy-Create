@@ -307,7 +307,19 @@ def main() -> None:
     ]
     crown_saturation_ratios = [v[0] for v in crown_saturation]
     crown_gray_ratios = [v[1] for v in crown_saturation]
-    reveal_check_indexes = [7, 9, 13, 17, 21, 25]
+    # 只在"植株还明显没长完"的帧上问"这是不是揭开"。
+    # 快长完的帧和末帧本来就该长得几乎一样（实测合格序列 f26 仅 19.3，
+    # 而同一序列 f08~f18 高达 51~60），拿它们一起取最小值等于误判。
+    # 判据：内容高度 ≤ 末帧的 80% 才纳入。
+    reveal_heights = [b[3] - b[1] + 1 for b in content_boxes]
+    final_content_height = max(1.0, float(reveal_heights[-1]))
+    reveal_check_indexes = [
+        i
+        for i in range(len(arrays) - 1)
+        if reveal_heights[i] <= 0.80 * final_content_height
+    ]
+    if not reveal_check_indexes:
+        reveal_check_indexes = [len(arrays) // 3]
     non_reveal_diffs = {
         f"f{i + 1:02d}": reveal_overlap_diff(arrays[-1], arrays[i])
         for i in reveal_check_indexes

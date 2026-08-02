@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-08-01 16:29:17　对应提交：265aac3 之后的工作区状态
+> 生成时间：2026-08-01 21:23:30　对应提交：3761c8d 之后的工作区状态
 
 ## 一、索引状态
 
@@ -15,7 +15,7 @@ Index Statistics:
   Files:     111
   Nodes:     4,170
   Edges:     19,341
-  DB Size:   21.13 MB
+  DB Size:   21.14 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
