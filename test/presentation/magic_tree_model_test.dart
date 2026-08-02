@@ -110,7 +110,7 @@ void main() {
   });
 
   test('帧号映射：每加一个节点都前进，单调不退，到末帧封顶', () {
-    // 从 f08 起用（前 7 帧内容太小、且只是"根伏在土堆上"），之后一节点一帧。
+    // 候选素材 28 帧全部可用，一节点一帧。
     int frameOf(int nodes) => layoutMagicTree(
       size: size,
       outline: nodes == 0 ? const [] : [chapterWith(1, nodes - 1)],
@@ -139,14 +139,21 @@ void main() {
     for (final n in [1, 3, 8, 15, 20, 40]) {
       expect(at(n).imageRect, base, reason: '$n 节点的画幅必须与首帧一致');
     }
+    // 树高在序列后段会到顶（素材靠加密枝叶而非继续拔高表达成长），
+    // 所以硬要求是"全程不降"，另加"前段必须实打实地变高"。
     double onScreen(int n) => at(n).soilCrestY - at(n).plantTopY;
     for (var n = 1; n <= kTreeFrameLast - kTreeFrameFirst; n++) {
       expect(
         onScreen(n),
-        greaterThan(onScreen(n - 1)),
-        reason: '第 $n 个节点树在屏上必须比上一步高',
+        greaterThanOrEqualTo(onScreen(n - 1) - 0.001),
+        reason: '第 $n 个节点树在屏上不得变矮',
       );
     }
+    expect(
+      onScreen(10),
+      greaterThan(onScreen(0) * 1.2),
+      reason: '前十个节点必须看得出明显长高',
+    );
     for (var n = 0; n <= 40; n++) {
       final l = at(n);
       expect(l.plantTopY, greaterThanOrEqualTo(0), reason: '$n 节点：树冠出画布了');
