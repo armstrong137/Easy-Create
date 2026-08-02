@@ -75,6 +75,11 @@ def denoise_strength(index: int) -> float:
     return 0.12
 
 
+# 链式生成全程用同一颗种子：种子逐帧变动会在低重绘之外额外引入随机漂移，
+# 而我们要的恰恰是"只在上一帧上小改"。
+CHAIN_SEED = 860731
+
+
 def build_recipe(frame_dir: Path, reference: Path | None) -> dict:
     frames = []
     for index in range(1, FRAME_COUNT + 1):
@@ -95,7 +100,7 @@ def build_recipe(frame_dir: Path, reference: Path | None) -> dict:
                 "format": "jpeg",
                 "jpeg_quality": 90,
                 "denoise_strength": denoise_strength(index),
-                "seed": 860731 + index,
+                "seed": CHAIN_SEED,
                 "prompt": positive_prompt(index),
                 "negative_prompt": negative_prompt(),
                 "must_keep": [
@@ -126,6 +131,20 @@ def build_recipe(frame_dir: Path, reference: Path | None) -> dict:
 
 
 def write_recipe(args: argparse.Namespace) -> int:
+    # f01 没有上一帧可用，必须给一张起始参考图；否则 provider 会在第一帧
+    # 拿到空输入直接失败，整条链断在第一步。
+    if not args.reference:
+        print(
+            "缺少 --reference：第 1 帧没有上一帧可用，必须指定一张起始参考图。"
+            " 这张图应当是一株完整的小树苗（有根、有干、有小树冠，"
+            "立在与目标一致的固定土堆上、背景 #FDF6EC），而不是成熟大树。",
+            file=sys.stderr,
+        )
+        return 2
+    if not args.reference.exists():
+        print(f"起始参考图不存在: {args.reference}", file=sys.stderr)
+        return 2
+
     recipe = build_recipe(args.frame_dir, args.reference)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(recipe, ensure_ascii=False, indent=2), encoding="utf-8")
