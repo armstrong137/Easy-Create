@@ -52,7 +52,7 @@ int treeFrameFor(int totalNodes) =>
     (kTreeFrameFirst + totalNodes).clamp(kTreeFrameFirst, kTreeFrameLast);
 
 String treeFrameAsset(int frame) =>
-    '$kTreeFrameDir/magic_tree_f${frame.toString().padLeft(2, '0')}.jpg';
+    '$kTreeFrameDir/magic_tree_f${frame.toString().padLeft(2, '0')}.png';
 
 /// 土堆冒头处（实测：土色像素 >60/行 的最高行）。**逐帧完全一致**
 /// （y>0.90 的土堆区各帧与首帧平均差仅 0.27~0.57），所以是常数而非逐帧表。
