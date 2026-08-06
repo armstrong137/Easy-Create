@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 
 import 'package:novel_app/data/database/app_database.dart';
 import 'package:novel_app/domain/entities/outline_chapter.dart';
@@ -181,6 +182,47 @@ void main() {
         File(treeFrameAsset(f)).existsSync(),
         isTrue,
         reason: '${treeFrameAsset(f)} 必须存在',
+      );
+    }
+  });
+
+  test('魔树 PNG 帧必须是真透明背景，不能残留矩形底片', () {
+    for (var f = kTreeFrameFirst; f <= kTreeFrameLast; f++) {
+      final file = File(treeFrameAsset(f));
+      expect(file.existsSync(), isTrue, reason: '第 $f 帧素材必须存在');
+      final image = img.decodePng(file.readAsBytesSync());
+      expect(image, isNotNull, reason: '第 $f 帧必须是可解码 PNG');
+
+      var opaqueBorderPixels = 0;
+      const border = 6;
+      for (var y = 0; y < image!.height; y++) {
+        for (var x = 0; x < image.width; x++) {
+          final inBorder =
+              x < border ||
+              y < border ||
+              x >= image.width - border ||
+              y >= image.height - border;
+          if (inBorder && image.getPixel(x, y).a > 8) {
+            opaqueBorderPixels++;
+          }
+        }
+      }
+      expect(
+        opaqueBorderPixels,
+        0,
+        reason: '第 $f 帧外框必须全透明，否则贴到星空上会出现矩形分割感',
+      );
+
+      final corners = [
+        image.getPixel(0, 0),
+        image.getPixel(image.width - 1, 0),
+        image.getPixel(0, image.height - 1),
+        image.getPixel(image.width - 1, image.height - 1),
+      ];
+      expect(
+        corners.every((p) => p.a <= 8),
+        isTrue,
+        reason: '第 $f 帧四角不能残留旧米白背景或抠图底片',
       );
     }
   });
