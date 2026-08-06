@@ -509,6 +509,15 @@ void main() {
     );
   });
 
+  test('新枝标签文字必须用裁剪显露，形成书写感', () {
+    final src = File(
+      'lib/presentation/outline/outline_page.dart',
+    ).readAsStringSync();
+    expect(src, contains('_labelReveal'));
+    expect(src, contains('widthFactor: reveal'));
+    expect(src, contains('alignment: Alignment.centerLeft'));
+  });
+
   testWidgets('窗口模式：右滑滚小节（树背景不动、章带内滚）', (tester) async {
     await seedNovel();
     await pumpOutline(tester, [

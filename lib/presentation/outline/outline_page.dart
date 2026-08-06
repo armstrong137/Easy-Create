@@ -518,6 +518,19 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     return ((_grow.value - 0.6) / 0.4).clamp(0.0, 1.0);
   }
 
+  /// 新枝标签文字从左到右显露，读作写在羊皮纸上。
+  double _labelReveal(PlacedLabel label) {
+    final g = _growing;
+    if (g == null) return 1;
+    final matches = g.isChapter
+        ? label.chapterId == g.id
+        : label.sectionId == g.id;
+    if (!matches) return 1;
+    return Curves.easeOutCubic.transform(
+      ((_grow.value - 0.58) / 0.42).clamp(0.0, 1.0),
+    );
+  }
+
   /// 卷须根部树皮压痕：先画它再画卷须，让枝根像被树干咬住。
   Widget _branchSocket(VineBranch b, Offset shift) {
     if (_growthFor(isChapter: b.isChapter, id: b.id) <= 0.02) {
@@ -725,6 +738,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   /// 一枚枝端标签胶囊（热区：长按菜单/双击；磁吸时染金放大）
   Widget _labelCapsule(PlacedLabel label, Offset shift) {
     final magnet = _isMagnet(label);
+    final reveal = _labelReveal(label);
     return Positioned.fromRect(
       rect: label.rect.inflate(13).shift(-shift),
       child: GestureDetector(
@@ -776,11 +790,20 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                 ),
                 child: SizedBox(
                   width: label.rect.width,
-                  child: Text(
-                    label.text,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: labelStyle(bold: label.bold, text: label.text),
+                  child: ClipRect(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      widthFactor: reveal,
+                      child: SizedBox(
+                        width: label.rect.width,
+                        child: Text(
+                          label.text,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: labelStyle(bold: label.bold, text: label.text),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
