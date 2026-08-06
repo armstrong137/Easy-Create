@@ -147,6 +147,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   Future<void> _addChapter(List<OutlineChapter> outline) async {
     HapticFeedback.lightImpact();
     final oldCount = outline.length;
+    setState(() => _branchOutlineOverride = outline);
     final chapter = await ref
         .read(novelRepositoryProvider)
         .createChapter(novelId: widget.novelId);
@@ -158,7 +159,6 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     );
 
     if (!mounted) return;
-    setState(() => _branchOutlineOverride = outline);
     await _awaitTrunk();
     if (!mounted) return;
     _holdGrow(isChapter: true, id: chapter.id);
@@ -191,13 +191,13 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     final chapterId = layout.chapterForY(y);
     if (chapterId == null) return;
     HapticFeedback.lightImpact();
+    setState(() => _branchOutlineOverride = outline);
     final section = await ref
         .read(novelRepositoryProvider)
         .createSection(chapterId: chapterId);
     // 新节加入后回到默认自动滚动：从第一节向下长，放不下时显示最新一段
     _sectionScrolls.remove(chapterId);
     if (!mounted) return;
-    setState(() => _branchOutlineOverride = outline);
     await _awaitTrunk();
     if (!mounted) return;
     _holdGrow(isChapter: false, id: section.id);

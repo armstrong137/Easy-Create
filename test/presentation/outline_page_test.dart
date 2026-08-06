@@ -205,6 +205,28 @@ void main() {
     expect(capsuleOpacity(), 1, reason: '树干动完后枝丫与标签才长出来');
   });
 
+  test('新增章/节：必须先冻结枝丫层，再写库触发大纲流', () {
+    final src = File(
+      'lib/presentation/outline/outline_page.dart',
+    ).readAsStringSync();
+
+    final freezeIndex = src.indexOf('_branchOutlineOverride = outline');
+    final createChapterIndex = src.indexOf('.createChapter(');
+    final createSectionIndex = src.indexOf('.createSection(');
+
+    expect(freezeIndex, isNonNegative, reason: '新增节点前必须冻结旧枝丫布局');
+    expect(
+      freezeIndex,
+      lessThan(createChapterIndex),
+      reason: '建章写库会先触发大纲流；冻结晚了就会先重排枝丫',
+    );
+    expect(
+      freezeIndex,
+      lessThan(createSectionIndex),
+      reason: '建节写库会先触发大纲流；冻结晚了就会先重排枝丫',
+    );
+  });
+
   testWidgets('已有一章时点左空白命名"第一章"', (tester) async {
     await seedNovel();
     await db
