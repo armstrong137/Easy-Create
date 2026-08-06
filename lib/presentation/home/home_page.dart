@@ -323,7 +323,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     // 信号**时的最后安全阀，硬上限内替身（当前页正确星球）一直盖着、耐心等待。
     _sceneFallbackTimer?.cancel();
     final deadline = DateTime.now().add(const Duration(seconds: 10));
-    _sceneFallbackTimer = Timer.periodic(const Duration(milliseconds: 700), (t) {
+    _sceneFallbackTimer = Timer.periodic(const Duration(milliseconds: 700), (
+      t,
+    ) {
       if (!mounted || _sharedSceneReady || _sharedSceneConfig == null) {
         t.cancel();
         _sceneFallbackTimer = null;
@@ -380,7 +382,9 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     final name = title?.trim() ?? '';
     if (name.isEmpty) return;
-    final novel = await ref.read(novelRepositoryProvider).createNovel(title: name);
+    final novel = await ref
+        .read(novelRepositoryProvider)
+        .createNovel(title: name);
     if (!mounted) return;
     if (novel == null) {
       // 输入书名期间被别处建满（并发兜底）
@@ -1021,12 +1025,32 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
     // 关键：**不**复位 _sceneReady。iframe 只是被隐藏+暂停（planet_scene_web），
     // 场景全程存活；返回时 _sceneReady 仍为真 → 替身恒透明 → 直接露出活场景，
     // 零重建、零 1 秒加载、零黑帧（旧实现每次导航都拆重建才需要复位+替身）。
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => OutlinePage(novelId: novel.id, title: novel.title),
-      ),
-    );
+    await Navigator.of(context).push(_outlinePageRoute(novel));
   }
+
+  Route<void> _outlinePageRoute(Novel novel) => PageRouteBuilder<void>(
+    transitionDuration: const Duration(milliseconds: 420),
+    reverseTransitionDuration: const Duration(milliseconds: 260),
+    pageBuilder: (_, _, _) =>
+        OutlinePage(novelId: novel.id, title: novel.title),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return FadeTransition(
+        opacity: curved,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.035),
+            end: Offset.zero,
+          ).animate(curved),
+          child: child,
+        ),
+      );
+    },
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -1074,10 +1098,7 @@ class _PlanetPageState extends ConsumerState<_PlanetPage>
         final standIn = AnimatedOpacity(
           duration: const Duration(milliseconds: 350),
           opacity: widget.sharedSceneReady ? 0 : 1,
-          child: _PlanetStandIn(
-            diameter: sceneDiameter,
-            planet: novel.planet,
-          ),
+          child: _PlanetStandIn(diameter: sceneDiameter, planet: novel.planet),
         );
         return SizedBox.square(
           key: _planetKey,

@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-08-06 17:02:08　对应提交：ccaeb60 之后的工作区状态
+> 生成时间：2026-08-06 17:08:02　对应提交：a498521 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,17 +13,17 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     112
-  Nodes:     4,204
-  Edges:     19,425
+  Nodes:     4,206
+  Edges:     19,431
   DB Size:   21.45 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,580
+  method          1,581
   function        1,417
   class           469
-  import          368
+  import          369
   constant        211
   file            104
   variable        38
@@ -164,7 +164,7 @@ Project Structure (112 files):
 |   |   |   |   |-- planet_scene_web.dart (dart, 19 symbols)
 |   |   |   |   |-- planet_scene.dart (dart, 6 symbols)
 |   |   |   |   `-- scene_server.dart (dart, 11 symbols)
-|   |   |   |-- home_page.dart (dart, 97 symbols)
+|   |   |   |-- home_page.dart (dart, 98 symbols)
 |   |   |   |-- orbiting_inspirations.dart (dart, 20 symbols)
 |   |   |   |-- planet_view.dart (dart, 19 symbols)
 |   |   |   |-- saturn_rings_painter.dart (dart, 12 symbols)
@@ -212,7 +212,7 @@ Project Structure (112 files):
 |   |   `-- repositories_test.dart (dart, 9 symbols)
 |   |-- presentation
 |   |   |-- home_loading_regression_test.dart (dart, 4 symbols)
-|   |   |-- home_page_test.dart (dart, 20 symbols)
+|   |   |-- home_page_test.dart (dart, 21 symbols)
 |   |   |-- magic_carpet_test.dart (dart, 18 symbols)
 |   |   |-- magic_tree_model_test.dart (dart, 21 symbols)
 |   |   |-- orbiting_inspirations_test.dart (dart, 11 symbols)

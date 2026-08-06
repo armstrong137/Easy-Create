@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter/cupertino.dart';
@@ -37,6 +38,19 @@ void main() {
     sortOrder: id,
     createdAt: DateTime(2026, 7, 1),
   );
+
+  test('进入大纲页必须使用连续转场，不再 MaterialPageRoute 硬切', () {
+    final src = File('lib/presentation/home/home_page.dart').readAsStringSync();
+    expect(src, contains('_outlinePageRoute'));
+    expect(src, contains('PageRouteBuilder'));
+    expect(
+      src,
+      isNot(
+        contains('MaterialPageRoute(\n        builder: (_) => OutlinePage'),
+      ),
+      reason: '星球进入大纲页不能硬切，否则首页 3D 场景与魔树页面割裂',
+    );
+  });
 
   Future<void> pumpApp(
     WidgetTester tester, {
