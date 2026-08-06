@@ -14,7 +14,7 @@ import 'package:novel_app/presentation/home/home_page.dart'
 import 'package:novel_app/presentation/outline/magic_carpet.dart'
     show CarpetOverlay;
 import 'package:novel_app/presentation/outline/magic_tree_model.dart'
-    show kMagicTreeArtEnabled;
+    show kGrowWipeDuration, kMagicTreeArtEnabled;
 import 'package:novel_app/presentation/outline/outline_page.dart';
 import 'package:novel_app/presentation/section/section_page.dart'
     show sectionCardsProvider;
@@ -203,6 +203,59 @@ void main() {
     await tester.pump(const Duration(milliseconds: 700));
     expect(find.byKey(const Key('章热区_1')), findsOneWidget);
     expect(capsuleOpacity(), 1, reason: '树干动完后枝丫与标签才长出来');
+  });
+
+  testWidgets('加章：大纲流晚到时，旧枝不得抢在树干换帧前跳位', (tester) async {
+    await seedNovel();
+    await db
+        .into(db.chapters)
+        .insert(
+          ChaptersCompanion.insert(novelId: 1, title: '引子', sortOrder: 0),
+        );
+
+    final outline = StreamController<List<OutlineChapter>>();
+    addTearDown(outline.close);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          outlineProvider.overrideWith((ref, novelId) => outline.stream),
+          sectionInspirationsProvider.overrideWith(
+            (ref, novelId) => Stream.value(const {}),
+          ),
+          chapterInspirationsProvider.overrideWith(
+            (ref, novelId) => Stream.value(const {}),
+          ),
+          inspirationPoolProvider.overrideWith((ref) => Stream.value(const [])),
+          sectionCardsProvider.overrideWith(
+            (ref, sectionId) => Stream.value(const []),
+          ),
+        ],
+        child: MaterialApp(
+          builder: (context, child) => CarpetOverlay(child: child!),
+          home: const OutlinePage(novelId: 1, title: '测试小说'),
+        ),
+      ),
+    );
+    outline.add([fakeChapter(1, '引子', 0)]);
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final oldCenter = tester.getCenter(find.byKey(const Key('章热区_1')));
+    final size = tester.getSize(find.byType(Scaffold));
+    await doubleTapAt(tester, Offset(size.width * 0.05, size.height * 0.75));
+
+    // 模拟真机上大纲流/图片解码晚于固定等待：如果等待不是从新树帧真正到达后开始，
+    // 旧枝会在新大纲一推来时立刻按新布局跳位，而魔树换帧擦除才刚开始。
+    await tester.pump(kGrowWipeDuration + const Duration(milliseconds: 180));
+    outline.add([fakeChapter(1, '引子', 0), fakeChapter(2, '第一章', 0)]);
+    await tester.pump(const Duration(milliseconds: 16));
+
+    final stillCenter = tester.getCenter(find.byKey(const Key('章热区_1')));
+    expect(
+      (stillCenter - oldCenter).distance,
+      lessThan(1),
+      reason: '新大纲晚到时，旧枝必须继续冻结在旧位置，等树干实际换帧完成后再重排',
+    );
   });
 
   test('新增章/节：必须先冻结枝丫层，再写库触发大纲流', () {

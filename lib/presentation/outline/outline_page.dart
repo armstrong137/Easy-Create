@@ -94,6 +94,11 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   /// 树干生长期间枝丫层沿用旧大纲，避免新节点一入库就带着旧枝/标签抢先重排。
   List<OutlineChapter>? _branchOutlineOverride;
 
+  /// 正在等待进入页面的新树节点数。固定计时必须从新大纲真正 build 后开始，
+  /// 否则数据库流晚到时，枝丫层会先解冻并抢在树干换帧前跳位。
+  int? _trunkAwaitTargetNodes;
+  Completer<void>? _trunkOutlineReady;
+
   /// 最近一次布局（手势换算用）
   MagicTreeLayout? _layout;
   Size _bodySize = Size.zero;
@@ -105,9 +110,30 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   void dispose() {
     carpetTucked.value = false; // 离开大纲页恢复完整魔毯球
     _trunkWait?.cancel();
+    final ready = _trunkOutlineReady;
+    if (ready != null && !ready.isCompleted) ready.complete();
     _grow.dispose();
     _camera.dispose();
     super.dispose();
+  }
+
+  void _beginAwaitingTrunkOutline(int targetNodes) {
+    _trunkAwaitTargetNodes = targetNodes;
+    _trunkOutlineReady = Completer<void>();
+  }
+
+  void _markTrunkOutlineReady(List<OutlineChapter> outline) {
+    final target = _trunkAwaitTargetNodes;
+    final ready = _trunkOutlineReady;
+    if (target == null || ready == null || ready.isCompleted) return;
+    if (totalTreeNodes(outline) < target) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || ready.isCompleted || _trunkAwaitTargetNodes != target) {
+        return;
+      }
+      ready.complete();
+    });
   }
 
   /// 给新枝占位并**先藏起来**：`_growing` 一置上，该枝的卷须与标签就按
@@ -147,6 +173,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   Future<void> _addChapter(List<OutlineChapter> outline) async {
     HapticFeedback.lightImpact();
     final oldCount = outline.length;
+    _beginAwaitingTrunkOutline(totalTreeNodes(outline) + 1);
     setState(() => _branchOutlineOverride = outline);
     final chapter = await ref
         .read(novelRepositoryProvider)
@@ -158,6 +185,8 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
       currentOffset: _camera.value,
     );
 
+    if (!mounted) return;
+    await _trunkOutlineReady?.future;
     if (!mounted) return;
     await _awaitTrunk();
     if (!mounted) return;
@@ -191,12 +220,15 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     final chapterId = layout.chapterForY(y);
     if (chapterId == null) return;
     HapticFeedback.lightImpact();
+    _beginAwaitingTrunkOutline(totalTreeNodes(outline) + 1);
     setState(() => _branchOutlineOverride = outline);
     final section = await ref
         .read(novelRepositoryProvider)
         .createSection(chapterId: chapterId);
     // 新节加入后回到默认自动滚动：从第一节向下长，放不下时显示最新一段
     _sectionScrolls.remove(chapterId);
+    if (!mounted) return;
+    await _trunkOutlineReady?.future;
     if (!mounted) return;
     await _awaitTrunk();
     if (!mounted) return;
@@ -743,6 +775,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     final outline =
         ref.watch(outlineProvider(widget.novelId)).value ??
         const <OutlineChapter>[];
+    _markTrunkOutlineReady(outline);
 
     // 章节多（>2 = 进入窗口模式）时把魔毯球缩到右边栏，避免挡住右上角小节标签；
     // 章少时恢复完整球。只在状态变化时设，避免每帧刷。
