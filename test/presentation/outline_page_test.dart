@@ -192,12 +192,16 @@ void main() {
         )
         .opacity;
 
-    expect(find.byKey(const Key('章热区_1')), findsOneWidget);
-    expect(capsuleOpacity(), 0, reason: '树干还在变，标签必须还看不见');
+    expect(
+      find.byKey(const Key('章热区_1')),
+      findsNothing,
+      reason: '树干还在变，新章枝丫和标签不得提前进入布局，否则旧枝会先被带着重排',
+    );
 
     // 擦除 1.1s + 余量播完 → 枝丫生长动画启动 → 后段标签浮现
     await tester.pump(const Duration(milliseconds: 1300));
     await tester.pump(const Duration(milliseconds: 700));
+    expect(find.byKey(const Key('章热区_1')), findsOneWidget);
     expect(capsuleOpacity(), 1, reason: '树干动完后枝丫与标签才长出来');
   });
 

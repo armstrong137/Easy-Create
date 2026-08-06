@@ -643,7 +643,7 @@ void main() {
     }
   });
 
-  test('新增章节动作计划：新章在窗口外时先定位，再长枝', () {
+  test('新增章节动作计划：先长枝，再镜头跟随', () {
     final plan = chapterGrowthMotionPlan(
       oldCount: 4,
       newCount: 5,
@@ -652,8 +652,8 @@ void main() {
 
     expect(plan.targetOffset, 3);
     expect(plan.steps, [
-      ChapterGrowthStep.panCamera,
       ChapterGrowthStep.growBranch,
+      ChapterGrowthStep.panCamera,
     ]);
     expect(plan.panDelay, const Duration(milliseconds: 620));
   });

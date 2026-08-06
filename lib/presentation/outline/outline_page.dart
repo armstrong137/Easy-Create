@@ -91,6 +91,9 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   /// 正在生长的枝（章/节分开记，避免章节撞 id）
   ({bool isChapter, int id})? _growing;
 
+  /// 树干生长期间枝丫层沿用旧大纲，避免新节点一入库就带着旧枝/标签抢先重排。
+  List<OutlineChapter>? _branchOutlineOverride;
+
   /// 最近一次布局（手势换算用）
   MagicTreeLayout? _layout;
   Size _bodySize = Size.zero;
@@ -111,7 +114,10 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   /// `_grow.value`（此刻为 0）渲染，即完全不可见。
   void _holdGrow({required bool isChapter, required int id}) {
     _grow.value = 0;
-    setState(() => _growing = (isChapter: isChapter, id: id));
+    setState(() {
+      _branchOutlineOverride = null;
+      _growing = (isChapter: isChapter, id: id);
+    });
   }
 
   Future<void> _playGrow() async {
@@ -152,8 +158,10 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     );
 
     if (!mounted) return;
-    _holdGrow(isChapter: true, id: chapter.id);
+    setState(() => _branchOutlineOverride = outline);
     await _awaitTrunk();
+    if (!mounted) return;
+    _holdGrow(isChapter: true, id: chapter.id);
 
     for (final step in motion.steps) {
       if (!mounted) return;
@@ -189,9 +197,10 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     // 新节加入后回到默认自动滚动：从第一节向下长，放不下时显示最新一段
     _sectionScrolls.remove(chapterId);
     if (!mounted) return;
-    _holdGrow(isChapter: false, id: section.id);
+    setState(() => _branchOutlineOverride = outline);
     await _awaitTrunk();
     if (!mounted) return;
+    _holdGrow(isChapter: false, id: section.id);
     await _playGrow();
   }
 
@@ -772,9 +781,17 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                   child: AnimatedBuilder(
                     animation: Listenable.merge([_grow, _camera]),
                     builder: (context, _) {
-                      final layout = layoutMagicTree(
+                      final treeLayout = layoutMagicTree(
                         size: size,
                         outline: outline,
+                        chapterOffset: _camera.value,
+                        sectionScrolls: _sectionScrolls,
+                        sectionNoteCounts: noteCounts,
+                      );
+                      final branchOutline = _branchOutlineOverride ?? outline;
+                      final layout = layoutMagicTree(
+                        size: size,
+                        outline: branchOutline,
                         chapterOffset: _camera.value,
                         sectionScrolls: _sectionScrolls,
                         sectionNoteCounts: noteCounts,
@@ -825,7 +842,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                             // 魔树本体。过渡期整个不建（见 kMagicTreeArtEnabled）：
                             // 布局几何、枝丫锚点、热区照常，只是不画底图
                             if (kMagicTreeArtEnabled)
-                              _MagicTreeImage(layout: layout),
+                              _MagicTreeImage(layout: treeLayout),
                             // 左半空白：双击长章枝（用户定稿：改双击避免误建）；
                             // 纵向拖动滚章节（树背景跟随）
                             Positioned(

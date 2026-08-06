@@ -159,7 +159,7 @@ ChapterGrowthMotionPlan chapterGrowthMotionPlan({
   return ChapterGrowthMotionPlan(
     targetOffset: target,
     steps: shouldPan
-        ? const [ChapterGrowthStep.panCamera, ChapterGrowthStep.growBranch]
+        ? const [ChapterGrowthStep.growBranch, ChapterGrowthStep.panCamera]
         : const [ChapterGrowthStep.growBranch],
     panDelay: const Duration(milliseconds: 620),
   );
