@@ -77,6 +77,7 @@ flutter:
     # 魔树连续生长序列（28 帧，2026-07-30 用户重生成；代码只用 f05..f26，
     # 见 magic_tree_model.dart 的 kTreeFrameFirst/Last——余下 6 帧素材修好即可启用）
     - assets/textures/tree_frames/
+    - assets/textures/tree_frames_v3/
     # 3D 星球场景（three.js 页面 + 地球多层纹理，经回环服务供给 WebView）
     - assets/planet_scene/
     - assets/planet_scene/textures/

@@ -174,7 +174,7 @@ void main() {
       expect(l.trunkRect.height, greaterThan(0), reason: '第 $f 帧缺茎干轮廓');
       expect(
         treeFrameAsset(f),
-        endsWith('.png'),
+        allOf(contains('tree_frames_v3/'), endsWith('.png')),
         reason: '魔树帧必须用 PNG，避免 JPG 米白底压缩噪点形成矩形边',
       );
       expect(

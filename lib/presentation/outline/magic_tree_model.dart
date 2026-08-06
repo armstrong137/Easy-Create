@@ -33,7 +33,7 @@ const kStageImageHeight = 1672.0;
 const kMagicTreeArtEnabled = true;
 
 /// 生长帧序列目录
-const kTreeFrameDir = 'assets/textures/tree_frames';
+const kTreeFrameDir = 'assets/textures/tree_frames_v3';
 
 /// 可用帧区间。**从 f08 起用**：f01~f07 的内容只占画幅 18.5%~28.5%，
 /// 而画幅是按末帧塞满屏定的，用它们时空书状态下树只有屏高 15%、上方一片空白
