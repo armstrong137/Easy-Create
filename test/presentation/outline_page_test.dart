@@ -483,6 +483,19 @@ void main() {
     expect(src, contains('widthFactor: growth'));
   });
 
+  test('卷须根部必须有树皮遮挡层，避免贴图硬贴在树干表面', () {
+    final src = File(
+      'lib/presentation/outline/outline_page.dart',
+    ).readAsStringSync();
+    expect(src, contains('_branchSocket'));
+    expect(src, contains('_BranchSocketPainter'));
+    expect(
+      src.indexOf('_branchSocket(b, Offset.zero)'),
+      lessThan(src.indexOf('_tendril(b, Offset.zero)')),
+      reason: '根部遮挡层必须先画，再画卷须，让卷须根部像被树皮压住',
+    );
+  });
+
   testWidgets('窗口模式：右滑滚小节（树背景不动、章带内滚）', (tester) async {
     await seedNovel();
     await pumpOutline(tester, [

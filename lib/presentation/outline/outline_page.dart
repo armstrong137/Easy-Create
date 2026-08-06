@@ -518,6 +518,23 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     return ((_grow.value - 0.6) / 0.4).clamp(0.0, 1.0);
   }
 
+  /// 卷须根部树皮压痕：先画它再画卷须，让枝根像被树干咬住。
+  Widget _branchSocket(VineBranch b, Offset shift) {
+    if (_growthFor(isChapter: b.isChapter, id: b.id) <= 0.02) {
+      return const SizedBox.shrink();
+    }
+    final center = b.root - shift;
+    final size = b.isChapter ? 30.0 : 24.0;
+    return Positioned.fromRect(
+      rect: Rect.fromCenter(
+        center: center,
+        width: size,
+        height: size * 0.72,
+      ),
+      child: CustomPaint(painter: _BranchSocketPainter(isChapter: b.isChapter)),
+    );
+  }
+
   /// 一根卷须精灵（shift：在裁剪层内渲染时的坐标平移）
   Widget _tendril(VineBranch b, Offset shift) {
     final fullRect = b.spriteRect.shift(-shift);
@@ -928,6 +945,19 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                               child: Stack(
                                 children: [
                                   for (final b in layout.chapters)
+                                    _branchSocket(b, Offset.zero),
+                                  for (final b in layout.sections)
+                                    if (b.clipChapterId == null &&
+                                        b.showTendril)
+                                      _branchSocket(b, Offset.zero),
+                                  for (final e in clipRects.entries)
+                                    clipped(e.key, [
+                                      for (final b in layout.sections)
+                                        if (b.clipChapterId == e.key &&
+                                            b.showTendril)
+                                          _branchSocket(b, e.value.topLeft),
+                                    ]),
+                                  for (final b in layout.chapters)
                                     _tendril(b, Offset.zero),
                                   for (final b in layout.sections)
                                     if (b.clipChapterId == null &&
@@ -1016,6 +1046,47 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     }
     magicCarpetKey.currentState?.collapse();
   }
+}
+
+class _BranchSocketPainter extends CustomPainter {
+  const _BranchSocketPainter({required this.isChapter});
+
+  final bool isChapter;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final center = rect.center;
+    final shadow = Paint()
+      ..shader = RadialGradient(
+        colors: const [
+          Color(0x88302310),
+          Color(0x442F4A19),
+          Color(0x00000000),
+        ],
+        stops: const [0.0, 0.48, 1.0],
+      ).createShader(rect);
+    canvas.drawOval(rect, shadow);
+
+    final slit = Paint()
+      ..color = const Color(0x8A1E2D12)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4
+      ..strokeCap = StrokeCap.round;
+    final path = Path()
+      ..moveTo(isChapter ? size.width * 0.68 : size.width * 0.32, center.dy)
+      ..quadraticBezierTo(
+        center.dx,
+        center.dy - size.height * 0.24,
+        isChapter ? size.width * 0.28 : size.width * 0.72,
+        center.dy + size.height * 0.08,
+      );
+    canvas.drawPath(path, slit);
+  }
+
+  @override
+  bool shouldRepaint(covariant _BranchSocketPainter oldDelegate) =>
+      oldDelegate.isChapter != isChapter;
 }
 
 /// 魔树画面 = 生长帧序列的一帧。
