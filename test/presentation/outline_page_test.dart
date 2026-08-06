@@ -280,6 +280,19 @@ void main() {
     );
   });
 
+  test('枝丫解冻必须等魔树图片换帧完成，不能只靠固定 Timer 猜时长', () {
+    final src = File(
+      'lib/presentation/outline/outline_page.dart',
+    ).readAsStringSync();
+
+    expect(src, contains('onFrameSettled'), reason: '魔树图层必须把真实换帧完成信号回传给页面');
+    expect(
+      src,
+      isNot(contains('_awaitTrunk()')),
+      reason: '固定等待无法覆盖图片解码/大纲流晚到，枝丫会再次抢先动',
+    );
+  });
+
   testWidgets('已有一章时点左空白命名"第一章"', (tester) async {
     await seedNovel();
     await db

@@ -94,10 +94,13 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   /// 树干生长期间枝丫层沿用旧大纲，避免新节点一入库就带着旧枝/标签抢先重排。
   List<OutlineChapter>? _branchOutlineOverride;
 
-  /// 正在等待进入页面的新树节点数。固定计时必须从新大纲真正 build 后开始，
-  /// 否则数据库流晚到时，枝丫层会先解冻并抢在树干换帧前跳位。
+  /// 正在等待进入页面的新树节点数。树干换帧必须等新大纲进入 build，
+  /// 再等魔树图层报告目标帧已经 settle，不能用固定 Timer 猜。
   int? _trunkAwaitTargetNodes;
+  int? _trunkAwaitTargetFrame;
+  int _settledTreeFrame = treeFrameFor(0);
   Completer<void>? _trunkOutlineReady;
+  Completer<void>? _trunkFrameReady;
 
   /// 最近一次布局（手势换算用）
   MagicTreeLayout? _layout;
@@ -109,9 +112,12 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   @override
   void dispose() {
     carpetTucked.value = false; // 离开大纲页恢复完整魔毯球
-    _trunkWait?.cancel();
-    final ready = _trunkOutlineReady;
-    if (ready != null && !ready.isCompleted) ready.complete();
+    final outlineReady = _trunkOutlineReady;
+    if (outlineReady != null && !outlineReady.isCompleted) {
+      outlineReady.complete();
+    }
+    final frameReady = _trunkFrameReady;
+    if (frameReady != null && !frameReady.isCompleted) frameReady.complete();
     _grow.dispose();
     _camera.dispose();
     super.dispose();
@@ -119,7 +125,9 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
 
   void _beginAwaitingTrunkOutline(int targetNodes) {
     _trunkAwaitTargetNodes = targetNodes;
+    _trunkAwaitTargetFrame = treeFrameFor(targetNodes);
     _trunkOutlineReady = Completer<void>();
+    _trunkFrameReady = Completer<void>();
   }
 
   void _markTrunkOutlineReady(List<OutlineChapter> outline) {
@@ -133,7 +141,25 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
         return;
       }
       ready.complete();
+      _completeTrunkFrameIfReady();
     });
+  }
+
+  void _markTreeFrameSettled(int frame) {
+    _settledTreeFrame = frame;
+    _completeTrunkFrameIfReady();
+  }
+
+  void _completeTrunkFrameIfReady() {
+    final targetFrame = _trunkAwaitTargetFrame;
+    final outlineReady = _trunkOutlineReady;
+    final frameReady = _trunkFrameReady;
+    if (targetFrame == null || frameReady == null || frameReady.isCompleted) {
+      return;
+    }
+    if (outlineReady != null && !outlineReady.isCompleted) return;
+    if (_settledTreeFrame < targetFrame) return;
+    frameReady.complete();
   }
 
   /// 给新枝占位并**先藏起来**：`_growing` 一置上，该枝的卷须与标签就按
@@ -149,24 +175,6 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   Future<void> _playGrow() async {
     await _grow.forward(from: 0);
     if (mounted) setState(() => _growing = null);
-  }
-
-  /// 等树干这一轮变化播完再放枝丫（用户 2026-07-29 定稿："至少要等树干变了
-  /// 之后，枝丫再变化"）。每加一个节点正好换一帧，所以恒等擦除时长。
-  /// 多留一点余量：树干动画要等大纲流推送到页面才真正开始。
-  ///
-  /// 用可取消的 Timer 而不是 Future.delayed：页面在等待期间被销毁时必须能撤销，
-  /// 否则定时器活过 widget 树（测试里直接报 pending timer）。
-  Timer? _trunkWait;
-
-  Future<void> _awaitTrunk() {
-    _trunkWait?.cancel();
-    final done = Completer<void>();
-    _trunkWait = Timer(
-      kGrowWipeDuration + const Duration(milliseconds: 120),
-      done.complete,
-    );
-    return done.future;
   }
 
   /// 点左侧空白：长出章枝（仓库按新序号原子命名：引子 → 第一章 → …），镜头滑到新章
@@ -188,7 +196,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     if (!mounted) return;
     await _trunkOutlineReady?.future;
     if (!mounted) return;
-    await _awaitTrunk();
+    await _trunkFrameReady?.future;
     if (!mounted) return;
     _holdGrow(isChapter: true, id: chapter.id);
 
@@ -230,7 +238,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     if (!mounted) return;
     await _trunkOutlineReady?.future;
     if (!mounted) return;
-    await _awaitTrunk();
+    await _trunkFrameReady?.future;
     if (!mounted) return;
     _holdGrow(isChapter: false, id: section.id);
     await _playGrow();
@@ -875,7 +883,10 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                             // 魔树本体。过渡期整个不建（见 kMagicTreeArtEnabled）：
                             // 布局几何、枝丫锚点、热区照常，只是不画底图
                             if (kMagicTreeArtEnabled)
-                              _MagicTreeImage(layout: treeLayout),
+                              _MagicTreeImage(
+                                layout: treeLayout,
+                                onFrameSettled: _markTreeFrameSettled,
+                              ),
                             // 左半空白：双击长章枝（用户定稿：改双击避免误建）；
                             // 纵向拖动滚章节（树背景跟随）
                             Positioned(
@@ -1013,9 +1024,10 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
 /// 半透明重叠（实测 f19/f20 明显鬼影），读作 PPT 翻页；擦除没有半透明，
 /// 而相邻帧差异本就小，擦除线扫过几乎看不出来，读作一波生长沿藤上行。
 class _MagicTreeImage extends StatefulWidget {
-  const _MagicTreeImage({required this.layout});
+  const _MagicTreeImage({required this.layout, required this.onFrameSettled});
 
   final MagicTreeLayout layout;
+  final ValueChanged<int> onFrameSettled;
 
   @override
   State<_MagicTreeImage> createState() => _MagicTreeImageState();
@@ -1036,6 +1048,13 @@ class _MagicTreeImageState extends State<_MagicTreeImage>
   /// 已请求预解码的帧。整帧解码后是 941×1672×4 ≈ 6.3MB，22 帧全预解码要 138MB，
   /// 所以只预解码当前帧附近的窗口，且按显示宽度解码（cacheWidth）。
   final _decoded = <int>{};
+  int? _notifiedSettledFrame;
+
+  @override
+  void initState() {
+    super.initState();
+    _notifyFrameSettled();
+  }
 
   @override
   void dispose() {
@@ -1049,7 +1068,13 @@ class _MagicTreeImageState extends State<_MagicTreeImage>
     if (widget.layout.frame == _frame) return;
     _fromFrame = _frame;
     _frame = widget.layout.frame;
-    _wipe.forward(from: 0);
+    _wipe.forward(from: 0).whenComplete(_notifyFrameSettled);
+  }
+
+  void _notifyFrameSettled() {
+    if (!mounted || _notifiedSettledFrame == _frame) return;
+    _notifiedSettledFrame = _frame;
+    widget.onFrameSettled(_frame);
   }
 
   void _decodeWindow(int cacheWidth) {
