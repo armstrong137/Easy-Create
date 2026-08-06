@@ -526,11 +526,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     final center = b.root - shift;
     final size = b.isChapter ? 30.0 : 24.0;
     return Positioned.fromRect(
-      rect: Rect.fromCenter(
-        center: center,
-        width: size,
-        height: size * 0.72,
-      ),
+      rect: Rect.fromCenter(center: center, width: size, height: size * 0.72),
       child: CustomPaint(painter: _BranchSocketPainter(isChapter: b.isChapter)),
     );
   }
@@ -1059,11 +1055,7 @@ class _BranchSocketPainter extends CustomPainter {
     final center = rect.center;
     final shadow = Paint()
       ..shader = RadialGradient(
-        colors: const [
-          Color(0x88302310),
-          Color(0x442F4A19),
-          Color(0x00000000),
-        ],
+        colors: const [Color(0x88302310), Color(0x442F4A19), Color(0x00000000)],
         stops: const [0.0, 0.48, 1.0],
       ).createShader(rect);
     canvas.drawOval(rect, shadow);
@@ -1219,10 +1211,82 @@ class _MagicTreeImageState extends State<_MagicTreeImage>
             children: [
               if (wiping) layer(_fromFrame!),
               layer(_frame, wiped: wiping),
+              if (wiping)
+                _growthSweep(
+                  rect,
+                  startY - (startY - endY) * _wipe.value,
+                  _wipe.value,
+                ),
             ],
           ),
         ),
       ),
     );
   }
+
+  Widget _growthSweep(Rect rect, double globalY, double progress) {
+    final localY = (globalY - rect.top).clamp(0.0, rect.height);
+    final opacity = (1 - ((progress - 0.46).abs() / 0.54)).clamp(0.0, 1.0);
+    return Positioned.fromRect(
+      rect: rect,
+      child: IgnorePointer(
+        child: CustomPaint(
+          painter: _GrowthSweepPainter(localY: localY, opacity: opacity),
+        ),
+      ),
+    );
+  }
+}
+
+class _GrowthSweepPainter extends CustomPainter {
+  const _GrowthSweepPainter({required this.localY, required this.opacity});
+
+  final double localY;
+  final double opacity;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (opacity <= 0.01) return;
+    final band = Rect.fromLTWH(0, localY - 18, size.width, 36);
+    final glow = Paint()
+      ..shader = LinearGradient(
+        colors: [
+          const Color(0x00F2D873),
+          Color.lerp(
+            const Color(0x00F2D873),
+            const Color(0x99D7F59A),
+            opacity,
+          )!,
+          const Color(0x00F2D873),
+        ],
+        stops: const [0.08, 0.5, 0.92],
+      ).createShader(band)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    canvas.drawRect(band, glow);
+
+    final line = Paint()
+      ..shader = LinearGradient(
+        colors: [
+          const Color(0x00FFFFFF),
+          Color.lerp(
+            const Color(0x00FFFFFF),
+            const Color(0xE6F8F0B0),
+            opacity,
+          )!,
+          const Color(0x00FFFFFF),
+        ],
+        stops: const [0.2, 0.5, 0.8],
+      ).createShader(Rect.fromLTWH(0, localY - 1, size.width, 2))
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      Offset(size.width * 0.12, localY),
+      Offset(size.width * 0.88, localY),
+      line,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _GrowthSweepPainter oldDelegate) =>
+      oldDelegate.localY != localY || oldDelegate.opacity != opacity;
 }

@@ -431,6 +431,19 @@ void main() {
     );
   });
 
+  test('树木生长反馈必须绑定换帧擦除线，不得另起动画抢跑', () {
+    final src = File(
+      'lib/presentation/outline/outline_page.dart',
+    ).readAsStringSync();
+    expect(src, contains('_GrowthSweepPainter'));
+    expect(src, contains('_growthSweep('));
+    expect(
+      src.indexOf('animation: _wipe'),
+      lessThan(src.indexOf('_growthSweep(')),
+      reason: '生长扫线必须跟随魔树换帧擦除动画，不得单独先动',
+    );
+  });
+
   test('整帧照原样画：不得再拆树层/土层、不得缩放拉伸', () {
     final src = File(
       'lib/presentation/outline/outline_page.dart',
