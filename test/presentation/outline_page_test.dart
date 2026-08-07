@@ -377,7 +377,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 800));
   });
 
-  testWidgets('窗口模式：一屏两章，左滑滚章节', (tester) async {
+  testWidgets('窗口模式：进入时默认显示最新章节，仍可下滑回看前文', (tester) async {
     await seedNovel();
     for (var i = 0; i < 4; i++) {
       await db
@@ -394,22 +394,21 @@ void main() {
       for (var i = 1; i <= 4; i++) fakeChapter(i, '第$i章', 0),
     ]);
 
-    expect(find.byKey(const Key('章热区_1')), findsOneWidget);
-    expect(find.byKey(const Key('章热区_2')), findsOneWidget);
-    expect(find.byKey(const Key('章热区_4')), findsNothing, reason: '一屏只见两章');
+    expect(find.byKey(const Key('章热区_4')), findsOneWidget, reason: '一进星球应看到最新章节');
+    expect(find.byKey(const Key('章热区_1')), findsNothing, reason: '不应每次默认停在第一章');
 
-    // 左半屏向上滑两屏章高 → 镜头滑到末章
+    // 左半屏向下滑两屏章高 → 镜头回到开头章节
     final size = tester.getSize(find.byType(Scaffold));
     final bandH = (size.height - 52 - 12) / 2;
     await tester.dragFrom(
       Offset(size.width * 0.2, size.height * 0.7),
-      Offset(0, -bandH * 2),
+      Offset(0, bandH * 2),
     );
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.byKey(const Key('章热区_4')), findsOneWidget, reason: '滑到底后末章可见');
-    expect(find.byKey(const Key('章热区_1')), findsNothing);
+    expect(find.byKey(const Key('章热区_1')), findsOneWidget, reason: '下滑后可以回看第一章');
+    expect(find.byKey(const Key('章热区_4')), findsNothing);
   });
 
   testWidgets('窗口模式止血：魔树背景使用完整素材，不再分段拼接', (tester) async {
@@ -543,20 +542,20 @@ void main() {
   testWidgets('窗口模式：右滑滚小节（树背景不动、章带内滚）', (tester) async {
     await seedNovel();
     await pumpOutline(tester, [
-      fakeChapter(1, '第1章', 10),
+      fakeChapter(1, '第1章', 0),
       fakeChapter(2, '第2章', 0),
-      fakeChapter(3, '第3章', 0),
+      fakeChapter(3, '第3章', 10),
     ]);
 
     // 底部对齐：默认最新的第十节钉在带底可见，最老的第一节在带外
     // （下拉滚动露出更老小节的数学，由 magic_tree_model_test 的"溢出可滚"覆盖；
     //  拖动手势在这套重叠布局里坐标脆弱，改由真机验证）
     expect(
-      find.byKey(const Key('节热区_109')),
+      find.byKey(const Key('节热区_309')),
       findsOneWidget,
       reason: '默认最新的第十节钉在带底可见',
     );
-    expect(find.byKey(const Key('节热区_100')), findsNothing, reason: '最老的第一节在带外');
+    expect(find.byKey(const Key('节热区_300')), findsNothing, reason: '最老的第一节在带外');
   });
 
   testWidgets('长按章标签 → 菜单 → 删除确认 → 章被剪掉', (tester) async {

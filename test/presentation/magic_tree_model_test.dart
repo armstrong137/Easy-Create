@@ -110,23 +110,33 @@ void main() {
     expect(bottom.chapterBands.keys, isNot(contains(1)));
   });
 
-  test('帧号映射：每加一个节点都前进，单调不退，到末帧封顶', () {
-    // 候选素材 28 帧全部可用，一节点一帧。
-    int frameOf(int nodes) => layoutMagicTree(
-      size: size,
-      outline: nodes == 0 ? const [] : [chapterWith(1, nodes - 1)],
-    ).frame;
-    expect(frameOf(0), kTreeFrameFirst, reason: '空书用首帧');
-    final span = kTreeFrameLast - kTreeFrameFirst;
-    for (var n = 1; n <= span; n++) {
-      expect(
-        frameOf(n),
-        frameOf(n - 1) + 1,
-        reason: '第 $n 个节点必须正好前进一帧——每一步都要看得见在长',
-      );
-    }
-    expect(frameOf(span), kTreeFrameLast, reason: '$span 个节点长到末帧');
-    expect(frameOf(200), kTreeFrameLast, reason: '超出后封顶，不越界');
+  test('帧号映射：小节只在树高封顶前参与长高，封顶后不再改树形', () {
+    int frameOf(List<OutlineChapter> outline) =>
+        layoutMagicTree(size: size, outline: outline).frame;
+
+    expect(frameOf(const []), kTreeFrameFirst, reason: '空书用首帧');
+    expect(
+      frameOf([chapterWith(1, 3)]),
+      treeFrameFor(4),
+      reason: '早期树还没长高时，小节要参与长高，否则小节挂点会被挤没',
+    );
+
+    final heightLocked = frameOf([chapterWith(1, 40)]);
+    expect(heightLocked, treeFrameFor(kTreeHeightLockNodes));
+    expect(
+      frameOf([chapterWith(1, 41)]),
+      heightLocked,
+      reason: '树高封顶后继续加小节不应让整棵树换形',
+    );
+
+    final manyChapters = [
+      for (var i = 1; i <= 25; i++) chapterWith(i, 0),
+    ];
+    expect(
+      frameOf(manyChapters),
+      treeFrameFor(25),
+      reason: '章节增长仍然可以推动后段形态帧',
+    );
   });
 
   test('画幅对所有帧完全相同；树在屏上逐节点长高', () {
@@ -143,7 +153,7 @@ void main() {
     // 树高在序列后段会到顶（素材靠加密枝叶而非继续拔高表达成长），
     // 所以硬要求是"全程不降"，另加"前段必须实打实地变高"。
     double onScreen(int n) => at(n).soilCrestY - at(n).plantTopY;
-    for (var n = 1; n <= kTreeFrameLast - kTreeFrameFirst; n++) {
+    for (var n = 1; n <= kTreeHeightLockNodes; n++) {
       expect(
         onScreen(n),
         greaterThanOrEqualTo(onScreen(n - 1) - 0.001),
@@ -170,7 +180,8 @@ void main() {
     for (var f = kTreeFrameFirst; f <= kTreeFrameLast; f++) {
       final l = layoutMagicTree(
         size: size,
-        outline: [chapterWith(1, f - kTreeFrameFirst)],
+        outline: [chapterWith(1, 0)],
+        visualFrameOverride: f,
       );
       expect(l.trunkRect.height, greaterThan(0), reason: '第 $f 帧缺茎干轮廓');
       expect(

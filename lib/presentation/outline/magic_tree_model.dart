@@ -46,10 +46,27 @@ const kTreeFrameDir = 'assets/textures/tree_frames_v3';
 const kTreeFrameFirst = 1;
 const kTreeFrameLast = 28;
 
-/// 节点数（章+节）→ 帧号：0 个节点用首帧，之后**每加一个节点正好前进一帧**，
-/// 到末帧封顶（20 个节点长满）。生长的连贯度等于素材本身的连贯度。
+/// 树高基本封顶的帧。此后素材主要是枝叶密度/形态变化，不再明显长高。
+const kTreeHeightLockFrame = 20;
+const kTreeHeightLockNodes = kTreeHeightLockFrame - kTreeFrameFirst;
+
+/// 可视生长节点数：章节始终参与树形变化；小节只在树高封顶前参与长高。
+///
+/// 这样早期加小节时树会继续长高，给小节枝丫留出空间；树高封顶后，
+/// 继续加小节不会让整棵树换形，避免"只是写小节，树却变了"。
+int visualTreeNodes(List<OutlineChapter> outline) {
+  final chapters = outline.length;
+  final sections = outline.fold<int>(0, (sum, c) => sum + c.sections.length);
+  final earlyHeightNodes = math.min(chapters + sections, kTreeHeightLockNodes);
+  return math.max(chapters, earlyHeightNodes);
+}
+
+/// 节点数 → 帧号：0 个节点用首帧，之后到末帧封顶。
 int treeFrameFor(int totalNodes) =>
     (kTreeFrameFirst + totalNodes).clamp(kTreeFrameFirst, kTreeFrameLast);
+
+int treeFrameForOutline(List<OutlineChapter> outline) =>
+    treeFrameFor(visualTreeNodes(outline));
 
 String treeFrameAsset(int frame) =>
     '$kTreeFrameDir/magic_tree_f${frame.toString().padLeft(2, '0')}.png';
@@ -358,9 +375,9 @@ MagicTreeLayout layoutMagicTree({
   int? visualFrameOverride,
 }) {
   final n = outline.length;
-  final totalNodes = totalTreeNodes(outline);
-  final age = treeAge(totalNodes);
-  final frame = visualFrameOverride ?? treeFrameFor(totalNodes);
+  final visualNodes = visualTreeNodes(outline);
+  final age = treeAge(visualNodes);
+  final frame = visualFrameOverride ?? treeFrameFor(visualNodes);
 
   return n == 1
       ? _layoutSingleChapter(

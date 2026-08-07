@@ -106,6 +106,9 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   MagicTreeLayout? _layout;
   Size _bodySize = Size.zero;
 
+  /// 进入页面后只自动定位一次：多章小说默认看最新章节，之后尊重用户手动滚动。
+  bool _focusedLatestChapterOnEntry = false;
+
   /// 上次设给魔毯的缩边栏状态（避免每帧重复设）
   bool _lastTuck = false;
 
@@ -125,7 +128,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
 
   void _beginAwaitingTrunkOutline(int targetNodes) {
     _trunkAwaitTargetNodes = targetNodes;
-    _trunkAwaitTargetFrame = treeFrameFor(targetNodes);
+    _trunkAwaitTargetFrame = null;
     _trunkOutlineReady = Completer<void>();
     _trunkFrameReady = Completer<void>();
   }
@@ -135,6 +138,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     final ready = _trunkOutlineReady;
     if (target == null || ready == null || ready.isCompleted) return;
     if (totalTreeNodes(outline) < target) return;
+    _trunkAwaitTargetFrame = treeFrameForOutline(outline);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || ready.isCompleted || _trunkAwaitTargetNodes != target) {
@@ -160,6 +164,24 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     if (outlineReady != null && !outlineReady.isCompleted) return;
     if (_settledTreeFrame < targetFrame) return;
     frameReady.complete();
+  }
+
+  double _entryCameraOffset(List<OutlineChapter> outline) {
+    if (_focusedLatestChapterOnEntry || outline.length <= 2) {
+      return _camera.value;
+    }
+    return (outline.length - 2).toDouble();
+  }
+
+  void _markEntryCameraFocused(List<OutlineChapter> outline) {
+    if (_focusedLatestChapterOnEntry || outline.isEmpty) return;
+    _focusedLatestChapterOnEntry = true;
+    if (outline.length <= 2) return;
+    final target = (outline.length - 2).toDouble();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _camera.value = target;
+    });
   }
 
   /// 给新枝占位并**先藏起来**：`_growing` 一置上，该枝的卷须与标签就按
@@ -856,18 +878,20 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                   child: AnimatedBuilder(
                     animation: Listenable.merge([_grow, _camera]),
                     builder: (context, _) {
+                      final cameraOffset = _entryCameraOffset(outline);
                       final treeLayout = layoutMagicTree(
                         size: size,
                         outline: outline,
-                        chapterOffset: _camera.value,
+                        chapterOffset: cameraOffset,
                         sectionScrolls: _sectionScrolls,
                         sectionNoteCounts: noteCounts,
                       );
+                      _markEntryCameraFocused(outline);
                       final branchOutline = _branchOutlineOverride ?? outline;
                       final layout = layoutMagicTree(
                         size: size,
                         outline: branchOutline,
-                        chapterOffset: _camera.value,
+                        chapterOffset: cameraOffset,
                         sectionScrolls: _sectionScrolls,
                         sectionNoteCounts: noteCounts,
                       );
