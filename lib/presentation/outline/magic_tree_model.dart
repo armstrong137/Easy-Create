@@ -127,11 +127,11 @@ double treeAge(int totalNodes) {
 int totalTreeNodes(List<OutlineChapter> outline) =>
     outline.length + outline.fold<int>(0, (sum, c) => sum + c.sections.length);
 
-/// 新增章节的视觉流程：先让新枝生长，再移动镜头。
+/// 新增章节的视觉流程组成：新枝生长；需要时镜头在同一段动画里跟随。
 enum ChapterGrowthStep { growBranch, panCamera }
 
-/// 新增章节的动作计划：枝条长完后镜头才平滑跟随（不同时发生，
-/// 否则用户看到的不是树枝长出来，而是整棵树和土壤一起滑动）。
+/// 新增章节的动作计划：这里描述本轮需要哪些动作；页面层负责把生枝与跟随
+/// 合成同一条时间轴，避免先枝丫动、后镜头动的两段式割裂感。
 class ChapterGrowthMotionPlan {
   const ChapterGrowthMotionPlan({
     required this.targetOffset,
@@ -142,10 +142,10 @@ class ChapterGrowthMotionPlan {
   /// 镜头最终档位（新章所在档）
   final double targetOffset;
 
-  /// 按序执行的动作
+  /// 本轮需要参与的动作
   final List<ChapterGrowthStep> steps;
 
-  /// 枝条生长到镜头启动之间的间隔
+  /// 历史兼容字段；一段式动画不再使用固定延迟。
   final Duration panDelay;
 }
 

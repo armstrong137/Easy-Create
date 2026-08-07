@@ -690,7 +690,7 @@ void main() {
     }
   });
 
-  test('新增章节动作计划：先长枝，再镜头跟随', () {
+  test('新增章节动作计划：需要时同一轮包含生枝和镜头跟随', () {
     final plan = chapterGrowthMotionPlan(
       oldCount: 4,
       newCount: 5,

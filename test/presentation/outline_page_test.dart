@@ -293,6 +293,28 @@ void main() {
     );
   });
 
+  test('加章需要一段式：新枝生长和镜头跟随必须同一时间轴并行', () {
+    final src = File(
+      'lib/presentation/outline/outline_page.dart',
+    ).readAsStringSync();
+
+    expect(
+      src,
+      contains('final grow = _playGrow();'),
+      reason: '新枝生长应先作为本轮主动画启动，不能被 steps 串行循环拆成第一段',
+    );
+    expect(
+      src,
+      contains('await Future.wait([grow, pan]);'),
+      reason: '需要跟随镜头时，镜头移动必须与新枝生长并行等待，形成自然的一段式',
+    );
+    expect(
+      src,
+      isNot(contains('for (final step in motion.steps)')),
+      reason: '串行遍历 growBranch -> panCamera 会让枝丫先动一次、镜头再带着枝丫动一次',
+    );
+  });
+
   testWidgets('已有一章时点左空白命名"第一章"', (tester) async {
     await seedNovel();
     await db

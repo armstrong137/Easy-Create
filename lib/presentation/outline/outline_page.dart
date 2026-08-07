@@ -200,18 +200,16 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     if (!mounted) return;
     _holdGrow(isChapter: true, id: chapter.id);
 
-    for (final step in motion.steps) {
-      if (!mounted) return;
-      switch (step) {
-        case ChapterGrowthStep.panCamera:
-          await _camera.animateTo(
-            motion.targetOffset,
-            duration: const Duration(milliseconds: 520),
-            curve: Curves.easeInOutCubic,
-          );
-        case ChapterGrowthStep.growBranch:
-          await _playGrow();
-      }
+    final grow = _playGrow();
+    if (motion.steps.contains(ChapterGrowthStep.panCamera)) {
+      final pan = _camera.animateTo(
+        motion.targetOffset,
+        duration: const Duration(milliseconds: 700),
+        curve: Curves.easeInOutCubic,
+      );
+      await Future.wait([grow, pan]);
+    } else {
+      await grow;
     }
   }
 
