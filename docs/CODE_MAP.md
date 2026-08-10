@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-08-10 13:32:11　对应提交：1601826 之后的工作区状态
+> 生成时间：2026-08-10 14:00:42　对应提交：aabc811 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     112
-  Nodes:     4,213
-  Edges:     19,479
-  DB Size:   21.53 MB
+  Files:     114
+  Nodes:     4,245
+  Edges:     19,536
+  DB Size:   21.58 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,583
-  function        1,420
-  class           469
-  import          369
+  method          1,586
+  function        1,427
+  class           470
+  import          382
   constant        213
-  file            104
-  variable        38
+  file            106
+  variable        44
   type_alias      12
   enum_member     2
   namespace       2
@@ -36,8 +36,8 @@ Files by Language:
   dart            69
   javascript      10
   kotlin          8
+  python          7
   xml             6
-  python          5
   properties      4
   yaml            4
   swift           3
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (112 files):
+Project Structure (114 files):
 
 |-- .agents
 |   `-- skills
@@ -194,12 +194,15 @@ Project Structure (112 files):
 |   |       `-- soft_toast.dart (dart, 11 symbols)
 |   `-- main.dart (dart, 14 symbols)
 |-- scripts
+|   |-- tests
+|   |   `-- test_validate_magic_tree_art_package.py (python, 16 symbols)
 |   |-- capture_standins.py (python, 11 symbols)
 |   |-- e2e_probe.dart (dart, 12 symbols)
 |   |-- magic_tree_img2img_pipeline.py (python, 28 symbols)
 |   |-- magic_tree_sd_webui_provider.py (python, 18 symbols)
 |   |-- serve_web.dart (dart, 4 symbols)
 |   |-- square_standins.py (python, 11 symbols)
+|   |-- validate_magic_tree_art_package.py (python, 16 symbols)
 |   `-- validate_magic_tree_frames.py (python, 27 symbols)
 |-- test
 |   |-- core
