@@ -60,6 +60,27 @@ for (const [index, age] of ages.entries()) {
   }
   coverage.push(nonBackground / (png.width * png.height));
 }
+await page.evaluate(async () => {
+  await window.EasyCreateTreeScene.receive({
+    protocolVersion: 1,
+    sceneSessionId: 'browser-check',
+    sequence: 20,
+    type: 'tree.sync',
+    payload: {
+      treeAge: 1,
+      chapters: Array.from({ length: 10 }, (_, chapterIndex) => ({
+        id: 100 + chapterIndex,
+        title: `第${chapterIndex + 1}章`,
+        sections: Array.from({ length: 3 }, (_, sectionIndex) => ({
+          id: 10000 + chapterIndex * 100 + sectionIndex,
+          title: `第${sectionIndex + 1}节`,
+        })),
+      })),
+    },
+  });
+});
+await page.waitForTimeout(120);
+await page.screenshot({ path: resolve(outputDir, 'branches.png') });
 await browser.close();
 
 console.log(JSON.stringify({ state, coverage, errors }, null, 2));

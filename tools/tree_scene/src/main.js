@@ -29,6 +29,15 @@ async function receive(raw) {
       durationMs: command.payload?.durationMs ?? 900,
     });
     emit('tree.ageSettled', treeScene.growth?.getState());
+  } else if (command.type === 'tree.sync') {
+    treeScene.sync(command.payload);
+    emit('tree.synced');
+  } else if (command.type === 'tree.growChapter') {
+    await treeScene.growChapter(command.payload);
+    emit('tree.chapterGrown', { id: command.payload?.id });
+  } else if (command.type === 'tree.growSection') {
+    await treeScene.growSection(command.payload);
+    emit('tree.sectionGrown', { id: command.payload?.id });
   }
 }
 

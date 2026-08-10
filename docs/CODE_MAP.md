@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-08-10 15:26:47　对应提交：20e7767 之后的工作区状态
+> 生成时间：2026-08-10 15:35:40　对应提交：7983d1f 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,20 +12,20 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     130
-  Nodes:     4,438
-  Edges:     19,938
-  DB Size:   22.00 MB
+  Files:     134
+  Nodes:     4,486
+  Edges:     20,098
+  DB Size:   22.20 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,602
-  function        1,475
-  class           473
-  import          430
+  method          1,626
+  function        1,481
+  class           476
+  import          441
   constant        238
-  file            122
+  file            126
   variable        81
   type_alias      12
   enum_member     2
@@ -34,7 +34,7 @@ Nodes by Kind:
 
 Files by Language:
   dart            70
-  javascript      20
+  javascript      24
   python          12
   kotlin          8
   xml             6
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (130 files):
+Project Structure (134 files):
 
 |-- .agents
 |   `-- skills
@@ -247,12 +247,16 @@ Project Structure (130 files):
 |       |   |-- check-browser.mjs (javascript, 19 symbols)
 |       |   `-- validate-gltf.mjs (javascript, 7 symbols)
 |       |-- src
-|       |   |-- MagicTreeScene.js (javascript, 15 symbols)
+|       |   |-- BranchSystem.js (javascript, 21 symbols)
+|       |   |-- LeafSystem.js (javascript, 7 symbols)
+|       |   |-- MagicTreeScene.js (javascript, 21 symbols)
 |       |   |-- main.js (javascript, 10 symbols)
 |       |   |-- protocol.js (javascript, 6 symbols)
 |       |   |-- QualityManager.js (javascript, 4 symbols)
+|       |   |-- SceneTimeline.js (javascript, 6 symbols)
 |       |   `-- TreeGrowthSystem.js (javascript, 12 symbols)
 |       `-- test
+|           |-- branch-system.test.js (javascript, 8 symbols)
 |           |-- protocol.test.js (javascript, 4 symbols)
 |           `-- tree-growth.test.js (javascript, 5 symbols)
 |-- web

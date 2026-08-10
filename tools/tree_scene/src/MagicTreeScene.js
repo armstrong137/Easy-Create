@@ -3,7 +3,10 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
+import { BranchSystem } from './BranchSystem.js';
+import { LeafSystem } from './LeafSystem.js';
 import { QualityManager } from './QualityManager.js';
+import { SceneTimeline } from './SceneTimeline.js';
 import { TreeGrowthSystem } from './TreeGrowthSystem.js';
 
 export class MagicTreeScene {
@@ -11,6 +14,7 @@ export class MagicTreeScene {
     this.canvas = canvas;
     this.assetUrl = assetUrl;
     this.clock = new THREE.Clock();
+    this.timeline = new SceneTimeline();
     this.quality = new QualityManager({
       devicePixelRatio: window.devicePixelRatio || 1,
       hardwareConcurrency: navigator.hardwareConcurrency || 4,
@@ -33,6 +37,7 @@ export class MagicTreeScene {
     this.camera.position.set(0, 3.5, 13.4);
     this.camera.lookAt(0, 3.5, 0);
     this.growth = null;
+    this.branchSystem = null;
     this.root = null;
     this.addLights();
     this.resize();
@@ -51,7 +56,11 @@ export class MagicTreeScene {
     this.scene.add(this.root);
 
     const channels = [];
+    const markers = [];
+    let barkMaterial = null;
+    const leafMaterials = [];
     this.root.traverse((object) => {
+      if (object.name.startsWith('TrunkMarker_')) markers.push(object);
       if (object.userData?.ec_role === 'magic_emissive') object.visible = false;
       if (object.isMesh) {
         const materials = Array.isArray(object.material) ? object.material : [object.material];
@@ -66,7 +75,11 @@ export class MagicTreeScene {
           material.emissive?.set(0x17230d);
           material.emissiveIntensity = 0.22;
           material.needsUpdate = true;
+          if (leafMaterials.length < 2 && !leafMaterials.includes(material)) {
+            leafMaterials.push(material.clone());
+          }
         }
+        if (object.userData?.ec_role === 'main_tree') barkMaterial = materials[0];
         object.castShadow = this.quality.shadows && !isLeaf;
         object.receiveShadow = this.quality.shadows;
       }
@@ -79,6 +92,19 @@ export class MagicTreeScene {
     const idle = THREE.AnimationClip.findByName(gltf.animations, 'idle_breath');
     if (idle) mixer.clipAction(idle).play();
     this.growth = new TreeGrowthSystem({ root: this.root, morphChannels: channels, mixer });
+    this.root.updateMatrixWorld(true);
+    markers.sort((left, right) => left.name.localeCompare(right.name));
+    const leafSystem = new LeafSystem({
+      root: this.root,
+      capacity: 5000,
+      materials: leafMaterials.length === 2 ? leafMaterials : null,
+    });
+    this.branchSystem = new BranchSystem({
+      root: this.root,
+      markers,
+      barkMaterial,
+      leafSystem,
+    });
     await this.growth.setAge(0.08, { animate: false });
     return this;
   }
@@ -88,8 +114,22 @@ export class MagicTreeScene {
     return this.growth.setAge(age, options);
   }
 
+  sync(snapshot) {
+    this.branchSystem?.sync(snapshot);
+  }
+
+  growChapter(chapter) {
+    return this.branchSystem?.growChapter(chapter, this.timeline) ?? Promise.resolve();
+  }
+
+  growSection(section) {
+    return this.branchSystem?.growSection(section, this.timeline) ?? Promise.resolve();
+  }
+
   update() {
-    this.growth?.update(Math.min(this.clock.getDelta(), 1 / 20));
+    const dt = Math.min(this.clock.getDelta(), 1 / 20);
+    this.timeline.update(dt);
+    this.growth?.update(dt);
     const age = this.growth?.getState().age ?? 0.08;
     const focusHeight = 0.65 + 4.1 * age;
     this.camera.position.y = focusHeight;
