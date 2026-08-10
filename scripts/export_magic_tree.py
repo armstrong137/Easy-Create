@@ -75,6 +75,8 @@ def render_standins() -> None:
         ground.hide_render = True
     for index, age in enumerate(STANDIN_AGES):
         set_tree_age(age)
+        camera = scene.camera
+        camera.location.y = -(14.0 + 18.0 * age)
         scene.render.filepath = str(STANDIN_DIR / f"age_{index}.webp")
         bpy.ops.render.render(write_still=True)
         print(f"回退图 age_{index} 已渲染，树龄 {age:.2f}")

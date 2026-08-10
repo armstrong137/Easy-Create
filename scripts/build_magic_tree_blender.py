@@ -28,7 +28,7 @@ PBR = (
 AGES = (0.08, 0.25, 0.48, 0.72, 1.0)
 AGE_KEY_NAMES = ("age_00", "age_25", "age_48", "age_72", "age_100")
 HEIGHT_RATIOS = (0.19, 0.34, 0.57, 0.79, 1.0)
-WIDTH_RATIOS = (0.34, 0.46, 0.68, 0.86, 1.0)
+WIDTH_RATIOS = (0.09, 0.22, 0.48, 0.75, 1.0)
 RADIAL_SEGMENTS = 14
 TREE_HEIGHT = 8.0
 TRUNK_BASE_Z = 0.18
@@ -95,7 +95,12 @@ def leaf_material(name: str, color: tuple[float, float, float]) -> bpy.types.Mat
     texture = material.node_tree.nodes.new("ShaderNodeTexImage")
     texture.image = bpy.data.images.load(str(PBR / "leaf_single.png"), check_existing=True)
     texture.image.colorspace_settings.name = "sRGB"
-    material.node_tree.links.new(texture.outputs["Color"], principled.inputs["Base Color"])
+    tint = material.node_tree.nodes.new("ShaderNodeMixRGB")
+    tint.blend_type = "MULTIPLY"
+    tint.inputs[0].default_value = 0.28
+    tint.inputs[2].default_value = (*color, 1)
+    material.node_tree.links.new(texture.outputs["Color"], tint.inputs[1])
+    material.node_tree.links.new(tint.outputs["Color"], principled.inputs["Base Color"])
     material.node_tree.links.new(texture.outputs["Alpha"], principled.inputs["Alpha"])
     if hasattr(material, "surface_render_method"):
         material.surface_render_method = "DITHERED"
@@ -131,24 +136,23 @@ def trunk_path() -> list[Vector]:
 
 def branch_paths(trunk: list[Vector]) -> list[list[Vector]]:
     paths = []
-    starts = (0.32, 0.40, 0.48, 0.57, 0.65, 0.72, 0.78, 0.74, 0.81)
-    lengths = (3.75, 3.55, 3.62, 3.28, 3.05, 2.72, 2.42, 3.45, 3.20)
+    starts = (0.29, 0.36, 0.43, 0.50, 0.57, 0.64, 0.70, 0.75, 0.80)
+    lengths = (2.78, 3.10, 3.02, 2.64, 2.82, 2.66, 2.48, 2.30, 2.08)
     for branch_index, (start, length) in enumerate(zip(starts, lengths)):
         root = trunk[round(start * (len(trunk) - 1))].copy()
-        if branch_index < 7:
-            angle = branch_index * 2.37 + (0.18 if branch_index % 2 else -0.08)
-            direction = Vector((math.cos(angle), math.sin(angle), 0.0))
-            upward = 0.50 + 0.035 * branch_index
-        else:
-            angle = -2.25 if branch_index == 7 else 0.72
-            direction = Vector((math.cos(angle) * 0.50, math.sin(angle) * 0.50, 0.86)).normalized()
-            upward = 0.84
+        angle = branch_index * 2.31 + (0.20 if branch_index % 2 else -0.10)
+        direction = Vector((math.cos(angle), math.sin(angle), 0.0))
+        upward = 0.34 + 0.025 * branch_index
         points = []
         for segment in range(14):
             u = segment / 13
-            lateral = direction * length * (u ** 0.82)
-            sweep = Vector((-direction.y, direction.x, 0)) * math.sin(u * math.pi) * 0.34
-            rise = Vector((0, 0, length * (0.16 * u + upward * u * u)))
+            lateral = direction * length * (u ** 0.78)
+            sweep = (
+                Vector((-direction.y, direction.x, 0))
+                * math.sin(u * math.pi)
+                * (0.24 + 0.035 * branch_index)
+            )
+            rise = Vector((0, 0, length * (0.12 * u + upward * u * u)))
             points.append(root + lateral + sweep + rise)
         paths.append(points)
     return paths
@@ -160,19 +164,23 @@ def secondary_branch_paths(
     secondary = []
     for parent_index, parent in enumerate(branches):
         parent_direction = (parent[-1] - parent[0]).normalized()
-        for fork_index, start_index in enumerate((4, 7, 10, 12)):
+        for fork_index, start_index in enumerate((3, 5, 7, 9, 11, 12)):
             root = parent[start_index].copy()
             side = Vector((-parent_direction.y, parent_direction.x, 0)).normalized()
             sign = -1 if (parent_index + fork_index) % 2 else 1
-            direction = (parent_direction * 0.35 + side * sign + Vector((0, 0, 0.62))).normalized()
-            length = 1.48 - fork_index * 0.16 + 0.10 * math.sin(parent_index)
+            direction = (
+                parent_direction * 0.42
+                + side * sign * (0.82 - 0.04 * fork_index)
+                + Vector((0, 0, 0.30 + 0.025 * fork_index))
+            ).normalized()
+            length = 1.34 - fork_index * 0.075 + 0.08 * math.sin(parent_index)
             path = []
             for segment in range(8):
                 u = segment / 7
                 path.append(
                     root
                     + direction * length * (u ** 0.82)
-                    + Vector((0, 0, 0.20 * math.sin(u * math.pi)))
+                    + Vector((0, 0, 0.14 * math.sin(u * math.pi)))
                 )
             secondary.append((parent_index, path))
     return secondary
@@ -330,13 +338,17 @@ def create_trunk_and_branches(
                         TRUNK_BASE_Z + (root_mature.z - TRUNK_BASE_Z) * height,
                     )
                 )
-                threshold = 0.05 + branch_index * 0.055
-                branch_growth = max(0.06, min(1.0, (age - threshold) / 0.58))
+                threshold = 0.05 + branch_index * 0.045
+                branch_growth = max(
+                    0.18,
+                    min(1.0, (age - threshold + 0.12) / 0.42),
+                )
+                crown_width = 0.38 + width * 0.62
                 local = original - root_mature
                 shaped = root_age + Vector(
                     (
-                        local.x * branch_growth * width,
-                        local.y * branch_growth * width,
+                        local.x * branch_growth * crown_width,
+                        local.y * branch_growth * crown_width,
                         local.z * branch_growth * height,
                     )
                 )
@@ -411,11 +423,15 @@ def create_soil(root: bpy.types.Object, material: bpy.types.Material) -> bpy.typ
     bpy.ops.mesh.primitive_uv_sphere_add(segments=64, ring_count=24, location=(0, 0, -0.28))
     soil = bpy.context.object
     soil.name = "Soil"
-    soil.scale = (2.55, 1.85, 0.43)
+    soil.scale = (2.35, 1.72, 0.50)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     for vertex in soil.data.vertices:
-        radius = math.hypot(vertex.co.x / 2.55, vertex.co.y / 1.85)
-        vertex.co.z += 0.10 * math.sin(vertex.co.x * 5.3) * math.sin(vertex.co.y * 4.7) * max(0, 1 - radius)
+        radius = math.hypot(vertex.co.x / 2.35, vertex.co.y / 1.72)
+        irregularity = (
+            0.11 * math.sin(vertex.co.x * 4.7)
+            + 0.07 * math.sin(vertex.co.y * 6.1 + 0.8)
+        )
+        vertex.co.z += irregularity * max(0, 1 - radius) ** 1.4
     soil.data.materials.append(material)
     soil.parent = root
     soil["ec_role"] = "soil"
@@ -434,7 +450,9 @@ def append_leaf(
     branch_index: int,
 ) -> None:
     forward = direction.normalized()
-    side = forward.cross(Vector((0, 0, 1)))
+    # Flutter 场景从 Blender 的 -Y 方向观察，叶面需保留朝向镜头的可读面积。
+    view_direction = Vector((0, -1, 0))
+    side = forward.cross(view_direction)
     if side.length < 0.1:
         side = Vector((1, 0, 0))
     side.normalize()
@@ -468,45 +486,47 @@ def create_leaf_groups(
     random.seed(40721)
     groups = [([], [], []) for _ in range(6)]
     seed_vertices, seed_faces, seed_meta = groups[0]
-    seed_center = trunk[-1]
-    for leaf_index in range(10):
-        angle = math.tau * leaf_index / 10 + 0.22 * math.sin(leaf_index)
-        radial = Vector((math.cos(angle), math.sin(angle), 0))
-        center = seed_center + radial * 0.13 + Vector((0, 0, 0.08 * math.sin(angle * 2)))
-        direction = (radial * 0.58 + Vector((0, 0, 0.82))).normalized()
-        append_leaf(
-            seed_vertices,
-            seed_faces,
-            seed_meta,
-            center,
-            direction,
-            0.15,
-            0.43,
-            Vector((0, 0, TRUNK_BASE_Z)),
-            -1,
-        )
+    for cluster_index, trunk_index in enumerate((24, 29, 34)):
+        seed_center = trunk[trunk_index]
+        count = 6 if cluster_index < 2 else 9
+        for leaf_index in range(count):
+            angle = math.tau * leaf_index / count + 0.18 * math.sin(leaf_index)
+            radial = Vector((math.cos(angle), math.sin(angle), 0))
+            center = seed_center + radial * 0.13 + Vector(
+                (0, 0, 0.06 * math.sin(angle * 2))
+            )
+            direction = (radial * 0.72 + Vector((0, 0, 0.69))).normalized()
+            append_leaf(
+                seed_vertices,
+                seed_faces,
+                seed_meta,
+                center,
+                direction,
+                0.16,
+                0.42,
+                Vector((0, 0, TRUNK_BASE_Z)),
+                -1,
+            )
 
-    foliage_paths = [
-        (index, path, False) for index, path in enumerate(branches)
-    ] + [
+    foliage_paths = [(index, path, False) for index, path in enumerate(branches)] + [
         (index, path, True) for index, path in secondary
     ]
     for branch_index, path, is_secondary in foliage_paths:
-        first_leaf = 1 if is_secondary else 6
-        for path_index in range(first_leaf, len(path)):
+        cluster_points = (2, 4, 6, 7) if is_secondary else (4, 6, 8, 10, 12, 13)
+        for path_index in cluster_points:
             centerline = path[path_index]
-            tangent = path[path_index] - path[path_index - 1]
-            count = 4 if path_index < len(path) - 2 else 7
+            tangent = (path[path_index] - path[path_index - 1]).normalized()
+            count = 8 if path_index < len(path) - 1 else 10
             for leaf_index in range(count):
-                angle = math.tau * leaf_index / count + random.uniform(-0.35, 0.35)
-                offset = Vector(
-                    (math.cos(angle), math.sin(angle), random.uniform(-0.12, 0.20))
-                ) * 0.28
-                center = centerline + offset
-                direction = (tangent.normalized() + offset.normalized() * 0.7).normalized()
-                branch_birth = 0.05 + branch_index * 0.055
-                base_group = max(1, math.ceil(branch_birth * 5))
-                threshold = min(5, base_group + path_index // 6)
+                angle = math.tau * leaf_index / count + random.uniform(-0.16, 0.16)
+                radial = Vector(
+                    (math.cos(angle), math.sin(angle), 0.30 + random.uniform(-0.10, 0.20))
+                ).normalized()
+                direction = (radial * 0.82 + tangent * 0.18).normalized()
+                center = centerline + direction * (0.12 + 0.035 * (leaf_index % 3))
+                branch_birth = 0.05 + branch_index * 0.045
+                base_group = max(0, math.floor(branch_birth * 5))
+                threshold = min(5, base_group + path_index // 4)
                 vertices, faces, leaf_meta = groups[threshold]
                 leaf_root = branches[branch_index][0] if is_secondary else path[0]
                 append_leaf(
@@ -515,20 +535,8 @@ def create_leaf_groups(
                     leaf_meta,
                     center,
                     direction,
-                    0.24,
-                    0.56,
-                    leaf_root,
-                    branch_index,
-                )
-                crossed = Vector((-direction.y, direction.x, direction.z * 0.65)).normalized()
-                append_leaf(
-                    vertices,
-                    faces,
-                    leaf_meta,
-                    center + Vector((0, 0, 0.025)),
-                    crossed,
-                    0.21,
-                    0.52,
+                    0.15 if is_secondary else 0.17,
+                    0.38 if is_secondary else 0.43,
                     leaf_root,
                     branch_index,
                 )
@@ -577,19 +585,23 @@ def create_leaf_groups(
                         TRUNK_BASE_Z + (root_mature.z - TRUNK_BASE_Z) * height,
                     )
                 )
-                threshold = 0.05 + branch_index * 0.055
-                branch_growth = max(0.06, min(1.0, (age - threshold) / 0.58))
+                threshold = 0.05 + branch_index * 0.045
+                branch_growth = max(
+                    0.18,
+                    min(1.0, (age - threshold + 0.12) / 0.42),
+                )
+                crown_width = 0.38 + width * 0.62
                 center_mature = item["center"]
                 center_local = center_mature - root_mature
                 center_age = root_age + Vector(
                     (
-                        center_local.x * branch_growth * width,
-                        center_local.y * branch_growth * width,
+                        center_local.x * branch_growth * crown_width,
+                        center_local.y * branch_growth * crown_width,
                         center_local.z * branch_growth * height,
                     )
                 )
                 leaf_local = item["original"] - center_mature
-                leaf_scale = 0.12 + 0.88 * math.sqrt(branch_growth)
+                leaf_scale = 0.52 + 0.48 * math.sqrt(branch_growth)
                 shape.data[vertex_index].co = center_age + leaf_local * leaf_scale
             shape.value = 0.0
         objects.append(obj)
@@ -808,7 +820,7 @@ def configure_scene(root: bpy.types.Object) -> None:
     rim.data.size = 3.0
     rim.data.color = (0.82, 0.94, 0.53)
 
-    bpy.ops.object.camera_add(location=(9.5, -24.0, 6.5))
+    bpy.ops.object.camera_add(location=(0.0, -28.5, 6.5))
     camera = bpy.context.object
     camera.name = "StandinCamera"
     camera.data.lens = 58
@@ -847,9 +859,9 @@ def main() -> None:
     bark = material_with_pbr("BarkOldPBR", "bark_old")
     soil_material = material_with_pbr("SoilPBR", "soil")
     leaves = [
-        leaf_material("LeafDeep", (0.035, 0.18, 0.025)),
-        leaf_material("LeafMid", (0.075, 0.31, 0.045)),
-        leaf_material("LeafYoung", (0.16, 0.42, 0.07)),
+        leaf_material("LeafDeep", (0.46, 0.74, 0.24)),
+        leaf_material("LeafMid", (0.60, 0.84, 0.30)),
+        leaf_material("LeafYoung", (0.76, 0.94, 0.40)),
     ]
     magic = magic_material()
 
