@@ -187,6 +187,11 @@ export class MagicTreeScene {
     this.renderer.render(this.scene, this.camera);
   }
 
+  dispose() {
+    this.labelSystem?.clear();
+    this.renderer.dispose();
+  }
+
   resize(width = window.innerWidth, height = window.innerHeight) {
     const safeWidth = Math.max(1, width);
     const safeHeight = Math.max(1, height);

@@ -12,8 +12,10 @@ class SceneServer {
   HttpServer? _server;
 
   /// 白名单前缀 → rootBundle 资产根（防目录穿越，只暴露场景所需资产）
-  static const _routes = {
-    '/': 'assets/planet_scene/', // 场景页、three.js、五星球分层纹理
+  static const routes = {
+    '/planet/': 'assets/planet_scene/',
+    '/tree/': 'assets/tree_scene/',
+    '/tree-model/': 'assets/3d/magic_tree/',
   };
 
   /// 启动（幂等），返回端口号
@@ -27,15 +29,20 @@ class SceneServer {
   }
 
   Future<void> _handle(HttpRequest req) async {
-    final path = req.uri.path == '/' ? '/index.html' : req.uri.path;
+    final path = req.uri.path;
     String? assetKey;
-    for (final entry in _routes.entries) {
+    if (path.contains('..') || path.contains(r'\')) {
+      req.response.statusCode = HttpStatus.notFound;
+      await req.response.close();
+      return;
+    }
+    for (final entry in routes.entries) {
       if (path.startsWith(entry.key)) {
         assetKey = entry.value + path.substring(entry.key.length);
         break;
       }
     }
-    if (assetKey == null || assetKey.contains('..')) {
+    if (assetKey == null || assetKey.endsWith('/')) {
       req.response.statusCode = HttpStatus.notFound;
     } else {
       try {
@@ -57,6 +64,18 @@ class SceneServer {
       return ContentType('application', 'javascript', charset: 'utf-8');
     }
     if (path.endsWith('.png')) return ContentType('image', 'png');
+    if (path.endsWith('.webp')) return ContentType('image', 'webp');
+    if (path.endsWith('.ktx2')) return ContentType('image', 'ktx2');
+    if (path.endsWith('.wasm')) return ContentType('application', 'wasm');
+    if (path.endsWith('.json') || path.endsWith('.gltf')) {
+      return ContentType('application', 'json', charset: 'utf-8');
+    }
+    if (path.endsWith('.glb') || path.endsWith('.bin')) {
+      return ContentType('application', 'octet-stream');
+    }
+    if (path.endsWith('.css')) {
+      return ContentType('text', 'css', charset: 'utf-8');
+    }
     return ContentType('image', 'jpeg');
   }
 

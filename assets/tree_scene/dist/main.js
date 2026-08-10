@@ -2,7 +2,12 @@ import { MagicTreeScene } from './MagicTreeScene.js';
 import { decodeCommand, encodeEvent } from './protocol.js';
 
 const canvas = document.querySelector('#tree-scene');
-const treeScene = new MagicTreeScene({ canvas });
+const parameters = new URLSearchParams(window.location.search);
+const bridgeToken = parameters.get('token') ?? '';
+const treeScene = new MagicTreeScene({
+  canvas,
+  assetUrl: parameters.get('model') ?? '../3d/magic_tree/magic_tree.glb',
+});
 
 let sessionId = 'bootstrap';
 let outgoingSequence = 0;
@@ -14,14 +19,55 @@ function emit(type, payload = null) {
     type,
     payload,
   });
-  window.parent?.postMessage({ source: 'easy-create-tree-scene', event }, '*');
+  window.parent?.postMessage(JSON.stringify({
+    source: 'easy-create-tree-scene',
+    token: bridgeToken,
+    event,
+  }), '*');
   window.TreeSceneBridge?.postMessage(JSON.stringify(event));
+}
+
+function normalizeSnapshot(snapshot = {}) {
+  return {
+    ...snapshot,
+    treeAge: snapshot.structuralAge ?? snapshot.treeAge ?? 0,
+    activeChapterId: snapshot.focusedChapterId ?? snapshot.activeChapterId ?? null,
+  };
+}
+
+async function playMutation(payload = {}) {
+  const mutation = payload.mutation ?? {};
+  const snapshot = normalizeSnapshot(payload.snapshot);
+  const chapters = snapshot.chapters ?? [];
+  if (mutation.type === 'addChapter') {
+    const chapter = chapters.find((item) => item.id === mutation.nodeId);
+    if (chapter) {
+      await Promise.all([
+        treeScene.setAge(snapshot.treeAge, { animate: mutation.structuralAgeChanged }),
+        treeScene.growChapter(chapter),
+      ]);
+    }
+  } else if (mutation.type === 'addSection') {
+    const chapter = chapters.find((item) => item.id === mutation.parentId);
+    const section = chapter?.sections?.find((item) => item.id === mutation.nodeId);
+    if (section) {
+      await Promise.all([
+        treeScene.setAge(snapshot.treeAge, { animate: mutation.structuralAgeChanged }),
+        treeScene.growSection({ ...section, chapterId: chapter.id }),
+      ]);
+    }
+  }
+  await treeScene.setAge(snapshot.treeAge, { animate: false });
+  await treeScene.sync(snapshot);
+  emit('tree.mutationCompleted', { type: mutation.type, id: mutation.nodeId });
 }
 
 async function receive(raw) {
   const command = decodeCommand(raw);
   sessionId = command.sceneSessionId;
-  if (command.type === 'scene.ping') {
+  if (command.type === 'scene.init') {
+    emit('scene.ready', { renderer: 'WebGLRenderer', quality: treeScene.quality.name });
+  } else if (command.type === 'scene.ping') {
     emit('scene.pong');
   } else if (command.type === 'tree.setAge') {
     await treeScene.setAge(command.payload?.age, {
@@ -29,9 +75,13 @@ async function receive(raw) {
       durationMs: command.payload?.durationMs ?? 900,
     });
     emit('tree.ageSettled', treeScene.growth?.getState());
-  } else if (command.type === 'tree.sync') {
-    await treeScene.sync(command.payload);
+  } else if (command.type === 'tree.sync' || command.type === 'tree.syncSnapshot') {
+    const snapshot = normalizeSnapshot(command.payload);
+    await treeScene.setAge(snapshot.treeAge, { animate: false });
+    await treeScene.sync(snapshot);
     emit('tree.synced');
+  } else if (command.type === 'tree.playMutation') {
+    await playMutation(command.payload);
   } else if (command.type === 'tree.focusChapter') {
     await treeScene.focusChapter(command.payload?.id, {
       animate: command.payload?.animate !== false,
@@ -50,6 +100,16 @@ async function receive(raw) {
     emit('scene.panned');
   } else if (command.type === 'scene.hitTest') {
     emit('scene.hitResult', treeScene.hitTest(command.payload?.x, command.payload?.y));
+  } else if (command.type === 'scene.pause') {
+    paused = true;
+    emit('scene.paused');
+  } else if (command.type === 'scene.resume') {
+    paused = false;
+    emit('scene.resumed');
+  } else if (command.type === 'scene.disposeAssets') {
+    paused = true;
+    treeScene.dispose();
+    emit('scene.disposed');
   } else if (command.type === 'tree.growChapter') {
     await treeScene.growChapter(command.payload);
     emit('tree.chapterGrown', { id: command.payload?.id });
@@ -62,11 +122,19 @@ async function receive(raw) {
 window.EasyCreateTreeScene = Object.freeze({ receive });
 window.addEventListener('message', (event) => {
   if (event.data?.source !== 'easy-create-flutter') return;
+  if (bridgeToken && event.data?.token !== bridgeToken) return;
   receive(event.data.command);
 });
 
+canvas.addEventListener('webglcontextlost', (event) => {
+  event.preventDefault();
+  paused = true;
+  emit('scene.contextLost');
+});
+
+let paused = false;
 function render() {
-  treeScene.render();
+  if (!paused) treeScene.render();
   requestAnimationFrame(render);
 }
 

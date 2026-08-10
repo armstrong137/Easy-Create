@@ -146,7 +146,7 @@ class _PlanetSceneState extends ConsumerState<PlanetScene> {
       )
       ..loadRequest(
         Uri.parse(
-          'http://127.0.0.1:$port/index.html'
+          'http://127.0.0.1:$port/planet/index.html'
           '?planet=${widget.planet}&spin=${widget.spin}'
           // lod=mid：移动端放大档封顶 4096。8192 单张纹理占显存约 134MB，
           // iPhone Safari/WKWebView 会直接卡死

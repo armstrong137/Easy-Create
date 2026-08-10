@@ -315,6 +315,13 @@
     双向消息模型。结构树龄与聚焦章节彻底分离；章节始终参与树形，小节仅在高度封顶前
     参与主树龄，封顶后只产生所属章节枝变化。覆盖新增/删除章、增删节、重命名、灵感数、
     无变化和聚焦七类差异；十章回看引子只产生相机聚焦，树龄完全不变。Dart 测试 8 项通过。
+  - ✅ P3-8 移动端/Web 场景宿主与离线服务（2026-08-10）：新增统一
+    `TreeSceneController`、移动端 WebView 与 Web iframe 宿主。场景 ready 前命令排队，
+    ready 后按 sequence 发送；旧 session 事件丢弃，WebGL context lost 后只重发最新完整
+    快照，暂停/恢复幂等。共享回环服务改为 `/planet/`、`/tree/`、`/tree-model/`
+    显式白名单并补齐 GLB/KTX2/WASM 等 MIME，未知路径和目录穿越均拒绝。Web iframe
+    校验 event.source/token/session，销毁时释放 GPU 页面。相关 70 项 Flutter 回归、原生分析、
+    Web debug 构建、Wasm dry-run 与 three.js Playwright 检查全部通过。
 - 🔄 P4 魔毯 3D 重构（布料形变/灵感池空间化）
   - ✅ P4-0 方案定稿与素材准备（2026-07-15）：用户确认采用方案二「卷轴灵感」。
     设计目标不是“魔毯上放灵感卡片”，而是“魔毯展开后变成一张可书写、可滚动的魔法长卷”，
