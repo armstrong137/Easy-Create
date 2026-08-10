@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-08-10 14:00:42　对应提交：aabc811 之后的工作区状态
+> 生成时间：2026-08-10 14:08:56　对应提交：ed2db76 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     114
-  Nodes:     4,245
-  Edges:     19,536
-  DB Size:   21.58 MB
+  Files:     118
+  Nodes:     4,278
+  Edges:     19,601
+  DB Size:   21.62 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,586
-  function        1,427
+  function        1,434
   class           470
-  import          382
-  constant        213
-  file            106
-  variable        44
+  import          390
+  constant        225
+  file            110
+  variable        46
   type_alias      12
   enum_member     2
   namespace       2
@@ -34,7 +34,7 @@ Nodes by Kind:
 
 Files by Language:
   dart            69
-  javascript      10
+  javascript      14
   kotlin          8
   python          7
   xml             6
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (114 files):
+Project Structure (118 files):
 
 |-- .agents
 |   `-- skills
@@ -234,6 +234,15 @@ Project Structure (114 files):
 |   |-- planet_texture_gen.dart (dart, 18 symbols)
 |   |-- probe_alpha.dart (dart, 4 symbols)
 |   `-- stage_convert.dart (dart, 4 symbols)
+|-- tools
+|   `-- tree_scene
+|       |-- scripts
+|       |   `-- build.mjs (javascript, 10 symbols)
+|       |-- src
+|       |   |-- main.js (javascript, 13 symbols)
+|       |   `-- protocol.js (javascript, 6 symbols)
+|       `-- test
+|           `-- protocol.test.js (javascript, 4 symbols)
 |-- web
 |   `-- drift_worker.js (javascript, 666 symbols)
 |-- analysis_options.yaml (yaml, 0 symbols)

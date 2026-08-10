@@ -71,6 +71,13 @@ flutter:
 
   # 行星纹理（NASA 公有领域真实摄影，等距圆柱投影）
   assets:
+    - assets/tree_scene/
+    - assets/tree_scene/dist/
+    - assets/tree_scene/vendor/
+    - assets/tree_scene/vendor/addons/loaders/
+    - assets/tree_scene/vendor/addons/utils/
+    - assets/tree_scene/vendor/addons/libs/
+    - assets/tree_scene/vendor/addons/libs/basis/
     - assets/textures/
     # 卷轴灵感魔毯素材（自参考图 picture/方案2_卷轴灵感 裁切）
     - assets/textures/scroll_carpet/
