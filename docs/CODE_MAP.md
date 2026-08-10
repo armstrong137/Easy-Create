@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-08-10 14:08:56　对应提交：ed2db76 之后的工作区状态
+> 生成时间：2026-08-10 15:07:52　对应提交：f2472db 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,31 +12,31 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     118
-  Nodes:     4,278
-  Edges:     19,601
-  DB Size:   21.62 MB
+  Files:     125
+  Nodes:     4,386
+  Edges:     19,810
+  DB Size:   21.88 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,586
-  function        1,434
+  function        1,472
   class           470
-  import          390
-  constant        225
-  file            110
-  variable        46
+  import          417
+  constant        228
+  file            117
+  variable        79
   type_alias      12
   enum_member     2
   namespace       2
   enum            1
 
 Files by Language:
-  dart            69
-  javascript      14
+  dart            70
+  javascript      15
+  python          12
   kotlin          8
-  python          7
   xml             6
   properties      4
   yaml            4
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (118 files):
+Project Structure (125 files):
 
 |-- .agents
 |   `-- skills
@@ -196,12 +196,17 @@ Project Structure (118 files):
 |-- scripts
 |   |-- tests
 |   |   `-- test_validate_magic_tree_art_package.py (python, 16 symbols)
+|   |-- build_magic_tree_blender.py (python, 38 symbols)
 |   |-- capture_standins.py (python, 11 symbols)
 |   |-- e2e_probe.dart (dart, 12 symbols)
+|   |-- export_magic_tree.py (python, 14 symbols)
+|   |-- generate_magic_tree_pbr.py (python, 12 symbols)
 |   |-- magic_tree_img2img_pipeline.py (python, 28 symbols)
 |   |-- magic_tree_sd_webui_provider.py (python, 18 symbols)
+|   |-- optimize_magic_tree_glb.py (python, 16 symbols)
 |   |-- serve_web.dart (dart, 4 symbols)
 |   |-- square_standins.py (python, 11 symbols)
+|   |-- validate_magic_tree_3d.py (python, 17 symbols)
 |   |-- validate_magic_tree_art_package.py (python, 16 symbols)
 |   `-- validate_magic_tree_frames.py (python, 27 symbols)
 |-- test
@@ -225,6 +230,7 @@ Project Structure (118 files):
 |   |   |-- section_page_test.dart (dart, 24 symbols)
 |   |   |-- starfield_motion_test.dart (dart, 6 symbols)
 |   |   |-- starfield_test.dart (dart, 7 symbols)
+|   |   |-- tree_scene_asset_test.dart (dart, 4 symbols)
 |   |   `-- voice_capture_test.dart (dart, 22 symbols)
 |   `-- tools
 |       `-- web_serve_test.dart (dart, 6 symbols)
@@ -237,7 +243,8 @@ Project Structure (118 files):
 |-- tools
 |   `-- tree_scene
 |       |-- scripts
-|       |   `-- build.mjs (javascript, 10 symbols)
+|       |   |-- build.mjs (javascript, 10 symbols)
+|       |   `-- validate-gltf.mjs (javascript, 7 symbols)
 |       |-- src
 |       |   |-- main.js (javascript, 13 symbols)
 |       |   `-- protocol.js (javascript, 6 symbols)
