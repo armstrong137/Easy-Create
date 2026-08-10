@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-08-10 15:53:19　对应提交：7979af8 之后的工作区状态
+> 生成时间：2026-08-10 15:58:37　对应提交：478bcef 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,28 +12,28 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     138
-  Nodes:     4,533
-  Edges:     20,231
-  DB Size:   22.29 MB
+  Files:     142
+  Nodes:     4,581
+  Edges:     20,395
+  DB Size:   22.43 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,649
-  function        1,483
-  class           479
-  import          454
-  constant        240
-  file            130
+  method          1,659
+  function        1,489
+  class           485
+  import          464
+  constant        242
+  file            134
   variable        81
   type_alias      12
-  enum_member     2
+  enum_member     11
+  enum            2
   namespace       2
-  enum            1
 
 Files by Language:
-  dart            70
+  dart            74
   javascript      28
   python          12
   kotlin          8
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (138 files):
+Project Structure (142 files):
 
 |-- .agents
 |   `-- skills
@@ -171,6 +171,9 @@ Project Structure (138 files):
 |   |   |   |-- starfield_motion.dart (dart, 7 symbols)
 |   |   |   `-- starfield.dart (dart, 31 symbols)
 |   |   |-- outline
+|   |   |   |-- tree_scene
+|   |   |   |   |-- tree_scene_protocol.dart (dart, 10 symbols)
+|   |   |   |   `-- tree_scene_snapshot.dart (dart, 25 symbols)
 |   |   |   |-- label_layout.dart (dart, 15 symbols)
 |   |   |   |-- magic_carpet.dart (dart, 67 symbols)
 |   |   |   |-- magic_tree_model.dart (dart, 63 symbols)
@@ -231,6 +234,8 @@ Project Structure (138 files):
 |   |   |-- starfield_motion_test.dart (dart, 6 symbols)
 |   |   |-- starfield_test.dart (dart, 7 symbols)
 |   |   |-- tree_scene_asset_test.dart (dart, 4 symbols)
+|   |   |-- tree_scene_protocol_test.dart (dart, 5 symbols)
+|   |   |-- tree_scene_snapshot_test.dart (dart, 8 symbols)
 |   |   `-- voice_capture_test.dart (dart, 22 symbols)
 |   `-- tools
 |       `-- web_serve_test.dart (dart, 6 symbols)
