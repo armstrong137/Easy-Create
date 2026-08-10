@@ -1176,7 +1176,12 @@ class _MagicTreeImageState extends State<_MagicTreeImage>
     if (widget.layout.frame == _frame) return;
     _fromFrame = _frame;
     _frame = widget.layout.frame;
-    _wipe.forward(from: 0).whenComplete(_notifyFrameSettled);
+    final targetFrame = _frame;
+    _wipe.forward(from: 0).whenComplete(() {
+      if (!mounted || _frame != targetFrame) return;
+      setState(() => _fromFrame = null);
+      _notifyFrameSettled();
+    });
   }
 
   void _notifyFrameSettled() {

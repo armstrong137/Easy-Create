@@ -14,7 +14,7 @@ import 'package:novel_app/presentation/home/home_page.dart'
 import 'package:novel_app/presentation/outline/magic_carpet.dart'
     show CarpetOverlay;
 import 'package:novel_app/presentation/outline/magic_tree_model.dart'
-    show kGrowWipeDuration, kMagicTreeArtEnabled;
+    show kGrowWipeDuration, kMagicTreeArtEnabled, treeFrameAsset;
 import 'package:novel_app/presentation/outline/outline_page.dart';
 import 'package:novel_app/presentation/section/section_page.dart'
     show sectionCardsProvider;
@@ -76,6 +76,19 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 100));
   }
+
+  List<String> visibleTreeAssets(WidgetTester tester) => tester
+      .widgetList<Image>(find.byType(Image))
+      .map((image) {
+        final provider = image.image;
+        if (provider is AssetImage) return provider.assetName;
+        if (provider is ResizeImage && provider.imageProvider is AssetImage) {
+          return (provider.imageProvider as AssetImage).assetName;
+        }
+        return '';
+      })
+      .where((asset) => asset.contains('tree_frames_v3'))
+      .toList();
 
   /// 双击（建章/建节改为双击避免误触）：两次 tap 在同点、间隔 < 双击超时
   Future<void> doubleTapAt(WidgetTester tester, Offset p) async {
@@ -375,6 +388,68 @@ void main() {
     expect(sections.single.chapterId, 2, reason: '靠下高度对应最后一章（第一章）');
     expect(sections.single.title, '第一节');
     await tester.pump(const Duration(milliseconds: 800));
+  });
+
+  testWidgets('新增早期小节：树换到下一帧后保持，不在枝丫动画结束时回退', (tester) async {
+    await seedNovel();
+    await db
+        .into(db.chapters)
+        .insert(
+          ChaptersCompanion.insert(novelId: 1, title: '引子', sortOrder: 0),
+        );
+    final outline = StreamController<List<OutlineChapter>>();
+    addTearDown(outline.close);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          outlineProvider.overrideWith((ref, novelId) => outline.stream),
+          sectionInspirationsProvider.overrideWith(
+            (ref, novelId) => Stream.value(const {}),
+          ),
+          chapterInspirationsProvider.overrideWith(
+            (ref, novelId) => Stream.value(const {}),
+          ),
+          inspirationPoolProvider.overrideWith((ref) => Stream.value(const [])),
+          sectionCardsProvider.overrideWith(
+            (ref, sectionId) => Stream.value(const []),
+          ),
+        ],
+        child: MaterialApp(
+          builder: (context, child) => CarpetOverlay(child: child!),
+          home: const OutlinePage(novelId: 1, title: '测试小说'),
+        ),
+      ),
+    );
+    outline.add([fakeChapter(1, '引子', 0)]);
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+      final assets = visibleTreeAssets(tester);
+      if (assets.length == 1 && assets.single == treeFrameAsset(2)) break;
+    }
+
+    final initialWipe =
+        tester.widget<AnimatedBuilder>(find.byKey(const Key('魔树完整图'))).animation
+            as Animation<double>;
+    expect(initialWipe.value, 1, reason: '初始章节换帧应先稳定再开始本用例');
+    expect(visibleTreeAssets(tester), [
+      treeFrameAsset(2),
+    ], reason: '擦除完成后必须立即移除旧帧，不能等后续枝丫重建才清理');
+
+    final size = tester.getSize(find.byType(Scaffold));
+    await doubleTapAt(tester, Offset(size.width * 0.72, size.height * 0.75));
+    outline.add([fakeChapter(1, '引子', 1)]);
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(
+      visibleTreeAssets(tester),
+      containsAll([treeFrameAsset(2), treeFrameAsset(3)]),
+      reason: '换帧中应由新帧自下而上覆盖旧帧',
+    );
+
+    await tester.pump(const Duration(milliseconds: 1200));
+    expect(visibleTreeAssets(tester), [
+      treeFrameAsset(3),
+    ], reason: '黄色扫光和枝丫动画结束后必须保持新树帧，不能恢复旧树');
   });
 
   testWidgets('窗口模式：进入时默认显示最新章节，仍可下滑回看前文', (tester) async {
