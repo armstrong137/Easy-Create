@@ -329,6 +329,14 @@
     正常 App 主体改为 `TreeScene + Flutter Overlay`，旧 2D 只保留为测试/低端回退。
     Flutter 34 项测试和 outline 静态分析通过；Playwright 实测新增章节事件严格按
     mutation started → branch growth started → completed 顺序，且无资源/控制台错误。
+  - ✅ P3-10 章节、小节与灵感交互恢复（2026-08-10）：实时 3D 主路径恢复左右半屏
+    手势所有权锁定，按下时决定左侧切章或右侧切节，跨越中线不改变归属；章节与小节
+    三维标签每 100ms 投影为 Flutter 语义热区，保留单击、双击、长按编辑与删除行为。
+    灵感拖拽坐标以 30Hz 上限发送到 three.js 射线命中层，落在小节枝/标签后仍由仓库
+    完成唯一挂靠落库，场景只负责命中反馈。验证：60 项大纲/魔毯/协议回归、13 项
+    three.js 单测、outline 静态分析与 Web debug 构建全部通过；430x932 Playwright
+    实渲染确认新增章节仍严格按 mutation started → branch growth started → completed
+    单时间轴执行且无资源、控制台错误。
 - 🔄 P4 魔毯 3D 重构（布料形变/灵感池空间化）
   - ✅ P4-0 方案定稿与素材准备（2026-07-15）：用户确认采用方案二「卷轴灵感」。
     设计目标不是“魔毯上放灵感卡片”，而是“魔毯展开后变成一张可书写、可滚动的魔法长卷”，

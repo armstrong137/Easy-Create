@@ -17,6 +17,7 @@ import 'magic_tree_model.dart';
 import 'outline_controller.dart';
 import 'tree_scene/tree_scene.dart';
 import 'tree_scene/tree_scene_controller.dart';
+import 'tree_scene/tree_scene_gestures.dart';
 
 /// 某小说的大纲流（章+节），魔树数据源
 final outlineProvider = StreamProvider.family<List<OutlineChapter>, int>(
@@ -67,6 +68,10 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   late final TreeSceneController _treeSceneController;
   late final OutlineController _outlineController;
   StreamSubscription? _treeSceneEvents;
+  final TreeSceneGestures _realtimeGestures = TreeSceneGestures();
+  late final TreeDragBridge _realtimeDragBridge;
+  final GlobalKey _realtimeTreeKey = GlobalKey();
+  final Map<int, int> _focusedSections = {};
 
   /// 枝丫生长动画（新建章/节时从根部弹性展开）
   late final AnimationController _grow = AnimationController(
@@ -123,6 +128,10 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   void initState() {
     super.initState();
     _treeSceneController = TreeSceneController();
+    _realtimeDragBridge = TreeDragBridge(
+      now: DateTime.now,
+      send: _treeSceneController.setDragPoint,
+    );
     final repository = ref.read(novelRepositoryProvider);
     _outlineController = OutlineController(
       novelId: widget.novelId,
@@ -170,37 +179,207 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
       await _outlineController.addSection(chapterId);
     }
 
+    void moveChapter(TreeGestureDirection direction) {
+      if (direction == TreeGestureDirection.none || outline.isEmpty) return;
+      final focused = _outlineController.snapshot?.focusedChapterId;
+      var index = outline.indexWhere((item) => item.chapter.id == focused);
+      if (index < 0) index = outline.length - 1;
+      final delta = direction == TreeGestureDirection.previous ? -1 : 1;
+      final next = (index + delta).clamp(0, outline.length - 1);
+      _outlineController.focusChapter(outline[next].chapter.id);
+    }
+
+    void moveSection(TreeGestureDirection direction) {
+      if (direction == TreeGestureDirection.none || outline.isEmpty) return;
+      final chapterId =
+          _outlineController.snapshot?.focusedChapterId ??
+          outline.last.chapter.id;
+      OutlineChapter? chapter;
+      for (final item in outline) {
+        if (item.chapter.id == chapterId) chapter = item;
+      }
+      if (chapter == null || chapter.sections.isEmpty) return;
+      final focused = _focusedSections[chapterId];
+      var index = chapter.sections.indexWhere(
+        (section) => section.id == focused,
+      );
+      if (index < 0) index = chapter.sections.length - 1;
+      final delta = direction == TreeGestureDirection.previous ? -1 : 1;
+      final next = (index + delta).clamp(0, chapter.sections.length - 1);
+      final sectionId = chapter.sections[next].id;
+      _focusedSections[chapterId] = sectionId;
+      _treeSceneController.focusSection(chapterId, sectionId);
+    }
+
+    PlacedLabel? projectedLabel(TreeLabelProjection projection) {
+      if (projection.kind == 'chapter') {
+        for (final item in outline) {
+          if (item.chapter.id == projection.id) {
+            return PlacedLabel(
+              text: item.chapter.title,
+              rect: Rect.zero,
+              bold: true,
+              chapterId: item.chapter.id,
+            );
+          }
+        }
+      } else {
+        for (final item in outline) {
+          for (final section in item.sections) {
+            if (section.id == projection.id) {
+              return PlacedLabel(
+                text: section.title,
+                rect: Rect.zero,
+                bold: false,
+                sectionId: section.id,
+              );
+            }
+          }
+        }
+      }
+      return null;
+    }
+
+    Future<void> acceptInspiration(Inspiration inspiration) async {
+      final hit = _treeSceneController.dragHit;
+      _treeSceneController.endDrag();
+      _realtimeDragBridge.reset();
+      if (hit == null) return;
+      final repository = ref.read(inspirationRepositoryProvider);
+      if (hit.kind == 'chapter') {
+        await repository.assignToChapter(inspiration.id, hit.id);
+      } else if (hit.kind == 'section') {
+        await repository.assignToSection(inspiration.id, hit.id);
+      }
+      magicCarpetKey.currentState?.collapse();
+    }
+
     return Expanded(
-      child: Stack(
-        key: const Key('实时3D魔树场景'),
-        children: [
-          Positioned.fill(child: TreeScene(controller: _treeSceneController)),
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: MediaQuery.sizeOf(context).width / 2,
-            child: GestureDetector(
-              key: const Key('左空白区'),
-              behavior: HitTestBehavior.translucent,
-              onDoubleTap: () async {
-                HapticFeedback.lightImpact();
-                await _outlineController.addChapter();
-              },
-            ),
+      child: LayoutBuilder(
+        builder: (context, constraints) => DragTarget<Inspiration>(
+          onWillAcceptWithDetails: (_) => outline.isNotEmpty,
+          onMove: (details) {
+            final box =
+                _realtimeTreeKey.currentContext?.findRenderObject()
+                    as RenderBox?;
+            if (box == null) return;
+            final local = box.globalToLocal(details.offset);
+            _realtimeDragBridge.update(
+              x: local.dx / box.size.width,
+              y: local.dy / box.size.height,
+            );
+          },
+          onLeave: (_) {
+            _treeSceneController.endDrag();
+            _realtimeDragBridge.reset();
+          },
+          onAcceptWithDetails: (details) => acceptInspiration(details.data),
+          builder: (context, candidates, rejected) => AnimatedBuilder(
+            animation: _treeSceneController,
+            builder: (context, _) {
+              Widget labelHotspot(TreeLabelProjection projection) {
+                final label = projectedLabel(projection);
+                if (label == null) return const SizedBox.shrink();
+                return Positioned.fromRect(
+                  rect: Rect.fromLTWH(
+                    projection.rect.left * constraints.maxWidth,
+                    projection.rect.top * constraints.maxHeight,
+                    projection.rect.width * constraints.maxWidth,
+                    projection.rect.height * constraints.maxHeight,
+                  ),
+                  child: Semantics(
+                    label: label.text,
+                    button: true,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onTap: label.sectionId != null
+                          ? () => _openSection(label)
+                          : () => _outlineController.focusChapter(
+                              label.chapterId!,
+                            ),
+                      onDoubleTap: () => _onDoubleTap(label),
+                      onLongPress: () => _showBranchMenu(label),
+                      child: _treeSceneController.dragHit?.id == projection.id
+                          ? DecoratedBox(
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: const Color(0x99D9A441),
+                                  width: 2,
+                                ),
+                              ),
+                            )
+                          : const SizedBox.expand(),
+                    ),
+                  ),
+                );
+              }
+
+              return Stack(
+                key: _realtimeTreeKey,
+                children: [
+                  Positioned.fill(
+                    child: TreeScene(controller: _treeSceneController),
+                  ),
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: constraints.maxWidth / 2,
+                    child: GestureDetector(
+                      key: const Key('左空白区'),
+                      behavior: HitTestBehavior.translucent,
+                      onDoubleTap: () async {
+                        HapticFeedback.lightImpact();
+                        await _outlineController.addChapter();
+                      },
+                      onVerticalDragStart: (_) => _realtimeGestures.begin(
+                        x: 0,
+                        width: constraints.maxWidth,
+                      ),
+                      onVerticalDragUpdate: (details) {
+                        _realtimeGestures.update(
+                          deltaY: details.delta.dy,
+                          x: 0,
+                          width: constraints.maxWidth,
+                        );
+                        _treeSceneController.pan(-details.delta.dy * 0.014);
+                      },
+                      onVerticalDragEnd: (_) =>
+                          moveChapter(_realtimeGestures.end()),
+                      onVerticalDragCancel: _realtimeGestures.cancel,
+                    ),
+                  ),
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: constraints.maxWidth / 2,
+                    child: GestureDetector(
+                      key: const Key('右空白区'),
+                      behavior: HitTestBehavior.translucent,
+                      onDoubleTap: addSection,
+                      onVerticalDragStart: (_) => _realtimeGestures.begin(
+                        x: constraints.maxWidth,
+                        width: constraints.maxWidth,
+                      ),
+                      onVerticalDragUpdate: (details) =>
+                          _realtimeGestures.update(
+                            deltaY: details.delta.dy,
+                            x: constraints.maxWidth,
+                            width: constraints.maxWidth,
+                          ),
+                      onVerticalDragEnd: (_) =>
+                          moveSection(_realtimeGestures.end()),
+                      onVerticalDragCancel: _realtimeGestures.cancel,
+                    ),
+                  ),
+                  for (final projection in _treeSceneController.visibleLabels)
+                    labelHotspot(projection),
+                ],
+              );
+            },
           ),
-          Positioned(
-            right: 0,
-            top: 0,
-            bottom: 0,
-            width: MediaQuery.sizeOf(context).width / 2,
-            child: GestureDetector(
-              key: const Key('右空白区'),
-              behavior: HitTestBehavior.translucent,
-              onDoubleTap: addSection,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

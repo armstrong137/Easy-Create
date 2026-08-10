@@ -76,6 +76,22 @@ export class LabelSystem {
     for (const label of this.labels) label.quaternion.copy(this.camera.quaternion);
   }
 
+  projections() {
+    return this.labels.flatMap((label) => {
+      const point = label.getWorldPosition(new THREE.Vector3()).project(this.camera);
+      if (point.z < -1 || point.z > 1) return [];
+      const chapter = label.userData.kind === 'chapter';
+      return [{
+        kind: label.userData.kind,
+        id: label.userData.id,
+        x: (point.x + 1) / 2 - (chapter ? 0.065 : 0.09),
+        y: (1 - point.y) / 2 - (chapter ? 0.075 : 0.035),
+        width: chapter ? 0.13 : 0.18,
+        height: chapter ? 0.15 : 0.07,
+      }];
+    });
+  }
+
   addLabel(kind, item) {
     const anchor = this.branchSystem.getAnchor(kind, item.id);
     if (!anchor) return;

@@ -106,6 +106,10 @@ async function receive(raw) {
     emit('scene.panned');
   } else if (command.type === 'scene.hitTest') {
     emit('scene.hitResult', treeScene.hitTest(command.payload?.x, command.payload?.y));
+  } else if (command.type === 'tree.setDragPoint') {
+    emit('tree.hit', treeScene.hitTest(command.payload?.x, command.payload?.y));
+  } else if (command.type === 'tree.endDrag') {
+    emit('tree.hit', null);
   } else if (command.type === 'scene.pause') {
     paused = true;
     emit('scene.paused');
@@ -139,8 +143,16 @@ canvas.addEventListener('webglcontextlost', (event) => {
 });
 
 let paused = false;
+let lastProjectionAt = 0;
 function render() {
-  if (!paused) treeScene.render();
+  if (!paused) {
+    treeScene.render();
+    const now = performance.now();
+    if (now - lastProjectionAt >= 100) {
+      lastProjectionAt = now;
+      emit('tree.visibleLabels', { labels: treeScene.visibleLabels() });
+    }
+  }
   requestAnimationFrame(render);
 }
 

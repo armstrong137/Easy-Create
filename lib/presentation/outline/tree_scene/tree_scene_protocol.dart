@@ -65,6 +65,20 @@ class TreeSceneCommand {
     );
   }
 
+  factory TreeSceneCommand.action({
+    required String sessionId,
+    required int sequence,
+    required String type,
+    Map<String, Object?> payload = const {},
+  }) {
+    return TreeSceneCommand._(
+      sessionId: sessionId,
+      sequence: sequence,
+      type: type,
+      payload: payload,
+    );
+  }
+
   final String sessionId;
   final int sequence;
   final String type;

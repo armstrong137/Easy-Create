@@ -134,6 +134,7 @@ export class MagicTreeScene {
   }
 
   async sync(snapshot) {
+    this.snapshot = structuredClone(snapshot);
     this.branchSystem?.sync(snapshot);
     this.labelSystem?.sync(snapshot);
     this.interactionSystem?.setPickRoots(this.labelSystem?.pickRoots ?? []);
@@ -143,11 +144,24 @@ export class MagicTreeScene {
 
   focusChapter(id, options) {
     this.autoFrame = false;
+    if (this.snapshot) {
+      this.snapshot.activeChapterId = id;
+      this.snapshot.activeSectionId = null;
+      this.branchSystem?.sync(this.snapshot);
+      this.labelSystem?.sync(this.snapshot);
+      this.interactionSystem?.setPickRoots(this.labelSystem?.pickRoots ?? []);
+    }
     return this.cameraSystem?.focusChapter(id, options) ?? Promise.resolve();
   }
 
   focusSection(chapterId, sectionId, options) {
     this.autoFrame = false;
+    if (this.snapshot) {
+      this.snapshot.activeChapterId = chapterId;
+      this.snapshot.activeSectionId = sectionId;
+      this.labelSystem?.sync(this.snapshot);
+      this.interactionSystem?.setPickRoots(this.labelSystem?.pickRoots ?? []);
+    }
     return this.cameraSystem?.focusSection(chapterId, sectionId, options) ?? Promise.resolve();
   }
 
@@ -158,6 +172,10 @@ export class MagicTreeScene {
 
   hitTest(ndcX, ndcY) {
     return this.interactionSystem?.hitTest(ndcX, ndcY) ?? null;
+  }
+
+  visibleLabels() {
+    return this.labelSystem?.projections() ?? [];
   }
 
   growChapter(chapter) {
