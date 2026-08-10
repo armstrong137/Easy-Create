@@ -25,26 +25,24 @@
 - 语音：speech_to_text 插件（双端系统本地引擎）
 - **UI 表现层（改造中，见下）**：
   - 现状（旧实现，仅作过渡与低端机回退，不代表最终目标）：
-    FragmentShader 球面贴图星球、静态图星空、2D 卷须枝、
+    FragmentShader 球面贴图星球、静态图星空、28 帧照片魔树+2D 卷须枝、
     Container+阴影卡片；魔毯已升级为整条卷轴相框（2026-07-16 方案二整体化定稿：
     参考图抠像成透明中空 scroll_full.png 整体直用，相框覆最上层、挖空处透出
     真羊皮纸+活墨迹文字+活标题牌，整条卷轴悬浮真实地球之上、窗口内滚动，
     见 presentation/outline/scroll_carpet.dart:ScrollFrame）
-  - **大纲页魔树：过渡期停画**（2026-08-01 用户定稿，开关
-    `magic_tree_model.dart:kMagicTreeArtEnabled = false`）。
-    现有 28 帧是"一株成熟大树自下而上揭开"，早期帧只有下半截、没有树冠，
-    与目标"完整小树苗长成完整大树"不符（验证器 `not_reveal_sequence`
-    实测重叠差 0.826，阈值 20）。停画期间**布局几何照常**：枝丫锚点、章带、
-    点击热区、标签全部不受影响，只是不画底图。
-    素材路线已定：`scripts/magic_tree_img2img_pipeline.py` 走 img2img 链式
-    低重绘生成 28 帧（配方见 docs/Reports/Codex/2026-08-01-*），
-    验收用 `scripts/validate_magic_tree_frames.py`（硬防线 `not_reveal_sequence`）。
-    新素材到位后把开关改回 true，其余无改动；若各帧内容尺寸变化大，
-    需重跑逐帧茎干几何表（脚本量测）。
+  - **大纲页魔树现状**：`tree_frames_v3` 28 帧图片、二维卷须精灵和 Flutter
+    坐标布局当前仍在运行，只作为实时 3D 迁移期临时实现。既有 img2img、切片、
+    拉伸、擦除和二维卷须路线已经被 2026-08-10 的新架构决策取代，不再继续修补。
   - 目标（2026-07-08 用户定稿）：**Flutter 应用壳 + 实时 3D/高级动画表现层**，
     首页星球/星空粒子/魔树/魔毯/卡堆/转场全部升级为真实 3D 或多层伪 3D 场景。
     主清单与执行顺序见 `docs/ui_review/2026-07-08-UI改造第一版清单.md`，
     技术选型结论见 `docs/ui_review/3D架构验证报告.md`
+  - **大纲页魔树最终架构（2026-08-10 用户定稿）**：Flutter 负责 drift/Riverpod
+    业务真相与弹层，three.js r184 `WebGLRenderer` 负责完整实时 3D 魔树；主树
+    使用 glTF 2.0/GLB 骨骼+形态键，章节枝和小节枝沿三维曲线实时生长，叶片
+    使用实例化渲染，镜头在树的世界坐标中巡航，资产使用 KTX2/Meshopt 压缩。
+    规格与实施计划见 `docs/superpowers/specs/2026-08-10-完整实时3D魔树设计.md`
+    和 `docs/superpowers/plans/2026-08-10-完整实时3D魔树全面整改.md`。
 
 ### 数据模型（4 张表）
 ```
