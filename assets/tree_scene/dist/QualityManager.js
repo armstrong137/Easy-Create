@@ -1,3 +1,15 @@
+export function summarizeFrameTimes(samples) {
+  if (!samples.length) return { samples: 0, fps: 0, p95FrameMs: 0 };
+  const sorted = [...samples].sort((left, right) => left - right);
+  const average = samples.reduce((sum, value) => sum + value, 0) / samples.length;
+  const p95Index = Math.max(0, Math.ceil(sorted.length * 0.95) - 1);
+  return {
+    samples: samples.length,
+    fps: Number((1000 / average).toFixed(1)),
+    p95FrameMs: Number(sorted[p95Index].toFixed(2)),
+  };
+}
+
 export class QualityManager {
   constructor({ devicePixelRatio = 1, hardwareConcurrency = 4 } = {}) {
     this.devicePixelRatio = devicePixelRatio;

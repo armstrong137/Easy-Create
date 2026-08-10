@@ -52,6 +52,30 @@ export function buildBranchLayout(snapshot, markerCount = 16) {
   return { treeAge: snapshot.treeAge ?? 0.08, chapters, sections };
 }
 
+export function visibleBranchIds(snapshot) {
+  const chapters = snapshot.chapters ?? [];
+  if (chapters.length === 0) {
+    return { chapterIds: new Set(), sectionIds: new Set() };
+  }
+  const matchedChapter = chapters.findIndex(
+    (chapter) => chapter.id === snapshot.activeChapterId,
+  );
+  const activeIndex = matchedChapter >= 0 ? matchedChapter : chapters.length - 1;
+  const chapterIndices = activeIndex > 0
+    ? [activeIndex - 1, activeIndex]
+    : [0, 1].filter((index) => index < chapters.length);
+  const chapterIds = new Set(chapterIndices.map((index) => chapters[index].id));
+
+  const sections = chapters[activeIndex].sections ?? [];
+  const matchedSection = sections.findIndex(
+    (section) => section.id === snapshot.activeSectionId,
+  );
+  const activeSection = matchedSection >= 0 ? matchedSection : Math.max(0, sections.length - 1);
+  const start = Math.max(0, Math.min(activeSection - 2, sections.length - 5));
+  const sectionIds = new Set(sections.slice(start, start + 5).map((section) => section.id));
+  return { chapterIds, sectionIds };
+}
+
 export class BranchSystem {
   constructor({ root, markers, barkMaterial = null, leafSystem = null }) {
     this.root = root;
@@ -79,13 +103,16 @@ export class BranchSystem {
     const layout = buildBranchLayout(snapshot, this.markers.length);
     const entries = [];
     const chapterCurves = new Map();
-    const activeChapterId =
-      snapshot.activeChapterId ?? snapshot.chapters?.at(-1)?.id ?? null;
+    const visible = visibleBranchIds(snapshot);
 
     for (const descriptor of layout.chapters.values()) {
       const curve = this.chapterCurve(descriptor);
       chapterCurves.set(descriptor.id, curve);
-      entries.push({ ...descriptor, curve });
+      entries.push({
+        ...descriptor,
+        curve,
+        visible: visible.chapterIds.has(descriptor.id),
+      });
     }
     for (const descriptor of layout.sections.values()) {
       const parent = chapterCurves.get(descriptor.chapterId);
@@ -93,14 +120,14 @@ export class BranchSystem {
       entries.push({
         ...descriptor,
         curve: this.sectionCurve(descriptor, parent),
-        visible: descriptor.chapterId === activeChapterId,
+        visible: visible.sectionIds.has(descriptor.id),
       });
     }
 
     this.entries = entries;
     this.rebuildBatch();
     this.rebuildAnchors();
-    this.leafSystem?.sync(entries.filter((entry) => entry.kind === 'chapter' || entry.visible));
+    this.leafSystem?.sync(entries.filter((entry) => entry.visible));
   }
 
   async growChapter(chapter, timeline) {
@@ -130,10 +157,20 @@ export class BranchSystem {
 
   async removeChapter(id, timeline) {
     const branch = this.entries.find((entry) => entry.kind === 'chapter' && entry.id === id);
-    if (branch) await this.runGrowth(branch, timeline, true);
     const nextSnapshot = structuredClone(this.snapshot);
     nextSnapshot.chapters = (nextSnapshot.chapters ?? []).filter((chapter) => chapter.id !== id);
     this.sync(nextSnapshot);
+    if (branch) await this.runGrowth(branch, timeline, true);
+  }
+
+  async removeSection(id, timeline) {
+    const branch = this.entries.find((entry) => entry.kind === 'section' && entry.id === id);
+    const nextSnapshot = structuredClone(this.snapshot);
+    for (const chapter of nextSnapshot.chapters ?? []) {
+      chapter.sections = (chapter.sections ?? []).filter((section) => section.id !== id);
+    }
+    this.sync(nextSnapshot);
+    if (branch) await this.runGrowth(branch, timeline, true);
   }
 
   getAnchor(kind, id) {
@@ -184,11 +221,11 @@ export class BranchSystem {
   geometryFor(entry) {
     const chapter = entry.kind === 'chapter';
     const tubularSegments = chapter ? 14 : 5;
-    const radialSegments = chapter ? 6 : 4;
+    const radialSegments = chapter ? 6 : 6;
     const geometry = new THREE.TubeGeometry(
       entry.curve,
       tubularSegments,
-      chapter ? 0.11 : 0.032,
+      chapter ? 0.11 : 0.052,
       radialSegments,
       false,
     );
@@ -219,7 +256,7 @@ export class BranchSystem {
       this.batch = null;
     }
     const geometries = this.entries
-      .filter((entry) => entry.kind === 'chapter' || entry.visible)
+      .filter((entry) => entry.visible)
       .map((entry) => this.geometryFor(entry));
     if (geometries.length === 0) return;
     const merged = mergeGeometries(geometries, false);

@@ -38,7 +38,7 @@ export class LeafSystem {
     const side = new THREE.Vector3();
 
     for (const branch of branches) {
-      const leafCount = branch.kind === 'chapter' ? 8 : 2;
+      const leafCount = branch.kind === 'chapter' ? 8 : 3;
       for (let index = 0; index < leafCount; index += 1) {
         const meshIndex = (branch.seed + index) % this.meshes.length;
         const instanceIndex = counts[meshIndex];

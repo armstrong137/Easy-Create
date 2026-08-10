@@ -1,5 +1,5 @@
 import { MagicTreeScene } from './MagicTreeScene.js';
-import { ProjectionReporter } from './QualityManager.js';
+import { ProjectionReporter, summarizeFrameTimes } from './QualityManager.js';
 import { decodeCommand, encodeEvent } from './protocol.js';
 
 const canvas = document.querySelector('#tree-scene');
@@ -61,6 +61,12 @@ async function playMutation(payload = {}) {
         treeScene.growSection({ ...section, chapterId: chapter.id }),
       ]);
     }
+  } else if (mutation.type === 'removeChapter') {
+    emit('tree.branchRetractionStarted', { kind: 'chapter', id: mutation.nodeId });
+    await Promise.all([agePromise, treeScene.removeChapter(mutation.nodeId)]);
+  } else if (mutation.type === 'removeSection') {
+    emit('tree.branchRetractionStarted', { kind: 'section', id: mutation.nodeId });
+    await Promise.all([agePromise, treeScene.removeSection(mutation.nodeId)]);
   } else {
     await agePromise;
   }
@@ -166,9 +172,19 @@ let paused = false;
 let frameRequest = null;
 let lastProjectionAt = 0;
 let lastTelemetryAt = 0;
+let previousFrameAt = null;
+let sceneLoadMs = null;
+const bootStartedAt = performance.now();
+const frameTimes = [];
 const projectionReporter = new ProjectionReporter();
 function render() {
   if (paused) return;
+  const frameStartedAt = performance.now();
+  if (previousFrameAt != null) {
+    frameTimes.push(frameStartedAt - previousFrameAt);
+    if (frameTimes.length > 180) frameTimes.shift();
+  }
+  previousFrameAt = frameStartedAt;
   treeScene.render();
   const now = performance.now();
   if (now - lastProjectionAt >= 100) {
@@ -180,7 +196,15 @@ function render() {
   }
   if (now - lastTelemetryAt >= 2000) {
     lastTelemetryAt = now;
-    emit('scene.telemetry', treeScene.telemetry());
+    const heapBytes = performance.memory?.usedJSHeapSize;
+    emit('scene.telemetry', {
+      ...treeScene.telemetry(),
+      frame: summarizeFrameTimes(frameTimes),
+      sceneLoadMs,
+      jsHeapMiB: Number.isFinite(heapBytes)
+        ? Number((heapBytes / 1024 / 1024).toFixed(2))
+        : null,
+    });
   }
   frameRequest = requestAnimationFrame(render);
 }
@@ -188,6 +212,7 @@ function render() {
 function startLoop() {
   if (!paused && frameRequest != null) return;
   paused = false;
+  previousFrameAt = null;
   treeScene.clock.start();
   frameRequest = requestAnimationFrame(render);
 }
@@ -206,6 +231,7 @@ document.addEventListener('visibilitychange', () => {
 
 try {
   await treeScene.load();
+  sceneLoadMs = Number((performance.now() - bootStartedAt).toFixed(1));
   startLoop();
   emit('scene.ready', { renderer: 'WebGLRenderer', quality: treeScene.quality.name });
 } catch (error) {

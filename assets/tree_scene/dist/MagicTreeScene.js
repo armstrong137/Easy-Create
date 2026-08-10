@@ -81,8 +81,8 @@ export class MagicTreeScene {
           material.transparent = false;
           material.depthWrite = true;
           material.side = THREE.DoubleSide;
-          material.emissive?.set(0x17230d);
-          material.emissiveIntensity = 0.22;
+          material.emissive?.set(0x2c4815);
+          material.emissiveIntensity = 0.38;
           material.needsUpdate = true;
           if (leafMaterials.length < 2 && !leafMaterials.includes(material)) {
             leafMaterials.push(material.clone());
@@ -190,6 +190,14 @@ export class MagicTreeScene {
     return this.branchSystem?.growSection(section, this.timeline) ?? Promise.resolve();
   }
 
+  removeChapter(id) {
+    return this.branchSystem?.removeChapter(id, this.timeline) ?? Promise.resolve();
+  }
+
+  removeSection(id) {
+    return this.branchSystem?.removeSection(id, this.timeline) ?? Promise.resolve();
+  }
+
   update() {
     const dt = Math.min(this.clock.getDelta(), 1 / 20);
     this.timeline.update(dt);
@@ -257,6 +265,7 @@ export class MagicTreeScene {
       triangles: info.render.triangles,
       textures: info.memory.textures,
       geometries: info.memory.geometries,
+      programs: info.programs?.length ?? 0,
       branch,
       textureBudgetMiB: this.quality.textureBudgetMiB,
     };

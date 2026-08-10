@@ -3,7 +3,11 @@ import test from 'node:test';
 
 import * as THREE from 'three';
 
-import { BranchSystem, buildBranchLayout } from '../src/BranchSystem.js';
+import {
+  BranchSystem,
+  buildBranchLayout,
+  visibleBranchIds,
+} from '../src/BranchSystem.js';
 import { LeafSystem } from '../src/LeafSystem.js';
 
 function snapshot(chapterCount, sectionsPerChapter = 0) {
@@ -81,4 +85,57 @@ test('新增章节枝沿单一时间轴从芽点连续长出', async () => {
   await branches.growChapter(snapshot(1).chapters[0], timeline);
   assert.deepEqual(samples, [0, 0.2, 0.5, 0.8, 1]);
   assert.equal(branches.activeGrowthProgress(), null);
+});
+
+test('删除小节枝沿单一时间轴反向收拢并移除节点', async () => {
+  const root = new THREE.Group();
+  const branches = new BranchSystem({ root, markers: markers() });
+  const state = snapshot(2, 3);
+  state.activeChapterId = 101;
+  state.activeSectionId = 10102;
+  branches.sync(state);
+  const samples = [];
+  const timeline = {
+    async tween({ onUpdate }) {
+      for (const value of [0, 0.2, 0.5, 0.8, 1]) {
+        onUpdate(value);
+        samples.push(branches.activeGrowthProgress());
+      }
+    },
+  };
+
+  await branches.removeSection(10102, timeline);
+
+  assert.deepEqual(samples, [0, 0.2, 0.5, 0.8, 1]);
+  assert.equal(branches.getAnchor('section', 10102), null);
+  assert.equal(branches.activeGrowthProgress(), null);
+});
+
+test('删除章节枝会连同其小节一起反向收拢', async () => {
+  const root = new THREE.Group();
+  const branches = new BranchSystem({ root, markers: markers() });
+  const state = snapshot(3, 2);
+  branches.sync(state);
+  const timeline = {
+    async tween({ onUpdate }) {
+      for (const value of [0, 0.4, 0.7, 1]) onUpdate(value);
+    },
+  };
+
+  await branches.removeChapter(101, timeline);
+
+  assert.equal(branches.getAnchor('chapter', 101), null);
+  assert.equal(branches.getAnchor('section', 10100), null);
+  assert.equal(branches.getAnchor('section', 10101), null);
+});
+
+test('多章节只渲染当前窗口内的两章和五节枝', () => {
+  const state = snapshot(40, 12);
+  state.activeChapterId = state.chapters[20].id;
+  state.activeSectionId = state.chapters[20].sections[7].id;
+  const visible = visibleBranchIds(state);
+
+  assert.deepEqual([...visible.chapterIds], [119, 120]);
+  assert.equal(visible.sectionIds.size, 5);
+  assert.equal(visible.sectionIds.has(state.chapters[20].sections[7].id), true);
 });

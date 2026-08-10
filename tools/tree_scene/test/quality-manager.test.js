@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { ProjectionReporter, QualityManager } from '../src/QualityManager.js';
+import {
+  ProjectionReporter,
+  QualityManager,
+  summarizeFrameTimes,
+} from '../src/QualityManager.js';
 
 test('质量档位包含明确的渲染预算', () => {
   const high = new QualityManager({
@@ -51,4 +55,11 @@ test('标签投影只有发生变化时才上报', () => {
     reporter.shouldEmit([{ kind: 'chapter', id: 1, x: 0.11, y: 0.2 }]),
     true,
   );
+});
+
+test('帧时采样输出 FPS 与 p95', () => {
+  const summary = summarizeFrameTimes([16, 17, 16, 18, 33]);
+  assert.equal(summary.samples, 5);
+  assert.equal(summary.p95FrameMs, 33);
+  assert.ok(summary.fps > 49 && summary.fps < 51);
 });

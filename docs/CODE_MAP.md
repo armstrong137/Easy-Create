@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-08-10 17:14:06　对应提交：2f49c40 之后的工作区状态
+> 生成时间：2026-08-10 18:19:37　对应提交：ea4af6c 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,28 +12,28 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     154
-  Nodes:     4,780
-  Edges:     21,053
-  DB Size:   23.25 MB
+  Files:     155
+  Nodes:     4,794
+  Edges:     21,106
+  DB Size:   23.32 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,739
-  function        1,506
-  import          519
+  method          1,742
+  function        1,509
+  import          522
   class           498
-  constant        249
-  file            146
-  variable        85
+  constant        251
+  file            147
+  variable        87
   enum_member     18
   type_alias      13
   enum            5
   namespace       2
 
 Files by Language:
-  dart            85
+  dart            86
   javascript      29
   python          12
   kotlin          8
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (154 files):
+Project Structure (155 files):
 
 |-- .agents
 |   `-- skills
@@ -242,6 +242,7 @@ Project Structure (154 files):
 |   |   |-- starfield_motion_test.dart (dart, 6 symbols)
 |   |   |-- starfield_test.dart (dart, 7 symbols)
 |   |   |-- tree_scene_asset_test.dart (dart, 5 symbols)
+|   |   |-- tree_scene_browser_test.dart (dart, 5 symbols)
 |   |   |-- tree_scene_controller_test.dart (dart, 6 symbols)
 |   |   |-- tree_scene_gestures_test.dart (dart, 4 symbols)
 |   |   |-- tree_scene_protocol_test.dart (dart, 5 symbols)
@@ -263,15 +264,15 @@ Project Structure (154 files):
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
 |       |   `-- validate-gltf.mjs (javascript, 7 symbols)
 |       |-- src
-|       |   |-- BranchSystem.js (javascript, 21 symbols)
+|       |   |-- BranchSystem.js (javascript, 23 symbols)
 |       |   |-- CameraSystem.js (javascript, 10 symbols)
 |       |   |-- InteractionSystem.js (javascript, 10 symbols)
 |       |   |-- LabelSystem.js (javascript, 13 symbols)
 |       |   |-- LeafSystem.js (javascript, 8 symbols)
-|       |   |-- MagicTreeScene.js (javascript, 35 symbols)
-|       |   |-- main.js (javascript, 22 symbols)
+|       |   |-- MagicTreeScene.js (javascript, 37 symbols)
+|       |   |-- main.js (javascript, 26 symbols)
 |       |   |-- protocol.js (javascript, 6 symbols)
-|       |   |-- QualityManager.js (javascript, 12 symbols)
+|       |   |-- QualityManager.js (javascript, 13 symbols)
 |       |   |-- SceneTimeline.js (javascript, 6 symbols)
 |       |   `-- TreeGrowthSystem.js (javascript, 12 symbols)
 |       `-- test

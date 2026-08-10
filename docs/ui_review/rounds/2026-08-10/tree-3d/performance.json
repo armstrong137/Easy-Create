@@ -1,0 +1,107 @@
+{
+  "capturedAt": "2026-08-10T23:13:05.028Z",
+  "viewport": "430x933",
+  "method": "fresh tab per scenario; sampled after 8.5 seconds of stable rendering",
+  "scenarios": [
+    {
+      "scenario": "chapter-1",
+      "telemetry": {
+        "quality": "high",
+        "pixelRatio": 1.25,
+        "drawCalls": 36,
+        "triangles": 26820,
+        "textures": 34,
+        "geometries": 35,
+        "programs": 13,
+        "branch": {
+          "drawCalls": 3,
+          "triangles": 344
+        },
+        "textureBudgetMiB": 96,
+        "frame": {
+          "samples": 180,
+          "fps": 60,
+          "p95FrameMs": 17.1
+        },
+        "sceneLoadMs": 797.2,
+        "jsHeapMiB": 52.88
+      },
+      "stable": "chapter-1"
+    },
+    {
+      "scenario": "chapter-10",
+      "telemetry": {
+        "quality": "high",
+        "pixelRatio": 1.25,
+        "drawCalls": 48,
+        "triangles": 27254,
+        "textures": 37,
+        "geometries": 47,
+        "programs": 13,
+        "branch": {
+          "drawCalls": 3,
+          "triangles": 688
+        },
+        "textureBudgetMiB": 96,
+        "frame": {
+          "samples": 180,
+          "fps": 60,
+          "p95FrameMs": 17.1
+        },
+        "sceneLoadMs": 623.3,
+        "jsHeapMiB": 51.38
+      },
+      "stable": "chapter-10"
+    },
+    {
+      "scenario": "chapter-40",
+      "telemetry": {
+        "quality": "high",
+        "pixelRatio": 1.25,
+        "drawCalls": 48,
+        "triangles": 27254,
+        "textures": 37,
+        "geometries": 47,
+        "programs": 13,
+        "branch": {
+          "drawCalls": 3,
+          "triangles": 688
+        },
+        "textureBudgetMiB": 96,
+        "frame": {
+          "samples": 180,
+          "fps": 60,
+          "p95FrameMs": 18.1
+        },
+        "sceneLoadMs": 822.7,
+        "jsHeapMiB": 53.64
+      },
+      "stable": "chapter-40"
+    },
+    {
+      "scenario": "stress-40x12",
+      "telemetry": {
+        "quality": "high",
+        "pixelRatio": 1.25,
+        "drawCalls": 52,
+        "triangles": 27356,
+        "textures": 38,
+        "geometries": 51,
+        "programs": 13,
+        "branch": {
+          "drawCalls": 3,
+          "triangles": 760
+        },
+        "textureBudgetMiB": 96,
+        "frame": {
+          "samples": 180,
+          "fps": 60,
+          "p95FrameMs": 18.1
+        },
+        "sceneLoadMs": 984.9,
+        "jsHeapMiB": 55.45
+      },
+      "stable": "stress-40x12"
+    }
+  ]
+}

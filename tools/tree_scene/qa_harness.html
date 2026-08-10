@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <title>实时 3D 魔树 QA</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #fdf6ec; }
+      iframe { display: block; width: 100%; height: 100%; border: 0; background: #fdf6ec; }
+      #controls {
+        position: fixed; z-index: 10; top: 8px; left: 8px; right: 8px;
+        display: flex; flex-wrap: wrap; gap: 6px; padding: 8px;
+        background: rgba(18, 15, 11, .82); color: white; font: 12px/1.2 sans-serif;
+      }
+      button { border: 1px solid #b99752; background: #292116; color: #fff5d6; padding: 6px 8px; }
+      #status { margin-left: auto; align-self: center; }
+      .clean #controls { display: none; }
+    </style>
+  </head>
+  <body>
+    <div id="controls">
+      <button data-scenario="empty">空书</button>
+      <button data-scenario="chapter-1">1 章</button>
+      <button data-scenario="chapter-10">10 章</button>
+      <button data-scenario="chapter-40">40 章</button>
+      <button data-scenario="stress-40x12">40×12</button>
+      <button data-scenario="add-chapter">新增章节</button>
+      <button data-scenario="add-section-early">幼树新增小节</button>
+      <button data-scenario="add-section-mature">成树新增小节</button>
+      <button data-scenario="delete-chapter">删除章节</button>
+      <button data-scenario="delete-section">删除小节</button>
+      <button data-scenario="focus-history">切换早期章节</button>
+      <button data-scenario="drag-inspiration">拖拽灵感</button>
+      <button data-scenario="background-restore">后台恢复</button>
+      <span id="status" data-testid="scene-status">等待场景</span>
+    </div>
+    <iframe
+      id="scene"
+      title="实时 3D 魔树"
+      src="/assets/tree_scene/index.html?token=qa&amp;model=/assets/3d/magic_tree/magic_tree.glb&amp;rev=20260810e"
+    ></iframe>
+    <script>
+      const parameters = new URLSearchParams(location.search);
+      if (parameters.get('clean') === '1') document.body.classList.add('clean');
+
+      const frame = document.querySelector('#scene');
+      const status = document.querySelector('#status');
+      let sequence = 0;
+      let ready = false;
+      let activeScenario = parameters.get('scenario') || 'chapter-10';
+      const actionDelay = Number(parameters.get('delay') || 180);
+      const recordingEnabled = parameters.get('record') === '1';
+      const recordingDuration = Number(parameters.get('duration') || 4600);
+      const actionScenarios = new Set([
+        'add-chapter', 'add-section-early', 'add-section-mature',
+        'delete-chapter', 'delete-section', 'focus-history',
+        'drag-inspiration', 'background-restore',
+      ]);
+      const eventLog = [];
+
+      function markStable() {
+        status.textContent = `${activeScenario} 已稳定`;
+        document.body.dataset.sceneStable = activeScenario;
+      }
+
+      function chapters(count, sectionsPerChapter = 0) {
+        return Array.from({ length: count }, (_, chapterIndex) => ({
+          id: 100 + chapterIndex,
+          title: chapterIndex === 0 ? '引子' : `第${chapterIndex}章`,
+          sections: Array.from({ length: sectionsPerChapter }, (_, sectionIndex) => ({
+            id: 10000 + chapterIndex * 100 + sectionIndex,
+            title: `第${sectionIndex + 1}节`,
+          })),
+        }));
+      }
+
+      function snapshot(chapterCount, sectionsPerChapter = 0) {
+        const items = chapters(chapterCount, sectionsPerChapter);
+        return {
+          novelId: 1,
+          structuralAge: Math.min(1, 0.08 + chapterCount / 24),
+          focusedChapterId: items.at(-1)?.id ?? null,
+          chapters: items,
+        };
+      }
+
+      function send(type, payload) {
+        frame.contentWindow.postMessage({
+          source: 'easy-create-flutter',
+          token: 'qa',
+          command: {
+            protocolVersion: 1,
+            sceneSessionId: 'qa-session',
+            sequence: sequence++,
+            type,
+            payload,
+          },
+        }, '*');
+      }
+
+      async function recordScenario() {
+        const canvas = frame.contentDocument?.querySelector('canvas');
+        if (!canvas?.captureStream || typeof MediaRecorder === 'undefined') {
+          throw new Error('当前浏览器不支持画布录像');
+        }
+        const mimeType = [
+          'video/webm;codecs=vp9',
+          'video/webm;codecs=vp8',
+          'video/webm',
+        ].find((type) => MediaRecorder.isTypeSupported(type));
+        const chunks = [];
+        const recorder = new MediaRecorder(canvas.captureStream(30), {
+          mimeType,
+          videoBitsPerSecond: 3500000,
+        });
+        recorder.addEventListener('dataavailable', (event) => {
+          if (event.data.size > 0) chunks.push(event.data);
+        });
+        const stopped = new Promise((resolve) => recorder.addEventListener('stop', resolve));
+        recorder.start(100);
+        syncScenario(activeScenario);
+        await new Promise((resolve) => setTimeout(resolve, recordingDuration));
+        recorder.stop();
+        await stopped;
+        const recording = new Blob(chunks, { type: mimeType });
+        const bytes = new Uint8Array(await recording.arrayBuffer());
+        let binary = '';
+        const stride = 0x8000;
+        for (let offset = 0; offset < bytes.length; offset += stride) {
+          binary += String.fromCharCode(...bytes.subarray(offset, offset + stride));
+        }
+        document.body.dataset.recordingData = btoa(binary);
+        document.body.dataset.recordingReady = activeScenario;
+      }
+
+      function syncScenario(name) {
+        activeScenario = name;
+        delete document.body.dataset.sceneStable;
+        eventLog.length = 0;
+        const presets = {
+          empty: snapshot(0),
+          'chapter-1': snapshot(1, 2),
+          'chapter-10': snapshot(10, 4),
+          'chapter-40': snapshot(40, 4),
+          'stress-40x12': snapshot(40, 12),
+        };
+        if (presets[name]) {
+          send('tree.syncSnapshot', presets[name]);
+          status.textContent = `同步 ${name}`;
+        } else if (name === 'add-chapter') {
+          const before = snapshot(4, 2);
+          const after = snapshot(5, 2);
+          send('tree.syncSnapshot', before);
+          setTimeout(() => send('tree.playMutation', {
+            mutation: { type: 'addChapter', nodeId: 104, structuralAgeChanged: true },
+            snapshot: after,
+          }), actionDelay);
+        } else if (name === 'add-section-early' || name === 'add-section-mature') {
+          const chapterCount = name === 'add-section-early' ? 3 : 24;
+          const before = snapshot(chapterCount, 2);
+          const after = snapshot(chapterCount, 3);
+          const parentId = 99 + chapterCount;
+          send('tree.syncSnapshot', before);
+          setTimeout(() => send('tree.playMutation', {
+            mutation: {
+              type: 'addSection', nodeId: 10000 + (chapterCount - 1) * 100 + 2,
+              parentId,
+              structuralAgeChanged: false,
+            },
+            snapshot: after,
+          }), actionDelay);
+        } else if (name === 'delete-chapter') {
+          const before = snapshot(6, 2);
+          const after = snapshot(5, 2);
+          send('tree.syncSnapshot', before);
+          setTimeout(() => send('tree.playMutation', {
+            mutation: { type: 'removeChapter', nodeId: 105, structuralAgeChanged: true },
+            snapshot: after,
+          }), actionDelay);
+        } else if (name === 'delete-section') {
+          const before = snapshot(10, 4);
+          const after = snapshot(10, 3);
+          send('tree.syncSnapshot', before);
+          setTimeout(() => send('tree.playMutation', {
+            mutation: {
+              type: 'removeSection', nodeId: 10903, parentId: 109,
+              structuralAgeChanged: false,
+            },
+            snapshot: after,
+          }), actionDelay);
+        } else if (name === 'focus-history') {
+          send('tree.syncSnapshot', snapshot(10, 4));
+          setTimeout(() => send('tree.focusChapter', { id: 100, animate: true }), actionDelay);
+        } else if (name === 'drag-inspiration') {
+          send('tree.syncSnapshot', snapshot(10, 4));
+          setTimeout(() => send('tree.setDragPoint', { x: 0.55, y: 0.05 }), actionDelay);
+          setTimeout(() => send('tree.endDrag'), actionDelay + 900);
+        } else if (name === 'background-restore') {
+          send('tree.syncSnapshot', snapshot(10, 4));
+          setTimeout(() => send('scene.pause'), actionDelay);
+          setTimeout(() => send('scene.resume'), actionDelay + 500);
+        }
+      }
+
+      document.querySelectorAll('[data-scenario]').forEach((button) => {
+        button.addEventListener('click', () => syncScenario(button.dataset.scenario));
+      });
+
+      window.addEventListener('message', (message) => {
+        const envelope = typeof message.data === 'string'
+          ? JSON.parse(message.data)
+          : message.data;
+        if (envelope?.source !== 'easy-create-tree-scene') return;
+        const event = typeof envelope.event === 'string'
+          ? JSON.parse(envelope.event)
+          : envelope.event;
+        eventLog.push(event?.type);
+        document.body.dataset.eventLog = JSON.stringify(eventLog.slice(-32));
+        if (event?.type === 'scene.ready') {
+          ready = true;
+          if (recordingEnabled) {
+            recordScenario().catch((error) => {
+              status.textContent = `录像错误：${error.message}`;
+            });
+          } else {
+            syncScenario(activeScenario);
+          }
+        }
+        if (event?.type === 'tree.synced' && !actionScenarios.has(activeScenario)) {
+          markStable();
+        }
+        if (event?.type === 'tree.mutationCompleted') {
+          markStable();
+        }
+        if (event?.type === 'tree.chapterFocused' && activeScenario === 'focus-history') {
+          markStable();
+        }
+        if (event?.type === 'tree.hit' && event.payload == null && activeScenario === 'drag-inspiration') {
+          markStable();
+        }
+        if (event?.type === 'scene.resumed' && activeScenario === 'background-restore') {
+          markStable();
+        }
+        if (event?.type === 'scene.telemetry') {
+          document.body.dataset.telemetry = JSON.stringify(event.payload);
+        }
+        if (event?.type === 'scene.error') {
+          status.textContent = `错误：${event.payload?.message}`;
+        }
+      });
+
+      setTimeout(() => {
+        if (!ready) status.textContent = '场景加载超时';
+      }, 10000);
+    </script>
+  </body>
+</html>
