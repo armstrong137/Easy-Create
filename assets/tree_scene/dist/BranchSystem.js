@@ -20,26 +20,30 @@ function signature(seed, length) {
 export function buildBranchLayout(snapshot, markerCount = 16) {
   const chapters = new Map();
   const sections = new Map();
-  for (const chapter of snapshot.chapters ?? []) {
+  for (const [ordinal, chapter] of (snapshot.chapters ?? []).entries()) {
     const seed = stableHash(`chapter:${chapter.id}`);
-    const anchorIndex = seed % markerCount;
+    const anchorIndex = Math.max(0, markerCount - 1 - (ordinal % markerCount));
     const descriptor = {
       kind: 'chapter',
       id: chapter.id,
       seed,
       anchorKey: `trunk:${anchorIndex}`,
       anchorIndex,
+      ordinal,
       controlSignature: signature(seed, 4),
     };
     chapters.set(chapter.id, descriptor);
 
-    for (const section of chapter.sections ?? []) {
+    const chapterSections = chapter.sections ?? [];
+    for (const [sectionOrdinal, section] of chapterSections.entries()) {
       const sectionSeed = stableHash(`section:${section.id}`);
       sections.set(section.id, {
         kind: 'section',
         id: section.id,
         chapterId: chapter.id,
         seed: sectionSeed,
+        ordinal: sectionOrdinal,
+        siblingCount: chapterSections.length,
         anchorKey: `chapter:${chapter.id}:${sectionSeed % 11}`,
         controlSignature: signature(sectionSeed, 4),
       });
@@ -164,13 +168,16 @@ export class BranchSystem {
 
   sectionCurve(descriptor, parentCurve) {
     const [a, b, c, d] = descriptor.controlSignature;
-    const t = 0.24 + (descriptor.seed % 53) / 100;
+    const count = Math.max(1, descriptor.siblingCount);
+    const t = 0.22 + (descriptor.ordinal / Math.max(1, count - 1)) * 0.58;
+    const lane = (descriptor.ordinal - (count - 1) / 2) * 0.52;
     const start = parentCurve.getPointAt(Math.min(0.82, t));
+    const horizontalSpan = 2.65 - start.x;
     return new THREE.CatmullRomCurve3([
       start,
-      start.clone().add(new THREE.Vector3(0.58, 0.10 + a * 0.08, b * 0.18)),
-      start.clone().add(new THREE.Vector3(1.34, 0.24 + c * 0.16, d * 0.26)),
-      start.clone().add(new THREE.Vector3(2.05, 0.38 + a * 0.20, b * 0.34)),
+      start.clone().add(new THREE.Vector3(horizontalSpan * 0.30, lane * 0.25 + 0.10 + a * 0.08, b * 0.18)),
+      start.clone().add(new THREE.Vector3(horizontalSpan * 0.70, lane * 0.72 + 0.24 + c * 0.16, d * 0.26)),
+      start.clone().add(new THREE.Vector3(horizontalSpan, lane + 0.38 + a * 0.20, b * 0.34)),
     ]);
   }
 

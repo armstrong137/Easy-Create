@@ -30,8 +30,26 @@ async function receive(raw) {
     });
     emit('tree.ageSettled', treeScene.growth?.getState());
   } else if (command.type === 'tree.sync') {
-    treeScene.sync(command.payload);
+    await treeScene.sync(command.payload);
     emit('tree.synced');
+  } else if (command.type === 'tree.focusChapter') {
+    await treeScene.focusChapter(command.payload?.id, {
+      animate: command.payload?.animate !== false,
+    });
+    emit('tree.chapterFocused', { id: command.payload?.id });
+  } else if (command.type === 'tree.focusSection') {
+    await treeScene.focusSection(command.payload?.chapterId, command.payload?.id, {
+      animate: command.payload?.animate !== false,
+    });
+    emit('tree.sectionFocused', {
+      chapterId: command.payload?.chapterId,
+      id: command.payload?.id,
+    });
+  } else if (command.type === 'scene.pan') {
+    treeScene.pan(command.payload?.delta ?? 0);
+    emit('scene.panned');
+  } else if (command.type === 'scene.hitTest') {
+    emit('scene.hitResult', treeScene.hitTest(command.payload?.x, command.payload?.y));
   } else if (command.type === 'tree.growChapter') {
     await treeScene.growChapter(command.payload);
     emit('tree.chapterGrown', { id: command.payload?.id });

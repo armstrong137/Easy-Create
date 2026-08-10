@@ -4,6 +4,9 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 import { BranchSystem } from './BranchSystem.js';
+import { CameraSystem } from './CameraSystem.js';
+import { InteractionSystem } from './InteractionSystem.js';
+import { LabelSystem } from './LabelSystem.js';
 import { LeafSystem } from './LeafSystem.js';
 import { QualityManager } from './QualityManager.js';
 import { SceneTimeline } from './SceneTimeline.js';
@@ -38,7 +41,11 @@ export class MagicTreeScene {
     this.camera.lookAt(0, 3.5, 0);
     this.growth = null;
     this.branchSystem = null;
+    this.labelSystem = null;
+    this.cameraSystem = null;
+    this.interactionSystem = null;
     this.root = null;
+    this.autoFrame = true;
     this.addLights();
     this.resize();
   }
@@ -105,6 +112,18 @@ export class MagicTreeScene {
       barkMaterial,
       leafSystem,
     });
+    this.labelSystem = new LabelSystem({
+      root: this.root,
+      branchSystem: this.branchSystem,
+      camera: this.camera,
+    });
+    this.cameraSystem = new CameraSystem({
+      camera: this.camera,
+      treeRoot: this.root,
+      branchSystem: this.branchSystem,
+      timeline: this.timeline,
+    });
+    this.interactionSystem = new InteractionSystem({ camera: this.camera });
     await this.growth.setAge(0.08, { animate: false });
     return this;
   }
@@ -114,8 +133,31 @@ export class MagicTreeScene {
     return this.growth.setAge(age, options);
   }
 
-  sync(snapshot) {
+  async sync(snapshot) {
     this.branchSystem?.sync(snapshot);
+    this.labelSystem?.sync(snapshot);
+    this.interactionSystem?.setPickRoots(this.labelSystem?.pickRoots ?? []);
+    this.autoFrame = false;
+    await this.cameraSystem?.focusDefault(snapshot, { animate: false });
+  }
+
+  focusChapter(id, options) {
+    this.autoFrame = false;
+    return this.cameraSystem?.focusChapter(id, options) ?? Promise.resolve();
+  }
+
+  focusSection(chapterId, sectionId, options) {
+    this.autoFrame = false;
+    return this.cameraSystem?.focusSection(chapterId, sectionId, options) ?? Promise.resolve();
+  }
+
+  pan(delta) {
+    this.autoFrame = false;
+    this.cameraSystem?.panBy(delta);
+  }
+
+  hitTest(ndcX, ndcY) {
+    return this.interactionSystem?.hitTest(ndcX, ndcY) ?? null;
   }
 
   growChapter(chapter) {
@@ -130,11 +172,14 @@ export class MagicTreeScene {
     const dt = Math.min(this.clock.getDelta(), 1 / 20);
     this.timeline.update(dt);
     this.growth?.update(dt);
-    const age = this.growth?.getState().age ?? 0.08;
-    const focusHeight = 0.65 + 4.1 * age;
-    this.camera.position.y = focusHeight;
-    this.camera.position.z = 16 + 19 * age;
-    this.camera.lookAt(0, focusHeight, 0);
+    if (this.autoFrame) {
+      const age = this.growth?.getState().age ?? 0.08;
+      const focusHeight = 0.65 + 4.1 * age;
+      this.camera.position.y = focusHeight;
+      this.camera.position.z = 16 + 19 * age;
+      this.camera.lookAt(0, focusHeight, 0);
+    }
+    this.labelSystem?.update();
   }
 
   render() {
