@@ -271,25 +271,18 @@ void main() {
     );
   });
 
-  test('新增章/节：必须先冻结枝丫层，再写库触发大纲流', () {
+  test('实时3D新增章/节：页面只进入单一业务控制器事务', () {
     final src = File(
       'lib/presentation/outline/outline_page.dart',
     ).readAsStringSync();
 
-    final freezeIndex = src.indexOf('_branchOutlineOverride = outline');
-    final createChapterIndex = src.indexOf('.createChapter(');
-    final createSectionIndex = src.indexOf('.createSection(');
-
-    expect(freezeIndex, isNonNegative, reason: '新增节点前必须冻结旧枝丫布局');
+    expect(src, contains('_outlineController.addChapter()'));
+    expect(src, contains('_outlineController.addSection(chapterId)'));
+    expect(src, contains('TreeScene(controller: _treeSceneController)'));
     expect(
-      freezeIndex,
-      lessThan(createChapterIndex),
-      reason: '建章写库会先触发大纲流；冻结晚了就会先重排枝丫',
-    );
-    expect(
-      freezeIndex,
-      lessThan(createSectionIndex),
-      reason: '建节写库会先触发大纲流；冻结晚了就会先重排枝丫',
+      src,
+      isNot(contains("type: 'tree.growChapter'")),
+      reason: '页面不得绕过单 mutation 协议分别启动枝条动画',
     );
   });
 

@@ -33,7 +33,7 @@ void main() {
       ),
     );
 
-    expect(sent.map((item) => item['sequence']), [0, 1]);
+    expect(sent.map((item) => item['sequence']), [1, 2]);
   });
 
   test('旧会话事件会被丢弃', () async {

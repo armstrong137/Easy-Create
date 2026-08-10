@@ -25,6 +25,18 @@ page.on('requestfailed', (request) => {
 
 await page.goto(url, { waitUntil: 'networkidle' });
 await page.waitForTimeout(2500);
+await page.evaluate(() => {
+  window.__treeSceneEvents = [];
+  window.addEventListener('message', (event) => {
+    if (typeof event.data !== 'string') return;
+    try {
+      const envelope = JSON.parse(event.data);
+      if (envelope.source === 'easy-create-tree-scene') {
+        window.__treeSceneEvents.push(envelope.event.type);
+      }
+    } catch (_) {}
+  });
+});
 const state = await page.evaluate(() => ({
   ready: Boolean(window.EasyCreateTreeScene),
   canvasWidth: document.querySelector('canvas')?.width ?? 0,
@@ -81,8 +93,46 @@ await page.evaluate(async () => {
 });
 await page.waitForTimeout(120);
 await page.screenshot({ path: resolve(outputDir, 'branches.png') });
+await page.evaluate(async () => {
+  const chapters = Array.from({ length: 11 }, (_, chapterIndex) => ({
+    id: 100 + chapterIndex,
+    title: `第${chapterIndex + 1}章`,
+    sortOrder: chapterIndex,
+    sections: [],
+  }));
+  await window.EasyCreateTreeScene.receive({
+    protocolVersion: 1,
+    sceneSessionId: 'browser-check',
+    sequence: 21,
+    type: 'tree.playMutation',
+    payload: {
+      mutation: {
+        type: 'addChapter',
+        nodeId: 110,
+        structuralAgeChanged: true,
+      },
+      snapshot: {
+        novelId: 1,
+        structuralAge: 1,
+        focusedChapterId: 110,
+        chapters,
+      },
+    },
+  });
+});
+const mutationEvents = await page.evaluate(() => window.__treeSceneEvents);
 await browser.close();
 
-console.log(JSON.stringify({ state, coverage, errors }, null, 2));
+console.log(JSON.stringify({ state, coverage, mutationEvents, errors }, null, 2));
 const coverageValid = coverage.every((ratio) => ratio >= 0.08 && ratio <= 0.78);
-if (!state.ready || errors.length > 0 || !coverageValid) process.exitCode = 1;
+const mutationOrder = [
+  mutationEvents.indexOf('tree.mutationStarted'),
+  mutationEvents.indexOf('tree.branchGrowthStarted'),
+  mutationEvents.indexOf('tree.mutationCompleted'),
+];
+const mutationValid = mutationOrder.every((index) => index >= 0)
+  && mutationOrder[0] < mutationOrder[1]
+  && mutationOrder[1] < mutationOrder[2];
+if (!state.ready || errors.length > 0 || !coverageValid || !mutationValid) {
+  process.exitCode = 1;
+}

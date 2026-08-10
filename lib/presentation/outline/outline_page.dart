@@ -14,6 +14,9 @@ import '../shared/soft_toast.dart';
 import 'label_layout.dart';
 import 'magic_carpet.dart';
 import 'magic_tree_model.dart';
+import 'outline_controller.dart';
+import 'tree_scene/tree_scene.dart';
+import 'tree_scene/tree_scene_controller.dart';
 
 /// 某小说的大纲流（章+节），魔树数据源
 final outlineProvider = StreamProvider.family<List<OutlineChapter>, int>(
@@ -61,6 +64,10 @@ class OutlinePage extends ConsumerStatefulWidget {
 
 class _OutlinePageState extends ConsumerState<OutlinePage>
     with TickerProviderStateMixin {
+  late final TreeSceneController _treeSceneController;
+  late final OutlineController _outlineController;
+  StreamSubscription? _treeSceneEvents;
+
   /// 枝丫生长动画（新建章/节时从根部弹性展开）
   late final AnimationController _grow = AnimationController(
     vsync: this,
@@ -113,6 +120,27 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
   bool _lastTuck = false;
 
   @override
+  void initState() {
+    super.initState();
+    _treeSceneController = TreeSceneController();
+    final repository = ref.read(novelRepositoryProvider);
+    _outlineController = OutlineController(
+      novelId: widget.novelId,
+      scene: _treeSceneController,
+      createChapter: () => repository.createChapter(novelId: widget.novelId),
+      createSection: (chapterId) =>
+          repository.createSection(chapterId: chapterId),
+      renameChapter: repository.renameChapter,
+      renameSection: repository.renameSection,
+      deleteChapter: repository.deleteChapter,
+      deleteSection: repository.deleteSection,
+    );
+    _treeSceneEvents = _treeSceneController.events.listen(
+      _outlineController.onSceneEvent,
+    );
+  }
+
+  @override
   void dispose() {
     carpetTucked.value = false; // 离开大纲页恢复完整魔毯球
     final outlineReady = _trunkOutlineReady;
@@ -123,7 +151,58 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     if (frameReady != null && !frameReady.isCompleted) frameReady.complete();
     _grow.dispose();
     _camera.dispose();
+    _treeSceneEvents?.cancel();
+    _outlineController.dispose();
+    _treeSceneController.dispose();
     super.dispose();
+  }
+
+  Widget _realtimeTreeBody(List<OutlineChapter> outline) {
+    Future<void> addSection() async {
+      final chapterId =
+          _outlineController.snapshot?.focusedChapterId ??
+          (outline.isEmpty ? null : outline.last.chapter.id);
+      if (chapterId == null) {
+        showSoftToast(context, '先点左边空白，长出第一根章枝吧');
+        return;
+      }
+      HapticFeedback.lightImpact();
+      await _outlineController.addSection(chapterId);
+    }
+
+    return Expanded(
+      child: Stack(
+        key: const Key('实时3D魔树场景'),
+        children: [
+          Positioned.fill(child: TreeScene(controller: _treeSceneController)),
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: MediaQuery.sizeOf(context).width / 2,
+            child: GestureDetector(
+              key: const Key('左空白区'),
+              behavior: HitTestBehavior.translucent,
+              onDoubleTap: () async {
+                HapticFeedback.lightImpact();
+                await _outlineController.addChapter();
+              },
+            ),
+          ),
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: MediaQuery.sizeOf(context).width / 2,
+            child: GestureDetector(
+              key: const Key('右空白区'),
+              behavior: HitTestBehavior.translucent,
+              onDoubleTap: addSection,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _beginAwaitingTrunkOutline(int targetNodes) {
@@ -836,9 +915,8 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
 
   @override
   Widget build(BuildContext context) {
-    final outline =
-        ref.watch(outlineProvider(widget.novelId)).value ??
-        const <OutlineChapter>[];
+    final outlineState = ref.watch(outlineProvider(widget.novelId));
+    final outline = outlineState.value ?? const <OutlineChapter>[];
     _markTrunkOutlineReady(outline);
 
     // 章节多（>2 = 进入窗口模式）时把魔毯球缩到右边栏，避免挡住右上角小节标签；
@@ -860,6 +938,28 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     final noteCounts = {
       for (final e in sectionInsp.entries) e.key: e.value.length,
     };
+
+    if (ref.watch(realtimeTree3DProvider)) {
+      if (outlineState.hasValue) {
+        _outlineController.onOutlineChanged(
+          outline,
+          chapterInspirationCounts: {
+            for (final entry in chapterInsp.entries)
+              entry.key: entry.value.length,
+          },
+          sectionInspirationCounts: noteCounts,
+        );
+      }
+      return Scaffold(
+        backgroundColor: kParchment,
+        body: Column(
+          children: [
+            SafeArea(bottom: false, child: _header(context)),
+            _realtimeTreeBody(outline),
+          ],
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: kParchment,

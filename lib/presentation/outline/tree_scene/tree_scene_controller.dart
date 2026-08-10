@@ -20,13 +20,16 @@ class TreeSceneController extends ChangeNotifier {
 
   final String sessionId;
   final List<TreeSceneCommand> _pending = [];
+  final StreamController<TreeSceneEvent> _events =
+      StreamController<TreeSceneEvent>.broadcast();
   TreeSceneSender? _sender;
   TreeSceneSnapshot? _latestSnapshot;
-  int _sequence = 0;
+  int _sequence = 1;
   bool _ready = false;
   bool _paused = false;
 
   bool get isReady => _ready;
+  Stream<TreeSceneEvent> get events => _events.stream;
 
   void attachSender(TreeSceneSender sender) {
     _sender = sender;
@@ -42,7 +45,7 @@ class TreeSceneController extends ChangeNotifier {
     if (sender == null) return;
     final command = TreeSceneCommand.scene(
       sessionId: sessionId,
-      sequence: _sequence++,
+      sequence: 0,
       action: 'init',
     );
     await sender(command.toJson());
@@ -100,6 +103,7 @@ class TreeSceneController extends ChangeNotifier {
 
   Future<void> handleEvent(TreeSceneEvent event) async {
     if (event.sessionId != sessionId) return;
+    _events.add(event);
     switch (event.type) {
       case 'scene.ready':
         await _markReady();
@@ -159,5 +163,11 @@ class TreeSceneController extends ChangeNotifier {
       return;
     }
     await sender(command.toJson());
+  }
+
+  @override
+  void dispose() {
+    unawaited(_events.close());
+    super.dispose();
   }
 }

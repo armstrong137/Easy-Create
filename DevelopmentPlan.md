@@ -322,6 +322,13 @@
     显式白名单并补齐 GLB/KTX2/WASM 等 MIME，未知路径和目录穿越均拒绝。Web iframe
     校验 event.source/token/session，销毁时释放 GPU 页面。相关 70 项 Flutter 回归、原生分析、
     Web debug 构建、Wasm dry-run 与 three.js Playwright 检查全部通过。
+  - ✅ P3-9 大纲页切换实时 3D 与单次变更事务（2026-08-10）：新增
+    `OutlineController`，数据库流成为唯一事实源；首次快照只同步不重播并默认聚焦最新章，
+    真实 ID 进入快照后才发送唯一 `tree.playMutation`。动画进行中只保留最新后续快照，
+    收到 `tree.mutationCompleted` 后继续，彻底取消页面用固定 Timer 分别驱动树、枝和镜头。
+    正常 App 主体改为 `TreeScene + Flutter Overlay`，旧 2D 只保留为测试/低端回退。
+    Flutter 34 项测试和 outline 静态分析通过；Playwright 实测新增章节事件严格按
+    mutation started → branch growth started → completed 顺序，且无资源/控制台错误。
 - 🔄 P4 魔毯 3D 重构（布料形变/灵感池空间化）
   - ✅ P4-0 方案定稿与素材准备（2026-07-15）：用户确认采用方案二「卷轴灵感」。
     设计目标不是“魔毯上放灵感卡片”，而是“魔毯展开后变成一张可书写、可滚动的魔法长卷”，

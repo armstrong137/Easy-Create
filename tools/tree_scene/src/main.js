@@ -39,23 +39,29 @@ async function playMutation(payload = {}) {
   const mutation = payload.mutation ?? {};
   const snapshot = normalizeSnapshot(payload.snapshot);
   const chapters = snapshot.chapters ?? [];
+  emit('tree.mutationStarted', { type: mutation.type, id: mutation.nodeId });
+  const agePromise = treeScene.setAge(snapshot.treeAge, {
+    animate: mutation.structuralAgeChanged,
+  });
+  await new Promise((resolve) => requestAnimationFrame(resolve));
   if (mutation.type === 'addChapter') {
     const chapter = chapters.find((item) => item.id === mutation.nodeId);
     if (chapter) {
-      await Promise.all([
-        treeScene.setAge(snapshot.treeAge, { animate: mutation.structuralAgeChanged }),
-        treeScene.growChapter(chapter),
-      ]);
+      emit('tree.branchGrowthStarted', { kind: 'chapter', id: chapter.id });
+      await Promise.all([agePromise, treeScene.growChapter(chapter)]);
     }
   } else if (mutation.type === 'addSection') {
     const chapter = chapters.find((item) => item.id === mutation.parentId);
     const section = chapter?.sections?.find((item) => item.id === mutation.nodeId);
     if (section) {
+      emit('tree.branchGrowthStarted', { kind: 'section', id: section.id });
       await Promise.all([
-        treeScene.setAge(snapshot.treeAge, { animate: mutation.structuralAgeChanged }),
+        agePromise,
         treeScene.growSection({ ...section, chapterId: chapter.id }),
       ]);
     }
+  } else {
+    await agePromise;
   }
   await treeScene.setAge(snapshot.treeAge, { animate: false });
   await treeScene.sync(snapshot);
