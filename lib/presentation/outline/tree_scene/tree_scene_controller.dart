@@ -47,6 +47,8 @@ class TreeSceneController extends ChangeNotifier {
   int _sequence = 1;
   bool _ready = false;
   bool _paused = false;
+  int _recoveryFailures = 0;
+  bool _useStaticFallback = false;
   List<TreeLabelProjection> _visibleLabels = const [];
   TreeSceneHit? _dragHit;
 
@@ -54,6 +56,7 @@ class TreeSceneController extends ChangeNotifier {
   Stream<TreeSceneEvent> get events => _events.stream;
   List<TreeLabelProjection> get visibleLabels => _visibleLabels;
   TreeSceneHit? get dragHit => _dragHit;
+  bool get useStaticFallback => _useStaticFallback;
 
   void attachSender(TreeSceneSender sender) {
     _sender = sender;
@@ -188,6 +191,8 @@ class TreeSceneController extends ChangeNotifier {
     }
     switch (event.type) {
       case 'scene.ready':
+        _recoveryFailures = 0;
+        _useStaticFallback = false;
         await _markReady();
         return;
       case 'scene.contextLost':
@@ -204,6 +209,15 @@ class TreeSceneController extends ChangeNotifier {
           );
         }
         notifyListeners();
+        return;
+      case 'scene.recoveryFailed':
+        _recoveryFailures += 1;
+        if (_recoveryFailures >= 2) {
+          _useStaticFallback = true;
+          _ready = false;
+          _pending.clear();
+          notifyListeners();
+        }
         return;
       default:
         return;

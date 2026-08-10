@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-08-10 16:29:01　对应提交：0fd17de 之后的工作区状态
+> 生成时间：2026-08-10 16:48:12　对应提交：51bf326 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,29 +12,29 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     151
-  Nodes:     4,743
-  Edges:     20,927
-  DB Size:   23.07 MB
+  Files:     154
+  Nodes:     4,780
+  Edges:     21,054
+  DB Size:   23.25 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,725
-  function        1,501
-  import          509
-  class           496
-  constant        248
-  file            143
-  variable        83
+  method          1,739
+  function        1,506
+  import          519
+  class           498
+  constant        249
+  file            146
+  variable        85
   enum_member     18
   type_alias      13
   enum            5
   namespace       2
 
 Files by Language:
-  dart            83
-  javascript      28
+  dart            85
+  javascript      29
   python          12
   kotlin          8
   xml             6
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (151 files):
+Project Structure (154 files):
 
 |-- .agents
 |   `-- skills
@@ -172,18 +172,19 @@ Project Structure (151 files):
 |   |   |   `-- starfield.dart (dart, 31 symbols)
 |   |   |-- outline
 |   |   |   |-- tree_scene
-|   |   |   |   |-- tree_scene_controller.dart (dart, 36 symbols)
+|   |   |   |   |-- tree_scene_controller.dart (dart, 37 symbols)
 |   |   |   |   |-- tree_scene_gestures.dart (dart, 17 symbols)
 |   |   |   |   |-- tree_scene_io.dart (dart, 18 symbols)
 |   |   |   |   |-- tree_scene_protocol.dart (dart, 12 symbols)
 |   |   |   |   |-- tree_scene_snapshot.dart (dart, 25 symbols)
 |   |   |   |   |-- tree_scene_web.dart (dart, 18 symbols)
-|   |   |   |   `-- tree_scene.dart (dart, 6 symbols)
+|   |   |   |   |-- tree_scene.dart (dart, 6 symbols)
+|   |   |   |   `-- tree_standin.dart (dart, 5 symbols)
 |   |   |   |-- label_layout.dart (dart, 15 symbols)
 |   |   |   |-- magic_carpet.dart (dart, 67 symbols)
 |   |   |   |-- magic_tree_model.dart (dart, 63 symbols)
 |   |   |   |-- outline_controller.dart (dart, 22 symbols)
-|   |   |   |-- outline_page.dart (dart, 100 symbols)
+|   |   |   |-- outline_page.dart (dart, 102 symbols)
 |   |   |   `-- scroll_carpet.dart (dart, 38 symbols)
 |   |   |-- section
 |   |   |   |-- card_deck_sheet.dart (dart, 19 symbols)
@@ -240,11 +241,12 @@ Project Structure (151 files):
 |   |   |-- section_page_test.dart (dart, 24 symbols)
 |   |   |-- starfield_motion_test.dart (dart, 6 symbols)
 |   |   |-- starfield_test.dart (dart, 7 symbols)
-|   |   |-- tree_scene_asset_test.dart (dart, 4 symbols)
+|   |   |-- tree_scene_asset_test.dart (dart, 5 symbols)
 |   |   |-- tree_scene_controller_test.dart (dart, 6 symbols)
 |   |   |-- tree_scene_gestures_test.dart (dart, 4 symbols)
 |   |   |-- tree_scene_protocol_test.dart (dart, 5 symbols)
 |   |   |-- tree_scene_snapshot_test.dart (dart, 8 symbols)
+|   |   |-- tree_standin_test.dart (dart, 4 symbols)
 |   |   `-- voice_capture_test.dart (dart, 22 symbols)
 |   `-- tools
 |       `-- web_serve_test.dart (dart, 6 symbols)
@@ -265,17 +267,18 @@ Project Structure (151 files):
 |       |   |-- CameraSystem.js (javascript, 10 symbols)
 |       |   |-- InteractionSystem.js (javascript, 10 symbols)
 |       |   |-- LabelSystem.js (javascript, 13 symbols)
-|       |   |-- LeafSystem.js (javascript, 7 symbols)
-|       |   |-- MagicTreeScene.js (javascript, 30 symbols)
-|       |   |-- main.js (javascript, 16 symbols)
+|       |   |-- LeafSystem.js (javascript, 8 symbols)
+|       |   |-- MagicTreeScene.js (javascript, 35 symbols)
+|       |   |-- main.js (javascript, 22 symbols)
 |       |   |-- protocol.js (javascript, 6 symbols)
-|       |   |-- QualityManager.js (javascript, 4 symbols)
+|       |   |-- QualityManager.js (javascript, 12 symbols)
 |       |   |-- SceneTimeline.js (javascript, 6 symbols)
 |       |   `-- TreeGrowthSystem.js (javascript, 12 symbols)
 |       `-- test
 |           |-- branch-system.test.js (javascript, 8 symbols)
 |           |-- camera-label.test.js (javascript, 8 symbols)
 |           |-- protocol.test.js (javascript, 4 symbols)
+|           |-- quality-manager.test.js (javascript, 4 symbols)
 |           `-- tree-growth.test.js (javascript, 5 symbols)
 |-- web
 |   `-- drift_worker.js (javascript, 666 symbols)

@@ -4,6 +4,7 @@ export class LeafSystem {
   constructor({ root, capacity = 2048, materials = null }) {
     this.root = root;
     this.capacity = capacity;
+    this.limit = capacity;
     this.geometry = new THREE.PlaneGeometry(0.18, 0.36, 1, 2);
     const leafMaterials = materials ?? [
       new THREE.MeshStandardMaterial({
@@ -41,7 +42,7 @@ export class LeafSystem {
       for (let index = 0; index < leafCount; index += 1) {
         const meshIndex = (branch.seed + index) % this.meshes.length;
         const instanceIndex = counts[meshIndex];
-        if (instanceIndex >= this.capacity) continue;
+        if (instanceIndex >= this.limit) continue;
         const t = 0.56 + (index / Math.max(1, leafCount - 1)) * 0.38;
         branch.curve.getPointAt(Math.min(0.96, t), position);
         branch.curve.getTangentAt(Math.min(0.96, t), tangent).normalize();
@@ -66,6 +67,10 @@ export class LeafSystem {
       mesh.count = counts[index];
       mesh.instanceMatrix.needsUpdate = true;
     }
+  }
+
+  setLimit(limit) {
+    this.limit = Math.max(0, Math.min(this.capacity, limit));
   }
 
   getMetrics() {

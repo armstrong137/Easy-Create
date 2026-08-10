@@ -18,10 +18,11 @@ export class MagicTreeScene {
     this.assetUrl = assetUrl;
     this.clock = new THREE.Clock();
     this.timeline = new SceneTimeline();
-    this.quality = new QualityManager({
+    this.qualityManager = new QualityManager({
       devicePixelRatio: window.devicePixelRatio || 1,
       hardwareConcurrency: navigator.hardwareConcurrency || 4,
-    }).initialProfile();
+    });
+    this.quality = this.qualityManager.currentProfile;
     this.renderer = new THREE.WebGLRenderer({
       canvas,
       alpha: false,
@@ -46,6 +47,7 @@ export class MagicTreeScene {
     this.interactionSystem = null;
     this.root = null;
     this.autoFrame = true;
+    this.lastInteractionAt = null;
     this.addLights();
     this.resize();
   }
@@ -166,11 +168,13 @@ export class MagicTreeScene {
   }
 
   pan(delta) {
+    this.beginInteraction();
     this.autoFrame = false;
     this.cameraSystem?.panBy(delta);
   }
 
   hitTest(ndcX, ndcY) {
+    this.beginInteraction();
     return this.interactionSystem?.hitTest(ndcX, ndcY) ?? null;
   }
 
@@ -198,6 +202,12 @@ export class MagicTreeScene {
       this.camera.lookAt(0, focusHeight, 0);
     }
     this.labelSystem?.update();
+    if (this.lastInteractionAt != null) {
+      const next = this.qualityManager.settleInteraction(
+        performance.now() - this.lastInteractionAt,
+      );
+      if (next.name !== this.quality.name) this.applyQuality(next);
+    }
   }
 
   render() {
@@ -207,7 +217,49 @@ export class MagicTreeScene {
 
   dispose() {
     this.labelSystem?.clear();
+    this.branchSystem?.leafSystem?.dispose();
     this.renderer.dispose();
+  }
+
+  setQuality(name) {
+    return this.applyQuality(this.qualityManager.select(name));
+  }
+
+  beginInteraction() {
+    this.lastInteractionAt = performance.now();
+    return this.applyQuality(
+      this.qualityManager.beginInteraction(this.lastInteractionAt),
+    );
+  }
+
+  applyQuality(profile) {
+    this.quality = profile;
+    this.renderer.setPixelRatio(profile.pixelRatio);
+    this.renderer.shadowMap.enabled = profile.shadows;
+    this.branchSystem?.leafSystem?.setLimit(profile.leafInstances);
+    if (this.branchSystem?.snapshot) this.branchSystem.sync(this.branchSystem.snapshot);
+    return profile;
+  }
+
+  restoreContext() {
+    this.renderer.resetState();
+    this.applyQuality(this.qualityManager.currentProfile);
+    this.resize();
+  }
+
+  telemetry() {
+    const info = this.renderer.info;
+    const branch = this.branchSystem?.getMetrics() ?? {};
+    return {
+      quality: this.quality.name,
+      pixelRatio: this.quality.pixelRatio,
+      drawCalls: info.render.calls,
+      triangles: info.render.triangles,
+      textures: info.memory.textures,
+      geometries: info.memory.geometries,
+      branch,
+      textureBudgetMiB: this.quality.textureBudgetMiB,
+    };
   }
 
   resize(width = window.innerWidth, height = window.innerHeight) {

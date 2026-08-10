@@ -10,6 +10,7 @@ import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import '../../domain/entities/outline_chapter.dart';
 import '../section/section_page.dart';
+import '../home/planet_scene/planet_scene.dart' show advanced3DProvider;
 import '../shared/soft_toast.dart';
 import 'label_layout.dart';
 import 'magic_carpet.dart';
@@ -18,6 +19,7 @@ import 'outline_controller.dart';
 import 'tree_scene/tree_scene.dart';
 import 'tree_scene/tree_scene_controller.dart';
 import 'tree_scene/tree_scene_gestures.dart';
+import 'tree_scene/tree_standin.dart';
 
 /// 某小说的大纲流（章+节），魔树数据源
 final outlineProvider = StreamProvider.family<List<OutlineChapter>, int>(
@@ -166,7 +168,10 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
     super.dispose();
   }
 
-  Widget _realtimeTreeBody(List<OutlineChapter> outline) {
+  Widget _realtimeTreeBody(
+    List<OutlineChapter> outline, {
+    required bool enable3D,
+  }) {
     Future<void> addSection() async {
       final chapterId =
           _outlineController.snapshot?.focusedChapterId ??
@@ -318,8 +323,22 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
                 key: _realtimeTreeKey,
                 children: [
                   Positioned.fill(
-                    child: TreeScene(controller: _treeSceneController),
+                    child: TreeStandin(
+                      age: _outlineController.snapshot?.structuralAge ?? 0,
+                    ),
                   ),
+                  if (enable3D && !_treeSceneController.useStaticFallback)
+                    Positioned.fill(
+                      child: TreeScene(controller: _treeSceneController),
+                    ),
+                  if (!enable3D ||
+                      !_treeSceneController.isReady ||
+                      _treeSceneController.useStaticFallback)
+                    Positioned.fill(
+                      child: TreeStandin(
+                        age: _outlineController.snapshot?.structuralAge ?? 0,
+                      ),
+                    ),
                   Positioned(
                     left: 0,
                     top: 0,
@@ -1134,7 +1153,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage>
         body: Column(
           children: [
             SafeArea(bottom: false, child: _header(context)),
-            _realtimeTreeBody(outline),
+            _realtimeTreeBody(outline, enable3D: ref.watch(advanced3DProvider)),
           ],
         ),
       );

@@ -78,4 +78,54 @@ void main() {
 
     expect(sent.map((item) => item['type']), ['scene.pause', 'scene.resume']);
   });
+
+  test('连续两次恢复失败后进入静态替身', () async {
+    await controller.handleEvent(
+      const TreeSceneEvent(
+        sessionId: 'session-1',
+        sequence: 1,
+        type: 'scene.recoveryFailed',
+        payload: {},
+      ),
+    );
+    expect(controller.useStaticFallback, isFalse);
+
+    await controller.handleEvent(
+      const TreeSceneEvent(
+        sessionId: 'session-1',
+        sequence: 2,
+        type: 'scene.recoveryFailed',
+        payload: {},
+      ),
+    );
+    expect(controller.useStaticFallback, isTrue);
+  });
+
+  test('恢复成功会清零失败次数且只补发最新快照', () async {
+    controller.syncSnapshot(snapshot);
+    await controller.handleEvent(
+      const TreeSceneEvent(
+        sessionId: 'session-1',
+        sequence: 1,
+        type: 'scene.recoveryFailed',
+        payload: {},
+      ),
+    );
+    sent.clear();
+
+    await controller.handleEvent(
+      const TreeSceneEvent(
+        sessionId: 'session-1',
+        sequence: 2,
+        type: 'scene.ready',
+        payload: {},
+      ),
+    );
+
+    expect(controller.useStaticFallback, isFalse);
+    expect(
+      sent.where((item) => item['type'] == 'tree.syncSnapshot'),
+      hasLength(1),
+    );
+  });
 }

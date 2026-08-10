@@ -337,6 +337,16 @@
     three.js 单测、outline 静态分析与 Web debug 构建全部通过；430x932 Playwright
     实渲染确认新增章节仍严格按 mutation started → branch growth started → completed
     单时间轴执行且无资源、控制台错误。
+  - ✅ P3-11 质量分档、生命周期与静态回退（2026-08-10）：落定 high/medium/low/static
+    四档 DPR、叶片、阴影、三角形、draw call 与纹理预算；交互期间临时降到 DPR 1、
+    关闭阴影，静止 500ms 后恢复基础档。页面隐藏/后台暂停会真正取消 rAF，恢复时重启
+    时钟；WebGL context restored 重置渲染状态并请求 Flutter 只补发最新完整快照，连续
+    两次恢复失败切换静态替身。标签投影改为坐标变化才上报，消除静止状态每秒 10 次
+    消息洪泛。六张替身由 Blender 源模型在固定机位重新渲染为透明 WebP，Flutter 统一
+    铺 `#FDF6EC`，四角 alpha 像素门禁通过，不再带矩形底片。首页在路由离开时暂停其
+    renderer；中档首页 64MiB + 魔树 64MiB 的纹理预算合计 128MiB，未超过强制释放线。
+    验证：16 项 Node、65 项 Flutter 回归、outline 静态分析、430x932 Playwright 实渲染
+    与 Web debug 构建通过，浏览器无资源和控制台错误。
 - 🔄 P4 魔毯 3D 重构（布料形变/灵感池空间化）
   - ✅ P4-0 方案定稿与素材准备（2026-07-15）：用户确认采用方案二「卷轴灵感」。
     设计目标不是“魔毯上放灵感卡片”，而是“魔毯展开后变成一张可书写、可滚动的魔法长卷”，

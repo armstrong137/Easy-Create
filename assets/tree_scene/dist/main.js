@@ -1,4 +1,5 @@
 import { MagicTreeScene } from './MagicTreeScene.js';
+import { ProjectionReporter } from './QualityManager.js';
 import { decodeCommand, encodeEvent } from './protocol.js';
 
 const canvas = document.querySelector('#tree-scene');
@@ -87,6 +88,7 @@ async function receive(raw) {
     await treeScene.sync(snapshot);
     emit('tree.synced');
   } else if (command.type === 'tree.playMutation') {
+    treeScene.beginInteraction();
     await playMutation(command.payload);
   } else if (command.type === 'tree.focusChapter') {
     await treeScene.focusChapter(command.payload?.id, {
@@ -111,11 +113,14 @@ async function receive(raw) {
   } else if (command.type === 'tree.endDrag') {
     emit('tree.hit', null);
   } else if (command.type === 'scene.pause') {
-    paused = true;
+    stopLoop();
     emit('scene.paused');
   } else if (command.type === 'scene.resume') {
-    paused = false;
+    startLoop();
     emit('scene.resumed');
+  } else if (command.type === 'tree.setQuality') {
+    const quality = treeScene.setQuality(command.payload?.quality);
+    emit('scene.qualityChanged', quality);
   } else if (command.type === 'scene.disposeAssets') {
     paused = true;
     treeScene.dispose();
@@ -138,29 +143,70 @@ window.addEventListener('message', (event) => {
 
 canvas.addEventListener('webglcontextlost', (event) => {
   event.preventDefault();
-  paused = true;
+  stopLoop();
   emit('scene.contextLost');
 });
 
+canvas.addEventListener('webglcontextrestored', () => {
+  try {
+    treeScene.restoreContext();
+    projectionReporter.reset();
+    startLoop();
+    emit('scene.ready', {
+      renderer: 'WebGLRenderer',
+      quality: treeScene.quality.name,
+      recovered: true,
+    });
+  } catch (error) {
+    emit('scene.recoveryFailed', { message: String(error) });
+  }
+});
+
 let paused = false;
+let frameRequest = null;
 let lastProjectionAt = 0;
+let lastTelemetryAt = 0;
+const projectionReporter = new ProjectionReporter();
 function render() {
-  if (!paused) {
-    treeScene.render();
-    const now = performance.now();
-    if (now - lastProjectionAt >= 100) {
-      lastProjectionAt = now;
-      emit('tree.visibleLabels', { labels: treeScene.visibleLabels() });
+  if (paused) return;
+  treeScene.render();
+  const now = performance.now();
+  if (now - lastProjectionAt >= 100) {
+    lastProjectionAt = now;
+    const labels = treeScene.visibleLabels();
+    if (projectionReporter.shouldEmit(labels)) {
+      emit('tree.visibleLabels', { labels });
     }
   }
-  requestAnimationFrame(render);
+  if (now - lastTelemetryAt >= 2000) {
+    lastTelemetryAt = now;
+    emit('scene.telemetry', treeScene.telemetry());
+  }
+  frameRequest = requestAnimationFrame(render);
+}
+
+function startLoop() {
+  if (!paused && frameRequest != null) return;
+  paused = false;
+  treeScene.clock.start();
+  frameRequest = requestAnimationFrame(render);
+}
+
+function stopLoop() {
+  paused = true;
+  if (frameRequest != null) cancelAnimationFrame(frameRequest);
+  frameRequest = null;
+  treeScene.clock.stop();
 }
 
 window.addEventListener('resize', () => treeScene.resize());
+document.addEventListener('visibilitychange', () => {
+  document.hidden ? stopLoop() : startLoop();
+});
 
 try {
   await treeScene.load();
-  render();
+  startLoop();
   emit('scene.ready', { renderer: 'WebGLRenderer', quality: treeScene.quality.name });
 } catch (error) {
   emit('scene.error', { message: String(error) });

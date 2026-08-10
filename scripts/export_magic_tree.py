@@ -67,9 +67,12 @@ def render_standins() -> None:
             track.mute = True
     scene.frame_set(1)
     scene.render.image_settings.file_format = "WEBP"
-    scene.render.image_settings.color_mode = "RGB"
+    scene.render.image_settings.color_mode = "RGBA"
     scene.render.image_settings.color_depth = "8"
-    scene.render.film_transparent = False
+    scene.render.film_transparent = True
+    ground = bpy.data.objects.get("Ground")
+    if ground is not None:
+        ground.hide_render = True
     for index, age in enumerate(STANDIN_AGES):
         set_tree_age(age)
         scene.render.filepath = str(STANDIN_DIR / f"age_{index}.webp")
