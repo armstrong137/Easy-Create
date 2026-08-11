@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-08-11 13:40:36　对应提交：3c9a294 之后的工作区状态
+> 生成时间：2026-08-11 13:47:12　对应提交：b606905 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,15 +13,15 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     157
-  Nodes:     4,737
-  Edges:     20,950
+  Nodes:     4,738
+  Edges:     20,952
   DB Size:   23.32 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,729
-  function        1,480
+  function        1,481
   import          511
   class           492
   constant        241
@@ -205,7 +205,7 @@ Project Structure (157 files):
 |-- scripts
 |   |-- tests
 |   |   `-- test_validate_magic_tree_art_package.py (python, 16 symbols)
-|   |-- build_magic_tree_blender.py (python, 46 symbols)
+|   |-- build_magic_tree_blender.py (python, 47 symbols)
 |   |-- capture_standins.py (python, 11 symbols)
 |   |-- e2e_probe.dart (dart, 12 symbols)
 |   |-- export_magic_tree.py (python, 14 symbols)

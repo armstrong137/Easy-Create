@@ -42,6 +42,7 @@ void main() {
 
     expect(extras['formal_asset'], isTrue, reason: '技术占位树不得作为正式资产交付');
     expect(extras['art_style'], 'ancient_broadleaf_v2');
+    expect(extras['leaf_emergence_mode'], 'morph_scale_at_anchor');
     expect(extras['main_branch_count'], inInclusiveRange(5, 7));
     expect(
       extras['tertiary_twig_count'],

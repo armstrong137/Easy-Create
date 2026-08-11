@@ -281,6 +281,13 @@ def branch_growth(age: float, branch_index: int, generation: int) -> float:
     return progress * progress * (3.0 - 2.0 * progress)
 
 
+def leaf_emergence(age: float, age_group: int) -> float:
+    """让新叶在所属枝梢锚点上连续舒展，避免整组叶片突然显隐。"""
+    birth = age_group / 5
+    progress = max(0.0, min(1.0, (age - birth) / 0.16))
+    return progress * progress * (3.0 - 2.0 * progress)
+
+
 def append_tube(
     vertices: list[tuple[float, float, float]],
     faces: list[tuple[int, ...]],
@@ -777,6 +784,7 @@ def create_leaf_groups(
             LEAF_RATIOS,
         ):
             shape = obj.shape_key_add(name=name)
+            emergence = leaf_emergence(age, age_group)
             for vertex_index, item in enumerate(leaf_meta):
                 branch_index = item["branch"]
                 root_mature = item["root"]
@@ -790,7 +798,9 @@ def create_leaf_groups(
                         )
                     )
                     leaf_local = item["original"] - center_mature
-                    shape.data[vertex_index].co = center_age + leaf_local * leaf_scale
+                    shape.data[vertex_index].co = (
+                        center_age + leaf_local * leaf_scale * emergence
+                    )
                     continue
                 root_age = Vector(
                     (
@@ -815,7 +825,7 @@ def create_leaf_groups(
                 )
                 leaf_local = item["original"] - center_mature
                 shape.data[vertex_index].co = (
-                    center_age + leaf_local * leaf_scale * growth
+                    center_age + leaf_local * leaf_scale * growth * emergence
                 )
             shape.value = 0.0
         objects.append(obj)
@@ -1096,6 +1106,7 @@ def configure_scene(root: bpy.types.Object) -> None:
     root["formal_asset"] = True
     root["art_style"] = "ancient_broadleaf_v2"
     root["topology_strategy"] = "art_directed_explicit_branches"
+    root["leaf_emergence_mode"] = "morph_scale_at_anchor"
 
 
 def main() -> None:
