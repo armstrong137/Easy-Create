@@ -5,12 +5,8 @@ import { decodeCommand, encodeEvent } from './protocol.js';
 const canvas = document.querySelector('#tree-scene');
 const parameters = new URLSearchParams(window.location.search);
 const bridgeToken = parameters.get('token') ?? '';
-const treeScene = new MagicTreeScene({
-  canvas,
-  assetUrl: parameters.get('model') ?? '../3d/magic_tree/magic_tree.glb',
-});
-
-let sessionId = 'bootstrap';
+let treeScene = null;
+let sessionId = parameters.get('session') ?? 'bootstrap';
 let outgoingSequence = 0;
 
 function emit(type, payload = null) {
@@ -78,6 +74,10 @@ async function playMutation(payload = {}) {
 async function receive(raw) {
   const command = decodeCommand(raw);
   sessionId = command.sceneSessionId;
+  if (!treeScene) {
+    emit('scene.error', { message: 'Magic tree renderer is unavailable' });
+    return;
+  }
   if (command.type === 'scene.init') {
     emit('scene.ready', { renderer: 'WebGLRenderer', quality: treeScene.quality.name });
   } else if (command.type === 'scene.ping') {
@@ -224,12 +224,16 @@ function stopLoop() {
   treeScene.clock.stop();
 }
 
-window.addEventListener('resize', () => treeScene.resize());
+window.addEventListener('resize', () => treeScene?.resize());
 document.addEventListener('visibilitychange', () => {
   document.hidden ? stopLoop() : startLoop();
 });
 
 try {
+  treeScene = new MagicTreeScene({
+    canvas,
+    assetUrl: parameters.get('model') ?? '../3d/magic_tree/magic_tree.glb',
+  });
   await treeScene.load();
   sceneLoadMs = Number((performance.now() - bootStartedAt).toFixed(1));
   startLoop();

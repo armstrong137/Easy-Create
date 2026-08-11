@@ -59,6 +59,15 @@ class TreeSceneController extends ChangeNotifier {
   TreeSceneHit? get dragHit => _dragHit;
   bool get useStaticFallback => _useStaticFallback;
 
+  void activateStaticFallback() {
+    if (_useStaticFallback) return;
+    _useStaticFallback = true;
+    _transportEnabled = false;
+    _ready = false;
+    _pending.clear();
+    notifyListeners();
+  }
+
   void attachSender(TreeSceneSender sender) {
     _sender = sender;
   }
@@ -236,12 +245,11 @@ class TreeSceneController extends ChangeNotifier {
       case 'scene.recoveryFailed':
         _recoveryFailures += 1;
         if (_recoveryFailures >= 2) {
-          _useStaticFallback = true;
-          _transportEnabled = false;
-          _ready = false;
-          _pending.clear();
-          notifyListeners();
+          activateStaticFallback();
         }
+        return;
+      case 'scene.error':
+        activateStaticFallback();
         return;
       default:
         return;

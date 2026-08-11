@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-08-10 21:37:54　对应提交：964a371 之后的工作区状态
+> 生成时间：2026-08-11 08:50:03　对应提交：c6badc3 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,20 +12,20 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     151
-  Nodes:     4,586
-  Edges:     20,403
+  Files:     152
+  Nodes:     4,593
+  Edges:     20,419
   DB Size:   23.32 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,699
-  function        1,447
+  method          1,700
+  function        1,448
   class           488
-  import          477
+  import          481
   constant        222
-  file            143
+  file            144
   variable        75
   enum_member     16
   type_alias      13
@@ -33,7 +33,7 @@ Nodes by Kind:
   namespace       2
 
 Files by Language:
-  dart            85
+  dart            86
   javascript      29
   python          9
   kotlin          8
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (151 files):
+Project Structure (152 files):
 
 |-- .agents
 |   `-- skills
@@ -172,12 +172,12 @@ Project Structure (151 files):
 |   |   |   `-- starfield.dart (dart, 31 symbols)
 |   |   |-- outline
 |   |   |   |-- tree_scene
-|   |   |   |   |-- tree_scene_controller.dart (dart, 38 symbols)
+|   |   |   |   |-- tree_scene_controller.dart (dart, 39 symbols)
 |   |   |   |   |-- tree_scene_gestures.dart (dart, 17 symbols)
 |   |   |   |   |-- tree_scene_io.dart (dart, 18 symbols)
 |   |   |   |   |-- tree_scene_protocol.dart (dart, 12 symbols)
 |   |   |   |   |-- tree_scene_snapshot.dart (dart, 25 symbols)
-|   |   |   |   |-- tree_scene_web.dart (dart, 18 symbols)
+|   |   |   |   |-- tree_scene_web.dart (dart, 19 symbols)
 |   |   |   |   |-- tree_scene.dart (dart, 2 symbols)
 |   |   |   |   `-- tree_standin.dart (dart, 5 symbols)
 |   |   |   |-- label_layout.dart (dart, 2 symbols)
@@ -243,7 +243,8 @@ Project Structure (151 files):
 |   |   |-- tree_scene_gestures_test.dart (dart, 4 symbols)
 |   |   |-- tree_scene_protocol_test.dart (dart, 5 symbols)
 |   |   |-- tree_scene_snapshot_test.dart (dart, 8 symbols)
-|   |   |-- tree_standin_test.dart (dart, 4 symbols)
+|   |   |-- tree_scene_web_fallback_test.dart (dart, 4 symbols)
+|   |   |-- tree_standin_test.dart (dart, 5 symbols)
 |   |   `-- voice_capture_test.dart (dart, 22 symbols)
 |   `-- tools
 |       `-- web_serve_test.dart (dart, 6 symbols)

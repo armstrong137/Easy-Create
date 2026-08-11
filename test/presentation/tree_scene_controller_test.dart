@@ -189,4 +189,25 @@ void main() {
     expect(controller.isReady, isFalse);
     expect(sent, isEmpty);
   });
+
+  test('场景启动错误时立即进入静态替身', () async {
+    await controller.handleEvent(
+      const TreeSceneEvent(
+        sessionId: 'session-1',
+        sequence: 1,
+        type: 'scene.error',
+        payload: {'message': 'Error creating WebGL context'},
+      ),
+    );
+
+    expect(controller.useStaticFallback, isTrue);
+    expect(controller.isReady, isFalse);
+  });
+
+  test('场景启动超时可以主动进入静态替身', () {
+    controller.activateStaticFallback();
+
+    expect(controller.useStaticFallback, isTrue);
+    expect(controller.isReady, isFalse);
+  });
 }

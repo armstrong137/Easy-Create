@@ -20,7 +20,7 @@ class TreeStandin extends StatelessWidget {
         label: '魔树静态预览',
         child: Image.asset(
           'assets/tree_scene/standins/age_$index.webp',
-          fit: BoxFit.cover,
+          fit: BoxFit.contain,
           alignment: Alignment.center,
           gaplessPlayback: true,
         ),

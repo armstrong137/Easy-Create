@@ -430,14 +430,17 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
               return Stack(
                 key: _realtimeTreeKey,
                 children: [
-                  Positioned.fill(
-                    child: TreeStandin(
-                      age: _outlineController.snapshot?.structuralAge ?? 0,
-                    ),
-                  ),
                   if (enable3D && !_treeSceneController.useStaticFallback)
                     Positioned.fill(
                       child: TreeScene(controller: _treeSceneController),
+                    ),
+                  if (!enable3D ||
+                      !_treeSceneController.isReady ||
+                      _treeSceneController.useStaticFallback)
+                    Positioned.fill(
+                      child: TreeStandin(
+                        age: _outlineController.snapshot?.structuralAge ?? 0,
+                      ),
                     ),
                   Positioned(
                     left: 0,

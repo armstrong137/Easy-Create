@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
 import 'dart:ui_web' as ui_web;
@@ -32,6 +33,7 @@ class _TreeSceneState extends State<TreeScene> {
   late final String _token = 'tree-$_instance';
   late final String _viewType = '实时魔树场景_$_instance';
   web.HTMLIFrameElement? _iframe;
+  Timer? _readyTimer;
 
   bool get _shouldRender => widget.active && widget.visible;
 
@@ -52,12 +54,19 @@ class _TreeSceneState extends State<TreeScene> {
     );
     if (sceneEvent.sessionId != widget.controller.sessionId) return;
     widget.controller.handleEvent(sceneEvent);
-    if (sceneEvent.type == 'scene.ready') widget.onReady?.call();
+    if (sceneEvent.type == 'scene.ready') {
+      _readyTimer?.cancel();
+      widget.onReady?.call();
+    }
   }).toJS;
 
   @override
   void initState() {
     super.initState();
+    _readyTimer = Timer(
+      const Duration(seconds: 8),
+      widget.controller.activateStaticFallback,
+    );
     web.window.addEventListener('message', _onMessage);
     ui_web.platformViewRegistry.registerViewFactory(_viewType, (_) {
       final iframe = web.HTMLIFrameElement()
@@ -65,7 +74,7 @@ class _TreeSceneState extends State<TreeScene> {
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%'
-        ..style.backgroundColor = '#FDF6EC'
+        ..style.backgroundColor = 'transparent'
         ..style.pointerEvents = 'none'
         ..style.display = widget.visible ? '' : 'none';
       _iframe = iframe;
@@ -84,6 +93,7 @@ class _TreeSceneState extends State<TreeScene> {
   String _sceneSource() =>
       'assets/assets/tree_scene/index.html'
       '?token=${Uri.encodeQueryComponent(_token)}'
+      '&session=${Uri.encodeQueryComponent(widget.controller.sessionId)}'
       '&model=${Uri.encodeQueryComponent('../3d/magic_tree/magic_tree.glb')}';
 
   void _post(Map<String, Object?> command) {
@@ -110,6 +120,7 @@ class _TreeSceneState extends State<TreeScene> {
 
   @override
   void dispose() {
+    _readyTimer?.cancel();
     widget.controller.disposeAssets();
     widget.controller.detachSender();
     _iframe?.src = 'about:blank';
