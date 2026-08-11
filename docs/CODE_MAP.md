@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-08-11 13:47:12　对应提交：b606905 之后的工作区状态
+> 生成时间：2026-08-11 13:51:09　对应提交：ca6a260 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,20 +12,20 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     157
-  Nodes:     4,738
-  Edges:     20,952
+  Files:     159
+  Nodes:     4,749
+  Edges:     20,985
   DB Size:   23.32 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,729
-  function        1,481
-  import          511
+  method          1,732
+  function        1,483
+  import          515
   class           492
   constant        241
-  file            149
+  file            151
   variable        92
   enum_member     23
   type_alias      13
@@ -34,7 +34,7 @@ Nodes by Kind:
 
 Files by Language:
   dart            86
-  javascript      32
+  javascript      34
   python          11
   kotlin          8
   xml             6
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (157 files):
+Project Structure (159 files):
 
 |-- .agents
 |   `-- skills
@@ -269,16 +269,18 @@ Project Structure (157 files):
 |       |   |-- InteractionSystem.js (javascript, 10 symbols)
 |       |   |-- LabelSystem.js (javascript, 13 symbols)
 |       |   |-- LeafSystem.js (javascript, 8 symbols)
-|       |   |-- MagicTreeScene.js (javascript, 37 symbols)
-|       |   |-- main.js (javascript, 33 symbols)
+|       |   |-- MagicTreeScene.js (javascript, 38 symbols)
+|       |   |-- main.js (javascript, 34 symbols)
+|       |   |-- MutationPlayer.js (javascript, 2 symbols)
 |       |   |-- protocol.js (javascript, 6 symbols)
 |       |   |-- QualityManager.js (javascript, 13 symbols)
 |       |   |-- SceneTimeline.js (javascript, 6 symbols)
 |       |   |-- StartupDiagnostics.js (javascript, 4 symbols)
-|       |   `-- TreeGrowthSystem.js (javascript, 12 symbols)
+|       |   `-- TreeGrowthSystem.js (javascript, 14 symbols)
 |       `-- test
 |           |-- branch-system.test.js (javascript, 8 symbols)
 |           |-- camera-label.test.js (javascript, 8 symbols)
+|           |-- mutation-player.test.js (javascript, 5 symbols)
 |           |-- protocol.test.js (javascript, 4 symbols)
 |           |-- quality-manager.test.js (javascript, 4 symbols)
 |           |-- startup-diagnostics.test.js (javascript, 4 symbols)

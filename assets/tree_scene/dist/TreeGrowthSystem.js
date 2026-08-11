@@ -24,6 +24,8 @@ export class TreeGrowthSystem {
     this.phase = 'idle';
     this.elapsed = 0;
     this.duration = 0;
+    this.progress = 1;
+    this.progressWaiters = [];
     this.startAge = this.age;
     this.pending = null;
     this.applyAge(this.age);
@@ -37,13 +39,16 @@ export class TreeGrowthSystem {
     if (!animate || durationMs <= 0 || Math.abs(target - this.age) < 1e-6) {
       this.age = target;
       this.phase = 'idle';
+      this.progress = 1;
       this.applyAge(target);
+      this.finishProgressWaiters(true);
       return Promise.resolve();
     }
 
     this.startAge = this.age;
     this.elapsed = 0;
     this.duration = durationMs / 1000;
+    this.progress = 0;
     this.phase = target > this.age ? 'growing' : 'shrinking';
     return new Promise((resolve) => {
       this.pending = resolve;
@@ -57,6 +62,8 @@ export class TreeGrowthSystem {
 
     this.elapsed += delta;
     const progress = Math.min(1, this.elapsed / this.duration);
+    this.progress = progress;
+    this.finishProgressWaiters();
     const eased = smoothStep(progress);
     this.age = this.startAge + (this.targetAge - this.startAge) * eased;
     this.applyAge(this.age);
@@ -69,7 +76,22 @@ export class TreeGrowthSystem {
   }
 
   getState() {
-    return { age: this.age, targetAge: this.targetAge, phase: this.phase };
+    return {
+      age: this.age,
+      targetAge: this.targetAge,
+      phase: this.phase,
+      progress: this.progress,
+    };
+  }
+
+  waitForProgress(minimum = 0.08) {
+    const threshold = Math.min(1, Math.max(0, minimum));
+    if (this.phase === 'idle' || this.progress >= threshold) {
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => {
+      this.progressWaiters.push({ threshold, resolve });
+    });
   }
 
   applyAge(age) {
@@ -107,5 +129,15 @@ export class TreeGrowthSystem {
     const resolve = this.pending;
     this.pending = null;
     resolve?.();
+    this.finishProgressWaiters(true);
+  }
+
+  finishProgressWaiters(force = false) {
+    const remaining = [];
+    for (const waiter of this.progressWaiters) {
+      if (force || this.progress >= waiter.threshold) waiter.resolve();
+      else remaining.push(waiter);
+    }
+    this.progressWaiters = remaining;
   }
 }

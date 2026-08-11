@@ -57,3 +57,24 @@ test('树龄输入会限制在零到一之间', async () => {
   await growth.setAge(-1, { animate: false });
   assert.equal(growth.getState().age, 0);
 });
+
+test('可等待主树产生可见成长后再启动章节枝', async () => {
+  const { growth } = makeHarness();
+  const completed = growth.setAge(0.7, { animate: true, durationMs: 1000 });
+  let visible = false;
+  const lead = growth.waitForProgress(0.08).then(() => {
+    visible = true;
+  });
+
+  growth.update(0.05);
+  await Promise.resolve();
+  assert.equal(visible, false);
+
+  growth.update(0.04);
+  await lead;
+  assert.equal(visible, true);
+  assert.ok(growth.getState().progress >= 0.08);
+
+  growth.update(1);
+  await completed;
+});

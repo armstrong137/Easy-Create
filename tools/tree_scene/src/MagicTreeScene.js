@@ -135,6 +135,10 @@ export class MagicTreeScene {
     return this.growth.setAge(age, options);
   }
 
+  waitForGrowthLead(progress = 0.08) {
+    return this.growth?.waitForProgress(progress) ?? Promise.resolve();
+  }
+
   async sync(snapshot) {
     this.snapshot = structuredClone(snapshot);
     this.branchSystem?.sync(snapshot);
