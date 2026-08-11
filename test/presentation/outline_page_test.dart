@@ -13,6 +13,8 @@ import 'package:novel_app/domain/entities/outline_chapter.dart';
 import 'package:novel_app/presentation/home/planet_scene/planet_scene.dart'
     show advanced3DProvider;
 import 'package:novel_app/presentation/outline/outline_page.dart';
+import 'package:novel_app/presentation/outline/tree_scene/tree_scene_controller.dart';
+import 'package:novel_app/presentation/outline/tree_scene/tree_scene_protocol.dart';
 import 'package:novel_app/presentation/outline/tree_scene/tree_standin.dart';
 import 'package:novel_app/presentation/section/section_page.dart';
 
@@ -116,11 +118,20 @@ void main() {
     List<OutlineChapter>? outline, {
     Widget? overlay,
     NovelRepository? repository,
+    bool enable3D = false,
+    bool useProductionRepository = false,
+    Widget Function(TreeSceneController controller)? treeSceneBuilder,
   }) async {
-    const page = OutlinePage(novelId: 1, title: '测试小说');
-    final liveRepository = outline == null
-        ? repository ?? ControllableNovelRepository(database)
-        : repository;
+    final page = OutlinePage(
+      novelId: 1,
+      title: '测试小说',
+      treeSceneBuilder: treeSceneBuilder,
+    );
+    final liveRepository =
+        repository ??
+        (useProductionRepository
+            ? null
+            : ControllableNovelRepository(database));
     if (liveRepository is ControllableNovelRepository &&
         !repositories.contains(liveRepository)) {
       repositories.add(liveRepository);
@@ -129,7 +140,7 @@ void main() {
       ProviderScope(
         overrides: [
           appDatabaseProvider.overrideWithValue(database),
-          advanced3DProvider.overrideWithValue(false),
+          advanced3DProvider.overrideWithValue(enable3D),
           if (liveRepository != null)
             novelRepositoryProvider.overrideWithValue(liveRepository),
           if (outline != null)
@@ -148,7 +159,7 @@ void main() {
               ? page
               : Stack(
                   children: [
-                    const Positioned.fill(child: page),
+                    Positioned.fill(child: page),
                     overlay,
                   ],
                 ),
@@ -400,6 +411,211 @@ void main() {
 
     expect(await database.select(database.chapters).get(), hasLength(1));
     expect(find.text('引子'), findsOneWidget);
+  });
+
+  testWidgets('生产 watchOutline 在浏览早期章节时聚焦新建章节', (tester) async {
+    await seedNovel();
+    for (var index = 0; index < 4; index += 1) {
+      await database
+          .into(database.chapters)
+          .insert(
+            ChaptersCompanion.insert(
+              novelId: 1,
+              title: '第${index + 1}章',
+              sortOrder: index,
+            ),
+          );
+    }
+    await pumpOutline(tester, null, useProductionRepository: true);
+
+    final size = tester.getSize(find.byType(Scaffold));
+    for (var index = 0; index < 3; index += 1) {
+      await tester.dragFrom(
+        Offset(size.width * 0.25, size.height * 0.6),
+        const Offset(0, 80),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.byKey(const Key('静态章交互_1')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('新增章节入口')));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final chapters = await (database.select(
+      database.chapters,
+    )..orderBy([(table) => OrderingTerm.asc(table.sortOrder)])).get();
+    expect(chapters, hasLength(5));
+    expect(find.byKey(Key('静态章交互_${chapters.last.id}')), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('生产 watchOutline 在浏览早期小节时聚焦新建小节', (tester) async {
+    await seedNovel();
+    final chapterId = await database
+        .into(database.chapters)
+        .insert(
+          ChaptersCompanion.insert(novelId: 1, title: '第一章', sortOrder: 0),
+        );
+    for (var index = 0; index < 7; index += 1) {
+      await database
+          .into(database.sections)
+          .insert(
+            SectionsCompanion.insert(
+              chapterId: chapterId,
+              title: '第${index + 1}节',
+              sortOrder: index,
+            ),
+          );
+    }
+    await pumpOutline(tester, null, useProductionRepository: true);
+
+    final size = tester.getSize(find.byType(Scaffold));
+    for (var index = 0; index < 6; index += 1) {
+      await tester.dragFrom(
+        Offset(size.width * 0.75, size.height * 0.65),
+        const Offset(0, 80),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.byKey(const Key('静态节交互_1')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('新增小节入口')));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final sections = await (database.select(
+      database.sections,
+    )..orderBy([(table) => OrderingTerm.asc(table.sortOrder)])).get();
+    expect(sections, hasLength(8));
+    expect(find.byKey(Key('静态节交互_${sections.last.id}')), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('实时 3D 未上报新 projection 时仍显示数据库新标签', (tester) async {
+    await seedNovel();
+    TreeSceneController? scene;
+    await pumpOutline(
+      tester,
+      null,
+      enable3D: true,
+      useProductionRepository: true,
+      treeSceneBuilder: (controller) {
+        scene = controller;
+        return const SizedBox.expand();
+      },
+    );
+
+    await tester.tap(find.byKey(const Key('新增章节入口')));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final chapters = await database.select(database.chapters).get();
+    expect(chapters, hasLength(1));
+    expect(find.text('引子'), findsOneWidget);
+    final bridgeKey = Key('静态章交互_${chapters.single.id}');
+    expect(find.byKey(bridgeKey), findsOneWidget);
+
+    await scene!.handleEvent(
+      TreeSceneEvent(
+        sessionId: scene!.sessionId,
+        sequence: 1,
+        type: 'tree.visibleLabels',
+        payload: {
+          'labels': [
+            {
+              'kind': 'chapter',
+              'id': chapters.single.id,
+              'x': 0.1,
+              'y': 0.3,
+              'width': 0.2,
+              'height': 0.1,
+            },
+          ],
+        },
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(bridgeKey), findsNothing);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is Semantics && widget.properties.label == '引子',
+      ),
+      findsOneWidget,
+    );
+
+    await scene!.handleEvent(
+      TreeSceneEvent(
+        sessionId: scene!.sessionId,
+        sequence: 2,
+        type: 'tree.visibleLabels',
+        payload: const {'labels': []},
+      ),
+    );
+    await tester.pump();
+    expect(find.byKey(bridgeKey), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('projection 早于创建 Future 返回时不会重新生成静态桥接', (tester) async {
+    await seedNovel();
+    final chapterId = await database
+        .into(database.chapters)
+        .insert(
+          ChaptersCompanion.insert(novelId: 1, title: '引子', sortOrder: 0),
+        );
+    final repository = ControllableNovelRepository(database);
+    final chapter = await (database.select(
+      database.chapters,
+    )..where((table) => table.id.equals(chapterId))).getSingle();
+    repository.createChapterHandler = (_) async => chapter;
+    TreeSceneController? scene;
+    await pumpOutline(
+      tester,
+      null,
+      repository: repository,
+      enable3D: true,
+      treeSceneBuilder: (controller) {
+        scene = controller;
+        return const SizedBox.expand();
+      },
+    );
+
+    await scene!.handleEvent(
+      TreeSceneEvent(
+        sessionId: scene!.sessionId,
+        sequence: 1,
+        type: 'tree.visibleLabels',
+        payload: {
+          'labels': [
+            {
+              'kind': 'chapter',
+              'id': chapterId,
+              'x': 0.1,
+              'y': 0.3,
+              'width': 0.2,
+              'height': 0.1,
+            },
+          ],
+        },
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('新增章节入口')));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await scene!.handleEvent(
+      TreeSceneEvent(
+        sessionId: scene!.sessionId,
+        sequence: 2,
+        type: 'tree.visibleLabels',
+        payload: const {'labels': []},
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(Key('静态章交互_$chapterId')), findsNothing);
   });
 
   testWidgets('章节创建 pending 时连点只提交一次', (tester) async {

@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-08-11 08:50:03　对应提交：c6badc3 之后的工作区状态
+> 生成时间：2026-08-11 10:55:07　对应提交：d26630a 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,17 +13,17 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     152
-  Nodes:     4,593
-  Edges:     20,419
+  Nodes:     4,622
+  Edges:     20,639
   DB Size:   23.32 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,700
+  method          1,721
   function        1,448
-  class           488
-  import          481
+  class           490
+  import          487
   constant        222
   file            144
   variable        75
@@ -182,8 +182,8 @@ Project Structure (152 files):
 |   |   |   |   `-- tree_standin.dart (dart, 5 symbols)
 |   |   |   |-- label_layout.dart (dart, 2 symbols)
 |   |   |   |-- magic_carpet.dart (dart, 67 symbols)
-|   |   |   |-- outline_controller.dart (dart, 24 symbols)
-|   |   |   |-- outline_page.dart (dart, 56 symbols)
+|   |   |   |-- outline_controller.dart (dart, 34 symbols)
+|   |   |   |-- outline_page.dart (dart, 63 symbols)
 |   |   |   `-- scroll_carpet.dart (dart, 38 symbols)
 |   |   |-- section
 |   |   |   |-- card_deck_sheet.dart (dart, 19 symbols)
@@ -229,8 +229,8 @@ Project Structure (152 files):
 |   |   |-- home_page_test.dart (dart, 21 symbols)
 |   |   |-- magic_carpet_test.dart (dart, 18 symbols)
 |   |   |-- orbiting_inspirations_test.dart (dart, 11 symbols)
-|   |   |-- outline_controller_test.dart (dart, 9 symbols)
-|   |   |-- outline_page_test.dart (dart, 21 symbols)
+|   |   |-- outline_controller_test.dart (dart, 10 symbols)
+|   |   |-- outline_page_test.dart (dart, 32 symbols)
 |   |   |-- planet_scene_touch_config_test.dart (dart, 8 symbols)
 |   |   |-- quick_capture_test.dart (dart, 16 symbols)
 |   |   |-- realtime_tree_single_path_test.dart (dart, 4 symbols)

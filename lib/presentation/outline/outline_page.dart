@@ -49,10 +49,16 @@ const _ink = Color(0xFF3A2A18);
 /// 左半屏切章，右半屏切当前章的小节；双击空白分别新增章或节。
 /// 标签支持进入小节、重命名与删除，灵感通过三维射线命中挂靠到章或节。
 class OutlinePage extends ConsumerStatefulWidget {
-  const OutlinePage({super.key, required this.novelId, required this.title});
+  const OutlinePage({
+    super.key,
+    required this.novelId,
+    required this.title,
+    this.treeSceneBuilder,
+  });
 
   final int novelId;
   final String title;
+  final Widget Function(TreeSceneController controller)? treeSceneBuilder;
 
   @override
   ConsumerState<OutlinePage> createState() => _OutlinePageState();
@@ -65,7 +71,8 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
   final TreeSceneGestures _realtimeGestures = TreeSceneGestures();
   late final TreeDragBridge _realtimeDragBridge;
   final GlobalKey _realtimeTreeKey = GlobalKey();
-  final Map<int, int> _focusedSections = {};
+  final Set<String> _awaitingProjection = {};
+  final Set<String> _projectedOnce = {};
   bool _creatingChapter = false;
   bool _creatingSection = false;
 
@@ -95,19 +102,36 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
     _treeSceneEvents = _treeSceneController.events.listen(
       _outlineController.onSceneEvent,
     );
+    _treeSceneController.addListener(_clearProjectedBridges);
+  }
+
+  void _clearProjectedBridges() {
+    final projected = {
+      for (final item in _treeSceneController.visibleLabels)
+        '${item.kind}:${item.id}',
+    };
+    _projectedOnce.addAll(projected);
+    if (_awaitingProjection.isEmpty) return;
+    _awaitingProjection.removeWhere(projected.contains);
+  }
+
+  void _bridgeUntilProjected(String key) {
+    if (_projectedOnce.contains(key)) return;
+    _awaitingProjection.add(key);
   }
 
   @override
   void dispose() {
     carpetTucked.value = false; // 离开大纲页恢复完整魔毯球
     _treeSceneEvents?.cancel();
+    _treeSceneController.removeListener(_clearProjectedBridges);
     _outlineController.dispose();
     _treeSceneController.dispose();
     super.dispose();
   }
 
   int? _currentChapterId(List<OutlineChapter> outline) {
-    final focused = _outlineController.snapshot?.focusedChapterId;
+    final focused = _outlineController.focusedChapterId;
     if (focused != null && outline.any((item) => item.chapter.id == focused)) {
       return focused;
     }
@@ -119,7 +143,10 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
     setState(() => _creatingChapter = true);
     HapticFeedback.lightImpact();
     try {
-      await _outlineController.addChapter();
+      final chapter = await _outlineController.addChapter();
+      if (mounted) {
+        setState(() => _bridgeUntilProjected('chapter:${chapter.id}'));
+      }
     } catch (_) {
       if (mounted) showSoftToast(context, '创建章节失败，请稍后再试');
     } finally {
@@ -137,7 +164,10 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
     setState(() => _creatingSection = true);
     HapticFeedback.lightImpact();
     try {
-      await _outlineController.addSection(chapterId);
+      final section = await _outlineController.addSection(chapterId);
+      if (mounted) {
+        setState(() => _bridgeUntilProjected('section:${section.id}'));
+      }
     } catch (_) {
       if (mounted) showSoftToast(context, '创建小节失败，请稍后再试');
     } finally {
@@ -156,7 +186,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
 
     void moveChapter(TreeGestureDirection direction) {
       if (direction == TreeGestureDirection.none || outline.isEmpty) return;
-      final focused = _outlineController.snapshot?.focusedChapterId;
+      final focused = _outlineController.focusedChapterId;
       var index = outline.indexWhere((item) => item.chapter.id == focused);
       if (index < 0) index = outline.length - 1;
       final delta = direction == TreeGestureDirection.previous ? -1 : 1;
@@ -167,14 +197,13 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
     void moveSection(TreeGestureDirection direction) {
       if (direction == TreeGestureDirection.none || outline.isEmpty) return;
       final chapterId =
-          _outlineController.snapshot?.focusedChapterId ??
-          outline.last.chapter.id;
+          _outlineController.focusedChapterId ?? outline.last.chapter.id;
       OutlineChapter? chapter;
       for (final item in outline) {
         if (item.chapter.id == chapterId) chapter = item;
       }
       if (chapter == null || chapter.sections.isEmpty) return;
-      final focused = _focusedSections[chapterId];
+      final focused = _outlineController.focusedSectionId(chapterId);
       var index = chapter.sections.indexWhere(
         (section) => section.id == focused,
       );
@@ -182,8 +211,8 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
       final delta = direction == TreeGestureDirection.previous ? -1 : 1;
       final next = (index + delta).clamp(0, chapter.sections.length - 1);
       final sectionId = chapter.sections[next].id;
-      setState(() => _focusedSections[chapterId] = sectionId);
-      _treeSceneController.focusSection(chapterId, sectionId);
+      _outlineController.focusSection(chapterId, sectionId);
+      setState(() {});
     }
 
     PlacedLabel? projectedLabel(TreeLabelProjection projection) {
@@ -386,10 +415,10 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
 
               final staticMode =
                   !enable3D || _treeSceneController.useStaticFallback;
-              final staticLabels = <({PlacedLabel label, Rect rect})>[];
-              if (staticMode && outline.isNotEmpty) {
+              final windowLabels = <({PlacedLabel label, Rect rect})>[];
+              if (outline.isNotEmpty) {
                 final focusedChapterId =
-                    _outlineController.snapshot?.focusedChapterId ??
+                    _outlineController.focusedChapterId ??
                     outline.last.chapter.id;
                 var focusedIndex = outline.indexWhere(
                   (item) => item.chapter.id == focusedChapterId,
@@ -405,7 +434,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                     .toList(growable: false);
                 for (var index = 0; index < chapters.length; index += 1) {
                   final chapter = chapters[index];
-                  staticLabels.add((
+                  windowLabels.add((
                     label: PlacedLabel(
                       text: chapter.chapter.title,
                       chapterId: chapter.chapter.id,
@@ -420,8 +449,9 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                 }
 
                 final focusedChapter = outline[focusedIndex];
-                final focusedSectionId =
-                    _focusedSections[focusedChapter.chapter.id];
+                final focusedSectionId = _outlineController.focusedSectionId(
+                  focusedChapter.chapter.id,
+                );
                 var focusedSectionIndex = focusedChapter.sections.indexWhere(
                   (section) => section.id == focusedSectionId,
                 );
@@ -441,7 +471,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                     .toList(growable: false);
                 for (var index = 0; index < sections.length; index += 1) {
                   final section = sections[index];
-                  staticLabels.add((
+                  windowLabels.add((
                     label: PlacedLabel(
                       text: section.title,
                       sectionId: section.id,
@@ -456,12 +486,21 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                 }
               }
 
+              bool awaitsProjection(PlacedLabel label) {
+                final key = label.chapterId != null
+                    ? 'chapter:${label.chapterId}'
+                    : 'section:${label.sectionId}';
+                return _awaitingProjection.contains(key);
+              }
+
               return Stack(
                 key: _realtimeTreeKey,
                 children: [
                   if (enable3D && !_treeSceneController.useStaticFallback)
                     Positioned.fill(
-                      child: TreeScene(controller: _treeSceneController),
+                      child:
+                          widget.treeSceneBuilder?.call(_treeSceneController) ??
+                          TreeScene(controller: _treeSceneController),
                     ),
                   if (!enable3D ||
                       !_treeSceneController.isReady ||
@@ -523,8 +562,9 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                   ),
                   for (final projection in _treeSceneController.visibleLabels)
                     if (!staticMode) labelHotspot(projection),
-                  for (final item in staticLabels)
-                    staticLabel(item.label, item.rect),
+                  for (final item in windowLabels)
+                    if (staticMode || awaitsProjection(item.label))
+                      staticLabel(item.label, item.rect),
                   Positioned(
                     left: 8,
                     top: constraints.maxHeight * 0.16,
