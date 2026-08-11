@@ -1,16 +1,20 @@
 import { MagicTreeScene } from './MagicTreeScene.js';
 import { ProjectionReporter, summarizeFrameTimes } from './QualityManager.js';
+import {
+  createStartupErrorPayload,
+  detectWebGL2Availability,
+} from './StartupDiagnostics.js';
 import { decodeCommand, encodeEvent } from './protocol.js';
 
 const canvas = document.querySelector('#tree-scene');
 const parameters = new URLSearchParams(window.location.search);
 const bridgeToken = parameters.get('token') ?? '';
-const treeScene = new MagicTreeScene({
-  canvas,
-  assetUrl: parameters.get('model') ?? '../3d/magic_tree/magic_tree.glb',
-});
-
-let sessionId = 'bootstrap';
+const modelUrl = parameters.get('model') ?? '../3d/magic_tree/magic_tree.glb';
+const webgl2Available = detectWebGL2Availability();
+let treeScene = null;
+let bootReady = false;
+let startupStage = 'iframeLoading';
+let sessionId = parameters.get('session') ?? 'bootstrap';
 let outgoingSequence = 0;
 
 function emit(type, payload = null) {
@@ -27,6 +31,13 @@ function emit(type, payload = null) {
   }), '*');
   window.TreeSceneBridge?.postMessage(JSON.stringify(event));
 }
+
+function emitStartup(stage, payload = {}) {
+  startupStage = stage;
+  emit('scene.startup', { stage, ...payload });
+}
+
+emitStartup('iframeLoading');
 
 function normalizeSnapshot(snapshot = {}) {
   return {
@@ -79,8 +90,27 @@ async function receive(raw) {
   const command = decodeCommand(raw);
   sessionId = command.sceneSessionId;
   if (command.type === 'scene.init') {
-    emit('scene.ready', { renderer: 'WebGLRenderer', quality: treeScene.quality.name });
-  } else if (command.type === 'scene.ping') {
+    if (bootReady) {
+      emit('scene.ready', {
+        renderer: 'WebGLRenderer',
+        quality: treeScene.quality.name,
+      });
+    } else {
+      emit('scene.startup', { stage: startupStage });
+    }
+    return;
+  }
+  if (!treeScene) {
+    emit('scene.error', createStartupErrorPayload({
+      stage: startupStage,
+      error: new Error('Magic tree renderer is unavailable'),
+      webgl2Available,
+      userAgent: navigator.userAgent,
+      modelUrl,
+    }));
+    return;
+  }
+  if (command.type === 'scene.ping') {
     emit('scene.pong');
   } else if (command.type === 'tree.setAge') {
     await treeScene.setAge(command.payload?.age, {
@@ -224,17 +254,31 @@ function stopLoop() {
   treeScene.clock.stop();
 }
 
-window.addEventListener('resize', () => treeScene.resize());
+window.addEventListener('resize', () => treeScene?.resize());
 document.addEventListener('visibilitychange', () => {
   document.hidden ? stopLoop() : startLoop();
 });
 
 try {
+  emitStartup('webglCreating');
+  treeScene = new MagicTreeScene({ canvas, assetUrl: modelUrl });
+  emitStartup('modelLoading');
   await treeScene.load();
   sceneLoadMs = Number((performance.now() - bootStartedAt).toFixed(1));
+  treeScene.render();
+  emitStartup('firstFrame');
   startLoop();
+  bootReady = true;
+  emitStartup('ready');
   emit('scene.ready', { renderer: 'WebGLRenderer', quality: treeScene.quality.name });
 } catch (error) {
-  emit('scene.error', { message: String(error) });
-  throw error;
+  const failedAt = startupStage;
+  emitStartup('failed', { failedAt });
+  emit('scene.error', createStartupErrorPayload({
+    stage: failedAt,
+    error,
+    webgl2Available,
+    userAgent: navigator.userAgent,
+    modelUrl,
+  }));
 }

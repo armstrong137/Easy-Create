@@ -8,6 +8,24 @@ import 'tree_scene_snapshot.dart';
 
 typedef TreeSceneSender = FutureOr<void> Function(Map<String, Object?> command);
 
+enum TreeSceneStartupStage {
+  iframeLoading,
+  webglCreating,
+  modelLoading,
+  firstFrame,
+  ready,
+  failed,
+  timedOut,
+}
+
+TreeSceneStartupStage? _parseStartupStage(Object? value) {
+  if (value is! String) return null;
+  for (final stage in TreeSceneStartupStage.values) {
+    if (stage.name == value) return stage;
+  }
+  return null;
+}
+
 class TreeLabelProjection {
   const TreeLabelProjection({
     required this.kind,
@@ -50,6 +68,8 @@ class TreeSceneController extends ChangeNotifier {
   int _recoveryFailures = 0;
   bool _useStaticFallback = false;
   bool _transportEnabled = true;
+  TreeSceneStartupStage _startupStage = TreeSceneStartupStage.iframeLoading;
+  Map<String, Object?>? _startupError;
   List<TreeLabelProjection> _visibleLabels = const [];
   TreeSceneHit? _dragHit;
 
@@ -58,6 +78,18 @@ class TreeSceneController extends ChangeNotifier {
   List<TreeLabelProjection> get visibleLabels => _visibleLabels;
   TreeSceneHit? get dragHit => _dragHit;
   bool get useStaticFallback => _useStaticFallback;
+  TreeSceneStartupStage get startupStage => _startupStage;
+  Map<String, Object?>? get startupError => _startupError;
+
+  void markStartupTimedOut() {
+    if (_startupStage == TreeSceneStartupStage.failed ||
+        _startupStage == TreeSceneStartupStage.ready ||
+        _startupStage == TreeSceneStartupStage.timedOut) {
+      return;
+    }
+    _startupStage = TreeSceneStartupStage.timedOut;
+    activateStaticFallback();
+  }
 
   void activateStaticFallback() {
     if (_useStaticFallback) return;
@@ -192,7 +224,13 @@ class TreeSceneController extends ChangeNotifier {
     if (event.sessionId != sessionId) return;
     if (!_transportEnabled) return;
     _events.add(event);
-    if (event.type == 'tree.visibleLabels') {
+    if (event.type == 'scene.startup') {
+      final stage = _parseStartupStage(event.payload['stage']);
+      if (stage != null && _startupStage != TreeSceneStartupStage.failed) {
+        _startupStage = stage;
+        notifyListeners();
+      }
+    } else if (event.type == 'tree.visibleLabels') {
       final labels = event.payload['labels'];
       if (labels is List) {
         _visibleLabels = labels
@@ -225,6 +263,7 @@ class TreeSceneController extends ChangeNotifier {
       case 'scene.ready':
         _recoveryFailures = 0;
         _useStaticFallback = false;
+        _startupStage = TreeSceneStartupStage.ready;
         await _markReady();
         return;
       case 'scene.contextLost':
@@ -249,6 +288,8 @@ class TreeSceneController extends ChangeNotifier {
         }
         return;
       case 'scene.error':
+        _startupStage = TreeSceneStartupStage.failed;
+        _startupError = Map<String, Object?>.unmodifiable(event.payload);
         activateStaticFallback();
         return;
       default:

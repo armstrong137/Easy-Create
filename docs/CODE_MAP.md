@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-08-11 10:55:07　对应提交：d26630a 之后的工作区状态
+> 生成时间：2026-08-11 11:11:19　对应提交：9f05e16 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,29 +12,29 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     152
-  Nodes:     4,622
-  Edges:     20,639
+  Files:     155
+  Nodes:     4,672
+  Edges:     20,751
   DB Size:   23.32 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,721
-  function        1,448
+  method          1,724
+  function        1,452
+  import          495
   class           490
-  import          487
-  constant        222
-  file            144
-  variable        75
-  enum_member     16
+  constant        241
+  file            147
+  variable        80
+  enum_member     23
   type_alias      13
-  enum            4
+  enum            5
   namespace       2
 
 Files by Language:
   dart            86
-  javascript      29
+  javascript      32
   python          9
   kotlin          8
   xml             6
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (152 files):
+Project Structure (155 files):
 
 |-- .agents
 |   `-- skills
@@ -172,7 +172,7 @@ Project Structure (152 files):
 |   |   |   `-- starfield.dart (dart, 31 symbols)
 |   |   |-- outline
 |   |   |   |-- tree_scene
-|   |   |   |   |-- tree_scene_controller.dart (dart, 39 symbols)
+|   |   |   |   |-- tree_scene_controller.dart (dart, 51 symbols)
 |   |   |   |   |-- tree_scene_gestures.dart (dart, 17 symbols)
 |   |   |   |   |-- tree_scene_io.dart (dart, 18 symbols)
 |   |   |   |   |-- tree_scene_protocol.dart (dart, 12 symbols)
@@ -259,6 +259,7 @@ Project Structure (152 files):
 |       |-- scripts
 |       |   |-- build.mjs (javascript, 10 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
+|       |   |-- check-startup.mjs (javascript, 23 symbols)
 |       |   `-- validate-gltf.mjs (javascript, 7 symbols)
 |       |-- src
 |       |   |-- BranchSystem.js (javascript, 23 symbols)
@@ -267,16 +268,18 @@ Project Structure (152 files):
 |       |   |-- LabelSystem.js (javascript, 13 symbols)
 |       |   |-- LeafSystem.js (javascript, 8 symbols)
 |       |   |-- MagicTreeScene.js (javascript, 37 symbols)
-|       |   |-- main.js (javascript, 26 symbols)
+|       |   |-- main.js (javascript, 33 symbols)
 |       |   |-- protocol.js (javascript, 6 symbols)
 |       |   |-- QualityManager.js (javascript, 13 symbols)
 |       |   |-- SceneTimeline.js (javascript, 6 symbols)
+|       |   |-- StartupDiagnostics.js (javascript, 4 symbols)
 |       |   `-- TreeGrowthSystem.js (javascript, 12 symbols)
 |       `-- test
 |           |-- branch-system.test.js (javascript, 8 symbols)
 |           |-- camera-label.test.js (javascript, 8 symbols)
 |           |-- protocol.test.js (javascript, 4 symbols)
 |           |-- quality-manager.test.js (javascript, 4 symbols)
+|           |-- startup-diagnostics.test.js (javascript, 4 symbols)
 |           `-- tree-growth.test.js (javascript, 5 symbols)
 |-- web
 |   `-- drift_worker.js (javascript, 666 symbols)

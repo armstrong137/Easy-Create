@@ -65,7 +65,7 @@ class _TreeSceneState extends State<TreeScene> {
     super.initState();
     _readyTimer = Timer(
       const Duration(seconds: 8),
-      widget.controller.activateStaticFallback,
+      widget.controller.markStartupTimedOut,
     );
     web.window.addEventListener('message', _onMessage);
     ui_web.platformViewRegistry.registerViewFactory(_viewType, (_) {

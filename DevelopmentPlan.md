@@ -582,6 +582,14 @@
       iframe 与场景背景改为透明并携带当前会话标识，宽屏静态树使用完整适配避免裁切。
       局域网服务已切换到 `scripts/serve_web.dart` 的 `Cache-Control: no-store` 模式，避免浏览器
       继续读取旧构建。新增控制器、Web 启动护栏和宽屏替身回归测试，并完成真实浏览器验收。
+    - ✅ P3-R9 实时 3D 启动诊断（2026-08-11）：把原先单一 ready/8 秒超时拆成
+      `iframeLoading → webglCreating → modelLoading → firstFrame → ready` 五阶段，并保留
+      `failed/timedOut` 终态。WebGL 构造移入异常边界，错误事件携带失败阶段、消息、实际
+      WebGL2 上下文能力、UA 与模型 URL；显式错误不会再被迟到超时覆盖。新增独立 Chrome
+      启动验收脚本，正常 SwiftShader 路径五阶段齐全、首帧覆盖 10.89%、浏览器零错误；
+      `--disable-webgl` 路径准确停在 `webglCreating` 且 `webgl2Available=false`。
+      验证：Node 23 项、Flutter 场景 36 项、`flutter analyze` 全部通过。详见
+      `docs/Reports/Codex/2026-08-11-实时3D启动诊断验证报告.md`。
 - ☐ P5 小节页 3D 写作工作台（卡堆/卡片包/沉浸编辑器）
 - ☐ P6 速记与设置重构（魔法物件按钮/弹层/设置页）
 - ☐ P7 统一设计系统和验收（材质/动效 Token、视觉与性能回归）

@@ -10,8 +10,8 @@ void main() {
     final html = File('assets/tree_scene/index.html').readAsStringSync();
 
     expect(wrapper, contains("style.backgroundColor = 'transparent'"));
-    expect(wrapper, contains('activateStaticFallback'));
     expect(wrapper, contains('Timer('));
+    expect(wrapper, contains('markStartupTimedOut'));
     expect(html, contains('background: transparent'));
   });
 
@@ -19,7 +19,7 @@ void main() {
     final source = File(
       'lib/presentation/outline/outline_page.dart',
     ).readAsStringSync();
-    final scene = source.indexOf('child: TreeScene(controller:');
+    final scene = source.indexOf('TreeScene(controller:');
     final standin = source.indexOf('!_treeSceneController.isReady ||');
 
     expect(scene, greaterThanOrEqualTo(0));
@@ -33,5 +33,9 @@ void main() {
     expect(source, contains("parameters.get('session')"));
     expect(source, contains('treeScene = new MagicTreeScene'));
     expect(source, contains("emit('scene.error'"));
+    expect(source, contains("emitStartup('webglCreating')"));
+    expect(source, contains("emitStartup('modelLoading')"));
+    expect(source, contains("emitStartup('firstFrame')"));
+    expect(source, contains('createStartupErrorPayload'));
   });
 }

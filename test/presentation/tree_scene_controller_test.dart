@@ -210,4 +210,75 @@ void main() {
     expect(controller.useStaticFallback, isTrue);
     expect(controller.isReady, isFalse);
   });
+
+  test('记录实时场景启动阶段直到首帧就绪', () async {
+    expect(controller.startupStage, TreeSceneStartupStage.iframeLoading);
+
+    for (final stage in const ['webglCreating', 'modelLoading', 'firstFrame']) {
+      await controller.handleEvent(
+        TreeSceneEvent(
+          sessionId: 'session-1',
+          sequence: sent.length + 1,
+          type: 'scene.startup',
+          payload: {'stage': stage},
+        ),
+      );
+    }
+
+    expect(controller.startupStage, TreeSceneStartupStage.firstFrame);
+    await controller.handleEvent(
+      const TreeSceneEvent(
+        sessionId: 'session-1',
+        sequence: 4,
+        type: 'scene.ready',
+        payload: {},
+      ),
+    );
+    expect(controller.startupStage, TreeSceneStartupStage.ready);
+  });
+
+  test('启动错误保留失败阶段和浏览器诊断信息', () async {
+    await controller.handleEvent(
+      const TreeSceneEvent(
+        sessionId: 'session-1',
+        sequence: 1,
+        type: 'scene.error',
+        payload: {
+          'stage': 'webglCreating',
+          'message': 'Error creating WebGL context',
+          'webgl2Available': false,
+          'userAgent': 'test-browser',
+          'modelUrl': '../3d/magic_tree/magic_tree.glb',
+        },
+      ),
+    );
+
+    expect(controller.startupStage, TreeSceneStartupStage.failed);
+    expect(controller.startupError?['stage'], 'webglCreating');
+    expect(controller.startupError?['webgl2Available'], isFalse);
+    expect(controller.useStaticFallback, isTrue);
+  });
+
+  test('显式启动错误不会再被超时状态覆盖', () async {
+    await controller.handleEvent(
+      const TreeSceneEvent(
+        sessionId: 'session-1',
+        sequence: 1,
+        type: 'scene.error',
+        payload: {'stage': 'modelLoading', 'message': '404'},
+      ),
+    );
+
+    controller.markStartupTimedOut();
+
+    expect(controller.startupStage, TreeSceneStartupStage.failed);
+    expect(controller.startupError?['message'], '404');
+  });
+
+  test('无明确错误时超时进入 timedOut 降级状态', () {
+    controller.markStartupTimedOut();
+
+    expect(controller.startupStage, TreeSceneStartupStage.timedOut);
+    expect(controller.useStaticFallback, isTrue);
+  });
 }
