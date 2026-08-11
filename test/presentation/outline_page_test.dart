@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:novel_app/data/database/app_database.dart';
 import 'package:novel_app/data/providers.dart';
+import 'package:novel_app/data/repositories/novel_repository.dart';
 import 'package:novel_app/domain/entities/outline_chapter.dart';
 import 'package:novel_app/presentation/home/planet_scene/planet_scene.dart'
     show advanced3DProvider;
@@ -12,14 +16,85 @@ import 'package:novel_app/presentation/outline/outline_page.dart';
 import 'package:novel_app/presentation/outline/tree_scene/tree_standin.dart';
 import 'package:novel_app/presentation/section/section_page.dart';
 
+class ControllableNovelRepository extends NovelRepository {
+  ControllableNovelRepository(this.database) : super(database) {
+    _outline = StreamController<List<OutlineChapter>>.broadcast(
+      onListen: () => unawaited(_emitOutline()),
+    );
+  }
+
+  final AppDatabase database;
+  late final StreamController<List<OutlineChapter>> _outline;
+  int _novelId = 1;
+
+  Future<Chapter> Function(int novelId)? createChapterHandler;
+  Future<Section> Function(int chapterId)? createSectionHandler;
+
+  @override
+  Future<Chapter> createChapter({required int novelId, String? title}) {
+    final handler = createChapterHandler;
+    final creation = handler == null
+        ? super.createChapter(novelId: novelId, title: title)
+        : handler(novelId);
+    return creation.then((chapter) async {
+      await _emitOutline();
+      return chapter;
+    });
+  }
+
+  @override
+  Future<Section> createSection({required int chapterId, String? title}) {
+    final handler = createSectionHandler;
+    final creation = handler == null
+        ? super.createSection(chapterId: chapterId, title: title)
+        : handler(chapterId);
+    return creation.then((section) async {
+      await _emitOutline();
+      return section;
+    });
+  }
+
+  @override
+  Stream<List<OutlineChapter>> watchOutline(int novelId) {
+    _novelId = novelId;
+    return _outline.stream;
+  }
+
+  Future<void> _emitOutline() async {
+    if (_outline.isClosed) return;
+    final chapters =
+        await (database.select(database.chapters)
+              ..where((table) => table.novelId.equals(_novelId))
+              ..orderBy([(table) => OrderingTerm.asc(table.sortOrder)]))
+            .get();
+    final result = <OutlineChapter>[];
+    for (final chapter in chapters) {
+      final sections =
+          await (database.select(database.sections)
+                ..where((table) => table.chapterId.equals(chapter.id))
+                ..orderBy([(table) => OrderingTerm.asc(table.sortOrder)]))
+              .get();
+      result.add(OutlineChapter(chapter: chapter, sections: sections));
+    }
+    if (!_outline.isClosed) _outline.add(result);
+  }
+
+  Future<void> close() => _outline.close();
+}
+
 void main() {
   late AppDatabase database;
+  late List<ControllableNovelRepository> repositories;
 
   setUp(() {
     database = AppDatabase.forTesting(NativeDatabase.memory());
+    repositories = [];
   });
 
   tearDown(() async {
+    for (final repository in repositories) {
+      await repository.close();
+    }
     await database.close();
   });
 
@@ -38,16 +113,29 @@ void main() {
 
   Future<void> pumpOutline(
     WidgetTester tester,
-    List<OutlineChapter> outline, {
+    List<OutlineChapter>? outline, {
     Widget? overlay,
+    NovelRepository? repository,
   }) async {
     const page = OutlinePage(novelId: 1, title: '测试小说');
+    final liveRepository = outline == null
+        ? repository ?? ControllableNovelRepository(database)
+        : repository;
+    if (liveRepository is ControllableNovelRepository &&
+        !repositories.contains(liveRepository)) {
+      repositories.add(liveRepository);
+    }
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           appDatabaseProvider.overrideWithValue(database),
           advanced3DProvider.overrideWithValue(false),
-          outlineProvider.overrideWith((ref, novelId) => Stream.value(outline)),
+          if (liveRepository != null)
+            novelRepositoryProvider.overrideWithValue(liveRepository),
+          if (outline != null)
+            outlineProvider.overrideWith(
+              (ref, novelId) => Stream.value(outline),
+            ),
           sectionInspirationsProvider.overrideWith(
             (ref, novelId) => Stream.value(const {}),
           ),
@@ -273,13 +361,15 @@ void main() {
 
   testWidgets('左半屏双击创建章节', (tester) async {
     await seedNovel();
-    await pumpOutline(tester, const []);
+    await pumpOutline(tester, null);
 
     final size = tester.getSize(find.byType(Scaffold));
     await doubleTapAt(tester, Offset(size.width * 0.25, size.height * 0.55));
+    await tester.pump(const Duration(milliseconds: 100));
 
     final chapters = await database.select(database.chapters).get();
     expect(chapters, hasLength(1));
+    expect(find.text('引子'), findsOneWidget);
   });
 
   testWidgets('右半屏双击为当前章节创建小节', (tester) async {
@@ -289,19 +379,91 @@ void main() {
         .insert(
           ChaptersCompanion.insert(novelId: 1, title: '第一章', sortOrder: 0),
         );
-    final outline = [
-      OutlineChapter(
-        chapter: Chapter(id: chapterId, novelId: 1, title: '第一章', sortOrder: 0),
-        sections: const [],
-      ),
-    ];
-    await pumpOutline(tester, outline);
+    await pumpOutline(tester, null);
 
     final size = tester.getSize(find.byType(Scaffold));
     await doubleTapAt(tester, Offset(size.width * 0.75, size.height * 0.55));
+    await tester.pump(const Duration(milliseconds: 100));
 
     final sections = await database.select(database.sections).get();
     expect(sections, hasLength(1));
     expect(sections.single.chapterId, chapterId);
+    expect(find.text('第一节'), findsOneWidget);
+  });
+
+  testWidgets('点击左侧新芽入口后由数据库流显示新章节', (tester) async {
+    await seedNovel();
+    await pumpOutline(tester, null);
+
+    await tester.tap(find.byKey(const Key('新增章节入口')));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(await database.select(database.chapters).get(), hasLength(1));
+    expect(find.text('引子'), findsOneWidget);
+  });
+
+  testWidgets('章节创建 pending 时连点只提交一次', (tester) async {
+    await seedNovel();
+    final repository = ControllableNovelRepository(database);
+    final pending = Completer<Chapter>();
+    var calls = 0;
+    repository.createChapterHandler = (novelId) {
+      calls += 1;
+      return pending.future;
+    };
+    await pumpOutline(tester, null, repository: repository);
+
+    await tester.tap(find.byKey(const Key('新增章节入口')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('新增章节入口')));
+    await tester.pump();
+
+    expect(calls, 1);
+    expect(find.byKey(const Key('新增章节进度')), findsOneWidget);
+
+    pending.complete(
+      const Chapter(id: 1, novelId: 1, title: '引子', sortOrder: 0),
+    );
+    await tester.pump();
+  });
+
+  testWidgets('章节创建失败显示中文反馈并可继续创建', (tester) async {
+    await seedNovel();
+    final repository = ControllableNovelRepository(database)
+      ..createChapterHandler = (_) async => throw StateError('写入失败');
+    await pumpOutline(tester, null, repository: repository);
+
+    await tester.tap(find.byKey(const Key('新增章节入口')));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('创建章节失败，请稍后再试'), findsOneWidget);
+
+    repository.createChapterHandler = null;
+    await tester.tap(find.byKey(const Key('新增章节入口')));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('引子'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 2));
+  });
+
+  testWidgets('无章节时小节入口禁用，有当前章后可创建并显示标签', (tester) async {
+    await seedNovel();
+    await pumpOutline(tester, null);
+
+    final disabled = tester.widget<Semantics>(find.byKey(const Key('新增小节入口')));
+    expect(disabled.properties.enabled, isFalse);
+    await tester.tap(find.byKey(const Key('新增小节入口')));
+    await tester.pump();
+    expect(await database.select(database.sections).get(), isEmpty);
+
+    await tester.tap(find.byKey(const Key('新增章节入口')));
+    await tester.pump(const Duration(milliseconds: 100));
+    final enabled = tester.widget<Semantics>(find.byKey(const Key('新增小节入口')));
+    expect(enabled.properties.enabled, isTrue);
+
+    await tester.tap(find.byKey(const Key('新增小节入口')));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(await database.select(database.sections).get(), hasLength(1));
+    expect(find.text('第一节'), findsOneWidget);
   });
 }

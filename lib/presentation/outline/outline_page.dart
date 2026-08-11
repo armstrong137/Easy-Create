@@ -66,6 +66,8 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
   late final TreeDragBridge _realtimeDragBridge;
   final GlobalKey _realtimeTreeKey = GlobalKey();
   final Map<int, int> _focusedSections = {};
+  bool _creatingChapter = false;
+  bool _creatingSection = false;
 
   /// 上次设给魔毯的缩边栏状态，避免每帧重复通知。
   bool _lastTuck = false;
@@ -104,6 +106,45 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
     super.dispose();
   }
 
+  int? _currentChapterId(List<OutlineChapter> outline) {
+    final focused = _outlineController.snapshot?.focusedChapterId;
+    if (focused != null && outline.any((item) => item.chapter.id == focused)) {
+      return focused;
+    }
+    return outline.isEmpty ? null : outline.last.chapter.id;
+  }
+
+  Future<void> _createChapter() async {
+    if (_creatingChapter) return;
+    setState(() => _creatingChapter = true);
+    HapticFeedback.lightImpact();
+    try {
+      await _outlineController.addChapter();
+    } catch (_) {
+      if (mounted) showSoftToast(context, '创建章节失败，请稍后再试');
+    } finally {
+      if (mounted) setState(() => _creatingChapter = false);
+    }
+  }
+
+  Future<void> _createSection(List<OutlineChapter> outline) async {
+    if (_creatingSection) return;
+    final chapterId = _currentChapterId(outline);
+    if (chapterId == null) {
+      showSoftToast(context, '先点左边空白，长出第一根章枝吧');
+      return;
+    }
+    setState(() => _creatingSection = true);
+    HapticFeedback.lightImpact();
+    try {
+      await _outlineController.addSection(chapterId);
+    } catch (_) {
+      if (mounted) showSoftToast(context, '创建小节失败，请稍后再试');
+    } finally {
+      if (mounted) setState(() => _creatingSection = false);
+    }
+  }
+
   Widget _realtimeTreeBody(
     List<OutlineChapter> outline, {
     required bool enable3D,
@@ -111,18 +152,6 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
     void focusChapter(int chapterId, {bool animate = true}) {
       _outlineController.focusChapter(chapterId, animate: animate);
       if (mounted) setState(() {});
-    }
-
-    Future<void> addSection() async {
-      final chapterId =
-          _outlineController.snapshot?.focusedChapterId ??
-          (outline.isEmpty ? null : outline.last.chapter.id);
-      if (chapterId == null) {
-        showSoftToast(context, '先点左边空白，长出第一根章枝吧');
-        return;
-      }
-      HapticFeedback.lightImpact();
-      await _outlineController.addSection(chapterId);
     }
 
     void moveChapter(TreeGestureDirection direction) {
@@ -450,10 +479,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                     child: GestureDetector(
                       key: const Key('左空白区'),
                       behavior: HitTestBehavior.translucent,
-                      onDoubleTap: () async {
-                        HapticFeedback.lightImpact();
-                        await _outlineController.addChapter();
-                      },
+                      onDoubleTap: _createChapter,
                       onVerticalDragStart: (_) => _realtimeGestures.begin(
                         x: 0,
                         width: constraints.maxWidth,
@@ -479,7 +505,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                     child: GestureDetector(
                       key: const Key('右空白区'),
                       behavior: HitTestBehavior.translucent,
-                      onDoubleTap: addSection,
+                      onDoubleTap: () => _createSection(outline),
                       onVerticalDragStart: (_) => _realtimeGestures.begin(
                         x: constraints.maxWidth,
                         width: constraints.maxWidth,
@@ -499,6 +525,31 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                     if (!staticMode) labelHotspot(projection),
                   for (final item in staticLabels)
                     staticLabel(item.label, item.rect),
+                  Positioned(
+                    left: 8,
+                    top: constraints.maxHeight * 0.16,
+                    child: _SproutAction(
+                      semanticKey: const Key('新增章节入口'),
+                      semanticLabel: '新增章节',
+                      pending: _creatingChapter,
+                      progressKey: const Key('新增章节进度'),
+                      onPressed: _creatingChapter ? null : _createChapter,
+                    ),
+                  ),
+                  Positioned(
+                    right: 8,
+                    top: constraints.maxHeight * 0.16,
+                    child: _SproutAction(
+                      semanticKey: const Key('新增小节入口'),
+                      semanticLabel: '新增小节',
+                      semanticHint: outline.isEmpty ? '请先创建章节' : null,
+                      pending: _creatingSection,
+                      progressKey: const Key('新增小节进度'),
+                      onPressed: outline.isEmpty || _creatingSection
+                          ? null
+                          : () => _createSection(outline),
+                    ),
+                  ),
                 ],
               );
             },
@@ -753,6 +804,101 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
           SafeArea(bottom: false, child: _header(context)),
           _realtimeTreeBody(outline, enable3D: enable3D),
         ],
+      ),
+    );
+  }
+}
+
+class _SproutAction extends StatelessWidget {
+  const _SproutAction({
+    required this.semanticKey,
+    required this.semanticLabel,
+    required this.pending,
+    required this.progressKey,
+    required this.onPressed,
+    this.semanticHint,
+  });
+
+  final Key semanticKey;
+  final String semanticLabel;
+  final String? semanticHint;
+  final bool pending;
+  final Key progressKey;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null && !pending;
+    return Semantics(
+      key: semanticKey,
+      button: true,
+      enabled: enabled,
+      label: semanticLabel,
+      hint: semanticHint,
+      value: pending ? '创建中' : null,
+      child: ExcludeSemantics(
+        child: CupertinoButton(
+          padding: EdgeInsets.zero,
+          pressedOpacity: 0.55,
+          onPressed: enabled ? onPressed : null,
+          child: AnimatedOpacity(
+            opacity: enabled || pending ? 1 : 0.38,
+            duration: const Duration(milliseconds: 140),
+            child: SizedBox(
+              width: 62,
+              height: 62,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: pending
+                        ? CircularProgressIndicator(
+                            key: progressKey,
+                            strokeWidth: 2,
+                            color: _ink,
+                          )
+                        : const Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Align(
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  Icons.eco_outlined,
+                                  size: 25,
+                                  color: _ink,
+                                ),
+                              ),
+                              Positioned(
+                                right: -2,
+                                top: -5,
+                                child: Text(
+                                  '+',
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w700,
+                                    color: _ink,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                  Text(
+                    pending ? '生长中' : '新芽 +',
+                    style: const TextStyle(
+                      fontFamily: 'LXGWWenKai',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: _ink,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
