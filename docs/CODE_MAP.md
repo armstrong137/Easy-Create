@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-08-10 18:19:37　对应提交：ea4af6c 之后的工作区状态
+> 生成时间：2026-08-10 21:37:54　对应提交：964a371 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,30 +12,30 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     155
-  Nodes:     4,794
-  Edges:     21,106
+  Files:     151
+  Nodes:     4,586
+  Edges:     20,403
   DB Size:   23.32 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,742
-  function        1,509
-  import          522
-  class           498
-  constant        251
-  file            147
-  variable        87
-  enum_member     18
+  method          1,699
+  function        1,447
+  class           488
+  import          477
+  constant        222
+  file            143
+  variable        75
+  enum_member     16
   type_alias      13
-  enum            5
+  enum            4
   namespace       2
 
 Files by Language:
-  dart            86
+  dart            85
   javascript      29
-  python          12
+  python          9
   kotlin          8
   xml             6
   properties      4
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (155 files):
+Project Structure (151 files):
 
 |-- .agents
 |   `-- skills
@@ -172,19 +172,18 @@ Project Structure (155 files):
 |   |   |   `-- starfield.dart (dart, 31 symbols)
 |   |   |-- outline
 |   |   |   |-- tree_scene
-|   |   |   |   |-- tree_scene_controller.dart (dart, 37 symbols)
+|   |   |   |   |-- tree_scene_controller.dart (dart, 38 symbols)
 |   |   |   |   |-- tree_scene_gestures.dart (dart, 17 symbols)
 |   |   |   |   |-- tree_scene_io.dart (dart, 18 symbols)
 |   |   |   |   |-- tree_scene_protocol.dart (dart, 12 symbols)
 |   |   |   |   |-- tree_scene_snapshot.dart (dart, 25 symbols)
 |   |   |   |   |-- tree_scene_web.dart (dart, 18 symbols)
-|   |   |   |   |-- tree_scene.dart (dart, 6 symbols)
+|   |   |   |   |-- tree_scene.dart (dart, 2 symbols)
 |   |   |   |   `-- tree_standin.dart (dart, 5 symbols)
-|   |   |   |-- label_layout.dart (dart, 15 symbols)
+|   |   |   |-- label_layout.dart (dart, 2 symbols)
 |   |   |   |-- magic_carpet.dart (dart, 67 symbols)
-|   |   |   |-- magic_tree_model.dart (dart, 63 symbols)
-|   |   |   |-- outline_controller.dart (dart, 22 symbols)
-|   |   |   |-- outline_page.dart (dart, 102 symbols)
+|   |   |   |-- outline_controller.dart (dart, 24 symbols)
+|   |   |   |-- outline_page.dart (dart, 56 symbols)
 |   |   |   `-- scroll_carpet.dart (dart, 38 symbols)
 |   |   |-- section
 |   |   |   |-- card_deck_sheet.dart (dart, 19 symbols)
@@ -211,14 +210,11 @@ Project Structure (155 files):
 |   |-- e2e_probe.dart (dart, 12 symbols)
 |   |-- export_magic_tree.py (python, 14 symbols)
 |   |-- generate_magic_tree_pbr.py (python, 12 symbols)
-|   |-- magic_tree_img2img_pipeline.py (python, 28 symbols)
-|   |-- magic_tree_sd_webui_provider.py (python, 18 symbols)
 |   |-- optimize_magic_tree_glb.py (python, 16 symbols)
 |   |-- serve_web.dart (dart, 4 symbols)
 |   |-- square_standins.py (python, 11 symbols)
 |   |-- validate_magic_tree_3d.py (python, 17 symbols)
-|   |-- validate_magic_tree_art_package.py (python, 16 symbols)
-|   `-- validate_magic_tree_frames.py (python, 27 symbols)
+|   `-- validate_magic_tree_art_package.py (python, 16 symbols)
 |-- test
 |   |-- core
 |   |   |-- chinese_numbers_test.dart (dart, 4 symbols)
@@ -232,12 +228,12 @@ Project Structure (155 files):
 |   |   |-- home_loading_regression_test.dart (dart, 4 symbols)
 |   |   |-- home_page_test.dart (dart, 21 symbols)
 |   |   |-- magic_carpet_test.dart (dart, 18 symbols)
-|   |   |-- magic_tree_model_test.dart (dart, 21 symbols)
 |   |   |-- orbiting_inspirations_test.dart (dart, 11 symbols)
 |   |   |-- outline_controller_test.dart (dart, 9 symbols)
-|   |   |-- outline_page_test.dart (dart, 30 symbols)
+|   |   |-- outline_page_test.dart (dart, 21 symbols)
 |   |   |-- planet_scene_touch_config_test.dart (dart, 8 symbols)
 |   |   |-- quick_capture_test.dart (dart, 16 symbols)
+|   |   |-- realtime_tree_single_path_test.dart (dart, 4 symbols)
 |   |   |-- section_page_test.dart (dart, 24 symbols)
 |   |   |-- starfield_motion_test.dart (dart, 6 symbols)
 |   |   |-- starfield_test.dart (dart, 7 symbols)

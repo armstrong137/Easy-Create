@@ -31,7 +31,10 @@ class OutlineController {
     required this.renameSection,
     required this.deleteChapter,
     required this.deleteSection,
-  });
+  }) {
+    _wasStaticFallback = scene.useStaticFallback;
+    scene.addListener(_handleSceneChanged);
+  }
 
   final int novelId;
   final TreeSceneController scene;
@@ -46,6 +49,7 @@ class OutlineController {
   TreeSceneSnapshot? _deferredSnapshot;
   bool _mutationInFlight = false;
   bool _disposed = false;
+  bool _wasStaticFallback = false;
 
   TreeSceneSnapshot? get snapshot => _snapshot;
 
@@ -85,6 +89,7 @@ class OutlineController {
     List<OutlineChapter> outline, {
     Map<int, int> chapterInspirationCounts = const {},
     Map<int, int> sectionInspirationCounts = const {},
+    bool animateMutations = true,
   }) {
     if (_disposed) return;
     final currentFocus = _snapshot?.focusedChapterId;
@@ -103,6 +108,15 @@ class OutlineController {
       return;
     }
     final mutation = diffTreeSnapshots(before, next);
+    if (!animateMutations) {
+      if (mutation.type != TreeMutationType.none || _mutationInFlight) {
+        _snapshot = next;
+        _mutationInFlight = false;
+        _deferredSnapshot = null;
+        scene.syncSnapshot(next);
+      }
+      return;
+    }
     if (mutation.type == TreeMutationType.none) return;
     if (_mutationInFlight) {
       _deferredSnapshot = next;
@@ -129,6 +143,24 @@ class OutlineController {
     }
   }
 
+  void _handleSceneChanged() {
+    final useStaticFallback = scene.useStaticFallback;
+    if (useStaticFallback && !_wasStaticFallback) {
+      _enterStaticFallback();
+    }
+    _wasStaticFallback = useStaticFallback;
+  }
+
+  void _enterStaticFallback() {
+    if (_disposed) return;
+    final latest = _deferredSnapshot ?? _snapshot;
+    _mutationInFlight = false;
+    _deferredSnapshot = null;
+    if (latest == null) return;
+    _snapshot = latest;
+    scene.syncSnapshot(latest);
+  }
+
   void _dispatchMutation(TreeMutation mutation, TreeSceneSnapshot next) {
     _snapshot = next;
     if (mutation.type == TreeMutationType.focusChapter) {
@@ -143,5 +175,6 @@ class OutlineController {
   void dispose() {
     _disposed = true;
     _deferredSnapshot = null;
+    scene.removeListener(_handleSceneChanged);
   }
 }

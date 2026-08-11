@@ -49,6 +49,7 @@ class TreeSceneController extends ChangeNotifier {
   bool _paused = false;
   int _recoveryFailures = 0;
   bool _useStaticFallback = false;
+  bool _transportEnabled = true;
   List<TreeLabelProjection> _visibleLabels = const [];
   TreeSceneHit? _dragHit;
 
@@ -67,7 +68,28 @@ class TreeSceneController extends ChangeNotifier {
     _ready = false;
   }
 
+  void setTransportEnabled(bool enabled) {
+    if (_transportEnabled == enabled) return;
+    _transportEnabled = enabled;
+    _pending.clear();
+    if (!enabled) {
+      _ready = false;
+      return;
+    }
+    final snapshot = _latestSnapshot;
+    if (snapshot != null && !_useStaticFallback) {
+      _enqueue(
+        TreeSceneCommand.sync(
+          sessionId: sessionId,
+          sequence: _sequence++,
+          snapshot: snapshot,
+        ),
+      );
+    }
+  }
+
   Future<void> initializeTransport() async {
+    if (!_transportEnabled || _useStaticFallback) return;
     final sender = _sender;
     if (sender == null) return;
     final command = TreeSceneCommand.scene(
@@ -159,6 +181,7 @@ class TreeSceneController extends ChangeNotifier {
 
   Future<void> handleEvent(TreeSceneEvent event) async {
     if (event.sessionId != sessionId) return;
+    if (!_transportEnabled) return;
     _events.add(event);
     if (event.type == 'tree.visibleLabels') {
       final labels = event.payload['labels'];
@@ -214,6 +237,7 @@ class TreeSceneController extends ChangeNotifier {
         _recoveryFailures += 1;
         if (_recoveryFailures >= 2) {
           _useStaticFallback = true;
+          _transportEnabled = false;
           _ready = false;
           _pending.clear();
           notifyListeners();
@@ -244,6 +268,7 @@ class TreeSceneController extends ChangeNotifier {
   );
 
   void _enqueue(TreeSceneCommand command) {
+    if (!_transportEnabled || _useStaticFallback) return;
     if (!_ready || _sender == null) {
       _pending.add(command);
       return;
@@ -252,6 +277,7 @@ class TreeSceneController extends ChangeNotifier {
   }
 
   Future<void> _markReady() async {
+    if (!_transportEnabled || _useStaticFallback) return;
     _ready = true;
     final queued = [..._pending]
       ..sort((a, b) => a.sequence.compareTo(b.sequence));

@@ -97,4 +97,54 @@ void main() {
     );
     expect(sent, hasLength(2));
   });
+
+  test('静态回退不等待场景动画完成并持续同步最新树龄', () {
+    controller.onOutlineChanged([chapter(1)], animateMutations: false);
+    sent.clear();
+
+    controller.onOutlineChanged([
+      chapter(1),
+      chapter(2),
+    ], animateMutations: false);
+    controller.onOutlineChanged([
+      chapter(1),
+      chapter(2),
+      chapter(3),
+    ], animateMutations: false);
+
+    expect(sent, hasLength(2));
+    expect(
+      sent.every((command) => command['type'] == 'tree.syncSnapshot'),
+      isTrue,
+    );
+    expect(controller.snapshot?.chapters, hasLength(3));
+  });
+
+  test('运行中降级会立即落地正在等待的最新快照', () async {
+    controller.onOutlineChanged([chapter(1)]);
+    sent.clear();
+    controller.onOutlineChanged([chapter(1), chapter(2)]);
+    controller.onOutlineChanged([chapter(1), chapter(2), chapter(3)]);
+    expect(sent, hasLength(1));
+
+    await scene.handleEvent(
+      const TreeSceneEvent(
+        sessionId: 'outline-test',
+        sequence: 11,
+        type: 'scene.recoveryFailed',
+        payload: {},
+      ),
+    );
+    await scene.handleEvent(
+      const TreeSceneEvent(
+        sessionId: 'outline-test',
+        sequence: 12,
+        type: 'scene.recoveryFailed',
+        payload: {},
+      ),
+    );
+
+    expect(sent, hasLength(1));
+    expect(controller.snapshot?.chapters, hasLength(3));
+  });
 }

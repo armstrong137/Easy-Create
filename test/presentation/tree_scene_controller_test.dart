@@ -128,4 +128,65 @@ void main() {
       hasLength(1),
     );
   });
+
+  test('静态模式不积压命令且重启时只补最新快照', () async {
+    controller.setTransportEnabled(false);
+    controller.syncSnapshot(snapshot);
+    for (var index = 0; index < 50; index += 1) {
+      controller.focusChapter(index);
+      controller.focusSection(index, index * 10);
+    }
+    expect(sent, isEmpty);
+
+    controller.setTransportEnabled(true);
+    await controller.markReadyForTest();
+
+    expect(sent, hasLength(1));
+    expect(sent.single['type'], 'tree.syncSnapshot');
+  });
+
+  test('进入静态回退后忽略迟到的上下文与ready事件', () async {
+    await controller.markReadyForTest();
+    controller.syncSnapshot(snapshot);
+    await controller.handleEvent(
+      const TreeSceneEvent(
+        sessionId: 'session-1',
+        sequence: 21,
+        type: 'scene.recoveryFailed',
+        payload: {},
+      ),
+    );
+    await controller.handleEvent(
+      const TreeSceneEvent(
+        sessionId: 'session-1',
+        sequence: 22,
+        type: 'scene.recoveryFailed',
+        payload: {},
+      ),
+    );
+    expect(controller.useStaticFallback, isTrue);
+    expect(controller.isReady, isFalse);
+    sent.clear();
+
+    await controller.handleEvent(
+      const TreeSceneEvent(
+        sessionId: 'session-1',
+        sequence: 23,
+        type: 'scene.contextLost',
+        payload: {},
+      ),
+    );
+    await controller.handleEvent(
+      const TreeSceneEvent(
+        sessionId: 'session-1',
+        sequence: 24,
+        type: 'scene.ready',
+        payload: {},
+      ),
+    );
+
+    expect(controller.useStaticFallback, isTrue);
+    expect(controller.isReady, isFalse);
+    expect(sent, isEmpty);
+  });
 }
