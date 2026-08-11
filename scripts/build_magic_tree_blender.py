@@ -27,10 +27,13 @@ PBR = (
 )
 AGES = (0.08, 0.25, 0.48, 0.72, 1.0)
 AGE_KEY_NAMES = ("age_00", "age_25", "age_48", "age_72", "age_100")
-HEIGHT_RATIOS = (0.19, 0.34, 0.57, 0.79, 1.0)
-WIDTH_RATIOS = (0.09, 0.22, 0.48, 0.75, 1.0)
+HEIGHT_RATIOS = (0.24, 0.40, 0.60, 0.80, 1.0)
+WIDTH_RATIOS = (0.32, 0.45, 0.62, 0.80, 1.0)
+CROWN_RATIOS = (0.34, 0.48, 0.66, 0.83, 1.0)
+LEAF_RATIOS = (0.68, 0.76, 0.84, 0.92, 1.0)
+ROOT_RATIOS = (0.35, 0.48, 0.64, 0.82, 1.0)
 RADIAL_SEGMENTS = 14
-TREE_HEIGHT = 8.0
+TREE_HEIGHT = 8.2
 TRUNK_BASE_Z = 0.18
 
 
@@ -108,53 +111,79 @@ def leaf_material(name: str, color: tuple[float, float, float]) -> bpy.types.Mat
 
 
 def magic_material() -> bpy.types.Material:
-    material = bpy.data.materials.new("MagicVein")
+    material = bpy.data.materials.new("MagicVeinPBR")
     material.use_nodes = True
     principled = material.node_tree.nodes.get("Principled BSDF")
-    principled.inputs["Base Color"].default_value = (0.18, 0.36, 0.02, 1)
-    principled.inputs["Emission Color"].default_value = (0.28, 0.62, 0.03, 1)
-    principled.inputs["Emission Strength"].default_value = 0.45
+    principled.inputs["Base Color"].default_value = (0.38, 0.17, 0.025, 1)
+    principled.inputs["Emission Color"].default_value = (1.0, 0.46, 0.055, 1)
+    principled.inputs["Emission Strength"].default_value = 1.15
     principled.inputs["Roughness"].default_value = 0.48
     return material
 
 
-def trunk_path() -> list[Vector]:
+def moss_material() -> bpy.types.Material:
+    material = bpy.data.materials.new("MossPBR")
+    material.use_nodes = True
+    principled = material.node_tree.nodes.get("Principled BSDF")
+    principled.inputs["Base Color"].default_value = (0.028, 0.065, 0.012, 1)
+    principled.inputs["Roughness"].default_value = 0.94
+    principled.inputs["Specular IOR Level"].default_value = 0.12
+    return material
+
+
+def cubic_bezier(
+    start: Vector,
+    control_a: Vector,
+    control_b: Vector,
+    end: Vector,
+    count: int,
+) -> list[Vector]:
     points = []
-    for index in range(35):
-        t = index / 34
+    for index in range(count):
+        t = index / (count - 1)
+        inv = 1.0 - t
         points.append(
-            Vector(
-                (
-                    0.12 * math.sin(t * math.pi * 2.1) * (0.3 + t),
-                    0.09 * math.sin(t * math.pi * 3.2 + 0.7),
-                    TRUNK_BASE_Z + (6.15 - TRUNK_BASE_Z) * t,
-                )
-            )
+            start * (inv ** 3)
+            + control_a * (3.0 * inv * inv * t)
+            + control_b * (3.0 * inv * t * t)
+            + end * (t ** 3)
         )
     return points
 
 
+def trunk_path() -> list[Vector]:
+    return cubic_bezier(
+        Vector((0.0, 0.0, TRUNK_BASE_Z)),
+        Vector((-0.22, 0.10, 2.35)),
+        Vector((0.34, -0.16, 5.30)),
+        Vector((-0.05, 0.08, 6.55)),
+        41,
+    )
+
+
 def branch_paths(trunk: list[Vector]) -> list[list[Vector]]:
+    # 六根主枝逐根定型，避免等角度、等间距复制形成仙人掌轮廓。
+    specs = (
+        (0.36, (-0.62, -0.06, 0.22), (-1.92, -0.18, 1.05), (-2.92, 0.10, 2.48)),
+        (0.40, (0.66, 0.12, 0.18), (1.98, 0.30, 1.00), (2.98, 0.18, 2.42)),
+        (0.47, (-0.56, 0.24, 0.45), (-1.68, 0.44, 1.80), (-2.48, 0.08, 3.24)),
+        (0.52, (0.58, -0.18, 0.42), (1.72, -0.34, 1.80), (2.54, 0.05, 3.30)),
+        (0.59, (-0.34, 0.26, 0.72), (-1.02, 0.46, 2.18), (-1.52, 0.16, 3.62)),
+        (0.64, (0.36, -0.22, 0.70), (1.00, -0.42, 2.18), (1.48, 0.12, 3.54)),
+        (0.68, (0.10, 0.18, 0.86), (0.44, 0.26, 2.45), (0.18, 0.08, 3.82)),
+    )
     paths = []
-    starts = (0.29, 0.36, 0.43, 0.50, 0.57, 0.64, 0.70, 0.75, 0.80)
-    lengths = (2.78, 3.10, 3.02, 2.64, 2.82, 2.66, 2.48, 2.30, 2.08)
-    for branch_index, (start, length) in enumerate(zip(starts, lengths)):
-        root = trunk[round(start * (len(trunk) - 1))].copy()
-        angle = branch_index * 2.31 + (0.20 if branch_index % 2 else -0.10)
-        direction = Vector((math.cos(angle), math.sin(angle), 0.0))
-        upward = 0.34 + 0.025 * branch_index
-        points = []
-        for segment in range(14):
-            u = segment / 13
-            lateral = direction * length * (u ** 0.78)
-            sweep = (
-                Vector((-direction.y, direction.x, 0))
-                * math.sin(u * math.pi)
-                * (0.24 + 0.035 * branch_index)
+    for start_ratio, control_a, control_b, end in specs:
+        branch_root = trunk[round(start_ratio * (len(trunk) - 1))].copy()
+        paths.append(
+            cubic_bezier(
+                branch_root,
+                branch_root + Vector(control_a),
+                branch_root + Vector(control_b),
+                branch_root + Vector(end),
+                16,
             )
-            rise = Vector((0, 0, length * (0.12 * u + upward * u * u)))
-            points.append(root + lateral + sweep + rise)
-        paths.append(points)
+        )
     return paths
 
 
@@ -162,28 +191,70 @@ def secondary_branch_paths(
     branches: list[list[Vector]],
 ) -> list[tuple[int, list[Vector]]]:
     secondary = []
+    fork_specs = (
+        ((5, -1, 1.36, 0.48), (8, 1, 1.26, 0.62), (11, -1, 1.12, 0.76), (13, 1, 0.94, 0.88)),
+        ((5, 1, 1.42, 0.46), (8, -1, 1.28, 0.66), (11, 1, 1.10, 0.80), (13, -1, 0.92, 0.90)),
+        ((5, 1, 1.30, 0.58), (8, -1, 1.18, 0.72), (11, 1, 1.04, 0.86), (13, -1, 0.88, 0.98)),
+        ((5, -1, 1.34, 0.56), (8, 1, 1.20, 0.72), (11, -1, 1.02, 0.86), (13, 1, 0.86, 0.96)),
+        ((6, -1, 1.20, 0.66), (10, 1, 1.04, 0.82), (13, -1, 0.88, 0.96)),
+        ((6, 1, 1.22, 0.64), (10, -1, 1.06, 0.82), (13, 1, 0.90, 0.96)),
+        ((6, -1, 1.16, 0.72), (10, 1, 1.00, 0.88), (13, -1, 0.84, 1.02)),
+    )
     for parent_index, parent in enumerate(branches):
-        parent_direction = (parent[-1] - parent[0]).normalized()
-        for fork_index, start_index in enumerate((3, 5, 7, 9, 11, 12)):
+        for fork_index, (start_index, sign, length, lift) in enumerate(
+            fork_specs[parent_index]
+        ):
             root = parent[start_index].copy()
+            parent_direction = (parent[min(15, start_index + 1)] - parent[start_index - 1]).normalized()
             side = Vector((-parent_direction.y, parent_direction.x, 0)).normalized()
-            sign = -1 if (parent_index + fork_index) % 2 else 1
             direction = (
-                parent_direction * 0.42
-                + side * sign * (0.82 - 0.04 * fork_index)
-                + Vector((0, 0, 0.30 + 0.025 * fork_index))
+                parent_direction * (0.46 + 0.06 * fork_index)
+                + side * sign * (0.68 - 0.08 * fork_index)
+                + Vector((0, 0, lift))
             ).normalized()
-            length = 1.34 - fork_index * 0.075 + 0.08 * math.sin(parent_index)
-            path = []
-            for segment in range(8):
-                u = segment / 7
-                path.append(
-                    root
-                    + direction * length * (u ** 0.82)
-                    + Vector((0, 0, 0.14 * math.sin(u * math.pi)))
-                )
+            end = root + direction * length
+            path = cubic_bezier(
+                root,
+                root + direction * length * 0.32,
+                end + Vector((0, 0, 0.16 + 0.04 * fork_index)),
+                end,
+                9,
+            )
             secondary.append((parent_index, path))
     return secondary
+
+
+def tertiary_branch_paths(
+    secondary: list[tuple[int, list[Vector]]],
+) -> list[tuple[int, list[Vector]]]:
+    """为每根次级枝补两根细末梢，形成连续树冠而不是枝端叶团。"""
+    tertiary = []
+    for secondary_index, (parent_index, parent) in enumerate(secondary):
+        for fork_index, start_index in enumerate((3, 5, 6)):
+            root = parent[start_index].copy()
+            tangent = (parent[start_index + 1] - parent[start_index - 1]).normalized()
+            side = tangent.cross(Vector((0, 0, 1)))
+            if side.length < 0.1:
+                side = Vector((1, 0, 0))
+            side.normalize()
+            sign = -1 if (secondary_index + fork_index) % 2 else 1
+            length = 0.62 + 0.09 * ((secondary_index + fork_index) % 4)
+            lift = 0.42 + 0.08 * ((secondary_index + 2 * fork_index) % 3)
+            direction = (
+                tangent * (0.42 + 0.08 * fork_index)
+                + side * sign * (0.52 - 0.08 * fork_index)
+                + Vector((0, 0, lift))
+            ).normalized()
+            end = root + direction * length
+            path = cubic_bezier(
+                root,
+                root + direction * length * 0.34,
+                end + side * sign * 0.08 + Vector((0, 0, 0.10)),
+                end,
+                7,
+            )
+            tertiary.append((parent_index, path))
+    return tertiary
 
 
 def frame_for_path(path: list[Vector], index: int) -> tuple[Vector, Vector]:
@@ -201,6 +272,15 @@ def frame_for_path(path: list[Vector], index: int) -> tuple[Vector, Vector]:
     return normal, binormal
 
 
+def branch_growth(age: float, branch_index: int, generation: int) -> float:
+    """按主枝层级错峰生长，避免幼苗只是成年树的纵向压缩。"""
+    births = (0.0, 0.0, 0.17, 0.17, 0.36, 0.36, 0.0)
+    birth = births[branch_index] + max(0, generation - 1) * 0.03
+    duration = 0.22 + max(0, generation - 1) * 0.03
+    progress = max(0.0, min(1.0, (age - birth) / duration))
+    return progress * progress * (3.0 - 2.0 * progress)
+
+
 def append_tube(
     vertices: list[tuple[float, float, float]],
     faces: list[tuple[int, ...]],
@@ -211,12 +291,28 @@ def append_tube(
     kind: str,
     branch_index: int = -1,
     root_override: Vector | None = None,
+    generation: int = 0,
 ) -> None:
     start_vertex = len(vertices)
     root = (root_override or path[0]).copy()
     for path_index, center in enumerate(path):
         t = path_index / (len(path) - 1)
         normal, binormal = frame_for_path(path, path_index)
+        if kind == "trunk":
+            amplitude = 0.075 * math.sin(math.pi * t)
+        elif kind == "branch":
+            amplitude = (
+                0.050
+                / (1.0 + 0.35 * max(0, generation - 1))
+                * math.sin(math.pi * t)
+            )
+        else:
+            amplitude = 0.0
+        center = (
+            center
+            + normal * math.sin(t * math.tau * 2.4 + branch_index * 0.7) * amplitude
+            + binormal * math.sin(t * math.tau * 1.7 + branch_index) * amplitude * 0.7
+        )
         radius = radius_at(t)
         for radial in range(RADIAL_SEGMENTS):
             angle = math.tau * radial / RADIAL_SEGMENTS
@@ -228,6 +324,7 @@ def append_tube(
                 {
                     "kind": kind,
                     "branch": branch_index,
+                    "generation": generation,
                     "t": t,
                     "root": root.copy(),
                     "original": point.copy(),
@@ -255,11 +352,13 @@ def create_trunk_and_branches(
     list[Vector],
     list[list[Vector]],
     list[tuple[int, list[Vector]]],
+    list[tuple[int, list[Vector]]],
     list[dict],
 ]:
     trunk = trunk_path()
     branches = branch_paths(trunk)
     secondary = secondary_branch_paths(branches)
+    tertiary = tertiary_branch_paths(secondary)
     vertices: list[tuple[float, float, float]] = []
     faces: list[tuple[int, ...]] = []
     uvs: list[tuple[float, float]] = []
@@ -271,11 +370,13 @@ def create_trunk_and_branches(
         uvs,
         metadata,
         trunk,
-        lambda t: 0.025 + 0.69 * ((1 - t) ** 0.72) + 0.22 * math.exp(-t * 15),
+        lambda t: 0.035
+        + 0.76 * ((1 - t) ** 0.70)
+        + 0.30 * math.exp(-t * 12),
         "trunk",
     )
     for branch_index, path in enumerate(branches):
-        start_radius = 0.29 - branch_index * 0.018
+        start_radius = (0.40, 0.39, 0.34, 0.33, 0.30, 0.29, 0.27)[branch_index]
         append_tube(
             vertices,
             faces,
@@ -285,6 +386,7 @@ def create_trunk_and_branches(
             lambda t, radius=start_radius: 0.014 + radius * ((1 - t) ** 0.88),
             "branch",
             branch_index,
+            generation=1,
         )
     for parent_index, path in secondary:
         append_tube(
@@ -293,10 +395,24 @@ def create_trunk_and_branches(
             uvs,
             metadata,
             path,
-            lambda t: 0.020 + 0.135 * ((1 - t) ** 0.92),
+            lambda t: 0.018 + 0.145 * ((1 - t) ** 0.96),
             "branch",
             parent_index,
             branches[parent_index][0],
+            generation=2,
+        )
+    for parent_index, path in tertiary:
+        append_tube(
+            vertices,
+            faces,
+            uvs,
+            metadata,
+            path,
+            lambda t: 0.006 + 0.052 * ((1 - t) ** 1.08),
+            "branch",
+            parent_index,
+            branches[parent_index][0],
+            generation=3,
         )
 
     mesh = bpy.data.meshes.new("TrunkSkinnedMesh")
@@ -314,8 +430,8 @@ def create_trunk_and_branches(
     tree["ec_schema_version"] = 1
 
     tree.shape_key_add(name="Basis")
-    for age_index, (name, age, height, width) in enumerate(
-        zip(AGE_KEY_NAMES, AGES, HEIGHT_RATIOS, WIDTH_RATIOS)
+    for age_index, (name, age, height, width, crown) in enumerate(
+        zip(AGE_KEY_NAMES, AGES, HEIGHT_RATIOS, WIDTH_RATIOS, CROWN_RATIOS)
     ):
         shape = tree.shape_key_add(name=name)
         for vertex_index, item in enumerate(metadata):
@@ -338,23 +454,27 @@ def create_trunk_and_branches(
                         TRUNK_BASE_Z + (root_mature.z - TRUNK_BASE_Z) * height,
                     )
                 )
-                threshold = 0.05 + branch_index * 0.045
-                branch_growth = max(
-                    0.18,
-                    min(1.0, (age - threshold + 0.12) / 0.42),
-                )
-                crown_width = 0.38 + width * 0.62
                 local = original - root_mature
+                growth = branch_growth(
+                    age,
+                    branch_index,
+                    item["generation"],
+                )
                 shaped = root_age + Vector(
                     (
-                        local.x * branch_growth * crown_width,
-                        local.y * branch_growth * crown_width,
-                        local.z * branch_growth * height,
+                        local.x * crown * growth,
+                        local.y * crown * growth,
+                        local.z * (0.38 + 0.62 * height) * growth,
                     )
                 )
             shape.data[vertex_index].co = shaped
         shape.value = 0.0
-    return tree, trunk, branches, secondary, metadata
+    twig_guide = bpy.data.objects.new("TertiaryTwigs", None)
+    bpy.context.collection.objects.link(twig_guide)
+    twig_guide.parent = tree
+    twig_guide["ec_role"] = "tertiary_twig_layer"
+    twig_guide["twig_count"] = len(tertiary)
+    return tree, trunk, branches, secondary, tertiary, metadata
 
 
 def create_mesh_object(
@@ -379,25 +499,41 @@ def create_roots(root: bpy.types.Object, bark: bpy.types.Material) -> bpy.types.
     faces: list[tuple[int, ...]] = []
     uvs: list[tuple[float, float]] = []
     metadata: list[dict] = []
-    for index in range(10):
-        angle = math.tau * index / 10 + 0.2 * math.sin(index)
-        length = 2.15 + 0.42 * math.sin(index * 1.7)
+    root_specs = (
+        (-2.92, 2.70, 0.30),
+        (-2.62, 2.34, 0.28),
+        (-2.28, 2.58, 0.35),
+        (-1.92, 2.18, 0.27),
+        (-1.54, 2.82, 0.34),
+        (-1.10, 2.20, 0.25),
+        (-0.62, 2.72, 0.31),
+        (-0.16, 2.22, 0.24),
+        (0.34, 2.74, 0.32),
+        (0.82, 2.16, 0.26),
+        (1.30, 2.66, 0.34),
+        (1.78, 2.28, 0.27),
+        (2.22, 2.60, 0.31),
+        (2.70, 2.32, 0.27),
+    )
+    for index, (angle, length, start_radius) in enumerate(root_specs):
         direction = Vector((math.cos(angle), math.sin(angle), 0))
-        path = []
-        for segment in range(9):
-            t = segment / 8
-            path.append(
-                Vector((0, 0, 0.25))
-                + direction * length * (t ** 0.72)
-                + Vector((0, 0, -0.32 * t + 0.08 * math.sin(t * math.pi)))
-            )
+        side = Vector((-direction.y, direction.x, 0))
+        start = direction * 0.12 + Vector((0, 0, 0.72 - 0.04 * (index % 3)))
+        path = cubic_bezier(
+            start,
+            start + direction * 0.62 + side * (0.10 if index % 2 else -0.08),
+            direction * (length * 0.78) + side * (0.16 if index % 3 else -0.14) + Vector((0, 0, 0.04)),
+            direction * length + Vector((0, 0, -0.10)),
+            12,
+        )
         append_tube(
             vertices,
             faces,
             uvs,
             metadata,
             path,
-            lambda t: 0.035 + 0.26 * ((1 - t) ** 1.3),
+            lambda t, radius=start_radius: 0.025
+            + radius * ((1 - t) ** 1.24),
             "root",
             index,
         )
@@ -406,35 +542,84 @@ def create_roots(root: bpy.types.Object, bark: bpy.types.Material) -> bpy.types.
     for loop in roots.data.loops:
         uv_layer.data[loop.index].uv = uvs[loop.vertex_index]
     roots["ec_role"] = "roots"
+    roots["root_style"] = "eight_irregular_grounding_roots"
     roots.shape_key_add(name="Basis")
-    for name, age, width in zip(AGE_KEY_NAMES, AGES, WIDTH_RATIOS):
+    for name, age, width, span in zip(
+        AGE_KEY_NAMES, AGES, WIDTH_RATIOS, ROOT_RATIOS
+    ):
         shape = roots.shape_key_add(name=name)
-        root_scale = 0.20 + width * 0.80
         for vertex_index, vertex in enumerate(roots.data.vertices):
             original = vertex.co
             shape.data[vertex_index].co = Vector(
-                (original.x * root_scale, original.y * root_scale, original.z * root_scale)
+                (
+                    original.x * span,
+                    original.y * span,
+                    original.z * (0.42 + width * 0.58),
+                )
             )
         shape.value = 0.0
+    for name, role in (
+        ("RootFlare", "root_flare"),
+        ("ExposedRoots", "exposed_roots"),
+    ):
+        marker = bpy.data.objects.new(name, None)
+        bpy.context.collection.objects.link(marker)
+        marker.parent = roots
+        marker["ec_role"] = role
     return roots
 
 
 def create_soil(root: bpy.types.Object, material: bpy.types.Material) -> bpy.types.Object:
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=64, ring_count=24, location=(0, 0, -0.28))
-    soil = bpy.context.object
-    soil.name = "Soil"
-    soil.scale = (2.35, 1.72, 0.50)
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    for vertex in soil.data.vertices:
-        radius = math.hypot(vertex.co.x / 2.35, vertex.co.y / 1.72)
-        irregularity = (
-            0.11 * math.sin(vertex.co.x * 4.7)
-            + 0.07 * math.sin(vertex.co.y * 6.1 + 0.8)
-        )
-        vertex.co.z += irregularity * max(0, 1 - radius) ** 1.4
-    soil.data.materials.append(material)
+    random.seed(60211)
+    soil = bpy.data.objects.new("Soil", None)
+    bpy.context.collection.objects.link(soil)
     soil.parent = root
-    soil["ec_role"] = "soil"
+    soil["ec_role"] = "ground_contact_anchor"
+
+    debris_vertices = []
+    debris_faces = []
+    for pebble in range(118):
+        angle = random.uniform(0, math.tau)
+        radius = random.uniform(0.42, 2.74)
+        center = Vector(
+            (
+                math.cos(angle) * radius,
+                math.sin(angle) * radius * 0.70,
+                random.uniform(-0.11, 0.02),
+            )
+        )
+        size = random.uniform(0.035, 0.105)
+        start = len(debris_vertices)
+        debris_vertices.extend(
+            tuple(center + Vector(offset) * size)
+            for offset in (
+                (-1.0, -0.7, 0.0),
+                (0.9, -0.6, 0.0),
+                (0.8, 0.8, 0.0),
+                (-0.8, 0.7, 0.0),
+                (0.0, 0.0, 0.75),
+            )
+        )
+        debris_faces.extend(
+            (
+                (start, start + 1, start + 4),
+                (start + 1, start + 2, start + 4),
+                (start + 2, start + 3, start + 4),
+                (start + 3, start, start + 4),
+                (start + 3, start + 2, start + 1, start),
+            )
+        )
+    debris = create_mesh_object(
+        "GroundDebris", debris_vertices, debris_faces, material, root
+    )
+    uv_layer = debris.data.uv_layers.new(name="UVMap")
+    for loop in debris.data.loops:
+        vertex = debris.data.vertices[loop.vertex_index].co
+        uv_layer.data[loop.index].uv = (
+            (vertex.x + 3.0) / 6.0,
+            (vertex.y + 2.1) / 4.2,
+        )
+    debris["ec_role"] = "ground_debris"
     return soil
 
 
@@ -448,6 +633,7 @@ def append_leaf(
     length: float,
     root: Vector,
     branch_index: int,
+    generation: int,
 ) -> None:
     forward = direction.normalized()
     # Flutter 场景从 Blender 的 -Y 方向观察，叶面需保留朝向镜头的可读面积。
@@ -467,6 +653,7 @@ def append_leaf(
     metadata.extend(
         {
             "branch": branch_index,
+            "generation": generation,
             "root": root.copy(),
             "center": center.copy(),
             "original": point.copy(),
@@ -481,71 +668,94 @@ def create_leaf_groups(
     trunk: list[Vector],
     branches: list[list[Vector]],
     secondary: list[tuple[int, list[Vector]]],
+    tertiary: list[tuple[int, list[Vector]]],
     materials: list[bpy.types.Material],
-) -> list[bpy.types.Object]:
+) -> tuple[list[bpy.types.Object], int]:
     random.seed(40721)
     groups = [([], [], []) for _ in range(6)]
-    seed_vertices, seed_faces, seed_meta = groups[0]
-    for cluster_index, trunk_index in enumerate((24, 29, 34)):
-        seed_center = trunk[trunk_index]
-        count = 6 if cluster_index < 2 else 9
-        for leaf_index in range(count):
-            angle = math.tau * leaf_index / count + 0.18 * math.sin(leaf_index)
-            radial = Vector((math.cos(angle), math.sin(angle), 0))
-            center = seed_center + radial * 0.13 + Vector(
-                (0, 0, 0.06 * math.sin(angle * 2))
+    cluster_specs: list[tuple[int, list[Vector], int, int, float]] = []
+    for branch_index, path in enumerate(branches):
+        cluster_specs.extend(
+            (
+                (branch_index, path, 1, 0, 0.46),
+                (branch_index, path, 1, 0, 0.54),
+                (branch_index, path, 1, 0, 0.70),
+                (branch_index, path, 1, 0, 0.86),
+                (branch_index, path, 1, 0, 1.00),
             )
-            direction = (radial * 0.72 + Vector((0, 0, 0.69))).normalized()
+        )
+    for secondary_index, (branch_index, path) in enumerate(secondary):
+        age_group = secondary_index % 6
+        cluster_specs.extend(
+            (
+                (branch_index, path, 2, age_group, 0.52),
+                (branch_index, path, 2, age_group, 0.72),
+                (branch_index, path, 2, age_group, 1.00),
+            )
+        )
+    for tertiary_index, (branch_index, path) in enumerate(tertiary):
+        age_group = tertiary_index % 6
+        cluster_specs.extend(
+            (
+                (branch_index, path, 3, age_group, 0.34),
+                (branch_index, path, 3, age_group, 0.48),
+                (branch_index, path, 3, age_group, 0.74),
+                (branch_index, path, 3, age_group, 1.00),
+            )
+        )
+
+    # 早期也有完整树冠，高阶段只在自然枝梢间增加新叶簇。
+    cluster_specs.extend(
+        (
+            (-1, trunk, 0, 0, 0.74),
+            (-1, trunk, 0, 0, 0.86),
+            (-1, trunk, 0, 0, 0.96),
+            (-1, trunk, 0, 0, 1.00),
+        )
+    )
+    for cluster_index, (branch_index, path, generation, age_group, ratio) in enumerate(
+        cluster_specs
+    ):
+        path_index = max(1, round((len(path) - 1) * ratio))
+        centerline = path[path_index]
+        tangent = (path[path_index] - path[path_index - 1]).normalized()
+        count = 8 + cluster_index % 4
+        vertices, faces, leaf_meta = groups[age_group]
+        for leaf_index in range(count):
+            angle = math.tau * leaf_index / count + random.uniform(-0.34, 0.34)
+            radial = Vector(
+                (
+                    math.cos(angle),
+                    math.sin(angle) * random.uniform(0.58, 0.88),
+                    random.uniform(-0.04, 0.44),
+                )
+            ).normalized()
+            direction = (radial * 0.82 + tangent * 0.18).normalized()
+            center = centerline + direction * random.uniform(0.13, 0.30)
             append_leaf(
-                seed_vertices,
-                seed_faces,
-                seed_meta,
+                vertices,
+                faces,
+                leaf_meta,
                 center,
                 direction,
-                0.16,
-                0.42,
-                Vector((0, 0, TRUNK_BASE_Z)),
-                -1,
+                random.uniform(0.110, 0.155),
+                random.uniform(0.30, 0.43),
+                path[0],
+                branch_index,
+                generation,
             )
 
-    foliage_paths = [(index, path, False) for index, path in enumerate(branches)] + [
-        (index, path, True) for index, path in secondary
-    ]
-    for branch_index, path, is_secondary in foliage_paths:
-        cluster_points = (2, 4, 6, 7) if is_secondary else (4, 6, 8, 10, 12, 13)
-        for path_index in cluster_points:
-            centerline = path[path_index]
-            tangent = (path[path_index] - path[path_index - 1]).normalized()
-            count = 8 if path_index < len(path) - 1 else 10
-            for leaf_index in range(count):
-                angle = math.tau * leaf_index / count + random.uniform(-0.16, 0.16)
-                radial = Vector(
-                    (math.cos(angle), math.sin(angle), 0.30 + random.uniform(-0.10, 0.20))
-                ).normalized()
-                direction = (radial * 0.82 + tangent * 0.18).normalized()
-                center = centerline + direction * (0.12 + 0.035 * (leaf_index % 3))
-                branch_birth = 0.05 + branch_index * 0.045
-                base_group = max(0, math.floor(branch_birth * 5))
-                threshold = min(5, base_group + path_index // 4)
-                vertices, faces, leaf_meta = groups[threshold]
-                leaf_root = branches[branch_index][0] if is_secondary else path[0]
-                append_leaf(
-                    vertices,
-                    faces,
-                    leaf_meta,
-                    center,
-                    direction,
-                    0.15 if is_secondary else 0.17,
-                    0.38 if is_secondary else 0.43,
-                    leaf_root,
-                    branch_index,
-                )
+    leaf_root = bpy.data.objects.new("LeafClusters", None)
+    bpy.context.collection.objects.link(leaf_root)
+    leaf_root.parent = root
+    leaf_root["ec_role"] = "broadleaf_clusters"
 
     objects = []
     for age_group, (vertices, faces, leaf_meta) in enumerate(groups):
         obj = create_mesh_object(
             f"LeavesAge{age_group}", vertices, faces, materials[0], root
         )
+        obj.parent = leaf_root
         for material in materials[1:]:
             obj.data.materials.append(material)
         for polygon in obj.data.polygons:
@@ -558,8 +768,13 @@ def create_leaf_groups(
         obj["ec_role"] = "leaf_group"
         obj["age_threshold"] = age_group / 5
         obj.shape_key_add(name="Basis")
-        for name, age, height, width in zip(
-            AGE_KEY_NAMES, AGES, HEIGHT_RATIOS, WIDTH_RATIOS
+        for name, age, height, width, crown, leaf_scale in zip(
+            AGE_KEY_NAMES,
+            AGES,
+            HEIGHT_RATIOS,
+            WIDTH_RATIOS,
+            CROWN_RATIOS,
+            LEAF_RATIOS,
         ):
             shape = obj.shape_key_add(name=name)
             for vertex_index, item in enumerate(leaf_meta):
@@ -575,7 +790,6 @@ def create_leaf_groups(
                         )
                     )
                     leaf_local = item["original"] - center_mature
-                    leaf_scale = 0.42 + 0.58 * math.sqrt(age)
                     shape.data[vertex_index].co = center_age + leaf_local * leaf_scale
                     continue
                 root_age = Vector(
@@ -585,27 +799,27 @@ def create_leaf_groups(
                         TRUNK_BASE_Z + (root_mature.z - TRUNK_BASE_Z) * height,
                     )
                 )
-                threshold = 0.05 + branch_index * 0.045
-                branch_growth = max(
-                    0.18,
-                    min(1.0, (age - threshold + 0.12) / 0.42),
-                )
-                crown_width = 0.38 + width * 0.62
                 center_mature = item["center"]
                 center_local = center_mature - root_mature
+                growth = branch_growth(
+                    age,
+                    branch_index,
+                    item["generation"],
+                )
                 center_age = root_age + Vector(
                     (
-                        center_local.x * branch_growth * crown_width,
-                        center_local.y * branch_growth * crown_width,
-                        center_local.z * branch_growth * height,
+                        center_local.x * crown * growth,
+                        center_local.y * crown * growth,
+                        center_local.z * (0.38 + 0.62 * height) * growth,
                     )
                 )
                 leaf_local = item["original"] - center_mature
-                leaf_scale = 0.52 + 0.48 * math.sqrt(branch_growth)
-                shape.data[vertex_index].co = center_age + leaf_local * leaf_scale
+                shape.data[vertex_index].co = (
+                    center_age + leaf_local * leaf_scale * growth
+                )
             shape.value = 0.0
         objects.append(obj)
-    return objects
+    return objects, sum(len(faces) for _, faces, _ in groups)
 
 
 def create_armature(
@@ -774,6 +988,41 @@ def create_magic_veins(
     return obj
 
 
+def create_moss_patches(
+    root: bpy.types.Object,
+    material: bpy.types.Material,
+) -> bpy.types.Object:
+    # 苔藓只保留在不会因形态键变形而漂浮的根颈区域。
+    center = Vector((0.0, -0.24, 0.34))
+    vertices = [tuple(center)]
+    faces = []
+    for point_index in range(10):
+        angle = math.tau * point_index / 10
+        vertices.append(
+            tuple(
+                center
+                + Vector(
+                    (
+                        math.cos(angle) * 0.055,
+                        -0.004,
+                        math.sin(angle) * 0.040,
+                    )
+                )
+            )
+        )
+    for point_index in range(10):
+        faces.append(
+            (
+                0,
+                1 + point_index,
+                1 + (point_index + 1) % 10,
+            )
+        )
+    moss = create_mesh_object("MossPatches", vertices, faces, material, root)
+    moss["ec_role"] = "moss_patches"
+    return moss
+
+
 def configure_scene(root: bpy.types.Object) -> None:
     scene = bpy.context.scene
     scene.render.engine = "BLENDER_EEVEE_NEXT"
@@ -842,8 +1091,11 @@ def configure_scene(root: bpy.types.Object) -> None:
     ground["export_exclude"] = True
 
     root["tree_height_m"] = TREE_HEIGHT
-    root["main_branch_count"] = 9
+    root["main_branch_count"] = 7
     root["age_shape_keys"] = "age_00,age_25,age_48,age_72,age_100"
+    root["formal_asset"] = True
+    root["art_style"] = "ancient_broadleaf_v2"
+    root["topology_strategy"] = "art_directed_explicit_branches"
 
 
 def main() -> None:
@@ -857,23 +1109,31 @@ def main() -> None:
     root["ec_role"] = "magic_tree_root"
 
     bark = material_with_pbr("BarkOldPBR", "bark_old")
-    soil_material = material_with_pbr("SoilPBR", "soil")
+    soil_material = material_with_pbr("GroundPBR", "soil")
     leaves = [
-        leaf_material("LeafDeep", (0.46, 0.74, 0.24)),
-        leaf_material("LeafMid", (0.60, 0.84, 0.30)),
-        leaf_material("LeafYoung", (0.76, 0.94, 0.40)),
+        leaf_material("LeafBroadPBR", (0.34, 0.60, 0.16)),
+        leaf_material("LeafBroadSunlit", (0.52, 0.74, 0.22)),
+        leaf_material("LeafBroadYoung", (0.68, 0.84, 0.28)),
     ]
     magic = magic_material()
+    moss = moss_material()
 
-    tree, trunk, branches, secondary, metadata = create_trunk_and_branches(root, bark)
+    tree, trunk, branches, secondary, tertiary, metadata = create_trunk_and_branches(
+        root, bark
+    )
     create_roots(root, bark)
     create_soil(root, soil_material)
-    create_leaf_groups(root, trunk, branches, secondary, leaves)
+    _, leaf_card_count = create_leaf_groups(
+        root, trunk, branches, secondary, tertiary, leaves
+    )
+    root["tertiary_twig_count"] = len(tertiary)
+    root["leaf_card_count"] = leaf_card_count
     rig = create_armature(root, tree, trunk, branches, metadata)
     create_markers(root, rig, trunk, branches)
     create_shape_animation(tree)
     create_rig_actions(rig)
     create_magic_veins(root, magic, trunk)
+    create_moss_patches(root, moss)
 
     crown = bpy.data.objects.new("CrownGuide", None)
     bpy.context.collection.objects.link(crown)

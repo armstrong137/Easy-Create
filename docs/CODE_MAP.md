@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-08-11 11:11:19　对应提交：9f05e16 之后的工作区状态
+> 生成时间：2026-08-11 13:40:36　对应提交：3c9a294 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     155
-  Nodes:     4,672
-  Edges:     20,751
+  Files:     157
+  Nodes:     4,737
+  Edges:     20,950
   DB Size:   23.32 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,724
-  function        1,452
-  import          495
-  class           490
+  method          1,729
+  function        1,480
+  import          511
+  class           492
   constant        241
-  file            147
-  variable        80
+  file            149
+  variable        92
   enum_member     23
   type_alias      13
   enum            5
@@ -35,7 +35,7 @@ Nodes by Kind:
 Files by Language:
   dart            86
   javascript      32
-  python          9
+  python          11
   kotlin          8
   xml             6
   properties      4
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (155 files):
+Project Structure (157 files):
 
 |-- .agents
 |   `-- skills
@@ -205,7 +205,7 @@ Project Structure (155 files):
 |-- scripts
 |   |-- tests
 |   |   `-- test_validate_magic_tree_art_package.py (python, 16 symbols)
-|   |-- build_magic_tree_blender.py (python, 38 symbols)
+|   |-- build_magic_tree_blender.py (python, 46 symbols)
 |   |-- capture_standins.py (python, 11 symbols)
 |   |-- e2e_probe.dart (dart, 12 symbols)
 |   |-- export_magic_tree.py (python, 14 symbols)
@@ -214,7 +214,8 @@ Project Structure (155 files):
 |   |-- serve_web.dart (dart, 4 symbols)
 |   |-- square_standins.py (python, 11 symbols)
 |   |-- validate_magic_tree_3d.py (python, 17 symbols)
-|   `-- validate_magic_tree_art_package.py (python, 16 symbols)
+|   |-- validate_magic_tree_art_package.py (python, 16 symbols)
+|   `-- validate_magic_tree_visuals.py (python, 34 symbols)
 |-- test
 |   |-- core
 |   |   |-- chinese_numbers_test.dart (dart, 4 symbols)
@@ -237,7 +238,7 @@ Project Structure (155 files):
 |   |   |-- section_page_test.dart (dart, 24 symbols)
 |   |   |-- starfield_motion_test.dart (dart, 6 symbols)
 |   |   |-- starfield_test.dart (dart, 7 symbols)
-|   |   |-- tree_scene_asset_test.dart (dart, 5 symbols)
+|   |   |-- tree_scene_asset_test.dart (dart, 8 symbols)
 |   |   |-- tree_scene_browser_test.dart (dart, 5 symbols)
 |   |   |-- tree_scene_controller_test.dart (dart, 6 symbols)
 |   |   |-- tree_scene_gestures_test.dart (dart, 4 symbols)
@@ -246,8 +247,9 @@ Project Structure (155 files):
 |   |   |-- tree_scene_web_fallback_test.dart (dart, 4 symbols)
 |   |   |-- tree_standin_test.dart (dart, 5 symbols)
 |   |   `-- voice_capture_test.dart (dart, 22 symbols)
-|   `-- tools
-|       `-- web_serve_test.dart (dart, 6 symbols)
+|   |-- tools
+|   |   `-- web_serve_test.dart (dart, 6 symbols)
+|   `-- test_validate_magic_tree_visuals.py (python, 20 symbols)
 |-- tool
 |   |-- crop_sprite.dart (dart, 4 symbols)
 |   |-- knockout_bg.dart (dart, 4 symbols)

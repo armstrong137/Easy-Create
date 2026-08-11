@@ -51,7 +51,7 @@ def set_tree_age(age: float) -> None:
             leaf.hide_render = group / 5 > age + 0.08
     veins = bpy.data.objects.get("MagicVeins")
     if veins is not None:
-        veins.hide_render = True
+        veins.hide_render = age < 0.55
 
 
 def render_standins() -> None:
@@ -76,7 +76,7 @@ def render_standins() -> None:
     for index, age in enumerate(STANDIN_AGES):
         set_tree_age(age)
         camera = scene.camera
-        camera.location.y = -(14.0 + 18.0 * age)
+        camera.location.y = -29.5
         scene.render.filepath = str(STANDIN_DIR / f"age_{index}.webp")
         bpy.ops.render.render(write_still=True)
         print(f"回退图 age_{index} 已渲染，树龄 {age:.2f}")
