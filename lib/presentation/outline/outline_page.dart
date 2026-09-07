@@ -447,11 +447,13 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                         onAcceptWithDetails: (details) =>
                             assignInspiration(details.data, label),
                         builder: (context, candidates, rejected) =>
-                            IllustratedBranchPlaque(
-                              title: label.text,
-                              side: side,
-                              selected: selected || candidates.isNotEmpty,
-                              animateIn: animateIn,
+                            ExcludeSemantics(
+                              child: IllustratedBranchPlaque(
+                                title: label.text,
+                                side: side,
+                                selected: selected || candidates.isNotEmpty,
+                                animateIn: animateIn,
+                              ),
                             ),
                       ),
                     ),

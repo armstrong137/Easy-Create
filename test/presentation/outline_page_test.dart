@@ -269,6 +269,25 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1));
   });
 
+  testWidgets('枝牌语义只读完整标题一次且保留点击动作', (tester) async {
+    final handle = tester.ensureSemantics();
+    try {
+      await seedNovel();
+      final seeded = await seedOutline();
+      await pumpOutline(tester, seeded.outline);
+      for (final title in ['第一章', '第一节']) {
+        final label = find.bySemanticsLabel(RegExp('^$title\$'));
+        expect(label, findsOneWidget);
+        expect(
+          tester.getSemantics(label).getSemanticsData().hasAction(SemanticsAction.tap),
+          isTrue,
+        );
+      }
+    } finally {
+      handle.dispose();
+    }
+  });
+
   testWidgets('静态回退支持将灵感拖入小节', (tester) async {
     await seedNovel();
     final seeded = await seedOutline();

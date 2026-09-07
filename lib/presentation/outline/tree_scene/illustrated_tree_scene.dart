@@ -94,47 +94,29 @@ class _IllustratedBranchPlaqueState extends State<IllustratedBranchPlaque>
                 ),
               ),
               if (widget.selected)
-                Positioned(
-                  left: widget.side == IllustratedBranchSide.left
-                      ? constraints.maxWidth * 0.12
-                      : null,
-                  right: widget.side == IllustratedBranchSide.right
-                      ? constraints.maxWidth * 0.12
-                      : null,
-                  top: constraints.maxHeight * 0.23,
-                  width: constraints.maxWidth * 0.21,
-                  height: constraints.maxHeight * 0.45,
+                Positioned.fill(
                   child: IgnorePointer(
-                    child: DecoratedBox(
-                      key: const Key('选中枝牌光晕'),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: const Color(0xFFE9BC54),
-                          width: 1.6,
-                        ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x8CF2B632),
-                            blurRadius: 10,
-                            spreadRadius: 1,
-                          ),
-                        ],
+                    child: Transform.flip(
+                      flipX: widget.side == IllustratedBranchSide.right,
+                      child: const CustomPaint(
+                        key: Key('选中枝牌光晕'),
+                        painter: _PlaqueRimPainter(),
                       ),
                     ),
                   ),
                 ),
               Positioned(
                 left: widget.side == IllustratedBranchSide.left
-                    ? constraints.maxWidth * 0.12
+                    ? constraints.maxWidth * 246 / 1536
                     : null,
                 right: widget.side == IllustratedBranchSide.right
-                    ? constraints.maxWidth * 0.12
+                    ? constraints.maxWidth * 246 / 1536
                     : null,
-                top: constraints.maxHeight * 0.23,
-                width: constraints.maxWidth * 0.21,
-                height: constraints.maxHeight * 0.45,
+                top: constraints.maxHeight * 268 / 1024,
+                width: constraints.maxWidth * 148 / 1536,
+                height: constraints.maxHeight * 400 / 1024,
                 child: FittedBox(
+                  key: const Key('枝牌文字区'),
                   fit: BoxFit.scaleDown,
                   child: Text(
                     _verticalTitle,
@@ -166,6 +148,49 @@ class _IllustratedBranchPlaqueState extends State<IllustratedBranchPlaque>
       },
     ),
   );
+}
+
+class _PlaqueRimPainter extends CustomPainter {
+  const _PlaqueRimPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // 沿原图 1536×1024 的弧肩金边描亮，不在木牌上叠加矩形控件。
+    final rim = Path()
+      ..moveTo(320, 241)
+      ..lineTo(269, 251)
+      ..cubicTo(263, 272, 246, 288, 220, 294)
+      ..lineTo(220, 637)
+      ..cubicTo(244, 645, 260, 660, 269, 680)
+      ..lineTo(320, 691)
+      ..lineTo(377, 680)
+      ..cubicTo(381, 661, 394, 647, 420, 641)
+      ..lineTo(420, 295)
+      ..cubicTo(399, 288, 382, 271, 376, 252)
+      ..close();
+    canvas.save();
+    canvas.scale(size.width / 1536, size.height / 1024);
+    canvas.drawPath(
+      rim,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 9
+        ..color = const Color(0xA8EAB94B)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+    );
+    canvas.drawPath(
+      rim,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4
+        ..strokeJoin = StrokeJoin.round
+        ..color = const Color(0xFFF8D887),
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_PlaqueRimPainter oldDelegate) => false;
 }
 
 class _BranchGrowthClipper extends CustomClipper<Rect> {

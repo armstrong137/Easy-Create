@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:novel_app/presentation/outline/tree_scene/illustrated_tree_scene.dart';
@@ -72,4 +74,56 @@ void main() {
     expect(find.byKey(const Key('选中枝牌光晕')), findsOneWidget);
     expect(find.byType(ShaderMask), findsNothing);
   });
+
+  for (final side in IllustratedBranchSide.values) {
+    testWidgets('枝牌${side.name}侧的选中金边和文字对齐原始牌面', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Center(
+            child: SizedBox(
+              width: 300,
+              height: 200,
+              child: IllustratedBranchPlaque(
+                title: '第十一章',
+                side: side,
+                selected: true,
+                animateIn: false,
+              ),
+            ),
+          ),
+        ),
+      );
+      final glow = find.byKey(const Key('选中枝牌光晕'));
+      final paint = tester.widget<CustomPaint>(glow);
+      final transform = tester.widget<Transform>(
+        find.ancestor(of: glow, matching: find.byType(Transform)).first,
+      );
+      expect(
+        transform.transform.storage[0],
+        side == IllustratedBranchSide.left ? 1 : -1,
+      );
+      await tester.runAsync(() async {
+        final recorder = ui.PictureRecorder();
+        paint.painter!.paint(Canvas(recorder), const Size(300, 200));
+        final picture = recorder.endRecording();
+        final image = await picture.toImage(300, 200);
+        final pixels = (await image.toByteData(
+          format: ui.ImageByteFormat.rawRgba,
+        ))!;
+        expect(pixels.getUint8((90 * 300 + 43) * 4 + 3), greaterThan(20));
+        expect(pixels.getUint8((90 * 300 + 100) * 4 + 3), 0);
+        image.dispose();
+        picture.dispose();
+      });
+      final plaque = tester.getRect(find.byType(IllustratedBranchPlaque));
+      final text = tester.getRect(find.byKey(const Key('枝牌文字区')));
+      final centerX = side == IllustratedBranchSide.left
+          ? 320 / 1536
+          : 1 - 320 / 1536;
+      expect(text.center.dx - plaque.left, closeTo(300 * centerX, 0.01));
+      expect(text.width, closeTo(300 * 148 / 1536, 0.01));
+      expect(text.top - plaque.top, closeTo(200 * 268 / 1024, 0.01));
+      expect(text.height, closeTo(200 * 400 / 1024, 0.01));
+    });
+  }
 }

@@ -1,0 +1,14 @@
+{
+  "error": "AssertionError [ERR_ASSERTION]: 浏览器不应发生运行错误\n+ actual - expected\n\n+ [\n+   {\n+     message: 'Bad state: RenderBox was not laid out: minified:W1#9c8ec',\n+     phase: '首页启动'\n+   },\n+   {\n+     message: 'at Object.Y (http://127.0.0.1:8780/main.dart.js:3986:29)\\n' +\n+       '    at W1.gt (http://127.0.0.1:8780/main.dart.js:67598:18)\\n' +\n+       '    at W1.gim (http://127.0.0.1:8780/main.dart.js:67599:18)\\n' +\n+       '    at nd.gbA (http://127.0.0.1:8780/main.dart.js:82652:44)\\n' +\n+       '    at Object.aWA (http://127.0.0.1:8780/main.dart.js:23670:5)\\n' +\n+       '    at Gx.GP (http://127.0.0.1:8780/main.dart.js:83397:18)\\n' +\n+       '    at Object.aPr (http://127.0.0.1:8780/main.dart.js:23635:19)\\n' +\n+       '    at Gx.It (http://127.0.0.1:8780/main.dart.js:83097:11)\\n' +\n+       '    at Gx.UW (http://127.0.0.1:8780/main.dart.js:83101:21)\\n' +\n+       '    at O6.a2f (http://127.0.0.1:8780/main.dart.js:95430:45)',\n+     phase: '首页启动'\n+   }\n+ ]\n- []\n",
+  "text": "Visual QA\n新增章节\n第八章\n新增小节\n第九章\n速记：轻点写字，长按说话",
+  "errors": [
+    {
+      "phase": "首页启动",
+      "message": "Bad state: RenderBox was not laid out: minified:W1#9c8ec"
+    },
+    {
+      "phase": "首页启动",
+      "message": "at Object.Y (http://127.0.0.1:8780/main.dart.js:3986:29)\n    at W1.gt (http://127.0.0.1:8780/main.dart.js:67598:18)\n    at W1.gim (http://127.0.0.1:8780/main.dart.js:67599:18)\n    at nd.gbA (http://127.0.0.1:8780/main.dart.js:82652:44)\n    at Object.aWA (http://127.0.0.1:8780/main.dart.js:23670:5)\n    at Gx.GP (http://127.0.0.1:8780/main.dart.js:83397:18)\n    at Object.aPr (http://127.0.0.1:8780/main.dart.js:23635:19)\n    at Gx.It (http://127.0.0.1:8780/main.dart.js:83097:11)\n    at Gx.UW (http://127.0.0.1:8780/main.dart.js:83101:21)\n    at O6.a2f (http://127.0.0.1:8780/main.dart.js:95430:45)"
+    }
+  ]
+}

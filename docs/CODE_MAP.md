@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-09-06 20:56:25　对应提交：dabe768 之后的工作区状态
+> 生成时间：2026-09-07 18:57:12　对应提交：5d200ec 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     169
-  Nodes:     4,919
-  Edges:     21,525
-  DB Size:   23.94 MB
+  Files:     170
+  Nodes:     4,941
+  Edges:     21,562
+  DB Size:   24.05 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,754
-  function        1,538
-  import          560
-  class           495
-  constant        257
-  file            161
-  variable        108
+  method          1,756
+  function        1,539
+  import          565
+  class           496
+  constant        268
+  file            162
+  variable        109
   enum_member     25
   type_alias      13
   enum            6
@@ -34,7 +34,7 @@ Nodes by Kind:
 
 Files by Language:
   dart            89
-  javascript      38
+  javascript      39
   python          14
   kotlin          8
   xml             6
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (169 files):
+Project Structure (170 files):
 
 |-- .agents
 |   `-- skills
@@ -173,7 +173,7 @@ Project Structure (169 files):
 |   |   |-- outline
 |   |   |   |-- tree_scene
 |   |   |   |   |-- illustrated_tree_growth.dart (dart, 6 symbols)
-|   |   |   |   |-- illustrated_tree_scene.dart (dart, 20 symbols)
+|   |   |   |   |-- illustrated_tree_scene.dart (dart, 23 symbols)
 |   |   |   |   |-- tree_scene_controller.dart (dart, 51 symbols)
 |   |   |   |   |-- tree_scene_gestures.dart (dart, 17 symbols)
 |   |   |   |   |-- tree_scene_io.dart (dart, 18 symbols)
@@ -251,7 +251,7 @@ Project Structure (169 files):
 |   |   |-- tree_scene_protocol_test.dart (dart, 5 symbols)
 |   |   |-- tree_scene_snapshot_test.dart (dart, 8 symbols)
 |   |   |-- tree_scene_web_fallback_test.dart (dart, 4 symbols)
-|   |   |-- tree_standin_test.dart (dart, 6 symbols)
+|   |   |-- tree_standin_test.dart (dart, 7 symbols)
 |   |   `-- voice_capture_test.dart (dart, 22 symbols)
 |   |-- tools
 |   |   `-- web_serve_test.dart (dart, 6 symbols)
@@ -268,6 +268,7 @@ Project Structure (169 files):
 |       |   |-- build.mjs (javascript, 10 symbols)
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
+|       |   |-- check-illustrated-outline.mjs (javascript, 18 symbols)
 |       |   |-- check-startup.mjs (javascript, 23 symbols)
 |       |   `-- validate-gltf.mjs (javascript, 7 symbols)
 |       |-- src
