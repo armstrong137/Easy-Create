@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +18,7 @@ import 'outline_controller.dart';
 import 'tree_scene/tree_scene.dart';
 import 'tree_scene/tree_scene_controller.dart';
 import 'tree_scene/tree_scene_gestures.dart';
+import 'tree_scene/illustrated_tree_scene.dart';
 import 'tree_scene/tree_standin.dart';
 
 /// 某小说的大纲流（章+节），魔树数据源
@@ -42,12 +44,15 @@ final chapterInspirationsProvider =
 /// 羊皮纸背景与深树皮文字色。
 const _parchment = Color(0xFFFDF6EC);
 const _ink = Color(0xFF3A2A18);
+const _enableExperimentalTree3D = bool.fromEnvironment(
+  'ENABLE_EXPERIMENTAL_TREE_3D',
+);
 
-/// 大纲页｜完整实时 3D 魔树
+/// 大纲页｜高保真 2D 魔树正式场景
 ///
-/// Flutter 持有数据库与弹层，three.js 持有树龄、枝丫、镜头和标签投影。
+/// Flutter 持有数据库、树龄、枝牌与弹层；实验 3D 仅由编译期开关启用。
 /// 左半屏切章，右半屏切当前章的小节；双击空白分别新增章或节。
-/// 标签支持进入小节、重命名与删除，灵感通过三维射线命中挂靠到章或节。
+/// 枝牌支持进入小节、重命名与删除，灵感可以拖放到章或节。
 class OutlinePage extends ConsumerStatefulWidget {
   const OutlinePage({
     super.key,
@@ -73,6 +78,8 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
   final GlobalKey _realtimeTreeKey = GlobalKey();
   final Set<String> _awaitingProjection = {};
   final Set<String> _projectedOnce = {};
+  Set<String>? _knownIllustratedNodeKeys;
+  final Set<String> _growingIllustratedNodeKeys = {};
   bool _creatingChapter = false;
   bool _creatingSection = false;
 
@@ -116,9 +123,55 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
   }
 
   void _bridgeUntilProjected(String key) {
+    if (_knownIllustratedNodeKeys?.contains(key) ?? false) return;
     if (_projectedOnce.contains(key)) return;
     _awaitingProjection.add(key);
   }
+
+  void _markIllustratedGrowthStarted(String key) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_growingIllustratedNodeKeys.remove(key)) return;
+      setState(() {});
+    });
+  }
+
+  int _illustratedNodeCount(List<OutlineChapter> outline) => outline.fold<int>(
+    outline.length,
+    (total, chapter) => total + chapter.sections.length,
+  );
+
+  Set<String> _illustratedNodeKeys(List<OutlineChapter> outline) => {
+    for (final chapter in outline) ...{
+      'chapter:${chapter.chapter.id}',
+      for (final section in chapter.sections) 'section:${section.id}',
+    },
+  };
+
+  void _syncIllustratedNodeGrowth(
+    List<OutlineChapter> outline, {
+    required bool enabled,
+  }) {
+    if (!enabled) {
+      _knownIllustratedNodeKeys = null;
+      _growingIllustratedNodeKeys.clear();
+      return;
+    }
+    final current = _illustratedNodeKeys(outline);
+    final known = _knownIllustratedNodeKeys;
+    if (known != null) {
+      _growingIllustratedNodeKeys.addAll(current.difference(known));
+    }
+    _knownIllustratedNodeKeys = current;
+    _awaitingProjection.removeAll(current);
+  }
+
+  Future<void> _precacheIllustratedMutation(int nextNodeCount) => Future.wait([
+    precacheImage(
+      AssetImage(illustratedTreeAssetForNodeCount(nextNodeCount)),
+      context,
+    ),
+    precacheImage(const AssetImage(illustratedBranchAsset), context),
+  ]);
 
   @override
   void dispose() {
@@ -138,11 +191,13 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
     return outline.isEmpty ? null : outline.last.chapter.id;
   }
 
-  Future<void> _createChapter() async {
+  Future<void> _createChapter(List<OutlineChapter> outline) async {
     if (_creatingChapter) return;
     setState(() => _creatingChapter = true);
     HapticFeedback.lightImpact();
     try {
+      await _precacheIllustratedMutation(_illustratedNodeCount(outline) + 1);
+      if (!mounted) return;
       final chapter = await _outlineController.addChapter();
       if (mounted) {
         setState(() => _bridgeUntilProjected('chapter:${chapter.id}'));
@@ -164,6 +219,8 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
     setState(() => _creatingSection = true);
     HapticFeedback.lightImpact();
     try {
+      await _precacheIllustratedMutation(_illustratedNodeCount(outline) + 1);
+      if (!mounted) return;
       final section = await _outlineController.addSection(chapterId);
       if (mounted) {
         setState(() => _bridgeUntilProjected('section:${section.id}'));
@@ -267,7 +324,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
       );
     }
 
-    return Expanded(
+    return SizedBox.expand(
       child: LayoutBuilder(
         builder: (context, constraints) => DragTarget<Inspiration>(
           onWillAcceptWithDetails: (_) => outline.isNotEmpty,
@@ -290,6 +347,10 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
           builder: (context, candidates, rejected) => AnimatedBuilder(
             animation: _treeSceneController,
             builder: (context, _) {
+              final staticMode =
+                  !enable3D || _treeSceneController.useStaticFallback;
+              var dragStartedOnLeft = true;
+
               Widget labelHotspot(TreeLabelProjection projection) {
                 final label = projectedLabel(projection);
                 if (label == null) return const SizedBox.shrink();
@@ -327,15 +388,35 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                 );
               }
 
-              Widget staticLabel(PlacedLabel label, Rect rect) {
+              Widget staticLabel(
+                PlacedLabel label,
+                Rect rect, {
+                required IllustratedBranchSide side,
+                required bool selected,
+              }) {
                 final key = label.chapterId != null
                     ? Key('静态章热区_${label.chapterId}')
                     : Key('静态节热区_${label.sectionId}');
                 final interactionKey = label.chapterId != null
                     ? Key('静态章交互_${label.chapterId}')
                     : Key('静态节交互_${label.sectionId}');
-                return Positioned.fromRect(
-                  rect: rect,
+                final revealKey = label.chapterId != null
+                    ? 'chapter:${label.chapterId}'
+                    : 'section:${label.sectionId}';
+                final animateIn = _growingIllustratedNodeKeys.contains(
+                  revealKey,
+                );
+                if (animateIn && staticMode) {
+                  _markIllustratedGrowthStarted(revealKey);
+                }
+                return AnimatedPositioned(
+                  key: ValueKey(revealKey),
+                  left: rect.left,
+                  top: rect.top,
+                  width: rect.width,
+                  height: rect.height,
+                  duration: const Duration(milliseconds: 460),
+                  curve: Curves.easeOutCubic,
                   child: Semantics(
                     label: label.text,
                     button: true,
@@ -366,46 +447,11 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                         onAcceptWithDetails: (details) =>
                             assignInspiration(details.data, label),
                         builder: (context, candidates, rejected) =>
-                            DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: const Color(0xEAFDF6EC),
-                                border: Border.all(
-                                  color: candidates.isEmpty
-                                      ? const Color(0x996D4B24)
-                                      : const Color(0xFFD9A441),
-                                ),
-                                borderRadius: BorderRadius.circular(6),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Color(0x33241408),
-                                    blurRadius: 6,
-                                    offset: Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                  ),
-                                  child: Text(
-                                    label.text,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontFamily: 'LXGWWenKai',
-                                      fontSize: label.chapterId != null
-                                          ? 16
-                                          : 14,
-                                      fontWeight: label.chapterId != null
-                                          ? FontWeight.w700
-                                          : FontWeight.w600,
-                                      color: _ink,
-                                    ),
-                                  ),
-                                ),
-                              ),
+                            IllustratedBranchPlaque(
+                              title: label.text,
+                              side: side,
+                              selected: selected || candidates.isNotEmpty,
+                              animateIn: animateIn,
                             ),
                       ),
                     ),
@@ -413,9 +459,15 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                 );
               }
 
-              final staticMode =
-                  !enable3D || _treeSceneController.useStaticFallback;
-              final windowLabels = <({PlacedLabel label, Rect rect})>[];
+              final windowLabels =
+                  <
+                    ({
+                      PlacedLabel label,
+                      Rect rect,
+                      IllustratedBranchSide side,
+                      bool selected,
+                    })
+                  >[];
               if (outline.isNotEmpty) {
                 final focusedChapterId =
                     _outlineController.focusedChapterId ??
@@ -432,6 +484,18 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                     .skip(firstChapter)
                     .take(2)
                     .toList(growable: false);
+                final nodeCount = _illustratedNodeCount(outline);
+                final age = illustratedTreeLayoutAgeForNodeCount(nodeCount);
+                final branchWidth = math
+                    .min(
+                      constraints.maxWidth * 0.72,
+                      constraints.maxHeight * 0.42,
+                    )
+                    .clamp(180.0, 320.0);
+                final branchHeight = branchWidth / 1.5;
+                final chapterTop =
+                    constraints.maxHeight * (0.17 + (1 - age) * 0.34);
+                final chapterStep = constraints.maxHeight * 0.22;
                 for (var index = 0; index < chapters.length; index += 1) {
                   final chapter = chapters[index];
                   windowLabels.add((
@@ -440,11 +504,13 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                       chapterId: chapter.chapter.id,
                     ),
                     rect: Rect.fromLTWH(
-                      18,
-                      constraints.maxHeight * 0.34 + index * 74,
-                      112,
-                      48,
+                      -branchWidth * 0.06,
+                      chapterTop + index * chapterStep,
+                      branchWidth,
+                      branchHeight,
                     ),
+                    side: IllustratedBranchSide.left,
+                    selected: chapter.chapter.id == focusedChapterId,
                   ));
                 }
 
@@ -458,17 +524,25 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                 if (focusedSectionIndex < 0) {
                   focusedSectionIndex = focusedChapter.sections.length - 1;
                 }
-                final firstSection = (focusedSectionIndex - 2).clamp(
+                final firstSection = (focusedSectionIndex - 1).clamp(
                   0,
-                  (focusedChapter.sections.length - 5).clamp(
+                  (focusedChapter.sections.length - 2).clamp(
                     0,
                     focusedChapter.sections.length,
                   ),
                 );
                 final sections = focusedChapter.sections
                     .skip(firstSection)
-                    .take(5)
+                    .take(2)
                     .toList(growable: false);
+                final selectedSectionId =
+                    focusedSectionId ??
+                    (focusedChapter.sections.isEmpty
+                        ? null
+                        : focusedChapter.sections.last.id);
+                final sectionTop =
+                    constraints.maxHeight * (0.29 + (1 - age) * 0.22);
+                final sectionStep = constraints.maxHeight * 0.22;
                 for (var index = 0; index < sections.length; index += 1) {
                   final section = sections[index];
                   windowLabels.add((
@@ -477,11 +551,13 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                       sectionId: section.id,
                     ),
                     rect: Rect.fromLTWH(
-                      constraints.maxWidth - 130,
-                      constraints.maxHeight * 0.30 + index * 58,
-                      112,
-                      42,
+                      constraints.maxWidth - branchWidth * 0.94,
+                      sectionTop + index * sectionStep,
+                      branchWidth,
+                      branchHeight,
                     ),
+                    side: IllustratedBranchSide.right,
+                    selected: section.id == selectedSectionId,
                   ));
                 }
               }
@@ -493,104 +569,118 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                 return _awaitingProjection.contains(key);
               }
 
-              return Stack(
-                key: _realtimeTreeKey,
-                children: [
-                  if (enable3D && !_treeSceneController.useStaticFallback)
-                    Positioned.fill(
-                      child:
-                          widget.treeSceneBuilder?.call(_treeSceneController) ??
-                          TreeScene(controller: _treeSceneController),
-                    ),
-                  if (!enable3D ||
-                      !_treeSceneController.isReady ||
-                      _treeSceneController.useStaticFallback)
-                    Positioned.fill(
-                      child: TreeStandin(
-                        age: _outlineController.snapshot?.structuralAge ?? 0,
+              return GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onVerticalDragStart: (details) {
+                  dragStartedOnLeft =
+                      details.localPosition.dx < constraints.maxWidth / 2;
+                  _realtimeGestures.begin(
+                    x: details.localPosition.dx,
+                    width: constraints.maxWidth,
+                  );
+                },
+                onVerticalDragUpdate: (details) {
+                  _realtimeGestures.update(
+                    deltaY: details.delta.dy,
+                    x: details.localPosition.dx,
+                    width: constraints.maxWidth,
+                  );
+                  if (dragStartedOnLeft) {
+                    _treeSceneController.pan(-details.delta.dy * 0.014);
+                  }
+                },
+                onVerticalDragEnd: (_) {
+                  final direction = _realtimeGestures.end();
+                  if (dragStartedOnLeft) {
+                    moveChapter(direction);
+                  } else {
+                    moveSection(direction);
+                  }
+                },
+                onVerticalDragCancel: _realtimeGestures.cancel,
+                child: Stack(
+                  key: _realtimeTreeKey,
+                  children: [
+                    if (enable3D && !_treeSceneController.useStaticFallback)
+                      Positioned.fill(
+                        child:
+                            widget.treeSceneBuilder?.call(
+                              _treeSceneController,
+                            ) ??
+                            TreeScene(controller: _treeSceneController),
                       ),
-                    ),
-                  Positioned(
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: constraints.maxWidth / 2,
-                    child: GestureDetector(
-                      key: const Key('左空白区'),
-                      behavior: HitTestBehavior.translucent,
-                      onDoubleTap: _createChapter,
-                      onVerticalDragStart: (_) => _realtimeGestures.begin(
-                        x: 0,
-                        width: constraints.maxWidth,
-                      ),
-                      onVerticalDragUpdate: (details) {
-                        _realtimeGestures.update(
-                          deltaY: details.delta.dy,
-                          x: 0,
-                          width: constraints.maxWidth,
-                        );
-                        _treeSceneController.pan(-details.delta.dy * 0.014);
-                      },
-                      onVerticalDragEnd: (_) =>
-                          moveChapter(_realtimeGestures.end()),
-                      onVerticalDragCancel: _realtimeGestures.cancel,
-                    ),
-                  ),
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: constraints.maxWidth / 2,
-                    child: GestureDetector(
-                      key: const Key('右空白区'),
-                      behavior: HitTestBehavior.translucent,
-                      onDoubleTap: () => _createSection(outline),
-                      onVerticalDragStart: (_) => _realtimeGestures.begin(
-                        x: constraints.maxWidth,
-                        width: constraints.maxWidth,
-                      ),
-                      onVerticalDragUpdate: (details) =>
-                          _realtimeGestures.update(
-                            deltaY: details.delta.dy,
-                            x: constraints.maxWidth,
-                            width: constraints.maxWidth,
+                    if (!enable3D ||
+                        !_treeSceneController.isReady ||
+                        _treeSceneController.useStaticFallback)
+                      Positioned.fill(
+                        child: TreeStandin(
+                          stage: illustratedTreeStageForNodeCount(
+                            _illustratedNodeCount(outline),
                           ),
-                      onVerticalDragEnd: (_) =>
-                          moveSection(_realtimeGestures.end()),
-                      onVerticalDragCancel: _realtimeGestures.cancel,
+                          growthRevision: _illustratedNodeCount(outline),
+                        ),
+                      ),
+                    Positioned(
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: constraints.maxWidth / 2,
+                      child: GestureDetector(
+                        key: const Key('左空白区'),
+                        behavior: HitTestBehavior.translucent,
+                        onDoubleTap: () => _createChapter(outline),
+                      ),
                     ),
-                  ),
-                  for (final projection in _treeSceneController.visibleLabels)
-                    if (!staticMode) labelHotspot(projection),
-                  for (final item in windowLabels)
-                    if (staticMode || awaitsProjection(item.label))
-                      staticLabel(item.label, item.rect),
-                  Positioned(
-                    left: 8,
-                    top: constraints.maxHeight * 0.16,
-                    child: _SproutAction(
-                      semanticKey: const Key('新增章节入口'),
-                      semanticLabel: '新增章节',
-                      pending: _creatingChapter,
-                      progressKey: const Key('新增章节进度'),
-                      onPressed: _creatingChapter ? null : _createChapter,
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: constraints.maxWidth / 2,
+                      child: GestureDetector(
+                        key: const Key('右空白区'),
+                        behavior: HitTestBehavior.translucent,
+                        onDoubleTap: () => _createSection(outline),
+                      ),
                     ),
-                  ),
-                  Positioned(
-                    right: 8,
-                    top: constraints.maxHeight * 0.16,
-                    child: _SproutAction(
-                      semanticKey: const Key('新增小节入口'),
-                      semanticLabel: '新增小节',
-                      semanticHint: outline.isEmpty ? '请先创建章节' : null,
-                      pending: _creatingSection,
-                      progressKey: const Key('新增小节进度'),
-                      onPressed: outline.isEmpty || _creatingSection
-                          ? null
-                          : () => _createSection(outline),
+                    for (final projection in _treeSceneController.visibleLabels)
+                      if (!staticMode) labelHotspot(projection),
+                    for (final item in windowLabels)
+                      if (staticMode || awaitsProjection(item.label))
+                        staticLabel(
+                          item.label,
+                          item.rect,
+                          side: item.side,
+                          selected: item.selected,
+                        ),
+                    Positioned(
+                      left: 8,
+                      top: constraints.maxHeight * 0.16,
+                      child: _SproutAction(
+                        semanticKey: const Key('新增章节入口'),
+                        semanticLabel: '新增章节',
+                        pending: _creatingChapter,
+                        progressKey: const Key('新增章节进度'),
+                        onPressed: _creatingChapter
+                            ? null
+                            : () => _createChapter(outline),
+                      ),
                     ),
-                  ),
-                ],
+                    Positioned(
+                      right: 8,
+                      top: constraints.maxHeight * 0.16,
+                      child: _SproutAction(
+                        semanticKey: const Key('新增小节入口'),
+                        semanticLabel: '新增小节',
+                        semanticHint: outline.isEmpty ? '请先创建章节' : null,
+                        pending: _creatingSection,
+                        progressKey: const Key('新增小节进度'),
+                        onPressed: outline.isEmpty || _creatingSection
+                            ? null
+                            : () => _createSection(outline),
+                      ),
+                    ),
+                  ],
+                ),
               );
             },
           ),
@@ -802,7 +892,10 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
   Widget build(BuildContext context) {
     final outlineState = ref.watch(outlineProvider(widget.novelId));
     final outline = outlineState.value ?? const <OutlineChapter>[];
-    final enable3D = ref.watch(advanced3DProvider);
+    final requested3D = ref.watch(advanced3DProvider);
+    final enable3D =
+        requested3D &&
+        (_enableExperimentalTree3D || widget.treeSceneBuilder != null);
     _treeSceneController.setTransportEnabled(
       enable3D && !_treeSceneController.useStaticFallback,
     );
@@ -835,15 +928,33 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
         },
         animateMutations: enable3D && !_treeSceneController.useStaticFallback,
       );
+      _syncIllustratedNodeGrowth(
+        outline,
+        enabled: !enable3D || _treeSceneController.useStaticFallback,
+      );
     }
 
     return Scaffold(
       backgroundColor: _parchment,
-      body: Column(
-        children: [
-          SafeArea(bottom: false, child: _header(context)),
-          _realtimeTreeBody(outline, enable3D: enable3D),
-        ],
+      body: LayoutBuilder(
+        builder: (context, constraints) => Center(
+          child: SizedBox(
+            width: math.min(constraints.maxWidth, constraints.maxHeight * 0.6),
+            height: constraints.maxHeight,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                _realtimeTreeBody(outline, enable3D: enable3D),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  child: SafeArea(bottom: false, child: _header(context)),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -885,57 +996,42 @@ class _SproutAction extends StatelessWidget {
             opacity: enabled || pending ? 1 : 0.38,
             duration: const Duration(milliseconds: 140),
             child: SizedBox(
-              width: 62,
-              height: 62,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 28,
-                    height: 28,
-                    child: pending
-                        ? CircularProgressIndicator(
-                            key: progressKey,
-                            strokeWidth: 2,
+              width: 46,
+              height: 46,
+              child: pending
+                  ? Padding(
+                      padding: const EdgeInsets.all(11),
+                      child: CircularProgressIndicator(
+                        key: progressKey,
+                        strokeWidth: 2,
+                        color: _ink,
+                      ),
+                    )
+                  : const Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Align(
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.eco_outlined,
+                            size: 27,
                             color: _ink,
-                          )
-                        : const Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Align(
-                                alignment: Alignment.center,
-                                child: Icon(
-                                  Icons.eco_outlined,
-                                  size: 25,
-                                  color: _ink,
-                                ),
-                              ),
-                              Positioned(
-                                right: -2,
-                                top: -5,
-                                child: Text(
-                                  '+',
-                                  style: TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w700,
-                                    color: _ink,
-                                  ),
-                                ),
-                              ),
-                            ],
                           ),
-                  ),
-                  Text(
-                    pending ? '生长中' : '新芽 +',
-                    style: const TextStyle(
-                      fontFamily: 'LXGWWenKai',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: _ink,
+                        ),
+                        Positioned(
+                          right: 5,
+                          top: 3,
+                          child: Text(
+                            '+',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFFC18B2E),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
             ),
           ),
         ),

@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-08-11 13:51:09　对应提交：ca6a260 之后的工作区状态
+> 生成时间：2026-09-06 20:56:25　对应提交：dabe768 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,30 +12,30 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     159
-  Nodes:     4,749
-  Edges:     20,985
-  DB Size:   23.32 MB
+  Files:     169
+  Nodes:     4,919
+  Edges:     21,525
+  DB Size:   23.94 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,732
-  function        1,483
-  import          515
-  class           492
-  constant        241
-  file            151
-  variable        92
-  enum_member     23
+  method          1,754
+  function        1,538
+  import          560
+  class           495
+  constant        257
+  file            161
+  variable        108
+  enum_member     25
   type_alias      13
-  enum            5
+  enum            6
   namespace       2
 
 Files by Language:
-  dart            86
-  javascript      34
-  python          11
+  dart            89
+  javascript      38
+  python          14
   kotlin          8
   xml             6
   properties      4
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (159 files):
+Project Structure (169 files):
 
 |-- .agents
 |   `-- skills
@@ -172,6 +172,8 @@ Project Structure (159 files):
 |   |   |   `-- starfield.dart (dart, 31 symbols)
 |   |   |-- outline
 |   |   |   |-- tree_scene
+|   |   |   |   |-- illustrated_tree_growth.dart (dart, 6 symbols)
+|   |   |   |   |-- illustrated_tree_scene.dart (dart, 20 symbols)
 |   |   |   |   |-- tree_scene_controller.dart (dart, 51 symbols)
 |   |   |   |   |-- tree_scene_gestures.dart (dart, 17 symbols)
 |   |   |   |   |-- tree_scene_io.dart (dart, 18 symbols)
@@ -183,7 +185,7 @@ Project Structure (159 files):
 |   |   |   |-- label_layout.dart (dart, 2 symbols)
 |   |   |   |-- magic_carpet.dart (dart, 67 symbols)
 |   |   |   |-- outline_controller.dart (dart, 34 symbols)
-|   |   |   |-- outline_page.dart (dart, 63 symbols)
+|   |   |   |-- outline_page.dart (dart, 71 symbols)
 |   |   |   `-- scroll_carpet.dart (dart, 38 symbols)
 |   |   |-- section
 |   |   |   |-- card_deck_sheet.dart (dart, 19 symbols)
@@ -205,17 +207,21 @@ Project Structure (159 files):
 |-- scripts
 |   |-- tests
 |   |   `-- test_validate_magic_tree_art_package.py (python, 16 symbols)
+|   |-- build_magic_tree_art_asset.py (python, 37 symbols)
 |   |-- build_magic_tree_blender.py (python, 47 symbols)
 |   |-- capture_standins.py (python, 11 symbols)
 |   |-- e2e_probe.dart (dart, 12 symbols)
 |   |-- export_magic_tree.py (python, 14 symbols)
 |   |-- generate_magic_tree_pbr.py (python, 12 symbols)
 |   |-- optimize_magic_tree_glb.py (python, 16 symbols)
+|   |-- refine_magic_tree_blend.py (python, 23 symbols)
+|   |-- render_magic_tree_art_previews.py (python, 19 symbols)
 |   |-- serve_web.dart (dart, 4 symbols)
 |   |-- square_standins.py (python, 11 symbols)
 |   |-- validate_magic_tree_3d.py (python, 17 symbols)
 |   |-- validate_magic_tree_art_package.py (python, 16 symbols)
-|   `-- validate_magic_tree_visuals.py (python, 34 symbols)
+|   |-- validate_magic_tree_visuals.py (python, 34 symbols)
+|   `-- verify_illustrated_tree_growth.dart (dart, 5 symbols)
 |-- test
 |   |-- core
 |   |   |-- chinese_numbers_test.dart (dart, 4 symbols)
@@ -231,7 +237,7 @@ Project Structure (159 files):
 |   |   |-- magic_carpet_test.dart (dart, 18 symbols)
 |   |   |-- orbiting_inspirations_test.dart (dart, 11 symbols)
 |   |   |-- outline_controller_test.dart (dart, 10 symbols)
-|   |   |-- outline_page_test.dart (dart, 32 symbols)
+|   |   |-- outline_page_test.dart (dart, 33 symbols)
 |   |   |-- planet_scene_touch_config_test.dart (dart, 8 symbols)
 |   |   |-- quick_capture_test.dart (dart, 16 symbols)
 |   |   |-- realtime_tree_single_path_test.dart (dart, 4 symbols)
@@ -245,7 +251,7 @@ Project Structure (159 files):
 |   |   |-- tree_scene_protocol_test.dart (dart, 5 symbols)
 |   |   |-- tree_scene_snapshot_test.dart (dart, 8 symbols)
 |   |   |-- tree_scene_web_fallback_test.dart (dart, 4 symbols)
-|   |   |-- tree_standin_test.dart (dart, 5 symbols)
+|   |   |-- tree_standin_test.dart (dart, 6 symbols)
 |   |   `-- voice_capture_test.dart (dart, 22 symbols)
 |   |-- tools
 |   |   `-- web_serve_test.dart (dart, 6 symbols)
@@ -260,15 +266,17 @@ Project Structure (159 files):
 |   `-- tree_scene
 |       |-- scripts
 |       |   |-- build.mjs (javascript, 10 symbols)
+|       |   |-- capture-state.mjs (javascript, 14 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
 |       |   |-- check-startup.mjs (javascript, 23 symbols)
 |       |   `-- validate-gltf.mjs (javascript, 7 symbols)
 |       |-- src
-|       |   |-- BranchSystem.js (javascript, 23 symbols)
-|       |   |-- CameraSystem.js (javascript, 10 symbols)
+|       |   |-- BranchSystem.js (javascript, 28 symbols)
+|       |   |-- CameraSystem.js (javascript, 13 symbols)
+|       |   |-- GrowthProfile.js (javascript, 7 symbols)
 |       |   |-- InteractionSystem.js (javascript, 10 symbols)
-|       |   |-- LabelSystem.js (javascript, 13 symbols)
-|       |   |-- LeafSystem.js (javascript, 8 symbols)
+|       |   |-- LabelSystem.js (javascript, 17 symbols)
+|       |   |-- LeafSystem.js (javascript, 14 symbols)
 |       |   |-- MagicTreeScene.js (javascript, 38 symbols)
 |       |   |-- main.js (javascript, 34 symbols)
 |       |   |-- MutationPlayer.js (javascript, 2 symbols)
@@ -278,8 +286,10 @@ Project Structure (159 files):
 |       |   |-- StartupDiagnostics.js (javascript, 4 symbols)
 |       |   `-- TreeGrowthSystem.js (javascript, 14 symbols)
 |       `-- test
-|           |-- branch-system.test.js (javascript, 8 symbols)
+|           |-- branch-system.test.js (javascript, 9 symbols)
 |           |-- camera-label.test.js (javascript, 8 symbols)
+|           |-- ground-integration.test.js (javascript, 4 symbols)
+|           |-- leaf-system.test.js (javascript, 6 symbols)
 |           |-- mutation-player.test.js (javascript, 5 symbols)
 |           |-- protocol.test.js (javascript, 4 symbols)
 |           |-- quality-manager.test.js (javascript, 4 symbols)

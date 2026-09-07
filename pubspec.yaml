@@ -75,10 +75,12 @@ flutter:
     - assets/tree_scene/dist/
     - assets/tree_scene/vendor/
     - assets/tree_scene/vendor/addons/loaders/
+    - assets/tree_scene/vendor/addons/math/
     - assets/tree_scene/vendor/addons/utils/
     - assets/tree_scene/vendor/addons/libs/
     - assets/tree_scene/vendor/addons/libs/basis/
     - assets/tree_scene/standins/
+    - assets/tree_scene/illustrated/
     - assets/3d/magic_tree/
     - assets/3d/magic_tree/textures/
     - assets/textures/

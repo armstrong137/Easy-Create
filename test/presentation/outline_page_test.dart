@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -122,6 +123,10 @@ void main() {
     bool useProductionRepository = false,
     Widget Function(TreeSceneController controller)? treeSceneBuilder,
   }) async {
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final page = OutlinePage(
       novelId: 1,
       title: '测试小说',
@@ -167,6 +172,21 @@ void main() {
       ),
     );
     await tester.pump(const Duration(milliseconds: 100));
+    // 图片解码使用真实异步时钟，先完成解码再检验虚拟时钟中的枝条时序。
+    final imageContext = tester.element(find.byType(OutlinePage));
+    await tester.runAsync(() async {
+      for (var stage = 0; stage < 6; stage++) {
+        await precacheImage(
+          AssetImage('assets/tree_scene/illustrated/age_$stage.png'),
+          imageContext,
+        );
+      }
+      await precacheImage(
+        const AssetImage('assets/tree_scene/illustrated/chapter_branch.png'),
+        imageContext,
+      );
+    });
+    await tester.pump();
   }
 
   Future<void> doubleTapAt(WidgetTester tester, Offset point) async {
@@ -216,13 +236,15 @@ void main() {
     );
   }
 
-  testWidgets('大纲页仅渲染实时三维场景的静态降级图和书名', (tester) async {
+  testWidgets('大纲页默认渲染正式二维古树和书名', (tester) async {
     await seedNovel();
     await pumpOutline(tester, const []);
 
     expect(find.byKey(const Key('大纲页书名')), findsOneWidget);
     expect(find.text('测试小说'), findsOneWidget);
     expect(find.byType(TreeStandin), findsOneWidget);
+    expect(find.text('新芽 +'), findsNothing);
+    expect(tester.getSize(find.byType(TreeStandin)), const Size(430, 932));
   });
 
   testWidgets('静态回退保留章节标签及小节导航', (tester) async {
@@ -337,7 +359,7 @@ void main() {
     expect(find.byKey(const Key('静态章交互_4')), findsNothing);
   });
 
-  testWidgets('静态回退右侧滑动会刷新五节窗口', (tester) async {
+  testWidgets('正式二维右侧最多显示两节且滑动会刷新窗口', (tester) async {
     await seedNovel();
     final sections = List.generate(
       7,
@@ -354,7 +376,7 @@ void main() {
         sections: sections,
       ),
     ]);
-    expect(find.byKey(const Key('静态节交互_3')), findsOneWidget);
+    expect(find.byKey(const Key('静态节交互_6')), findsOneWidget);
     expect(find.byKey(const Key('静态节交互_7')), findsOneWidget);
 
     final size = tester.getSize(find.byType(Scaffold));
@@ -366,7 +388,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
     }
 
-    expect(find.byKey(const Key('静态节交互_2')), findsOneWidget);
+    expect(find.byKey(const Key('静态节交互_3')), findsOneWidget);
+    expect(find.byKey(const Key('静态节交互_4')), findsOneWidget);
     expect(find.byKey(const Key('静态节交互_7')), findsNothing);
   });
 
@@ -380,7 +403,7 @@ void main() {
 
     final chapters = await database.select(database.chapters).get();
     expect(chapters, hasLength(1));
-    expect(find.text('引子'), findsOneWidget);
+    expect(find.byKey(Key('静态章交互_${chapters.single.id}')), findsOneWidget);
   });
 
   testWidgets('右半屏双击为当前章节创建小节', (tester) async {
@@ -399,7 +422,7 @@ void main() {
     final sections = await database.select(database.sections).get();
     expect(sections, hasLength(1));
     expect(sections.single.chapterId, chapterId);
-    expect(find.text('第一节'), findsOneWidget);
+    expect(find.byKey(Key('静态节交互_${sections.single.id}')), findsOneWidget);
   });
 
   testWidgets('点击左侧新芽入口后由数据库流显示新章节', (tester) async {
@@ -409,8 +432,71 @@ void main() {
     await tester.tap(find.byKey(const Key('新增章节入口')));
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(await database.select(database.chapters).get(), hasLength(1));
-    expect(find.text('引子'), findsOneWidget);
+    final chapters = await database.select(database.chapters).get();
+    expect(chapters, hasLength(1));
+    expect(find.byKey(Key('静态章交互_${chapters.single.id}')), findsOneWidget);
+  });
+
+  testWidgets('第二个结构节点先切换树龄档再让新章枝一次长出', (tester) async {
+    await seedNovel();
+    await database
+        .into(database.chapters)
+        .insert(
+          ChaptersCompanion.insert(novelId: 1, title: '第一章', sortOrder: 0),
+        );
+    await pumpOutline(tester, null);
+    expect(tester.widget<TreeStandin>(find.byType(TreeStandin)).stage, 1);
+
+    await tester.tap(find.byKey(const Key('新增章节入口')));
+    final newBranch = find.descendant(
+      of: find.byKey(const Key('静态章交互_2')),
+      matching: find.byType(ClipRect),
+    );
+    for (var frame = 0; frame < 60 && newBranch.evaluate().isEmpty; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    expect(tester.widget<TreeStandin>(find.byType(TreeStandin)).stage, 2);
+    expect(newBranch, findsOneWidget);
+    final clipRender = tester.renderObject<RenderClipRect>(newBranch);
+    final initialClip = clipRender.clipper!.getClip(clipRender.size);
+    expect(initialClip.width, lessThanOrEqualTo(0.5));
+
+    await tester.pump(const Duration(milliseconds: 240));
+    await tester.pump(const Duration(milliseconds: 60));
+    final growingClip = clipRender.clipper!.getClip(clipRender.size);
+    expect(growingClip.width, greaterThan(0.5));
+    expect(growingClip.width, lessThan(clipRender.size.width));
+
+    await tester.pump(const Duration(milliseconds: 1000));
+    final completedClip = clipRender.clipper!.getClip(clipRender.size);
+    expect(completedClip.width, closeTo(clipRender.size.width, 0.5));
+  });
+
+  testWidgets('十个结构节点能够显示最终成熟古树', (tester) async {
+    await seedNovel();
+    for (var index = 0; index < 10; index += 1) {
+      await database
+          .into(database.chapters)
+          .insert(
+            ChaptersCompanion.insert(
+              novelId: 1,
+              title: '第${index + 1}章',
+              sortOrder: index,
+            ),
+          );
+    }
+    await pumpOutline(tester, null);
+
+    final standin = find.byType(TreeStandin);
+    expect(tester.widget<TreeStandin>(standin).stage, 5);
+    final image = tester.widget<Image>(
+      find.descendant(of: standin, matching: find.byType(Image)),
+    );
+    expect(
+      (image.image as AssetImage).assetName,
+      'assets/tree_scene/illustrated/age_5.png',
+    );
   });
 
   testWidgets('生产 watchOutline 在浏览早期章节时聚焦新建章节', (tester) async {
@@ -511,7 +597,7 @@ void main() {
 
     final chapters = await database.select(database.chapters).get();
     expect(chapters, hasLength(1));
-    expect(find.text('引子'), findsOneWidget);
+    expect(find.byKey(Key('静态章交互_${chapters.single.id}')), findsOneWidget);
     final bridgeKey = Key('静态章交互_${chapters.single.id}');
     expect(find.byKey(bridgeKey), findsOneWidget);
 
@@ -657,7 +743,8 @@ void main() {
     repository.createChapterHandler = null;
     await tester.tap(find.byKey(const Key('新增章节入口')));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('引子'), findsOneWidget);
+    final chapters = await database.select(database.chapters).get();
+    expect(find.byKey(Key('静态章交互_${chapters.single.id}')), findsOneWidget);
     await tester.pump(const Duration(seconds: 2));
   });
 
@@ -680,6 +767,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(await database.select(database.sections).get(), hasLength(1));
-    expect(find.text('第一节'), findsOneWidget);
+    final sections = await database.select(database.sections).get();
+    expect(find.byKey(Key('静态节交互_${sections.single.id}')), findsOneWidget);
   });
 }
