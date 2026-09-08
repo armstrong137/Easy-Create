@@ -1,0 +1,33 @@
+{
+  "runId": "2026-09-08T19-01-38.600Z",
+  "error": "AssertionError [ERR_ASSERTION]: 浏览器不应发生运行错误\n+ actual - expected\n\n+ [\n+   {\n+     message: '══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════\\n' +\n+       'The following assertion was thrown while dispatching notifications for\\n' +\n+       'WidgetsBindingObserver.didChangeViewFocus:\\n' +\n+       'Assertion failed: \"RenderBox was not laid out: RenderSemanticsAnnotations#7b2f9 NEEDS-LAYOUT\\n' +\n+       'NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE\"\\n' +\n+       '\\n' +\n+       'When the exception was thrown, this was the stack\\n' +\n+       '════════════════════════════════════════════════════════════════════════════════════════════════════',\n+     phase: '首页启动'\n+   }\n+ ]\n- []\n",
+  "text": "Visual QA\n新增章节\n第八章\n新增小节\n第九章\n速记：轻点写字，长按说话",
+  "captures": [
+    {
+      "name": "00-empty-430",
+      "text": "Visual QA\n新增章节\n新增小节\n速记：轻点写字，长按说话"
+    },
+    {
+      "name": "01-prologue-430",
+      "text": "Visual QA\n新增章节\n新增小节\n引子\n速记：轻点写字，长按说话"
+    },
+    {
+      "name": "04-four-branches-430",
+      "text": "Visual QA\n新增章节\n新增小节\n引子\n第一节\n第一章\n第二节\n速记：轻点写字，长按说话"
+    },
+    {
+      "name": "12-mature-430",
+      "text": "Visual QA\n新增章节\n新增小节\n第八章\n第九章\n速记：轻点写字，长按说话"
+    },
+    {
+      "name": "12-mature-910",
+      "text": "Visual QA\n新增章节\n第八章\n新增小节\n第九章\n速记：轻点写字，长按说话"
+    }
+  ],
+  "errors": [
+    {
+      "phase": "首页启动",
+      "message": "══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════\nThe following assertion was thrown while dispatching notifications for\nWidgetsBindingObserver.didChangeViewFocus:\nAssertion failed: \"RenderBox was not laid out: RenderSemanticsAnnotations#7b2f9 NEEDS-LAYOUT\nNEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE\"\n\nWhen the exception was thrown, this was the stack\n════════════════════════════════════════════════════════════════════════════════════════════════════"
+    }
+  ]
+}

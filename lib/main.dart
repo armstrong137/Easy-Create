@@ -1,15 +1,21 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/app_keys.dart';
+import 'core/startup_focus_binding.dart';
 import 'presentation/home/home_page.dart';
 import 'presentation/outline/magic_carpet.dart' show CarpetOverlay;
 import 'presentation/shared/quick_capture/capture_button_prefs.dart';
 import 'presentation/shared/quick_capture/quick_capture_layer.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  if (kIsWeb) {
+    StartupWidgetsBinding();
+  } else {
+    WidgetsFlutterBinding.ensureInitialized();
+  }
   // 预载偏好存储（按钮位置等），以同步 Provider 形式注入
   final prefs = await SharedPreferences.getInstance();
   runApp(

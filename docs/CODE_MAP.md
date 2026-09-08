@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-09-07 18:57:12　对应提交：5d200ec 之后的工作区状态
+> 生成时间：2026-09-08 14:16:44　对应提交：bc6795a 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,20 +12,20 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     170
-  Nodes:     4,941
-  Edges:     21,562
+  Files:     172
+  Nodes:     4,959
+  Edges:     21,595
   DB Size:   24.05 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,756
-  function        1,539
-  import          565
-  class           496
+  method          1,759
+  function        1,540
+  import          573
+  class           500
   constant        268
-  file            162
+  file            164
   variable        109
   enum_member     25
   type_alias      13
@@ -33,7 +33,7 @@ Nodes by Kind:
   namespace       2
 
 Files by Language:
-  dart            89
+  dart            91
   javascript      39
   python          14
   kotlin          8
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (170 files):
+Project Structure (172 files):
 
 |-- .agents
 |   `-- skills
@@ -144,7 +144,8 @@ Project Structure (170 files):
 |   |   |-- content_font.dart (dart, 9 symbols)
 |   |   |-- creative_energy.dart (dart, 15 symbols)
 |   |   |-- planet_constants.dart (dart, 4 symbols)
-|   |   `-- spin_inertia.dart (dart, 9 symbols)
+|   |   |-- spin_inertia.dart (dart, 9 symbols)
+|   |   `-- startup_focus_binding.dart (dart, 7 symbols)
 |   |-- data
 |   |   |-- database
 |   |   |   |-- app_database.dart (dart, 9 symbols)
@@ -203,7 +204,7 @@ Project Structure (170 files):
 |   |       |   |-- text_capture_sheet.dart (dart, 12 symbols)
 |   |       |   `-- voice_capture_sheet.dart (dart, 16 symbols)
 |   |       `-- soft_toast.dart (dart, 11 symbols)
-|   `-- main.dart (dart, 14 symbols)
+|   `-- main.dart (dart, 16 symbols)
 |-- scripts
 |   |-- tests
 |   |   `-- test_validate_magic_tree_art_package.py (python, 16 symbols)
@@ -227,7 +228,8 @@ Project Structure (170 files):
 |   |   |-- chinese_numbers_test.dart (dart, 4 symbols)
 |   |   |-- content_font_test.dart (dart, 5 symbols)
 |   |   |-- creative_energy_test.dart (dart, 4 symbols)
-|   |   `-- spin_inertia_test.dart (dart, 7 symbols)
+|   |   |-- spin_inertia_test.dart (dart, 7 symbols)
+|   |   `-- startup_focus_binding_test.dart (dart, 9 symbols)
 |   |-- data
 |   |   |-- app_database_config_test.dart (dart, 4 symbols)
 |   |   `-- repositories_test.dart (dart, 9 symbols)

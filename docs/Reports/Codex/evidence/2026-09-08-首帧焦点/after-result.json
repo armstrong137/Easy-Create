@@ -1,0 +1,33 @@
+{
+  "runId": "2026-09-08T19-11-55.377Z",
+  "url": "http://127.0.0.1:8780/",
+  "checksPassed": [
+    "创建十章和两节",
+    "末态语义窗口只有两章",
+    "浏览器零错误"
+  ],
+  "visualAcceptance": "待人工对照参考图",
+  "captures": [
+    {
+      "name": "00-empty-430",
+      "text": "Visual QA\n新增章节\n新增小节\n速记：轻点写字，长按说话"
+    },
+    {
+      "name": "01-prologue-430",
+      "text": "Visual QA\n新增章节\n新增小节\n引子\n速记：轻点写字，长按说话"
+    },
+    {
+      "name": "04-four-branches-430",
+      "text": "Visual QA\n新增章节\n新增小节\n引子\n第一节\n第一章\n第二节\n速记：轻点写字，长按说话"
+    },
+    {
+      "name": "12-mature-430",
+      "text": "Visual QA\n新增章节\n新增小节\n第八章\n第九章\n速记：轻点写字，长按说话"
+    },
+    {
+      "name": "12-mature-910",
+      "text": "Visual QA\n新增章节\n第八章\n新增小节\n第九章\n速记：轻点写字，长按说话"
+    }
+  ],
+  "errors": []
+}

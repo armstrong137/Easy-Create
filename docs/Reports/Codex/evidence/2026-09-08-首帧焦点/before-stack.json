@@ -1,0 +1,293 @@
+[
+  {
+    "data": {
+      "type": "object",
+      "subtype": "error",
+      "className": "Error",
+      "description": "Error\n    at Object.wrapException (http://127.0.0.1:8781/main.dart.js:8521:47)\n    at Object.assertThrow (http://127.0.0.1:8781/main.dart.js:9023:15)\n    at RenderSemanticsAnnotations.get$size (http://127.0.0.1:8781/main.dart.js:152173:11)\n    at RenderSemanticsAnnotations.get$semanticBounds (http://127.0.0.1:8781/main.dart.js:152195:21)\n    at FocusScopeNode.get$rect (http://127.0.0.1:8781/main.dart.js:192435:19)\n    at Object.ReadingOrderTraversalPolicy_sort (http://127.0.0.1:8781/main.dart.js:48359:17)\n    at ReadingOrderTraversalPolicy.sortDescendants$2 (http://127.0.0.1:8781/main.dart.js:194467:16)\n    at Object.FocusTraversalPolicy__sortAllDescendants (http://127.0.0.1:8781/main.dart.js:48286:67)\n    at ReadingOrderTraversalPolicy._findInitialFocus$3$fromEnd$ignoreCurrentFocus (http://127.0.0.1:8781/main.dart.js:193735:16)\n    at ReadingOrderTraversalPolicy._findInitialFocus$2$ignoreCurrentFocus (http://127.0.0.1:8781/main.dart.js:193746:19)",
+      "objectId": "-4072759445107827512.3.1",
+      "uncaught": false
+    },
+    "frames": [
+      {
+        "functionName": "assertThrow",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 9022,
+          "columnNumber": 6
+        },
+        "url": ""
+      },
+      {
+        "functionName": "get$size",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 152172,
+          "columnNumber": 10
+        },
+        "url": ""
+      },
+      {
+        "functionName": "get$semanticBounds",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 152194,
+          "columnNumber": 20
+        },
+        "url": ""
+      },
+      {
+        "functionName": "get$rect",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 192434,
+          "columnNumber": 18
+        },
+        "url": ""
+      },
+      {
+        "functionName": "ReadingOrderTraversalPolicy_sort",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 48358,
+          "columnNumber": 16
+        },
+        "url": ""
+      },
+      {
+        "functionName": "sortDescendants$2",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 194466,
+          "columnNumber": 15
+        },
+        "url": ""
+      },
+      {
+        "functionName": "FocusTraversalPolicy__sortAllDescendants",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 48285,
+          "columnNumber": 66
+        },
+        "url": ""
+      },
+      {
+        "functionName": "_findInitialFocus$3$fromEnd$ignoreCurrentFocus",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 193734,
+          "columnNumber": 15
+        },
+        "url": ""
+      },
+      {
+        "functionName": "_findInitialFocus$2$ignoreCurrentFocus",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 193745,
+          "columnNumber": 18
+        },
+        "url": ""
+      },
+      {
+        "functionName": "didChangeViewFocus$1",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 223650,
+          "columnNumber": 40
+        },
+        "url": ""
+      },
+      {
+        "functionName": "handleViewFocusChanged$1",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 187274,
+          "columnNumber": 19
+        },
+        "url": ""
+      },
+      {
+        "functionName": "",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 8886,
+          "columnNumber": 44
+        },
+        "url": ""
+      },
+      {
+        "functionName": "invoke1",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 2872,
+          "columnNumber": 17
+        },
+        "url": ""
+      },
+      {
+        "functionName": "invokeOnViewFocusChange$1",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 72483,
+          "columnNumber": 8
+        },
+        "url": ""
+      },
+      {
+        "functionName": "",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 8886,
+          "columnNumber": 44
+        },
+        "url": ""
+      },
+      {
+        "functionName": "_handleFocusChange$1",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 73490,
+          "columnNumber": 31
+        },
+        "url": ""
+      },
+      {
+        "functionName": "call$1",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 73523,
+          "columnNumber": 17
+        },
+        "url": ""
+      },
+      {
+        "functionName": "runUnary$2$2",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 93146,
+          "columnNumber": 17
+        },
+        "url": ""
+      },
+      {
+        "functionName": "call$1",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 93194,
+          "columnNumber": 25
+        },
+        "url": ""
+      },
+      {
+        "functionName": "_callDartFunctionFast1",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 17096,
+          "columnNumber": 24
+        },
+        "url": ""
+      },
+      {
+        "functionName": "",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 17036,
+          "columnNumber": 17
+        },
+        "url": ""
+      },
+      {
+        "functionName": "changeViewFocus$2",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 73424,
+          "columnNumber": 26
+        },
+        "url": ""
+      },
+      {
+        "functionName": "_scopeFocusChangeListener$0",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 223628,
+          "columnNumber": 33
+        },
+        "url": ""
+      },
+      {
+        "functionName": "",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 8880,
+          "columnNumber": 44
+        },
+        "url": ""
+      },
+      {
+        "functionName": "notifyListeners$0",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 121256,
+          "columnNumber": 15
+        },
+        "url": ""
+      },
+      {
+        "functionName": "_notify$0",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 192609,
+          "columnNumber": 12
+        },
+        "url": ""
+      },
+      {
+        "functionName": "applyFocusChangesIfNeeded$0",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 193005,
+          "columnNumber": 39
+        },
+        "url": ""
+      },
+      {
+        "functionName": "",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 8880,
+          "columnNumber": 44
+        },
+        "url": ""
+      },
+      {
+        "functionName": "_microtaskLoop",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 12046,
+          "columnNumber": 23
+        },
+        "url": ""
+      },
+      {
+        "functionName": "_startMicrotaskLoop",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 12052,
+          "columnNumber": 10
+        },
+        "url": ""
+      },
+      {
+        "functionName": "call$1",
+        "location": {
+          "scriptId": "6",
+          "lineNumber": 90356,
+          "columnNumber": 8
+        },
+        "url": ""
+      }
+    ]
+  }
+]
