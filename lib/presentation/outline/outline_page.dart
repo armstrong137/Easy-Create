@@ -869,6 +869,13 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
                   color: _ink,
+                  // 深色树皮经过标题下方时，细浅轮廓保留字形，不遮住树体。
+                  shadows: [
+                    Shadow(color: _parchment, offset: Offset(-1, -1), blurRadius: 1),
+                    Shadow(color: _parchment, offset: Offset(1, -1), blurRadius: 1),
+                    Shadow(color: _parchment, offset: Offset(-1, 1), blurRadius: 1),
+                    Shadow(color: _parchment, offset: Offset(1, 1), blurRadius: 1),
+                  ],
                 ),
               ),
             ),

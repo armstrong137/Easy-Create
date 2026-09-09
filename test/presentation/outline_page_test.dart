@@ -247,6 +247,19 @@ void main() {
     expect(tester.getSize(find.byType(TreeStandin)), const Size(430, 932));
   });
 
+  testWidgets('书名在深色树皮上保留浅色轮廓且不重复文字', (tester) async {
+    await pumpOutline(tester, const []);
+    final title = tester.widget<Text>(find.byKey(const Key('大纲页书名')));
+    final shadows = title.style!.shadows ?? const <Shadow>[];
+    expect(shadows.length, greaterThanOrEqualTo(4));
+    expect(shadows.every((shadow) => shadow.color.computeLuminance() > 0.7), isTrue);
+    expect(shadows.any((shadow) => shadow.offset.dx < 0), isTrue);
+    expect(shadows.any((shadow) => shadow.offset.dx > 0), isTrue);
+    expect(shadows.any((shadow) => shadow.offset.dy < 0), isTrue);
+    expect(shadows.any((shadow) => shadow.offset.dy > 0), isTrue);
+    expect(find.byKey(const Key('大纲页书名')), findsOneWidget);
+  });
+
   testWidgets('静态回退保留章节标签及小节导航', (tester) async {
     await seedNovel();
     final seeded = await seedOutline();
