@@ -425,6 +425,31 @@ void main() {
     expect(find.byKey(const Key('静态节交互_7')), findsNothing);
   });
 
+  testWidgets('右侧拖动中页面重建仍只切换小节', (tester) async {
+    await seedNovel();
+    await pumpOutline(tester, [
+      OutlineChapter(
+        chapter: const Chapter(id: 1, novelId: 1, title: '第一章', sortOrder: 0),
+        sections: List.generate(4, (index) => Section(
+          id: index + 1, chapterId: 1, title: '第${index + 1}节', sortOrder: index,
+        )),
+      ),
+    ]);
+    expect(find.byKey(const Key('静态节交互_4')), findsOneWidget);
+    final gesture = await tester.startGesture(const Offset(300, 640));
+    await gesture.moveBy(const Offset(0, 50));
+    await tester.pump();
+    // 模拟拖动尚未结束时数据刷新或其他状态触发页面重建。
+    tester.element(find.byType(OutlinePage)).markNeedsBuild();
+    await tester.pump();
+    await gesture.moveBy(const Offset(0, 40));
+    await gesture.up();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byKey(const Key('静态节交互_2')), findsOneWidget);
+    expect(find.byKey(const Key('静态节交互_3')), findsOneWidget);
+    expect(find.byKey(const Key('静态节交互_4')), findsNothing);
+  });
+
   testWidgets('左半屏双击创建章节', (tester) async {
     await seedNovel();
     await pumpOutline(tester, null);

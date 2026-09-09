@@ -349,7 +349,6 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
             builder: (context, _) {
               final staticMode =
                   !enable3D || _treeSceneController.useStaticFallback;
-              var dragStartedOnLeft = true;
 
               Widget labelHotspot(TreeLabelProjection projection) {
                 final label = projectedLabel(projection);
@@ -574,8 +573,6 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
               return GestureDetector(
                 behavior: HitTestBehavior.translucent,
                 onVerticalDragStart: (details) {
-                  dragStartedOnLeft =
-                      details.localPosition.dx < constraints.maxWidth / 2;
                   _realtimeGestures.begin(
                     x: details.localPosition.dx,
                     width: constraints.maxWidth,
@@ -587,15 +584,16 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                     x: details.localPosition.dx,
                     width: constraints.maxWidth,
                   );
-                  if (dragStartedOnLeft) {
+                  if (_realtimeGestures.owner == TreeGestureOwner.chapter) {
                     _treeSceneController.pan(-details.delta.dy * 0.014);
                   }
                 },
                 onVerticalDragEnd: (_) {
+                  final owner = _realtimeGestures.owner;
                   final direction = _realtimeGestures.end();
-                  if (dragStartedOnLeft) {
+                  if (owner == TreeGestureOwner.chapter) {
                     moveChapter(direction);
-                  } else {
+                  } else if (owner == TreeGestureOwner.section) {
                     moveSection(direction);
                   }
                 },
