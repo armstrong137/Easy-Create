@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-09-08 21:04:40　对应提交：f9845d1 之后的工作区状态
+> 生成时间：2026-09-08 21:08:17　对应提交：b50a5d1 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,8 +13,8 @@ Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
   Files:     172
-  Nodes:     4,959
-  Edges:     21,597
+  Nodes:     4,964
+  Edges:     21,603
   DB Size:   24.09 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
@@ -24,9 +24,9 @@ Nodes by Kind:
   function        1,540
   import          573
   class           500
-  constant        268
+  constant        272
   file            164
-  variable        109
+  variable        110
   enum_member     25
   type_alias      13
   enum            6
@@ -270,7 +270,7 @@ Project Structure (172 files):
 |       |   |-- build.mjs (javascript, 10 symbols)
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
-|       |   |-- check-illustrated-outline.mjs (javascript, 18 symbols)
+|       |   |-- check-illustrated-outline.mjs (javascript, 23 symbols)
 |       |   |-- check-startup.mjs (javascript, 23 symbols)
 |       |   `-- validate-gltf.mjs (javascript, 7 symbols)
 |       |-- src

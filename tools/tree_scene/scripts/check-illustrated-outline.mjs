@@ -62,6 +62,28 @@ try {
   await capture('12-mature-430');
   const visibleChapters = page.getByRole('button', { name: /^(引子|第[一二三四五六七八九十]+章)$/ });
   assert.equal(await visibleChapters.count(), 2, '左侧只能显示两章');
+  if (process.argv.includes('--audit-history')) {
+    phase = '历史章节镜头验收';
+    // 取不被左右枝牌遮挡的下段树干；标签替换不能充当镜头移动的证据。
+    const clip = { x: 200, y: 650, width: 30, height: 160 };
+    const before = await page.screenshot({ clip });
+    for (let index = 0; index < 9; index += 1) {
+      await page.mouse.move(80, 590);
+      await page.mouse.down();
+      await page.mouse.move(80, 780, { steps: 16 });
+      await page.mouse.up();
+      await page.waitForTimeout(600);
+    }
+    await page.getByRole('button', { name: '引子', exact: true }).waitFor();
+    await capture('history-prologue-430');
+    const after = await page.screenshot({ clip });
+    const treeRegionChanged = !before.equals(after);
+    await writeFile(resolve(output, 'history-audit.json'), JSON.stringify({
+      reachedPrologue: true, clip, treeRegionChanged,
+      note: '区域完全相同可证伪本次镜头移动；区域不同仍需肉眼确认不是闪光或换树。',
+    }, null, 2));
+    assert.ok(treeRegionChanged, '滑回引子后树干区域完全未变：标签切换不等于镜头移动');
+  }
   await page.setViewportSize({ width: 910, height: 800 });
   await capture('12-mature-910');
   assert.deepEqual(errors, [], '浏览器不应发生运行错误');
