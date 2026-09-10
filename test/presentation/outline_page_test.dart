@@ -120,6 +120,7 @@ void main() {
     Widget? overlay,
     NovelRepository? repository,
     bool enable3D = false,
+    bool enableIllustratedCamera = false,
     bool useProductionRepository = false,
     Widget Function(TreeSceneController controller)? treeSceneBuilder,
   }) async {
@@ -131,6 +132,7 @@ void main() {
       novelId: 1,
       title: '测试小说',
       treeSceneBuilder: treeSceneBuilder,
+      enableIllustratedCamera: enableIllustratedCamera,
     );
     final liveRepository =
         repository ??
@@ -389,6 +391,28 @@ void main() {
 
     expect(find.byKey(const Key('静态章交互_2')), findsOneWidget);
     expect(find.byKey(const Key('静态章交互_4')), findsNothing);
+  });
+
+  testWidgets('浏览旧章平移树体而不回退树龄，枝牌相对树体不滑动', (tester) async {
+    await seedNovel();
+    final outline = List.generate(10, (index) => OutlineChapter(
+      chapter: Chapter(id: index + 1, novelId: 1, title: '第${index + 1}章', sortOrder: index),
+      sections: const [],
+    ));
+    await pumpOutline(tester, outline, enableIllustratedCamera: true);
+    await tester.pump(const Duration(seconds: 2));
+    final beforeTree = tester.getRect(find.byType(TreeStandin));
+    final beforeBranch = tester.getRect(find.byKey(const Key('静态章交互_9')));
+    await tester.dragFrom(const Offset(80, 650), const Offset(0, 100));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    final afterTree = tester.getRect(find.byType(TreeStandin));
+    final afterBranch = tester.getRect(find.byKey(const Key('静态章交互_9')));
+    expect(tester.widget<TreeStandin>(find.byType(TreeStandin)).stage, 5);
+    expect(afterTree.size, beforeTree.size);
+    expect(afterTree.top, greaterThan(beforeTree.top));
+    expect(afterBranch.top - afterTree.top, closeTo(beforeBranch.top - beforeTree.top, 0.1));
+    expect(find.byKey(const Key('静态章交互_10')), findsNothing);
   });
 
   testWidgets('正式二维右侧最多显示两节且滑动会刷新窗口', (tester) async {

@@ -20,6 +20,7 @@ import 'tree_scene/tree_scene_controller.dart';
 import 'tree_scene/tree_scene_gestures.dart';
 import 'tree_scene/illustrated_tree_scene.dart';
 import 'tree_scene/tree_standin.dart';
+import 'tree_scene/illustrated_tree_viewport.dart';
 
 /// 某小说的大纲流（章+节），魔树数据源
 final outlineProvider = StreamProvider.family<List<OutlineChapter>, int>(
@@ -59,10 +60,12 @@ class OutlinePage extends ConsumerStatefulWidget {
     required this.novelId,
     required this.title,
     this.treeSceneBuilder,
+    this.enableIllustratedCamera = const bool.fromEnvironment('ENABLE_ILLUSTRATED_TREE_CAMERA'),
   });
 
   final int novelId;
   final String title;
+  final bool enableIllustratedCamera;
   final Widget Function(TreeSceneController controller)? treeSceneBuilder;
 
   @override
@@ -460,6 +463,11 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                 );
               }
 
+              final chapterStep = constraints.maxHeight * 0.22;
+              final cameraMode = staticMode && widget.enableIllustratedCamera;
+              final sceneHeight = constraints.maxHeight +
+                  (cameraMode ? math.max(0, outline.length - 2) * chapterStep : 0);
+              var cameraRow = 0;
               final windowLabels =
                   <
                     ({
@@ -481,6 +489,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                   0,
                   (outline.length - 2).clamp(0, outline.length),
                 );
+                cameraRow = cameraMode ? firstChapter : 0;
                 final chapters = outline
                     .skip(firstChapter)
                     .take(2)
@@ -496,7 +505,6 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                 final branchHeight = branchWidth / 1.5;
                 final chapterTop =
                     constraints.maxHeight * (0.17 + (1 - age) * 0.34);
-                final chapterStep = constraints.maxHeight * 0.22;
                 for (var index = 0; index < chapters.length; index += 1) {
                   final chapter = chapters[index];
                   windowLabels.add((
@@ -506,7 +514,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                     ),
                     rect: Rect.fromLTWH(
                       -branchWidth * 0.06,
-                      chapterTop + index * chapterStep,
+                      chapterTop + (index + cameraRow) * chapterStep,
                       branchWidth,
                       branchHeight,
                     ),
@@ -553,7 +561,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                     ),
                     rect: Rect.fromLTWH(
                       constraints.maxWidth - branchWidth * 0.94,
-                      sectionTop + index * sectionStep,
+                      sectionTop + cameraRow * chapterStep + index * sectionStep,
                       branchWidth,
                       branchHeight,
                     ),
@@ -613,11 +621,25 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                         !_treeSceneController.isReady ||
                         _treeSceneController.useStaticFallback)
                       Positioned.fill(
-                        child: TreeStandin(
-                          stage: illustratedTreeStageForNodeCount(
-                            _illustratedNodeCount(outline),
+                        child: IllustratedTreeViewport(
+                          sceneHeight: sceneHeight,
+                          focusY: constraints.maxHeight * 0.5 + cameraRow * chapterStep,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              TreeStandin(
+                                stage: illustratedTreeStageForNodeCount(
+                                  _illustratedNodeCount(outline),
+                                ),
+                                growthRevision: _illustratedNodeCount(outline),
+                                completeCrown: cameraMode && outline.length > 2,
+                              ),
+                              if (staticMode)
+                                for (final item in windowLabels)
+                                  staticLabel(item.label, item.rect,
+                                    side: item.side, selected: item.selected),
+                            ],
                           ),
-                          growthRevision: _illustratedNodeCount(outline),
                         ),
                       ),
                     Positioned(
@@ -645,7 +667,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                     for (final projection in _treeSceneController.visibleLabels)
                       if (!staticMode) labelHotspot(projection),
                     for (final item in windowLabels)
-                      if (staticMode || awaitsProjection(item.label))
+                      if (!staticMode && awaitsProjection(item.label))
                         staticLabel(
                           item.label,
                           item.rect,
