@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-09-09 05:03:39　对应提交：15ea255 之后的工作区状态
+> 生成时间：2026-09-09 20:30:10　对应提交：7d21317 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,20 +12,20 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     172
-  Nodes:     4,964
-  Edges:     21,611
-  DB Size:   24.17 MB
+  Files:     174
+  Nodes:     4,976
+  Edges:     21,635
+  DB Size:   24.21 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,759
-  function        1,540
-  import          573
-  class           500
+  method          1,760
+  function        1,543
+  import          578
+  class           501
   constant        272
-  file            164
+  file            166
   variable        110
   enum_member     25
   type_alias      13
@@ -33,7 +33,7 @@ Nodes by Kind:
   namespace       2
 
 Files by Language:
-  dart            91
+  dart            93
   javascript      39
   python          14
   kotlin          8
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (172 files):
+Project Structure (174 files):
 
 |-- .agents
 |   `-- skills
@@ -175,6 +175,7 @@ Project Structure (172 files):
 |   |   |   |-- tree_scene
 |   |   |   |   |-- illustrated_tree_growth.dart (dart, 6 symbols)
 |   |   |   |   |-- illustrated_tree_scene.dart (dart, 23 symbols)
+|   |   |   |   |-- illustrated_tree_viewport.dart (dart, 5 symbols)
 |   |   |   |   |-- tree_scene_controller.dart (dart, 51 symbols)
 |   |   |   |   |-- tree_scene_gestures.dart (dart, 17 symbols)
 |   |   |   |   |-- tree_scene_io.dart (dart, 18 symbols)
@@ -236,6 +237,7 @@ Project Structure (172 files):
 |   |-- presentation
 |   |   |-- home_loading_regression_test.dart (dart, 4 symbols)
 |   |   |-- home_page_test.dart (dart, 21 symbols)
+|   |   |-- illustrated_tree_viewport_test.dart (dart, 9 symbols)
 |   |   |-- magic_carpet_test.dart (dart, 18 symbols)
 |   |   |-- orbiting_inspirations_test.dart (dart, 11 symbols)
 |   |   |-- outline_controller_test.dart (dart, 10 symbols)
