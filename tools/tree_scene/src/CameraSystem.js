@@ -1,5 +1,12 @@
 import * as THREE from 'three';
 
+export function treeFrameForAge(age) {
+  const normalizedAge = Math.min(1, Math.max(0, Number(age) || 0));
+  const target = new THREE.Vector3(0, 0.72 + normalizedAge * 1.85, 0);
+  const position = new THREE.Vector3(0, target.y + 0.05, 4.3 + normalizedAge * 5.8);
+  return { position, target };
+}
+
 export class CameraSystem {
   constructor({ camera, treeRoot, branchSystem, timeline }) {
     this.camera = camera;
@@ -15,8 +22,15 @@ export class CameraSystem {
     const chapter = snapshot.chapters?.find(
       (item) => item.id === snapshot.activeChapterId,
     ) ?? snapshot.chapters?.at(-1);
-    if (!chapter) return Promise.resolve();
+    if (!chapter) return this.frameTreeAge(snapshot.treeAge ?? 0, options);
     return this.focusChapter(chapter.id, options);
+  }
+
+  frameTreeAge(age, { animate = true } = {}) {
+    this.chapterId = null;
+    this.sectionId = null;
+    const { position, target } = treeFrameForAge(age);
+    return this.moveCamera(position, target, { animate, durationMs: 520 });
   }
 
   focusChapter(id, { animate = true } = {}) {
@@ -24,7 +38,10 @@ export class CameraSystem {
     if (!anchor) return Promise.resolve();
     this.chapterId = id;
     this.sectionId = null;
-    return this.moveToAnchor(anchor, { animate, distance: 29 });
+    return this.moveToAnchor(anchor, {
+      animate,
+      distance: anchor.userData.frameDistance ?? 9.5,
+    });
   }
 
   focusSection(chapterId, sectionId, { animate = true } = {}) {
@@ -32,7 +49,10 @@ export class CameraSystem {
     if (!anchor) return Promise.resolve();
     this.chapterId = chapterId;
     this.sectionId = sectionId;
-    return this.moveToAnchor(anchor, { animate, distance: 26.5 });
+    return this.moveToAnchor(anchor, {
+      animate,
+      distance: anchor.userData.frameDistance ?? 9.5,
+    });
   }
 
   panBy(delta) {
@@ -54,6 +74,13 @@ export class CameraSystem {
     const world = anchor.getWorldPosition(new THREE.Vector3());
     const destinationTarget = new THREE.Vector3(0, world.y, world.z * 0.18);
     const destinationPosition = new THREE.Vector3(0, world.y + 0.08, distance);
+    return this.moveCamera(destinationPosition, destinationTarget, {
+      animate,
+      durationMs: 620,
+    });
+  }
+
+  async moveCamera(destinationPosition, destinationTarget, { animate, durationMs }) {
     if (!animate || !this.timeline?.tween) {
       this.camera.position.copy(destinationPosition);
       this.target.copy(destinationTarget);
@@ -64,7 +91,7 @@ export class CameraSystem {
     const startPosition = this.camera.position.clone();
     const startTarget = this.target.clone();
     await this.timeline.tween({
-      durationMs: 620,
+      durationMs,
       onUpdate: (progress) => {
         this.camera.position.lerpVectors(startPosition, destinationPosition, progress);
         this.target.lerpVectors(startTarget, destinationTarget, progress);

@@ -4,7 +4,7 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 import { BranchSystem } from './BranchSystem.js';
-import { CameraSystem } from './CameraSystem.js';
+import { CameraSystem, treeFrameForAge } from './CameraSystem.js';
 import { InteractionSystem } from './InteractionSystem.js';
 import { LabelSystem } from './LabelSystem.js';
 import { LeafSystem } from './LeafSystem.js';
@@ -46,6 +46,7 @@ export class MagicTreeScene {
     this.cameraSystem = null;
     this.interactionSystem = null;
     this.root = null;
+    this.magicVeins = [];
     this.autoFrame = true;
     this.lastInteractionAt = null;
     this.addLights();
@@ -66,11 +67,27 @@ export class MagicTreeScene {
 
     const channels = [];
     const markers = [];
+    let crownGuide = null;
+    let leafPrototype = null;
+    let mainTreeRole = null;
+    let rootRole = null;
     let barkMaterial = null;
     const leafMaterials = [];
     this.root.traverse((object) => {
       if (object.name.startsWith('TrunkMarker_')) markers.push(object);
-      if (object.userData?.ec_role === 'magic_emissive') object.visible = false;
+      if (object.name === 'CrownGuide') crownGuide = object;
+      if (object.userData?.ec_role === 'main_tree') mainTreeRole = object;
+      if (object.userData?.ec_role === 'root_flare') rootRole = object;
+      if (object.userData?.ec_role === 'magic_emissive') {
+        object.visible = false;
+        this.magicVeins.push(object);
+      }
+      if (object.userData?.ec_role === 'leaf_prototype') {
+        leafPrototype = object;
+        object.visible = false;
+      }
+      if (object.userData?.ec_role === 'soil_mound') object.visible = false;
+      if (object.userData?.ec_role === 'moss_patches') object.visible = false;
       if (object.isMesh) {
         const materials = Array.isArray(object.material) ? object.material : [object.material];
         let isLeaf = false;
@@ -88,7 +105,6 @@ export class MagicTreeScene {
             leafMaterials.push(material.clone());
           }
         }
-        if (object.userData?.ec_role === 'main_tree') barkMaterial = materials[0];
         object.castShadow = this.quality.shadows && !isLeaf;
         object.receiveShadow = this.quality.shadows;
       }
@@ -96,6 +112,20 @@ export class MagicTreeScene {
         channels.push(object);
       }
     });
+    mainTreeRole?.traverse((object) => {
+      if (barkMaterial || !object.isMesh) return;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      barkMaterial = materials.find((material) => !material?.name.startsWith('Leaf')) ?? null;
+    });
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(40, 40),
+      new THREE.ShadowMaterial({ color: 0x3a2a18, opacity: 0.10 }),
+    );
+    ground.name = 'GroundPlane';
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = 0.0;
+    ground.receiveShadow = this.quality.shadows;
+    this.scene.add(ground);
 
     const mixer = new THREE.AnimationMixer(this.root);
     const idle = THREE.AnimationClip.findByName(gltf.animations, 'idle_breath');
@@ -107,7 +137,9 @@ export class MagicTreeScene {
       root: this.root,
       capacity: 5000,
       materials: leafMaterials.length === 2 ? leafMaterials : null,
+      prototype: leafPrototype,
     });
+    if (crownGuide) leafSystem.setCrownGuide(crownGuide);
     this.branchSystem = new BranchSystem({
       root: this.root,
       markers,
@@ -118,6 +150,7 @@ export class MagicTreeScene {
       root: this.root,
       branchSystem: this.branchSystem,
       camera: this.camera,
+      barkMaterial,
     });
     this.cameraSystem = new CameraSystem({
       camera: this.camera,
@@ -127,6 +160,7 @@ export class MagicTreeScene {
     });
     this.interactionSystem = new InteractionSystem({ camera: this.camera });
     await this.growth.setAge(0.08, { animate: false });
+    leafSystem.setTreeAge(0.08);
     return this;
   }
 
@@ -142,6 +176,7 @@ export class MagicTreeScene {
   async sync(snapshot) {
     this.snapshot = structuredClone(snapshot);
     this.branchSystem?.sync(snapshot);
+    this.branchSystem?.leafSystem?.setTreeAge(snapshot.treeAge ?? 0);
     this.labelSystem?.sync(snapshot);
     this.interactionSystem?.setPickRoots(this.labelSystem?.pickRoots ?? []);
     this.autoFrame = false;
@@ -206,12 +241,13 @@ export class MagicTreeScene {
     const dt = Math.min(this.clock.getDelta(), 1 / 20);
     this.timeline.update(dt);
     this.growth?.update(dt);
+    const treeAge = this.growth?.getState().age ?? 0;
+    this.branchSystem?.leafSystem?.setTreeAge(treeAge);
     if (this.autoFrame) {
       const age = this.growth?.getState().age ?? 0.08;
-      const focusHeight = 0.65 + 4.1 * age;
-      this.camera.position.y = focusHeight;
-      this.camera.position.z = 16 + 19 * age;
-      this.camera.lookAt(0, focusHeight, 0);
+      const frame = treeFrameForAge(age);
+      this.camera.position.copy(frame.position);
+      this.camera.lookAt(frame.target);
     }
     this.labelSystem?.update();
     if (this.lastInteractionAt != null) {

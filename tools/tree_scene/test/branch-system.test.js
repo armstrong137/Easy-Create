@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import * as THREE from 'three';
 
 import {
   BranchSystem,
+  branchRadiusForKind,
   buildBranchLayout,
   visibleBranchIds,
 } from '../src/BranchSystem.js';
@@ -27,7 +29,7 @@ function snapshot(chapterCount, sectionsPerChapter = 0) {
 function markers() {
   return Array.from({ length: 16 }, (_, index) => {
     const marker = new THREE.Object3D();
-    marker.position.set(0, 0.8 + index * 0.42, 0);
+    marker.position.set(0, 0.55 + index * (4.15 / 15), 0);
     marker.updateMatrixWorld();
     return marker;
   });
@@ -138,4 +140,91 @@ test('多章节只渲染当前窗口内的两章和五节枝', () => {
   assert.deepEqual([...visible.chapterIds], [119, 120]);
   assert.equal(visible.sectionIds.size, 5);
   assert.equal(visible.sectionIds.has(state.chapters[20].sections[7].id), true);
+});
+
+test('sapling chapter anchor follows the young crown and stays in portrait view', () => {
+  const root = new THREE.Group();
+  const branches = new BranchSystem({ root, markers: markers() });
+  const state = snapshot(1);
+  state.treeAge = 0.08;
+  branches.sync(state);
+
+  const entry = branches.entries.find((item) => item.kind === 'chapter');
+  const start = entry.curve.getPointAt(0);
+  const end = entry.curve.getPointAt(1);
+  assert.ok(start.y < 2, `sapling branch starts too high: ${start.y}`);
+  assert.ok(end.x < -0.55 && end.x > -1.2, `chapter endpoint is outside portrait view: ${end.x}`);
+});
+
+test('section branches grow from the trunk to the right without crossing the tree', () => {
+  const root = new THREE.Group();
+  const branches = new BranchSystem({ root, markers: markers() });
+  const state = snapshot(2, 3);
+  state.activeChapterId = state.chapters[1].id;
+  branches.sync(state);
+
+  const entry = branches.entries.find(
+    (item) => item.kind === 'section' && item.chapterId === state.activeChapterId,
+  );
+  const start = entry.curve.getPointAt(0);
+  const end = entry.curve.getPointAt(1);
+  assert.ok(Math.abs(start.x) < 0.2, `section branch does not start on trunk: ${start.x}`);
+  assert.ok(end.x > 0.55 && end.x < 1.25, `section endpoint is outside portrait view: ${end.x}`);
+});
+
+test('chapter and section branches stay subordinate to the main trunk', () => {
+  assert.ok(branchRadiusForKind('chapter') <= 0.06);
+  assert.ok(branchRadiusForKind('section') <= 0.035);
+  assert.ok(branchRadiusForKind('chapter') > branchRadiusForKind('section'));
+});
+
+test('mature chapter focus uses a close trunk composition', () => {
+  const root = new THREE.Group();
+  const branches = new BranchSystem({ root, markers: markers() });
+  const state = snapshot(10, 2);
+  state.treeAge = 1;
+  state.activeChapterId = state.chapters.at(-1).id;
+  branches.sync(state);
+
+  const anchor = branches.getAnchor('chapter', state.activeChapterId);
+  assert.ok(anchor.userData.frameDistance <= 9, anchor.userData);
+  const visibleEndpoints = branches.entries
+    .filter((entry) => entry.visible)
+    .map((entry) => entry.curve.getPointAt(1).x);
+  assert.ok(visibleEndpoints.every((x) => Math.abs(x) <= 0.9), visibleEndpoints);
+});
+
+test('two section twigs leave enough vertical room for readable plaques', () => {
+  const root = new THREE.Group();
+  const branches = new BranchSystem({ root, markers: markers() });
+  const state = snapshot(2, 2);
+  state.activeChapterId = state.chapters[1].id;
+  branches.sync(state);
+  const endpoints = branches.entries
+    .filter((entry) => entry.kind === 'section' && entry.chapterId === state.activeChapterId)
+    .map((entry) => entry.curve.getPointAt(1).y)
+    .sort((left, right) => left - right);
+
+  assert.ok(endpoints[1] - endpoints[0] >= 0.58, endpoints);
+});
+
+test('two visible chapter branches leave enough vertical room for plaques', () => {
+  const root = new THREE.Group();
+  const branches = new BranchSystem({ root, markers: markers() });
+  const state = snapshot(10, 0);
+  state.activeChapterId = state.chapters.at(-1).id;
+  branches.sync(state);
+  const endpoints = branches.entries
+    .filter((entry) => entry.kind === 'chapter' && entry.visible)
+    .map((entry) => entry.curve.getPointAt(1).y)
+    .sort((left, right) => left - right);
+
+  assert.ok(endpoints[1] - endpoints[0] >= 0.70, endpoints);
+});
+
+test('settled label branches grow forked wooden supports around the plaque', async () => {
+  const source = await readFile(new URL('../src/BranchSystem.js', import.meta.url), 'utf8');
+  assert.match(source, /supportCurves\(entry\)/);
+  assert.match(source, /supportRadius/);
+  assert.match(source, /mergeGeometries\(parts, false\)/);
 });

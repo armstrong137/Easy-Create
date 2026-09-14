@@ -28,6 +28,7 @@ export function createStartupErrorPayload({
   return {
     stage,
     message: String(error),
+    stack: String(error?.stack ?? ''),
     webgl2Available: Boolean(webgl2Available),
     userAgent: String(userAgent ?? ''),
     modelUrl: String(modelUrl ?? ''),

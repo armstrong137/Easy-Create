@@ -11,6 +11,48 @@ export function fitFontSize(text, maxWidth, preferred) {
   return Math.max(18, Math.floor(maxWidth / Math.max(1, units)));
 }
 
+export function labelDimensions(kind) {
+  return kind === 'chapter'
+    ? { width: 0.38, height: 0.66, depth: 0.045 }
+    : { width: 0.34, height: 0.56, depth: 0.038 };
+}
+
+export function preferredLabelFont(kind) {
+  return kind === 'chapter' ? 108 : 118;
+}
+
+function plaqueShape(width, height) {
+  const x = width / 2;
+  const y = height / 2;
+  const notch = Math.min(width, height) * 0.12;
+  const shape = new THREE.Shape();
+  shape.moveTo(-x + notch, -y);
+  shape.lineTo(x - notch, -y);
+  shape.lineTo(x, -y + notch);
+  shape.lineTo(x, y - notch);
+  shape.lineTo(x - notch, y);
+  shape.lineTo(-x + notch, y);
+  shape.lineTo(-x, y - notch);
+  shape.lineTo(-x, -y + notch);
+  shape.closePath();
+  return shape;
+}
+
+function plaqueFaceGeometry(width, height) {
+  const geometry = new THREE.ShapeGeometry(plaqueShape(width, height));
+  const position = geometry.getAttribute('position');
+  const uv = geometry.getAttribute('uv');
+  for (let index = 0; index < uv.count; index += 1) {
+    uv.setXY(
+      index,
+      position.getX(index) / width + 0.5,
+      position.getY(index) / height + 0.5,
+    );
+  }
+  uv.needsUpdate = true;
+  return geometry;
+}
+
 export function computeLabelLayout(snapshot) {
   const chapters = snapshot.chapters ?? [];
   const activeIndex = Math.max(
@@ -27,6 +69,7 @@ export function computeLabelLayout(snapshot) {
       ...chapters[index],
       side: 'left',
       displayRank,
+      active: chapters[index].id === snapshot.activeChapterId,
     }));
 
   const activeChapter = chapters[resolvedIndex];
@@ -42,26 +85,46 @@ export function computeLabelLayout(snapshot) {
     ...section,
     chapterId: activeChapter.id,
     side: 'right',
+    active: section.id === snapshot.activeSectionId,
   }));
   return { chapters: visibleChapters, sections };
 }
 
 export class LabelSystem {
-  constructor({ root, branchSystem, camera }) {
+  constructor({ root, branchSystem, camera, barkMaterial = null }) {
     this.root = root;
     this.branchSystem = branchSystem;
     this.camera = camera;
     this.labels = [];
     this.pickRoots = [];
-    this.wood = new THREE.MeshStandardMaterial({
+    this.wood = barkMaterial?.clone?.() ?? new THREE.MeshStandardMaterial({
       color: 0x4f2d18,
       roughness: 0.82,
       metalness: 0.02,
     });
+    this.wood.depthTest = false;
+    this.wood.depthWrite = false;
+    this.activeWood = this.wood.clone();
+    this.activeWood.emissive?.set(0x6b3004);
+    this.activeWood.emissiveIntensity = 0.34;
+    this.activeWood.roughness = 0.76;
+    this.activeWood.depthTest = false;
+    this.activeWood.depthWrite = false;
     this.gold = new THREE.MeshStandardMaterial({
       color: 0xb68a3a,
       roughness: 0.48,
       metalness: 0.36,
+      depthTest: false,
+      depthWrite: false,
+    });
+    this.activeGold = new THREE.MeshStandardMaterial({
+      color: 0xd4a941,
+      emissive: 0xd08708,
+      emissiveIntensity: 0.72,
+      roughness: 0.42,
+      metalness: 0.34,
+      depthTest: false,
+      depthWrite: false,
     });
   }
 
@@ -84,10 +147,10 @@ export class LabelSystem {
       return [{
         kind: label.userData.kind,
         id: label.userData.id,
-        x: (point.x + 1) / 2 - (chapter ? 0.065 : 0.09),
-        y: (1 - point.y) / 2 - (chapter ? 0.075 : 0.035),
-        width: chapter ? 0.13 : 0.18,
-        height: chapter ? 0.15 : 0.07,
+        x: (point.x + 1) / 2 - (chapter ? 0.065 : 0.06),
+        y: (1 - point.y) / 2 - (chapter ? 0.075 : 0.065),
+        width: chapter ? 0.13 : 0.12,
+        height: chapter ? 0.15 : 0.13,
       }];
     });
   }
@@ -96,39 +159,126 @@ export class LabelSystem {
     const anchor = this.branchSystem.getAnchor(kind, item.id);
     if (!anchor) return;
     const chapter = kind === 'chapter';
-    const width = chapter ? 0.9 : 1.45;
-    const height = chapter ? 1.45 : 0.55;
+    const { width, height, depth } = labelDimensions(kind);
     const group = new THREE.Group();
     group.name = `${kind}Label_${item.id}`;
     group.userData = { kind, id: item.id };
-    const chapterY = chapter ? (item.displayRank === 0 ? -0.48 : 0.48) : 0;
-    group.position.set(0, chapterY, 0);
+    group.position.set(0, height * 0.44, 0.055);
 
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(width, height, 0.105), this.wood);
+    const frame = new THREE.Mesh(
+      new THREE.ExtrudeGeometry(plaqueShape(width, height), {
+        depth,
+        steps: 1,
+        bevelEnabled: true,
+        bevelSegments: 2,
+        bevelSize: 0.018,
+        bevelThickness: 0.012,
+      }),
+      item.active ? this.activeWood : this.wood,
+    );
+    frame.position.z = -depth / 2;
+    frame.renderOrder = 20;
     frame.userData = group.userData;
     frame.layers.enable(PICK_LAYER);
+    frame.castShadow = true;
+    frame.receiveShadow = true;
     group.add(frame);
 
+    const railWidth = width * 0.51;
+    const railHeight = height * 0.51;
+    const railDepth = depth * 1.08;
+    const railBend = chapter ? 0.026 : 0.020;
+    const rails = [
+      [
+        new THREE.Vector3(-railWidth, railHeight, railDepth),
+        new THREE.Vector3(0, railHeight + railBend, railDepth),
+        new THREE.Vector3(railWidth, railHeight, railDepth),
+      ],
+      [
+        new THREE.Vector3(-railWidth, -railHeight, railDepth),
+        new THREE.Vector3(0, -railHeight - railBend, railDepth),
+        new THREE.Vector3(railWidth, -railHeight, railDepth),
+      ],
+      [
+        new THREE.Vector3(-railWidth, -railHeight, railDepth),
+        new THREE.Vector3(-railWidth - railBend, 0, railDepth),
+        new THREE.Vector3(-railWidth, railHeight, railDepth),
+      ],
+      [
+        new THREE.Vector3(railWidth, -railHeight, railDepth),
+        new THREE.Vector3(railWidth + railBend, 0, railDepth),
+        new THREE.Vector3(railWidth, railHeight, railDepth),
+      ],
+      [
+        new THREE.Vector3(0, -railHeight - height * 0.12, railDepth - depth * 0.32),
+        new THREE.Vector3(-railWidth * 0.52, -railHeight - height * 0.08, railDepth),
+        new THREE.Vector3(-railWidth, -railHeight * 0.62, railDepth),
+      ],
+      [
+        new THREE.Vector3(0, -railHeight - height * 0.12, railDepth - depth * 0.32),
+        new THREE.Vector3(railWidth * 0.50, -railHeight - height * 0.06, railDepth),
+        new THREE.Vector3(railWidth, -railHeight * 0.58, railDepth),
+      ],
+    ];
+    for (const [start, control, end] of rails) {
+      const rail = new THREE.Mesh(
+        new THREE.TubeGeometry(
+          new THREE.QuadraticBezierCurve3(start, control, end),
+          8,
+          chapter ? 0.024 : 0.019,
+          8,
+          false,
+        ),
+        item.active ? this.activeWood : this.wood,
+      );
+      rail.name = 'PlaqueBarkRail';
+      rail.renderOrder = 23;
+      rail.userData = group.userData;
+      rail.layers.enable(PICK_LAYER);
+      rail.castShadow = true;
+      rail.receiveShadow = true;
+      group.add(rail);
+    }
+
+    const trim = new THREE.Mesh(
+      plaqueFaceGeometry(width, height),
+      item.active ? this.activeGold : this.gold,
+    );
+    trim.scale.set(0.90, 0.92, 1);
+    trim.position.z = depth * 0.72;
+    trim.renderOrder = 21;
+    trim.userData = group.userData;
+    trim.layers.enable(PICK_LAYER);
+    trim.receiveShadow = true;
+    group.add(trim);
+
     const panelMaterial = new THREE.MeshStandardMaterial({
-      map: this.makeTextTexture(item.title, chapter),
+      map: this.makeTextTexture(item.title, true),
       roughness: 0.9,
       metalness: 0,
+      emissive: item.active ? 0x4f2d04 : 0x000000,
+      emissiveIntensity: item.active ? 0.28 : 0,
+      depthTest: false,
+      depthWrite: false,
     });
     const panel = new THREE.Mesh(
-      new THREE.PlaneGeometry(width * 0.78, height * 0.84),
+      plaqueFaceGeometry(width * 0.78, height * 0.84),
       panelMaterial,
     );
-    panel.position.z = 0.056;
+    panel.name = 'PlaqueTextPanel';
+    panel.position.z = depth * 0.94;
+    panel.renderOrder = 22;
     panel.userData = group.userData;
     panel.layers.enable(PICK_LAYER);
     group.add(panel);
 
-    for (const y of [-height * 0.51, height * 0.51]) {
+    for (const y of [-height * 0.50, height * 0.50]) {
       const ornament = new THREE.Mesh(
-        new THREE.OctahedronGeometry(chapter ? 0.085 : 0.055, 0),
+        new THREE.OctahedronGeometry(chapter ? 0.035 : 0.024, 0),
         this.gold,
       );
-      ornament.position.set(0, y, 0.02);
+      ornament.position.set(0, y, depth * 0.85);
+      ornament.renderOrder = 23;
       ornament.userData = group.userData;
       ornament.layers.enable(PICK_LAYER);
       group.add(ornament);
@@ -144,25 +294,49 @@ export class LabelSystem {
     canvas.width = vertical ? 384 : 768;
     canvas.height = vertical ? 640 : 256;
     const context = canvas.getContext('2d');
-    context.fillStyle = '#d8c59a';
+    const parchment = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+    parchment.addColorStop(0, '#ead9ad');
+    parchment.addColorStop(0.48, '#d9c494');
+    parchment.addColorStop(1, '#cbb27d');
+    context.fillStyle = parchment;
     context.fillRect(0, 0, canvas.width, canvas.height);
+    context.lineWidth = 1;
+    for (let index = 0; index < 180; index += 1) {
+      const x = (index * 83) % canvas.width;
+      const y = (index * 137) % canvas.height;
+      const length = 16 + (index * 19) % 70;
+      context.strokeStyle = index % 3 === 0
+        ? 'rgba(84, 55, 28, 0.075)'
+        : 'rgba(255, 246, 210, 0.11)';
+      context.beginPath();
+      context.moveTo(x, y);
+      context.lineTo(Math.min(canvas.width, x + length), y + ((index % 5) - 2));
+      context.stroke();
+    }
     context.strokeStyle = '#9e7739';
-    context.lineWidth = 18;
-    context.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+    context.lineWidth = 11;
+    context.strokeRect(16, 16, canvas.width - 32, canvas.height - 32);
     context.fillStyle = '#2f2117';
     context.textAlign = 'center';
     context.textBaseline = 'middle';
 
     if (vertical && [...text].length <= 8) {
       const characters = [...text];
-      const size = Math.min(76, Math.floor(470 / Math.max(1, characters.length)));
+      const size = Math.min(
+        preferredLabelFont('chapter'),
+        Math.floor(500 / Math.max(1, characters.length)),
+      );
       context.font = `600 ${size}px serif`;
       characters.forEach((character, index) => {
         const y = canvas.height / 2 + (index - (characters.length - 1) / 2) * size * 1.12;
         context.fillText(character, canvas.width / 2, y);
       });
     } else {
-      const size = fitFontSize(text, canvas.width - 80, vertical ? 58 : 74);
+      const size = fitFontSize(
+        text,
+        canvas.width - 80,
+        preferredLabelFont(vertical ? 'chapter' : 'section'),
+      );
       context.font = `600 ${size}px serif`;
       context.fillText(text, canvas.width / 2, canvas.height / 2, canvas.width - 80);
     }
@@ -177,7 +351,12 @@ export class LabelSystem {
       label.traverse((object) => {
         object.geometry?.dispose?.();
         if (object.material?.map) object.material.map.dispose();
-        if (object.material !== this.wood && object.material !== this.gold) {
+        if (
+          object.material !== this.wood
+          && object.material !== this.activeWood
+          && object.material !== this.gold
+          && object.material !== this.activeGold
+        ) {
           object.material?.dispose?.();
         }
       });

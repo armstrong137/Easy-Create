@@ -28,9 +28,11 @@ test('启动错误包含定位浏览器空白所需的完整信息', () => {
     modelUrl: '/magic_tree.glb',
   });
 
+  assert.match(payload.stack, /model 404/);
   assert.deepEqual(payload, {
     stage: 'modelLoading',
     message: 'Error: model 404',
+    stack: payload.stack,
     webgl2Available: false,
     userAgent: 'test-browser',
     modelUrl: '/magic_tree.glb',

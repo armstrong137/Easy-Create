@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
+import { heightRatioForAge, radialRatioForAge } from './GrowthProfile.js';
+
 function stableHash(value) {
   let hash = 2166136261;
   for (const character of String(value)) {
@@ -15,6 +17,10 @@ function signature(seed, length) {
     const shifted = seed >>> ((index * 5) % 24);
     return Number((((shifted & 31) / 31) * 2 - 1).toFixed(4));
   });
+}
+
+export function branchRadiusForKind(kind) {
+  return kind === 'chapter' ? 0.058 : 0.032;
 }
 
 export function buildBranchLayout(snapshot, markerCount = 16) {
@@ -44,6 +50,7 @@ export function buildBranchLayout(snapshot, markerCount = 16) {
         seed: sectionSeed,
         ordinal: sectionOrdinal,
         siblingCount: chapterSections.length,
+        chapterAnchorIndex: anchorIndex,
         anchorKey: `chapter:${chapter.id}:${sectionSeed % 11}`,
         controlSignature: signature(sectionSeed, 4),
       });
@@ -104,12 +111,17 @@ export class BranchSystem {
     const entries = [];
     const chapterCurves = new Map();
     const visible = visibleBranchIds(snapshot);
+    const visibleChapterOrder = [...visible.chapterIds];
 
     for (const descriptor of layout.chapters.values()) {
-      const curve = this.chapterCurve(descriptor);
+      const resolved = {
+        ...descriptor,
+        displayRank: visibleChapterOrder.indexOf(descriptor.id),
+      };
+      const curve = this.chapterCurve(resolved);
       chapterCurves.set(descriptor.id, curve);
       entries.push({
-        ...descriptor,
+        ...resolved,
         curve,
         visible: visible.chapterIds.has(descriptor.id),
       });
@@ -119,7 +131,7 @@ export class BranchSystem {
       if (!parent) continue;
       entries.push({
         ...descriptor,
-        curve: this.sectionCurve(descriptor, parent),
+        curve: this.sectionCurve(descriptor),
         visible: visible.sectionIds.has(descriptor.id),
       });
     }
@@ -137,7 +149,12 @@ export class BranchSystem {
       nextSnapshot.chapters.push({ ...chapter, sections: chapter.sections ?? [] });
     }
     const descriptor = buildBranchLayout(nextSnapshot, this.markers.length).chapters.get(chapter.id);
-    await this.runGrowth({ ...descriptor, curve: this.chapterCurve(descriptor) }, timeline);
+    const visible = visibleBranchIds(nextSnapshot);
+    const resolved = {
+      ...descriptor,
+      displayRank: [...visible.chapterIds].indexOf(chapter.id),
+    };
+    await this.runGrowth({ ...resolved, curve: this.chapterCurve(resolved) }, timeline);
     this.sync(nextSnapshot);
   }
 
@@ -148,10 +165,8 @@ export class BranchSystem {
     chapter.sections ??= [];
     if (!chapter.sections.some((item) => item.id === section.id)) chapter.sections.push(section);
     const layout = buildBranchLayout(nextSnapshot, this.markers.length);
-    const chapterDescriptor = layout.chapters.get(section.chapterId);
     const descriptor = layout.sections.get(section.id);
-    const parent = this.chapterCurve(chapterDescriptor);
-    await this.runGrowth({ ...descriptor, curve: this.sectionCurve(descriptor, parent) }, timeline);
+    await this.runGrowth({ ...descriptor, curve: this.sectionCurve(descriptor) }, timeline);
     this.sync(nextSnapshot);
   }
 
@@ -191,41 +206,68 @@ export class BranchSystem {
   }
 
   chapterCurve(descriptor) {
-    const marker = this.markers[descriptor.anchorIndex % this.markers.length];
-    const start = marker.getWorldPosition(new THREE.Vector3());
-    this.root.worldToLocal(start);
+    const start = this.trunkPoint(descriptor.anchorIndex);
     const [a, b, c, d] = descriptor.controlSignature;
+    const age = Math.min(1, Math.max(0.08, Number(this.snapshot.treeAge) || 0.08));
+    const span = 0.58 + Math.sqrt(age) * 0.24;
+    const labelLane = descriptor.displayRank === 0
+      ? 0.30
+      : descriptor.displayRank === 1
+        ? -0.30
+        : 0;
     return new THREE.CatmullRomCurve3([
       start.clone().add(new THREE.Vector3(0.06, -0.02, 0)),
-      start.clone().add(new THREE.Vector3(-0.38, 0.10 + a * 0.16, b * 0.24)),
-      start.clone().add(new THREE.Vector3(-1.05, 0.28 + c * 0.30, d * 0.54)),
-      start.clone().add(new THREE.Vector3(-1.72 - Math.abs(a) * 0.58, 0.46 + b * 0.42, c * 0.78)),
+      start.clone().add(new THREE.Vector3(-span * 0.30, 0.07 + a * 0.08, b * 0.08)),
+      start.clone().add(new THREE.Vector3(
+        -span * 0.68,
+        0.18 + c * 0.12 + labelLane * 0.48,
+        d * 0.12,
+      )),
+      start.clone().add(new THREE.Vector3(
+        -span,
+        0.28 + b * 0.16 + labelLane,
+        c * 0.16,
+      )),
     ]);
   }
 
-  sectionCurve(descriptor, parentCurve) {
+  sectionCurve(descriptor) {
     const [a, b, c, d] = descriptor.controlSignature;
     const count = Math.max(1, descriptor.siblingCount);
-    const t = 0.22 + (descriptor.ordinal / Math.max(1, count - 1)) * 0.58;
-    const lane = (descriptor.ordinal - (count - 1) / 2) * 0.52;
-    const start = parentCurve.getPointAt(Math.min(0.82, t));
-    const horizontalSpan = 2.65 - start.x;
+    const lane = (descriptor.ordinal - (count - 1) / 2) * 0.72;
+    const markerOffset = Math.round((descriptor.ordinal - (count - 1) / 2) * 0.45);
+    const start = this.trunkPoint(descriptor.chapterAnchorIndex + markerOffset);
+    const age = Math.min(1, Math.max(0.08, Number(this.snapshot.treeAge) || 0.08));
+    const horizontalSpan = 0.56 + Math.sqrt(age) * 0.22;
     return new THREE.CatmullRomCurve3([
       start,
-      start.clone().add(new THREE.Vector3(horizontalSpan * 0.30, lane * 0.25 + 0.10 + a * 0.08, b * 0.18)),
-      start.clone().add(new THREE.Vector3(horizontalSpan * 0.70, lane * 0.72 + 0.24 + c * 0.16, d * 0.26)),
-      start.clone().add(new THREE.Vector3(horizontalSpan, lane + 0.38 + a * 0.20, b * 0.34)),
+      start.clone().add(new THREE.Vector3(horizontalSpan * 0.30, lane * 0.18 + 0.06 + a * 0.06, b * 0.07)),
+      start.clone().add(new THREE.Vector3(horizontalSpan * 0.70, lane * 0.65 + 0.14 + c * 0.09, d * 0.10)),
+      start.clone().add(new THREE.Vector3(horizontalSpan, lane + 0.22 + a * 0.12, b * 0.13)),
     ]);
   }
 
-  geometryFor(entry) {
-    const chapter = entry.kind === 'chapter';
-    const tubularSegments = chapter ? 14 : 5;
-    const radialSegments = chapter ? 6 : 6;
+  trunkPoint(markerIndex) {
+    const index = Math.max(0, Math.min(this.markers.length - 1, markerIndex));
+    const marker = this.markers[index];
+    const point = marker.getWorldPosition(new THREE.Vector3());
+    this.root.worldToLocal(point);
+    const heightRatio = heightRatioForAge(this.snapshot.treeAge);
+    const radialRatio = radialRatioForAge(this.snapshot.treeAge);
+    const ground = 0.42;
+    point.set(
+      point.x * radialRatio,
+      ground + (point.y - ground) * heightRatio,
+      point.z * radialRatio,
+    );
+    return point;
+  }
+
+  tubeGeometry(curve, tubularSegments, radius, radialSegments, minimumTaper = 0.14) {
     const geometry = new THREE.TubeGeometry(
-      entry.curve,
+      curve,
       tubularSegments,
-      chapter ? 0.11 : 0.052,
+      radius,
       radialSegments,
       false,
     );
@@ -235,8 +277,8 @@ export class BranchSystem {
     const ringSize = radialSegments + 1;
     for (let ring = 0; ring <= tubularSegments; ring += 1) {
       const t = ring / tubularSegments;
-      entry.curve.getPointAt(t, center);
-      const taper = 0.14 + 0.86 * (1 - t) ** 0.72;
+      curve.getPointAt(t, center);
+      const taper = minimumTaper + (1 - minimumTaper) * (1 - t) ** 0.72;
       for (let radial = 0; radial < ringSize; radial += 1) {
         const index = ring * ringSize + radial;
         point.fromBufferAttribute(positions, index);
@@ -246,6 +288,43 @@ export class BranchSystem {
     }
     positions.needsUpdate = true;
     geometry.computeVertexNormals();
+    return geometry;
+  }
+
+  supportCurves(entry) {
+    const end = entry.curve.getPointAt(1);
+    const chapter = entry.kind === 'chapter';
+    const halfWidth = (chapter ? 0.38 : 0.34) * 0.46;
+    const lift = (chapter ? 0.66 : 0.56) * 0.12;
+    return [-1, 1].map((direction) => new THREE.CatmullRomCurve3([
+      end.clone(),
+      end.clone().add(new THREE.Vector3(direction * halfWidth * 0.34, lift * 0.16, 0.015)),
+      end.clone().add(new THREE.Vector3(direction * halfWidth * 0.76, lift * 0.58, 0.020)),
+      end.clone().add(new THREE.Vector3(direction * halfWidth, lift, 0.018)),
+    ]));
+  }
+
+  geometryFor(entry) {
+    const chapter = entry.kind === 'chapter';
+    const radialSegments = 6;
+    const supportRadius = branchRadiusForKind(entry.kind) * 0.50;
+    const parts = [
+      this.tubeGeometry(
+        entry.curve,
+        chapter ? 14 : 5,
+        branchRadiusForKind(entry.kind),
+        radialSegments,
+      ),
+      ...this.supportCurves(entry).map((curve) => this.tubeGeometry(
+        curve,
+        chapter ? 7 : 5,
+        supportRadius,
+        radialSegments,
+        0.22,
+      )),
+    ];
+    const geometry = mergeGeometries(parts, false);
+    for (const part of parts) part.dispose();
     return geometry;
   }
 
@@ -274,6 +353,7 @@ export class BranchSystem {
       const anchor = new THREE.Object3D();
       anchor.name = `${entry.kind}Anchor_${entry.id}`;
       anchor.position.copy(entry.curve.getPointAt(1));
+      anchor.userData.frameDistance = 6.4 + (Number(this.snapshot.treeAge) || 0) * 2.4;
       this.anchorGroup.add(anchor);
       this.anchors.set(`${entry.kind}:${entry.id}`, anchor);
     }
@@ -283,7 +363,7 @@ export class BranchSystem {
     const geometry = this.geometryFor(entry);
     const mesh = new THREE.Mesh(geometry, this.material);
     const bud = new THREE.Mesh(
-      new THREE.SphereGeometry(entry.kind === 'chapter' ? 0.12 : 0.055, 10, 6),
+      new THREE.SphereGeometry(branchRadiusForKind(entry.kind) * 1.08, 10, 6),
       this.material,
     );
     this.group.add(mesh, bud);
