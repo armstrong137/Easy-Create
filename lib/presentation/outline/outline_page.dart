@@ -21,6 +21,7 @@ import 'tree_scene/tree_scene_gestures.dart';
 import 'tree_scene/illustrated_tree_scene.dart';
 import 'tree_scene/tree_standin.dart';
 import 'tree_scene/illustrated_tree_viewport.dart';
+import 'tree_scene/illustrated_tree_trunk.dart';
 
 /// 某小说的大纲流（章+节），魔树数据源
 final outlineProvider = StreamProvider.family<List<OutlineChapter>, int>(
@@ -628,6 +629,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                             fit: StackFit.expand,
                             children: [
                               TreeStandin(
+                                showGrowthLight: false,
                                 stage: illustratedTreeStageForNodeCount(
                                   _illustratedNodeCount(outline),
                                 ),
@@ -638,6 +640,16 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                                 for (final item in windowLabels)
                                   staticLabel(item.label, item.rect,
                                     side: item.side, selected: item.selected),
+                              if (staticMode)
+                                IllustratedTreeTrunk(
+                                  stage: illustratedTreeStageForNodeCount(
+                                    _illustratedNodeCount(outline),
+                                  ),
+                                  completeCrown: cameraMode && outline.length > 2,
+                                ),
+                              IllustratedTreeGrowthLight(
+                                growthRevision: _illustratedNodeCount(outline),
+                              ),
                             ],
                           ),
                         ),

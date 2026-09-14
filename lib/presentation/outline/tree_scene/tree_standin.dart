@@ -8,11 +8,13 @@ class TreeStandin extends StatelessWidget {
     required this.stage,
     required this.growthRevision,
     this.completeCrown = false,
+    this.showGrowthLight = true,
   });
 
   final int stage;
   final int growthRevision;
   final bool completeCrown;
+  final bool showGrowthLight;
 
   @override
   Widget build(BuildContext context) {
@@ -42,27 +44,38 @@ class TreeStandin extends StatelessWidget {
               ),
             ),
           ),
-          IgnorePointer(
-            child: TweenAnimationBuilder<double>(
-              key: ValueKey('魔树能量_$growthRevision'),
-              tween: Tween(begin: 0.42, end: 0),
-              duration: const Duration(milliseconds: 1100),
-              builder: (context, opacity, _) => DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: const Alignment(0, 0.72),
-                    radius: 0.62,
-                    colors: [
-                      const Color(0xFFF3B832).withValues(alpha: opacity),
-                      const Color(0x00F3B832),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
+          if (showGrowthLight)
+            IllustratedTreeGrowthLight(growthRevision: growthRevision),
         ],
       ),
     );
   }
+}
+
+/// 树图、枝条和主干前景上方统一绘制一次，避免接缝处重复发光。
+class IllustratedTreeGrowthLight extends StatelessWidget {
+  const IllustratedTreeGrowthLight({super.key, required this.growthRevision});
+
+  final int growthRevision;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: TweenAnimationBuilder<double>(
+      key: ValueKey('魔树能量_$growthRevision'),
+      tween: Tween(begin: 0.42, end: 0),
+      duration: const Duration(milliseconds: 1100),
+      builder: (context, opacity, _) => DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: const Alignment(0, 0.72),
+            radius: 0.62,
+            colors: [
+              const Color(0xFFF3B832).withValues(alpha: opacity),
+              const Color(0x00F3B832),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
