@@ -28,8 +28,33 @@ const loader=new T.TextureLoader();
 const bark=await loader.loadAsync('/assets/source/magic_tree/textures_source/bark_old_basecolor_source.png');
 bark.colorSpace=T.SRGBColorSpace;bark.wrapS=bark.wrapT=T.RepeatWrapping;
 const material=new T.MeshStandardMaterial({map:bark,bumpMap:bark,bumpScale:.025,roughness:.93});
+const normal=await loader.loadAsync('/assets/source/magic_tree/textures_source/pbr/bark_old_normal.png');
+const roughness=await loader.loadAsync('/assets/source/magic_tree/textures_source/pbr/bark_old_roughness.png');
+for(const texture of [normal,roughness])texture.wrapS=texture.wrapT=T.RepeatWrapping;
+material.normalMap=normal;material.normalScale.set(.65,.65);material.roughnessMap=roughness;
+material.bumpMap=null;
 scene.add(createBranchStudySurface(material));
-// 先只验证木质主枝；叶片和牌框需在接合结构通过后加入，避免遮盖几何问题。
+// 从现有真实透明叶片图集取 UV，叶片有弯曲深度，叶柄落在枝梢上。
+const atlas=await loader.loadAsync('/assets/source/magic_tree/textures_source/leaf_atlas_rgba.png');
+atlas.colorSpace=T.SRGBColorSpace;
+const leafMaterial=new T.MeshStandardMaterial({map:atlas,alphaTest:.4,side:T.DoubleSide,roughness:.85});
+const leafGeometry=new T.PlaneGeometry(.2,.34,8,12);
+const lp=leafGeometry.getAttribute('position'),luv=leafGeometry.getAttribute('uv');
+for(let i=0;i<lp.count;i++){
+ const u=luv.getX(i),v=luv.getY(i);
+ lp.setZ(i,.045*Math.sin(v*Math.PI)-.02*Math.abs(u-.5));
+ lp.setY(i,lp.getY(i)+.17);
+ luv.setXY(i,.035+u*.20,.64+v*.35);
+}
+leafGeometry.computeVertexNormals();
+for(const [x,y,z,angle,tilt] of [
+ [-1.72,.59,.01,.8,-.3],[-1.72,.59,.01,-1.1,.2],[-1.55,.48,.01,.3,.3],
+ [-.95,.85,.01,.7,.25],[-.95,.85,.01,-.8,-.2],[-.82,.65,.01,-1.3,.2],
+ [.43,.07,.01,.6,.2],[.43,.07,.01,-.9,-.3],
+ [-.9,.1,.05,-1.8,.1],[1.1,-.42,.08,1.2,-.2],
+ ]){
+ const leaf=new T.Mesh(leafGeometry,leafMaterial);leaf.position.set(x,y,z);leaf.rotation.set(tilt,0,angle);scene.add(leaf);
+}
 renderer.render(scene,camera);window.ready=true;
 </script>`;
 const server=createServer(async(req,res)=>{
