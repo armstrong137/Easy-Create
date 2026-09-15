@@ -78,6 +78,29 @@ try{
  // 另存米白底预览以检查真实合成观感，透明原图保持不变。
  await page.evaluate(()=>document.body.style.background='#FDF6EC');
  await page.screenshot({path:resolve(output,'preview.png')});
+ // 按正式幼树页面的枝牌尺寸与挂点放回上下文，不能拿孤立透明图替代接合验收。
+ await page.setViewportSize({width:430,height:932});
+ await page.evaluate(()=>{
+   const canvas=document.querySelector('canvas');
+   const branchImage=canvas.toDataURL('image/png');
+   document.body.innerHTML='';
+   document.body.style.cssText='margin:0;width:430px;height:932px;overflow:hidden;background:#FDF6EC';
+   const background=document.createElement('img');
+   background.src='/assets/tree_scene/illustrated/age_1.png';
+   background.style.cssText='position:absolute;width:430px;height:932px;object-fit:cover;object-position:bottom center';
+   document.body.append(background);
+   const branch=document.createElement('img');branch.src=branchImage;
+   branch.style.cssText='position:absolute;left:-18.6px;top:412px;width:310px;height:206.67px';
+   document.body.append(branch);
+   const plaque=document.createElement('img');plaque.src='/assets/tree_scene/illustrated/chapter_branch.png';
+   plaque.style.cssText='position:absolute;left:-18.6px;top:412px;width:310px;height:206.67px;clip-path:inset(0 64% 0 0)';
+   document.body.append(plaque);
+   const label=document.createElement('div');label.textContent='引子';
+   label.style.cssText='position:absolute;left:32px;top:472px;font:28px serif;writing-mode:vertical-rl;color:#2d2013';
+   document.body.append(label);
+ });
+ await page.evaluate(()=>Promise.all([...document.images].map(image=>image.decode())));
+ await page.screenshot({path:resolve(output,'sapling-context-study.png')});
  const png=PNG.sync.read(bytes);let clear=0,solid=0;
  for(let i=3;i<png.data.length;i+=4){if(png.data[i]===0)clear++;if(png.data[i]===255)solid++;}
  const report={width:png.width,height:png.height,transparentFraction:clear/(png.width*png.height),opaqueFraction:solid/(png.width*png.height),errors,visualAcceptance:'待人工检查，不自动宣告通过'};
