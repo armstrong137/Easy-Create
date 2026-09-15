@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-09-14 22:14:13　对应提交：ddf74db 之后的工作区状态
+> 生成时间：2026-09-14 22:17:57　对应提交：3ec332c 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,20 +12,20 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     177
-  Nodes:     5,020
-  Edges:     21,722
-  DB Size:   24.45 MB
+  Files:     179
+  Nodes:     5,029
+  Edges:     21,744
+  DB Size:   24.50 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,764
-  function        1,547
-  import          595
+  function        1,548
+  import          601
   class           504
   constant        281
-  file            169
+  file            171
   variable        114
   enum_member     25
   type_alias      13
@@ -34,7 +34,7 @@ Nodes by Kind:
 
 Files by Language:
   dart            95
-  javascript      40
+  javascript      42
   python          14
   kotlin          8
   xml             6
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (177 files):
+Project Structure (179 files):
 
 |-- .agents
 |   `-- skills
@@ -279,6 +279,7 @@ Project Structure (177 files):
 |       |   |-- render-branch-study.mjs (javascript, 21 symbols)
 |       |   `-- validate-gltf.mjs (javascript, 7 symbols)
 |       |-- src
+|       |   |-- BranchStudySurface.js (javascript, 4 symbols)
 |       |   |-- BranchSystem.js (javascript, 28 symbols)
 |       |   |-- CameraSystem.js (javascript, 13 symbols)
 |       |   |-- GrowthProfile.js (javascript, 7 symbols)
@@ -294,6 +295,7 @@ Project Structure (177 files):
 |       |   |-- StartupDiagnostics.js (javascript, 4 symbols)
 |       |   `-- TreeGrowthSystem.js (javascript, 14 symbols)
 |       `-- test
+|           |-- branch-study-surface.test.js (javascript, 5 symbols)
 |           |-- branch-system.test.js (javascript, 9 symbols)
 |           |-- camera-label.test.js (javascript, 8 symbols)
 |           |-- ground-integration.test.js (javascript, 4 symbols)
