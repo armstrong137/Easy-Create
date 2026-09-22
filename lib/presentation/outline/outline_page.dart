@@ -22,6 +22,7 @@ import 'tree_scene/illustrated_tree_scene.dart';
 import 'tree_scene/tree_standin.dart';
 import 'tree_scene/illustrated_tree_viewport.dart';
 import 'tree_scene/illustrated_tree_trunk.dart';
+import 'tree_scene/sapling_plaque.dart';
 
 /// 某小说的大纲流（章+节），魔树数据源
 final outlineProvider = StreamProvider.family<List<OutlineChapter>, int>(
@@ -451,7 +452,10 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                             assignInspiration(details.data, label),
                         builder: (context, candidates, rejected) =>
                             ExcludeSemantics(
-                              child: IllustratedBranchPlaque(
+                              child: _illustratedNodeCount(outline) == 1
+                                ? SaplingPlaqueTitle(title: label.text,
+                                    selected: selected || candidates.isNotEmpty)
+                                : IllustratedBranchPlaque(
                                 title: label.text,
                                 side: side,
                                 selected: selected || candidates.isNotEmpty,
@@ -513,7 +517,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                       text: chapter.chapter.title,
                       chapterId: chapter.chapter.id,
                     ),
-                    rect: Rect.fromLTWH(
+                      rect: nodeCount == 1 ? saplingPlaqueRect(Size(constraints.maxWidth, constraints.maxHeight)) : Rect.fromLTWH(
                       -branchWidth * 0.06,
                       chapterTop + (index + cameraRow) * chapterStep,
                       branchWidth,

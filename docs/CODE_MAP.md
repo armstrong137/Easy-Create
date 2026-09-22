@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-09-14 22:25:45　对应提交：1b8c713 之后的工作区状态
+> 生成时间：2026-09-22 16:08:24　对应提交：8d32a38 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,30 +12,30 @@ CodeGraph Status
 Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
 
 Index Statistics:
-  Files:     179
-  Nodes:     5,029
-  Edges:     21,744
-  DB Size:   24.51 MB
+  Files:     182
+  Nodes:     5,078
+  Edges:     21,816
+  DB Size:   24.63 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,764
-  function        1,548
-  import          601
-  class           504
+  method          1,765
+  function        1,553
+  import          615
+  class           505
   constant        281
-  file            171
-  variable        114
+  file            174
+  variable        139
   enum_member     25
   type_alias      13
   enum            6
   namespace       2
 
 Files by Language:
-  dart            95
+  dart            97
   javascript      42
-  python          14
+  python          15
   kotlin          8
   xml             6
   properties      4
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (179 files):
+Project Structure (182 files):
 
 |-- .agents
 |   `-- skills
@@ -74,6 +74,8 @@ Project Structure (179 files):
 |       |   `-- condition-based-waiting-example.ts (typescript, 6 symbols)
 |       `-- writing-skills
 |           `-- render-graphs.js (javascript, 8 symbols)
+|-- 电脑迁移包
+|   `-- 收集迁移资料.py (python, 38 symbols)
 |-- android
 |   |-- app
 |   |   |-- src
@@ -177,6 +179,7 @@ Project Structure (179 files):
 |   |   |   |   |-- illustrated_tree_scene.dart (dart, 23 symbols)
 |   |   |   |   |-- illustrated_tree_trunk.dart (dart, 10 symbols)
 |   |   |   |   |-- illustrated_tree_viewport.dart (dart, 5 symbols)
+|   |   |   |   |-- sapling_plaque.dart (dart, 5 symbols)
 |   |   |   |   |-- tree_scene_controller.dart (dart, 51 symbols)
 |   |   |   |   |-- tree_scene_gestures.dart (dart, 17 symbols)
 |   |   |   |   |-- tree_scene_io.dart (dart, 18 symbols)
@@ -188,7 +191,7 @@ Project Structure (179 files):
 |   |   |   |-- label_layout.dart (dart, 2 symbols)
 |   |   |   |-- magic_carpet.dart (dart, 67 symbols)
 |   |   |   |-- outline_controller.dart (dart, 34 symbols)
-|   |   |   |-- outline_page.dart (dart, 73 symbols)
+|   |   |   |-- outline_page.dart (dart, 74 symbols)
 |   |   |   `-- scroll_carpet.dart (dart, 38 symbols)
 |   |   |-- section
 |   |   |   |-- card_deck_sheet.dart (dart, 19 symbols)
@@ -247,6 +250,7 @@ Project Structure (179 files):
 |   |   |-- planet_scene_touch_config_test.dart (dart, 8 symbols)
 |   |   |-- quick_capture_test.dart (dart, 16 symbols)
 |   |   |-- realtime_tree_single_path_test.dart (dart, 4 symbols)
+|   |   |-- sapling_plaque_test.dart (dart, 5 symbols)
 |   |   |-- section_page_test.dart (dart, 24 symbols)
 |   |   |-- starfield_motion_test.dart (dart, 6 symbols)
 |   |   |-- starfield_test.dart (dart, 7 symbols)

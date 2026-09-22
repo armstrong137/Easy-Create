@@ -15,6 +15,7 @@ double illustratedTreeLayoutAgeForNodeCount(int nodeCount) =>
 
 String illustratedTreeAssetForStage(int stage) {
   final bounded = stage.clamp(0, 5);
+  if (bounded == 1) return 'assets/tree_scene/illustrated/age_1_integrated.png';
   return 'assets/tree_scene/illustrated/age_$bounded.png';
 }
 
