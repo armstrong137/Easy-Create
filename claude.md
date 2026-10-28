@@ -19,6 +19,8 @@
 ## 二、软件开发架构
 
 ### 技术栈
+2026-10-28 用户确认：正式表现方向统一为高质量二维材质与空间动效，实时 3D 作为实验能力。本文后续历史实时 3D 描述以最新 AGENTS.md 和 DevelopmentPlan.md 为准，不作为强制交付要求。
+
 - 框架：Flutter（Impeller 渲染）
 - 状态管理：Riverpod
 - 数据库：SQLite via drift（类型安全）
