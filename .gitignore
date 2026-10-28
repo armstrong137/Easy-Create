@@ -47,3 +47,6 @@ app.*.map.json
 
 # 迁移用打包文件，不入库
 novel-app-project.tar.gz
+
+# 换电脑后保留的旧构建缓存，不作为源码上传。
+/android/.gradle.migration-backup/

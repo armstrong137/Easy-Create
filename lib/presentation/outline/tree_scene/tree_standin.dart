@@ -19,7 +19,7 @@ class TreeStandin extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final asset = completeCrown && stage == 5
-        ? 'assets/tree_scene/illustrated/mature_complete.png'
+        ? illustratedCompleteTreeAsset
         : illustratedTreeAssetForStage(stage);
     return ColoredBox(
       color: const Color(0xFFFDF6EC),

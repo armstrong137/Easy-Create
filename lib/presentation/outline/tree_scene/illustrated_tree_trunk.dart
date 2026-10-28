@@ -24,7 +24,7 @@ class IllustratedTreeTrunk extends StatelessWidget {
         child: LayoutBuilder(
           builder: (context, constraints) => Image.asset(
             completeCrown && stage == 5
-                ? 'assets/tree_scene/illustrated/mature_complete.png'
+                ? illustratedCompleteTreeAsset
                 : illustratedTreeAssetForStage(stage),
             key: ValueKey((stage, completeCrown)),
             width: double.infinity,
@@ -133,20 +133,16 @@ class IllustratedTreeTrunkClipper extends CustomClipper<Path> {
         Offset(630, 0),
       ],
       5 when completeCrown => <Offset>[
-        Offset(450, 360),
-        Offset(433, 540),
-        Offset(421, 710),
-        Offset(416, 920),
-        Offset(397, 1110),
-        Offset(380, 1290),
-        Offset(325, 1410),
-        Offset(656, 1410),
-        Offset(565, 1290),
-        Offset(550, 1090),
-        Offset(535, 910),
-        Offset(522, 720),
-        Offset(510, 530),
-        Offset(477, 360),
+        Offset(476, 700),
+        Offset(458, 860),
+        Offset(447, 1020),
+        Offset(415, 1170),
+        Offset(380, 1250),
+        Offset(590, 1250),
+        Offset(550, 1170),
+        Offset(531, 1020),
+        Offset(518, 860),
+        Offset(504, 700),
       ],
       5 => <Offset>[
         Offset(360, 0),

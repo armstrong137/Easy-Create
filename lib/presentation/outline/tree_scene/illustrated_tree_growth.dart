@@ -1,5 +1,8 @@
 const _illustratedTreeStageThresholds = <int>[1, 2, 4, 7, 10];
 
+const illustratedCompleteTreeAsset =
+    'assets/tree_scene/illustrated/mature_complete_v2.png';
+
 int illustratedTreeStageForNodeCount(int nodeCount) {
   final bounded = nodeCount < 0 ? 0 : nodeCount;
   var stage = 0;
