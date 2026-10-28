@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-09-22 16:08:24　对应提交：8d32a38 之后的工作区状态
+> 生成时间：2026-10-28 21:25:18　对应提交：5996bc0 之后的工作区状态
 
 ## 一、索引状态
 
@@ -9,7 +9,7 @@
 
 CodeGraph Status
 
-Project: C:\Users\yunhao.zhou1\Desktop\Easy Create
+Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
   Files:     182

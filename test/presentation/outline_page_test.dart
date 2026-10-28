@@ -184,6 +184,10 @@ void main() {
         );
       }
       await precacheImage(
+        const AssetImage('assets/tree_scene/illustrated/age_1_integrated.png'),
+        imageContext,
+      );
+      await precacheImage(
         const AssetImage('assets/tree_scene/illustrated/chapter_branch.png'),
         imageContext,
       );
