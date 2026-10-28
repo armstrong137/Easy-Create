@@ -333,6 +333,27 @@ void main() {
       expect(saved.updatedAt.isBefore(saved.createdAt), isFalse);
     });
 
+    testWidgets('全文编辑失焦时保存正文且保持小节归属', (tester) async {
+      final card = await seedCard('失焦前正文');
+      await pumpSection(tester, [card]);
+      await tester.tap(find.byKey(Key('主区卡_${card.id}')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('全文编辑框')), '失焦后的正文');
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      final saved = await (db.select(db.inspirations)
+        ..where((table) => table.id.equals(card.id))).getSingle();
+      expect(saved.content, '失焦后的正文');
+      expect(saved.sectionId, card.sectionId);
+      expect(find.byKey(const Key('全文编辑框')), findsOneWidget);
+      await tester.enterText(find.byKey(const Key('全文编辑框')), card.content);
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      final restored = await (db.select(db.inspirations)
+        ..where((table) => table.id.equals(card.id))).getSingle();
+      expect(restored.content, card.content);
+    });
+
     testWidgets('数万字长文本编辑器渲染不崩', (tester) async {
       final card = await seedCard('长' * 30000); // 3 万字
       await pumpSection(tester, [card]);

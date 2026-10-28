@@ -22,12 +22,26 @@ class CardEditorPage extends ConsumerStatefulWidget {
 }
 
 class _CardEditorPageState extends ConsumerState<CardEditorPage> {
+  final _editorFocus = FocusNode();
+  late String _savedContent = widget.inspiration.content;
   late final TextEditingController _controller = TextEditingController(
     text: widget.inspiration.content,
   );
 
   @override
+  void initState() {
+    super.initState();
+    _editorFocus.addListener(_saveOnFocusLoss);
+  }
+
+  void _saveOnFocusLoss() {
+    if (!_editorFocus.hasFocus) _save();
+  }
+
+  @override
   void dispose() {
+    _editorFocus.removeListener(_saveOnFocusLoss);
+    _editorFocus.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -35,10 +49,11 @@ class _CardEditorPageState extends ConsumerState<CardEditorPage> {
   /// 内容有变更才写库（保留 created_at 与魔毯排序不受影响）
   Future<void> _save() async {
     final text = _controller.text;
-    if (text == widget.inspiration.content || text.trim().isEmpty) return;
+    if (text == _savedContent || text.trim().isEmpty) return;
     await ref
         .read(inspirationRepositoryProvider)
         .updateContent(widget.inspiration.id, text);
+    _savedContent = text;
   }
 
   /// 从小节删卡：灵感放回魔毯（生命周期规则三，非真删）
@@ -143,6 +158,7 @@ class _CardEditorPageState extends ConsumerState<CardEditorPage> {
               child: TextField(
                 key: const Key('全文编辑框'),
                 controller: _controller,
+                focusNode: _editorFocus,
                 maxLines: null, // 无上限
                 expands: true,
                 keyboardType: TextInputType.multiline,
