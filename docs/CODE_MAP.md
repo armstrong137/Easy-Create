@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-10-28 21:47:08　对应提交：6da7cd6 之后的工作区状态
+> 生成时间：2026-10-28 21:55:54　对应提交：2056ea7 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,20 +12,20 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     182
-  Nodes:     5,082
-  Edges:     21,837
-  DB Size:   24.63 MB
+  Files:     183
+  Nodes:     5,090
+  Edges:     21,845
+  DB Size:   24.64 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,767
   function        1,554
-  import          616
+  import          619
   class           505
-  constant        281
-  file            174
+  constant        285
+  file            175
   variable        139
   enum_member     25
   type_alias      13
@@ -34,7 +34,7 @@ Nodes by Kind:
 
 Files by Language:
   dart            97
-  javascript      42
+  javascript      43
   python          15
   kotlin          8
   xml             6
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (182 files):
+Project Structure (183 files):
 
 |-- .agents
 |   `-- skills
@@ -281,7 +281,8 @@ Project Structure (182 files):
 |       |   |-- check-illustrated-outline.mjs (javascript, 23 symbols)
 |       |   |-- check-startup.mjs (javascript, 23 symbols)
 |       |   |-- render-branch-study.mjs (javascript, 21 symbols)
-|       |   `-- validate-gltf.mjs (javascript, 7 symbols)
+|       |   |-- validate-gltf.mjs (javascript, 7 symbols)
+|       |   `-- verify-workbench.mjs (javascript, 8 symbols)
 |       |-- src
 |       |   |-- BranchStudySurface.js (javascript, 4 symbols)
 |       |   |-- BranchSystem.js (javascript, 28 symbols)
