@@ -55,7 +55,7 @@ def rename_materials(mesh: bpy.types.Mesh) -> dict[str, bpy.types.Material]:
     for material in mesh.materials:
         lower = material.name.lower()
         if "leaves" in lower:
-            material.name = "LeafBroadPBR"
+            material.name = "LeafSourcePBR"
             material.surface_render_method = "DITHERED"
             result["leaf"] = material
         elif "branches" in lower:

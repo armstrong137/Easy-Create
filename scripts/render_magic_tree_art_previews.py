@@ -178,7 +178,7 @@ def main() -> None:
             track.mute = True
     add_lighting()
     scene = bpy.context.scene
-    scene.render.engine = "BLENDER_EEVEE_NEXT"
+    scene.render.engine = "BLENDER_EEVEE" if bpy.app.version >= (5, 0, 0) else "BLENDER_EEVEE_NEXT"
     scene.render.resolution_x = 900
     scene.render.resolution_y = 1400
     scene.render.resolution_percentage = 100
