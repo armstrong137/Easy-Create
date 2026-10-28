@@ -4,7 +4,43 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
+import '../../core/carpet_constants.dart';
 import 'inspiration_card.dart' show kSectionParchment, kInk;
+
+/// 主区与卡包共享纸页展开转场，减少动画时直接进入正文。
+Route<void> cardEditorRoute(BuildContext context, Inspiration inspiration) {
+  final reduceMotion = MediaQuery.disableAnimationsOf(context);
+  return PageRouteBuilder<void>(
+    transitionDuration: Duration(milliseconds: reduceMotion ? 0 : 380),
+    reverseTransitionDuration: Duration(milliseconds: reduceMotion ? 0 : 280),
+    pageBuilder: (_, _, _) => CardEditorPage(inspiration: inspiration),
+    transitionsBuilder: (_, animation, _, child) {
+      final progress = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return AnimatedBuilder(
+        animation: progress,
+        child: child,
+        builder: (_, page) {
+          final remaining = 1 - progress.value;
+          return FadeTransition(
+            opacity: progress,
+            child: Transform(
+              alignment: Alignment.bottomCenter,
+              transform: Matrix4.identity()
+                ..setEntry(3, 2, 0.001)
+                ..translateByDouble(0, 36 * remaining, 0, 1)
+                ..rotateX(-0.08 * remaining),
+              child: page,
+            ),
+          );
+        },
+      );
+    },
+  );
+}
 
 /// 全文编辑器：点开单卡查看/编辑全文，无字数上限（可写完整小说）
 ///
@@ -150,6 +186,8 @@ class _CardEditorPageState extends ConsumerState<CardEditorPage> {
                         ),
                       ),
                     ),
+                    // 为全局折叠卷轴留位，避免盖住放回操作。
+                    const SizedBox(width: kCollapsedScrollWidth + 16),
                   ],
                 ),
               ),

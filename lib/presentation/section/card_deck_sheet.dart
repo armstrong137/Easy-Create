@@ -161,7 +161,7 @@ class _DeckTile extends StatelessWidget {
     return GestureDetector(
       // 点缩略卡 → 全文编辑器
       onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => CardEditorPage(inspiration: card)),
+        cardEditorRoute(context, card),
       ),
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),

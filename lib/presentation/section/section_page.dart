@@ -168,10 +168,7 @@ class _SectionPageState extends ConsumerState<SectionPage> {
                           key: Key('主区卡_${current.id}'),
                           content: current.content,
                           onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  CardEditorPage(inspiration: current),
-                            ),
+                            cardEditorRoute(context, current),
                           ),
                         ),
                       ),
