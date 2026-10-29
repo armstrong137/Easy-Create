@@ -58,7 +58,12 @@ void main() {
 
       final bark = await load('assets/tree_scene/illustrated/bark_detail.png');
       final leaf = await load('assets/tree_scene/illustrated/leaf_detail.png');
-      for (final age in [.2, .55, 1.0]) {
+      const writeFrames = bool.fromEnvironment('WRITE_TREE_STUDY_FRAMES');
+      final ages = writeFrames
+          ? List.generate(121, (index) => index / 120)
+          : [.2, .55, 1.0];
+      for (var index = 0; index < ages.length; index++) {
+        final age = ages[index];
         final recorder = ui.PictureRecorder();
         OrganicTreeStudyPainter(
           age,
@@ -69,11 +74,17 @@ void main() {
         final image = await picture.toImage(941, 1672);
         final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
         expect(bytes, isNotNull);
-        if (const bool.fromEnvironment('WRITE_TREE_STUDY')) {
-          final output = Directory('build/qa/main-tree-study')
-            ..createSync(recursive: true);
+        if (const bool.fromEnvironment('WRITE_TREE_STUDY') || writeFrames) {
+          final output = Directory(
+            writeFrames
+                ? 'build/qa/main-tree-study/frames'
+                : 'build/qa/main-tree-study',
+          )..createSync(recursive: true);
+          final name = writeFrames
+              ? 'frame_${index.toString().padLeft(3, '0')}'
+              : 'age_${(age * 100).round()}';
           await File(
-            '${output.path}/age_${(age * 100).round()}.png',
+            '${output.path}/$name.png',
           ).writeAsBytes(bytes!.buffer.asUint8List());
         }
         image.dispose();
