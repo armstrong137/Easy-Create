@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-10-29 21:36:19　对应提交：3fe6fcb 之后的工作区状态
+> 生成时间：2026-10-29 21:43:56　对应提交：34b69c0 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,17 +13,17 @@ Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
   Files:     187
-  Nodes:     5,141
-  Edges:     21,963
+  Nodes:     5,149
+  Edges:     21,984
   DB Size:   24.97 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,787
-  function        1,558
+  method          1,791
+  function        1,559
   import          634
-  class           510
+  class           513
   constant        288
   file            179
   variable        139
@@ -179,7 +179,7 @@ Project Structure (187 files):
 |   |   |   |   |-- illustrated_tree_growth.dart (dart, 7 symbols)
 |   |   |   |   |-- illustrated_tree_scene.dart (dart, 27 symbols)
 |   |   |   |   |-- illustrated_tree_trunk.dart (dart, 10 symbols)
-|   |   |   |   |-- illustrated_tree_viewport.dart (dart, 5 symbols)
+|   |   |   |   |-- illustrated_tree_viewport.dart (dart, 7 symbols)
 |   |   |   |   |-- organic_branch.dart (dart, 16 symbols)
 |   |   |   |   |-- sapling_plaque.dart (dart, 5 symbols)
 |   |   |   |   |-- tree_scene_controller.dart (dart, 51 symbols)
@@ -245,7 +245,7 @@ Project Structure (187 files):
 |   |   |-- home_page_test.dart (dart, 21 symbols)
 |   |   |-- illustrated_tree_camera_layout_test.dart (dart, 5 symbols)
 |   |   |-- illustrated_tree_trunk_test.dart (dart, 12 symbols)
-|   |   |-- illustrated_tree_viewport_test.dart (dart, 9 symbols)
+|   |   |-- illustrated_tree_viewport_test.dart (dart, 16 symbols)
 |   |   |-- magic_carpet_test.dart (dart, 18 symbols)
 |   |   |-- orbiting_inspirations_test.dart (dart, 11 symbols)
 |   |   |-- organic_branch_test.dart (dart, 8 symbols)

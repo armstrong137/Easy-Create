@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 /// 树体、枝牌及热区共用场景；章节浏览平移，全景等比缩放，不作为成长动画。
-class IllustratedTreeViewport extends StatelessWidget {
+class IllustratedTreeViewport extends StatefulWidget {
   const IllustratedTreeViewport({
     super.key,
     required this.sceneHeight,
@@ -20,8 +20,21 @@ class IllustratedTreeViewport extends StatelessWidget {
   final bool overview;
 
   @override
+  State<IllustratedTreeViewport> createState() =>
+      _IllustratedTreeViewportState();
+}
+
+class _IllustratedTreeViewportState extends State<IllustratedTreeViewport> {
+  // 遮罩只在全景需要；移动同一子树，保留材质与生长控制器。
+  final _sceneKey = GlobalKey();
+
+  @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
+      final sceneHeight = widget.sceneHeight;
+      final sceneWidth = widget.sceneWidth;
+      final focusY = widget.focusY;
+      final overview = widget.overview;
       final height = math.max(sceneHeight, constraints.maxHeight);
       final width = sceneWidth ?? constraints.maxWidth;
       final overviewScale = math.min(
@@ -37,7 +50,7 @@ class IllustratedTreeViewport extends StatelessWidget {
           tween: Tween(begin: target, end: target),
           duration: const Duration(milliseconds: 460),
           curve: Curves.easeInOutCubic,
-          child: child,
+          child: KeyedSubtree(key: _sceneKey, child: widget.child),
           builder: (context, offset, scene) => Stack(
             fit: StackFit.expand,
             children: [

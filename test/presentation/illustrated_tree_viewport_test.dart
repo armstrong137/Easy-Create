@@ -3,6 +3,31 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:novel_app/presentation/outline/tree_scene/illustrated_tree_viewport.dart';
 
 void main() {
+  testWidgets('全景往返不重建树体状态或重播生长', (tester) async {
+    var mounts = 0;
+    Future<void> show(bool overview) => tester.pumpWidget(
+      MaterialApp(
+        home: SizedBox(
+          width: 300,
+          height: 500,
+          child: IllustratedTreeViewport(
+            sceneWidth: 600,
+            sceneHeight: 1000,
+            focusY: 700,
+            overview: overview,
+            child: _TrackedTree(onMount: () => mounts++),
+          ),
+        ),
+      ),
+    );
+    await show(false);
+    await tester.pumpAndSettle();
+    await show(true);
+    await tester.pumpAndSettle();
+    await show(false);
+    await tester.pumpAndSettle();
+    expect(mounts, 1);
+  });
   testWidgets('全景完整容纳原始画幅且缩放后的枝牌仍可点击', (tester) async {
     var tapped = 0;
     await tester.pumpWidget(
@@ -131,4 +156,22 @@ void main() {
     expect(tester.getBottomRight(find.byKey(const Key('场景'))).dy, 500);
     expect(tester.getSize(find.byKey(const Key('场景'))).height, 1500);
   });
+}
+
+class _TrackedTree extends StatefulWidget {
+  const _TrackedTree({required this.onMount});
+  final VoidCallback onMount;
+  @override
+  State<_TrackedTree> createState() => _TrackedTreeState();
+}
+
+class _TrackedTreeState extends State<_TrackedTree> {
+  @override
+  void initState() {
+    super.initState();
+    widget.onMount();
+  }
+
+  @override
+  Widget build(BuildContext context) => const ColoredBox(color: Colors.brown);
 }
