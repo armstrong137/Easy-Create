@@ -23,6 +23,7 @@ import 'tree_scene/tree_standin.dart';
 import 'tree_scene/illustrated_tree_viewport.dart';
 import 'tree_scene/illustrated_tree_trunk.dart';
 import 'tree_scene/sapling_plaque.dart';
+import 'tree_scene/illustrated_tree_camera_layout.dart';
 
 /// 某小说的大纲流（章+节），魔树数据源
 final outlineProvider = StreamProvider.family<List<OutlineChapter>, int>(
@@ -469,9 +470,12 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
               }
 
               final chapterStep = constraints.maxHeight * 0.22;
-              final cameraMode = staticMode && widget.enableIllustratedCamera;
-              final sceneHeight = constraints.maxHeight +
-                  (cameraMode ? math.max(0, outline.length - 2) * chapterStep : 0);
+              final cameraMode = staticMode && widget.enableIllustratedCamera &&
+                  _illustratedNodeCount(outline) >= 10 && outline.length > 2;
+              var cameraLayout = IllustratedTreeCameraLayout(
+                Size(constraints.maxWidth, constraints.maxHeight), outline.length, 0,
+              );
+              final sceneHeight = cameraMode ? cameraLayout.sceneHeight : constraints.maxHeight;
               var cameraRow = 0;
               final windowLabels =
                   <
@@ -495,6 +499,9 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                   (outline.length - 2).clamp(0, outline.length),
                 );
                 cameraRow = cameraMode ? firstChapter : 0;
+                cameraLayout = IllustratedTreeCameraLayout(
+                  Size(constraints.maxWidth, constraints.maxHeight), outline.length, firstChapter,
+                );
                 final chapters = outline
                     .skip(firstChapter)
                     .take(2)
@@ -517,7 +524,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                       text: chapter.chapter.title,
                       chapterId: chapter.chapter.id,
                     ),
-                      rect: nodeCount == 1 ? saplingPlaqueRect(Size(constraints.maxWidth, constraints.maxHeight)) : Rect.fromLTWH(
+                      rect: cameraMode ? cameraLayout.branchRect(right: false, index: index) : nodeCount == 1 ? saplingPlaqueRect(Size(constraints.maxWidth, constraints.maxHeight)) : Rect.fromLTWH(
                       -branchWidth * 0.06,
                       chapterTop + (index + cameraRow) * chapterStep,
                       branchWidth,
@@ -564,7 +571,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                       text: section.title,
                       sectionId: section.id,
                     ),
-                    rect: Rect.fromLTWH(
+                    rect: cameraMode ? cameraLayout.branchRect(right: true, index: index) : Rect.fromLTWH(
                       constraints.maxWidth - branchWidth * 0.94,
                       sectionTop + cameraRow * chapterStep + index * sectionStep,
                       branchWidth,
@@ -628,7 +635,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                       Positioned.fill(
                         child: IllustratedTreeViewport(
                           sceneHeight: sceneHeight,
-                          focusY: constraints.maxHeight * 0.5 + cameraRow * chapterStep,
+                          focusY: cameraMode ? cameraLayout.focusY : constraints.maxHeight * 0.5,
                           child: Stack(
                             fit: StackFit.expand,
                             children: [
