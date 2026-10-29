@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-10-29 21:43:56　对应提交：34b69c0 之后的工作区状态
+> 生成时间：2026-10-29 21:55:41　对应提交：daadc09 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,28 +12,28 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     187
-  Nodes:     5,149
-  Edges:     21,984
-  DB Size:   24.97 MB
+  Files:     189
+  Nodes:     5,169
+  Edges:     22,028
+  DB Size:   25.06 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,791
-  function        1,559
-  import          634
-  class           513
+  method          1,795
+  function        1,561
+  import          643
+  class           515
   constant        288
-  file            179
+  file            181
   variable        139
   enum_member     25
-  type_alias      13
+  type_alias      14
   enum            6
   namespace       2
 
 Files by Language:
-  dart            101
+  dart            103
   javascript      43
   python          15
   kotlin          8
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (187 files):
+Project Structure (189 files):
 
 |-- .agents
 |   `-- skills
@@ -181,6 +181,7 @@ Project Structure (187 files):
 |   |   |   |   |-- illustrated_tree_trunk.dart (dart, 10 symbols)
 |   |   |   |   |-- illustrated_tree_viewport.dart (dart, 7 symbols)
 |   |   |   |   |-- organic_branch.dart (dart, 16 symbols)
+|   |   |   |   |-- organic_tree_study.dart (dart, 12 symbols)
 |   |   |   |   |-- sapling_plaque.dart (dart, 5 symbols)
 |   |   |   |   |-- tree_scene_controller.dart (dart, 51 symbols)
 |   |   |   |   |-- tree_scene_gestures.dart (dart, 17 symbols)
@@ -249,6 +250,7 @@ Project Structure (187 files):
 |   |   |-- magic_carpet_test.dart (dart, 18 symbols)
 |   |   |-- orbiting_inspirations_test.dart (dart, 11 symbols)
 |   |   |-- organic_branch_test.dart (dart, 8 symbols)
+|   |   |-- organic_tree_study_test.dart (dart, 9 symbols)
 |   |   |-- outline_controller_test.dart (dart, 10 symbols)
 |   |   |-- outline_page_test.dart (dart, 33 symbols)
 |   |   |-- planet_scene_touch_config_test.dart (dart, 8 symbols)

@@ -76,7 +76,7 @@ class OrganicBranchPainter extends CustomPainter {
         size.height * .63,
       );
     final metric = spine.computeMetrics().first;
-    var silhouette = _stem(spine, progress, size.height * .052);
+    var silhouette = stem(spine, progress, size.height * .052);
     final leaves = <({Offset point, double angle, double opening})>[];
     for (final birth in [.38, .64]) {
       final growth = ((progress - birth) / (1 - birth)).clamp(0.0, 1.0);
@@ -95,7 +95,7 @@ class OrganicBranchPainter extends CustomPainter {
       silhouette = Path.combine(
         PathOperation.union,
         silhouette,
-        _stem(twig, growth, size.height * .023),
+        stem(twig, growth, size.height * .023),
       );
       final twigMetric = twig.computeMetrics().first;
       for (var leaf = 0; leaf < 4; leaf++) {
@@ -152,7 +152,13 @@ class OrganicBranchPainter extends CustomPainter {
     canvas.restore();
   }
 
-  Path _stem(Path spine, double growth, double rootRadius) {
+  /// 主树和承托枝共用同一连续截面生成器。
+  static Path stem(
+    Path spine,
+    double growth,
+    double rootRadius, {
+    double tipRatio = .48,
+  }) {
     final metric = spine.computeMetrics().first;
     final upper = <Offset>[];
     final lower = <Offset>[];
@@ -164,7 +170,7 @@ class OrganicBranchPainter extends CustomPainter {
       final taper = math.min(1.0, (growth - along) * 18 + .06);
       final radius =
           rootRadius *
-          (1 - along * .52) *
+          (1 - along * (1 - tipRatio)) *
           math.sqrt(growth) *
           taper *
           (1 + .06 * math.sin(along * 37));
