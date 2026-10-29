@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-10-29 21:23:46　对应提交：12eab40 之后的工作区状态
+> 生成时间：2026-10-29 21:36:19　对应提交：3fe6fcb 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,20 +12,20 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     185
-  Nodes:     5,113
-  Edges:     21,901
-  DB Size:   24.85 MB
+  Files:     187
+  Nodes:     5,141
+  Edges:     21,963
+  DB Size:   24.97 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,777
-  function        1,555
-  import          625
-  class           506
+  method          1,787
+  function        1,558
+  import          634
+  class           510
   constant        288
-  file            177
+  file            179
   variable        139
   enum_member     25
   type_alias      13
@@ -33,7 +33,7 @@ Nodes by Kind:
   namespace       2
 
 Files by Language:
-  dart            99
+  dart            101
   javascript      43
   python          15
   kotlin          8
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (185 files):
+Project Structure (187 files):
 
 |-- .agents
 |   `-- skills
@@ -177,9 +177,10 @@ Project Structure (185 files):
 |   |   |   |-- tree_scene
 |   |   |   |   |-- illustrated_tree_camera_layout.dart (dart, 13 symbols)
 |   |   |   |   |-- illustrated_tree_growth.dart (dart, 7 symbols)
-|   |   |   |   |-- illustrated_tree_scene.dart (dart, 23 symbols)
+|   |   |   |   |-- illustrated_tree_scene.dart (dart, 27 symbols)
 |   |   |   |   |-- illustrated_tree_trunk.dart (dart, 10 symbols)
 |   |   |   |   |-- illustrated_tree_viewport.dart (dart, 5 symbols)
+|   |   |   |   |-- organic_branch.dart (dart, 16 symbols)
 |   |   |   |   |-- sapling_plaque.dart (dart, 5 symbols)
 |   |   |   |   |-- tree_scene_controller.dart (dart, 51 symbols)
 |   |   |   |   |-- tree_scene_gestures.dart (dart, 17 symbols)
@@ -247,6 +248,7 @@ Project Structure (185 files):
 |   |   |-- illustrated_tree_viewport_test.dart (dart, 9 symbols)
 |   |   |-- magic_carpet_test.dart (dart, 18 symbols)
 |   |   |-- orbiting_inspirations_test.dart (dart, 11 symbols)
+|   |   |-- organic_branch_test.dart (dart, 8 symbols)
 |   |   |-- outline_controller_test.dart (dart, 10 symbols)
 |   |   |-- outline_page_test.dart (dart, 33 symbols)
 |   |   |-- planet_scene_touch_config_test.dart (dart, 8 symbols)
@@ -280,7 +282,7 @@ Project Structure (185 files):
 |       |   |-- build.mjs (javascript, 10 symbols)
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
-|       |   |-- check-illustrated-outline.mjs (javascript, 25 symbols)
+|       |   |-- check-illustrated-outline.mjs (javascript, 26 symbols)
 |       |   |-- check-startup.mjs (javascript, 23 symbols)
 |       |   |-- render-branch-study.mjs (javascript, 21 symbols)
 |       |   |-- validate-gltf.mjs (javascript, 7 symbols)

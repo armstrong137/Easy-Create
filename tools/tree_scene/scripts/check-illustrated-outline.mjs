@@ -14,7 +14,7 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({
   viewport: { width: 430, height: 932 },
-  recordVideo: process.argv.includes('--audit-overview')
+  recordVideo: process.argv.includes('--audit-overview') || process.argv.includes('--audit-growth')
     ? { dir: resolve(output, 'video'), size: { width: 430, height: 932 } }
     : undefined,
 });
@@ -51,8 +51,37 @@ try {
   await addChapter.click();
   await page.getByRole('button', { name: '引子', exact: true }).waitFor();
   await capture('01-prologue-430');
+  if (process.argv.includes('--audit-growth')) {
+    await page.evaluate(() => {
+      const intervals = [];
+      const end = performance.now() + 2000;
+      let previous;
+      function sample(now) {
+        if (previous !== undefined) intervals.push(now - previous);
+        previous = now;
+        if (now < end) requestAnimationFrame(sample);
+        else {
+          intervals.sort((a, b) => a - b);
+          window.__treeGrowthTiming = {
+            frames: intervals.length,
+            p95Ms: intervals[Math.floor(intervals.length * .95)],
+            worstMs: intervals.at(-1),
+          };
+        }
+      }
+      requestAnimationFrame(sample);
+    });
+  }
   await addChapter.click();
   await page.getByRole('button', { name: '第一章', exact: true }).waitFor();
+  if (process.argv.includes('--audit-growth')) {
+    for (const [name, delay] of [['growth-early', 260], ['growth-middle', 240], ['growth-settled', 700]]) {
+      await page.waitForTimeout(delay);
+      await page.screenshot({ path: resolve(output, `${name}.png`) });
+    }
+    await page.waitForFunction(() => window.__treeGrowthTiming);
+    await writeFile(resolve(output, 'growth-timing.json'), JSON.stringify(await page.evaluate(() => window.__treeGrowthTiming), null, 2));
+  }
   await addSection.click();
   await page.getByRole('button', { name: '第一节', exact: true }).waitFor();
   await addSection.click();

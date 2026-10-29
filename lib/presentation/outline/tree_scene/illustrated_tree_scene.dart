@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'organic_branch.dart';
 
 export 'illustrated_tree_growth.dart';
 
@@ -16,12 +17,14 @@ class IllustratedBranchPlaque extends StatefulWidget {
     required this.side,
     required this.selected,
     required this.animateIn,
+    this.organicGrowth = false,
   });
 
   final String title;
   final IllustratedBranchSide side;
   final bool selected;
   final bool animateIn;
+  final bool organicGrowth;
 
   @override
   State<IllustratedBranchPlaque> createState() =>
@@ -76,9 +79,16 @@ class _IllustratedBranchPlaqueState extends State<IllustratedBranchPlaque>
       animation: _growth,
       builder: (context, _) {
         final progress = Curves.easeOutCubic.transform(_growth.value);
-        return ClipRect(
-          clipper: _BranchGrowthClipper(progress: progress, side: widget.side),
-          child: Stack(
+        final frameProgress = ((progress - .72) / .28).clamp(0.0, 1.0);
+        return Stack(fit: StackFit.expand, children: [
+          if (widget.organicGrowth)
+            OrganicBranch(progress: progress, right: widget.side == IllustratedBranchSide.right),
+          ClipRect(
+          clipper: widget.organicGrowth
+              ? _PlaqueFrameClipper(widget.side)
+              : _BranchGrowthClipper(progress: progress, side: widget.side),
+          child: Opacity(opacity: widget.organicGrowth ? frameProgress : 1,
+            child: Stack(
             fit: StackFit.expand,
             clipBehavior: Clip.none,
             children: [
@@ -143,11 +153,25 @@ class _IllustratedBranchPlaqueState extends State<IllustratedBranchPlaque>
                 ),
               ),
             ],
-          ),
-        );
+          )),
+        )]);
       },
     ),
   );
+}
+
+class _PlaqueFrameClipper extends CustomClipper<Rect> {
+  const _PlaqueFrameClipper(this.side);
+  final IllustratedBranchSide side;
+
+  @override
+  Rect getClip(Size size) => Rect.fromLTWH(
+    side == IllustratedBranchSide.left ? 0 : size.width * .64,
+    0, size.width * .36, size.height,
+  );
+
+  @override
+  bool shouldReclip(_PlaqueFrameClipper oldClipper) => oldClipper.side != side;
 }
 
 class _PlaqueRimPainter extends CustomPainter {

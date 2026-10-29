@@ -462,6 +462,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                                 side: side,
                                 selected: selected || candidates.isNotEmpty,
                                 animateIn: animateIn,
+                                organicGrowth: widget.enableIllustratedCamera,
                               ),
                             ),
                       ),
