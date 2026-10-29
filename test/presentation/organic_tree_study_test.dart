@@ -44,6 +44,25 @@ void main() {
     }
   });
 
+  test('叶柄固定在已生长的枝条上，树龄增加不搬动已有叶节', () {
+    final mature = OrganicTreeFrame(1);
+    final anchors = mature.leaves
+        .map((leaf) => (leaf.point, leaf.angle))
+        .toSet();
+    for (final age in [.2, .55, .8, 1.0]) {
+      final frame = OrganicTreeFrame(age);
+      expect(frame.leaves, isNotEmpty);
+      for (final leaf in frame.leaves) {
+        expect(frame.wood.contains(leaf.point), isTrue, reason: '树龄 $age 叶柄悬空');
+        expect(
+          anchors.contains((leaf.point, leaf.angle)),
+          isTrue,
+          reason: '树龄 $age 已有叶节发生位移',
+        );
+      }
+    }
+  });
+
   testWidgets('渲染主树连续形态美术样件', (tester) async {
     await tester.runAsync(() async {
       Future<ui.Image> load(String file) async {

@@ -158,23 +158,31 @@ class OrganicTreeFrame {
         );
         _join(twig, twigGrowth, twigRadius);
         final twigMetric = twig.computeMetrics().first;
-        for (var sprayIndex = 0; sprayIndex < 3; sprayIndex++) {
-          final birth = .4 + sprayIndex * .24;
+        for (var sprayIndex = 0; sprayIndex < 5; sprayIndex++) {
+          final birth = .2 + sprayIndex * .16;
           final sprayGrowth = ((twigGrowth - birth) / (1 - birth)).clamp(
             0.0,
             1.0,
           );
           if (sprayGrowth == 0) continue;
-          final start = twigMetric
-              .getTangentForOffset(twigMetric.length * birth)!
-              .position;
-          final angle = -math.pi / 2 + (sprayIndex - 1) * .85 + side * .2;
+          final tangent = twigMetric.getTangentForOffset(
+            twigMetric.length * birth,
+          )!;
+          final start = tangent.position;
+          final angle =
+              math.atan2(tangent.vector.dy, tangent.vector.dx) +
+              const [-1.25, .75, -.7, 1.2, 0.0][sprayIndex];
           final end =
               start +
-              Offset(math.cos(angle), math.sin(angle)) * (40 + sprayIndex * 9);
+              Offset(math.cos(angle), math.sin(angle)) * (60 + sprayIndex * 8);
           final spray = Path()
             ..moveTo(start.dx, start.dy)
-            ..quadraticBezierTo(start.dx, end.dy, end.dx, end.dy);
+            ..quadraticBezierTo(
+              start.dx + tangent.vector.dx * 25,
+              start.dy + tangent.vector.dy * 25,
+              end.dx,
+              end.dy,
+            );
           final sprayRadius = math.min(
             2 + age * 2,
             OrganicBranchPainter.radiusAt(birth, twigGrowth, twigRadius, .04) *
@@ -206,25 +214,26 @@ class OrganicTreeFrame {
 
   void _foliage(Path spine, double growth, int seed) {
     final metric = spine.computeMetrics().first;
-    for (var index = 0; index < 55; index++) {
-      final along = .25 + index / 55 * .74;
+    final nodes = (metric.length / 18).round().clamp(3, 24);
+    final bladeScale = metric.length < 100 ? .055 : .025;
+    for (var index = 0; index < nodes; index++) {
+      final along = .18 + index / (nodes - 1) * .78;
       if (growth <= along) continue;
-      final opening = ((growth - along) / .06).clamp(0.0, 1.0);
       final anchor = metric
           .getTangentForOffset(metric.length * along)!
           .position;
-      final phase = (seed + index) * 2.39996;
-      final spread = math.sqrt(((index * 73 + seed) % 181) / 181);
-      leaves.add((
-        point:
-            anchor +
-            Offset(
-              math.cos(phase) * 32 * spread,
-              math.sin(phase) * 25 * spread,
-            ),
-        angle: math.sin(phase) * 1.9,
-        scale: (.035 + .01 * math.cos(phase * 3)) * opening,
-      ));
+      final phase = seed * .37 + index * .83;
+      // 叶柄固定在同一叶节，叶片逐枚展开；不再把散点叶片撒在枝条周围。
+      for (var blade = 0; blade < 5; blade++) {
+        final opening = ((growth - along - blade * .004) / .06).clamp(0.0, 1.0);
+        if (opening == 0) continue;
+        final angle = phase + blade * math.pi * 2 / 5;
+        leaves.add((
+          point: anchor,
+          angle: angle + math.pi / 2,
+          scale: bladeScale * (1 + .2 * math.sin(phase + blade)) * opening,
+        ));
+      }
     }
   }
 }
@@ -320,10 +329,28 @@ class OrganicTreeStudyPainter extends CustomPainter {
       null,
       Paint()
         ..filterQuality = FilterQuality.medium
-        ..colorFilter = const ColorFilter.mode(
-          Color(0xFFE8D88E),
-          BlendMode.modulate,
-        ),
+        ..colorFilter = const ColorFilter.matrix([
+          1.4,
+          0,
+          0,
+          0,
+          5,
+          0,
+          1.3,
+          0,
+          0,
+          5,
+          0,
+          0,
+          .9,
+          0,
+          2,
+          0,
+          0,
+          0,
+          1,
+          0,
+        ]),
     );
     canvas.restore();
   }
