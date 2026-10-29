@@ -13,9 +13,11 @@ class IllustratedTreeCameraLayout {
   final int chapterCount;
   final int firstChapter;
 
-  double get sceneHeight => viewport.height * 1.6;
+  double get sceneHeight =>
+      math.max(viewport.height * 1.6, viewport.width * 1672 / 941);
+  double get sceneWidth => math.max(viewport.width, sceneHeight * 941 / 1672);
   double get _scale => math.max(viewport.width / 941, sceneHeight / 1672);
-  double get _left => (viewport.width - 941 * _scale) / 2;
+  double get _left => (sceneWidth - 941 * _scale) / 2;
   double get _top => sceneHeight - 1672 * _scale;
   double _anchorY(int chapterIndex) =>
       _top +

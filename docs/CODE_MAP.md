@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-10-29 21:09:52　对应提交：dd24c87 之后的工作区状态
+> 生成时间：2026-10-29 21:23:46　对应提交：12eab40 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,18 +13,18 @@ Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
   Files:     185
-  Nodes:     5,109
-  Edges:     21,882
-  DB Size:   24.73 MB
+  Nodes:     5,113
+  Edges:     21,901
+  DB Size:   24.85 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,775
+  method          1,777
   function        1,555
   import          625
   class           506
-  constant        286
+  constant        288
   file            177
   variable        139
   enum_member     25
@@ -175,7 +175,7 @@ Project Structure (185 files):
 |   |   |   `-- starfield.dart (dart, 31 symbols)
 |   |   |-- outline
 |   |   |   |-- tree_scene
-|   |   |   |   |-- illustrated_tree_camera_layout.dart (dart, 12 symbols)
+|   |   |   |   |-- illustrated_tree_camera_layout.dart (dart, 13 symbols)
 |   |   |   |   |-- illustrated_tree_growth.dart (dart, 7 symbols)
 |   |   |   |   |-- illustrated_tree_scene.dart (dart, 23 symbols)
 |   |   |   |   |-- illustrated_tree_trunk.dart (dart, 10 symbols)
@@ -192,7 +192,7 @@ Project Structure (185 files):
 |   |   |   |-- label_layout.dart (dart, 2 symbols)
 |   |   |   |-- magic_carpet.dart (dart, 67 symbols)
 |   |   |   |-- outline_controller.dart (dart, 34 symbols)
-|   |   |   |-- outline_page.dart (dart, 75 symbols)
+|   |   |   |-- outline_page.dart (dart, 76 symbols)
 |   |   |   `-- scroll_carpet.dart (dart, 38 symbols)
 |   |   |-- section
 |   |   |   |-- card_deck_sheet.dart (dart, 19 symbols)
@@ -280,7 +280,7 @@ Project Structure (185 files):
 |       |   |-- build.mjs (javascript, 10 symbols)
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
-|       |   |-- check-illustrated-outline.mjs (javascript, 23 symbols)
+|       |   |-- check-illustrated-outline.mjs (javascript, 25 symbols)
 |       |   |-- check-startup.mjs (javascript, 23 symbols)
 |       |   |-- render-branch-study.mjs (javascript, 21 symbols)
 |       |   |-- validate-gltf.mjs (javascript, 7 symbols)

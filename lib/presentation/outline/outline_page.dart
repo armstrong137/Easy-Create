@@ -76,6 +76,7 @@ class OutlinePage extends ConsumerStatefulWidget {
 }
 
 class _OutlinePageState extends ConsumerState<OutlinePage> {
+  bool _treeOverview = false;
   late final TreeSceneController _treeSceneController;
   late final OutlineController _outlineController;
   StreamSubscription? _treeSceneEvents;
@@ -635,6 +636,8 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                       Positioned.fill(
                         child: IllustratedTreeViewport(
                           sceneHeight: sceneHeight,
+                          sceneWidth: cameraMode ? cameraLayout.sceneWidth : null,
+                          overview: cameraMode && _treeOverview,
                           focusY: cameraMode ? cameraLayout.focusY : constraints.maxHeight * 0.5,
                           child: Stack(
                             fit: StackFit.expand,
@@ -647,6 +650,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                                 growthRevision: _illustratedNodeCount(outline),
                                 completeCrown: cameraMode && outline.length > 2,
                               ),
+                              if (staticMode) _creationZones(outline),
                               if (staticMode)
                                 for (final item in windowLabels)
                                   staticLabel(item.label, item.rect,
@@ -665,28 +669,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                           ),
                         ),
                       ),
-                    Positioned(
-                      left: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: constraints.maxWidth / 2,
-                      child: GestureDetector(
-                        key: const Key('左空白区'),
-                        behavior: HitTestBehavior.translucent,
-                        onDoubleTap: () => _createChapter(outline),
-                      ),
-                    ),
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: constraints.maxWidth / 2,
-                      child: GestureDetector(
-                        key: const Key('右空白区'),
-                        behavior: HitTestBehavior.translucent,
-                        onDoubleTap: () => _createSection(outline),
-                      ),
-                    ),
+                    if (!staticMode) Positioned.fill(child: _creationZones(outline)),
                     for (final projection in _treeSceneController.visibleLabels)
                       if (!staticMode) labelHotspot(projection),
                     for (final item in windowLabels)
@@ -724,6 +707,20 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                             : () => _createSection(outline),
                       ),
                     ),
+                    if (cameraMode)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 24,
+                        child: Center(
+                          child: TextButton.icon(
+                            key: const Key('魔树全景切换'),
+                            onPressed: () => setState(() => _treeOverview = !_treeOverview),
+                            icon: Icon(_treeOverview ? CupertinoIcons.zoom_in : CupertinoIcons.zoom_out, color: _ink),
+                            label: Text(_treeOverview ? '返回章节' : '全景', style: const TextStyle(color: _ink)),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               );
@@ -733,6 +730,22 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
       ),
     );
   }
+
+  /// 空白新增手势位于枝牌下层，不能覆盖章牌或延迟新芽按钮的轻点。
+  Widget _creationZones(List<OutlineChapter> outline) => Row(children: [
+    Expanded(child: GestureDetector(
+      key: const Key('左空白区'),
+      behavior: HitTestBehavior.translucent,
+      onDoubleTap: () => _createChapter(outline),
+      child: const SizedBox.expand(),
+    )),
+    Expanded(child: GestureDetector(
+      key: const Key('右空白区'),
+      behavior: HitTestBehavior.translucent,
+      onDoubleTap: () => _createSection(outline),
+      child: const SizedBox.expand(),
+    )),
+  ]);
 
   TextStyle _dlgStyle({double size = 17, FontWeight? weight, Color? color}) =>
       TextStyle(

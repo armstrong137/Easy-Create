@@ -419,6 +419,21 @@ void main() {
     expect(find.byKey(const Key('静态章交互_10')), findsNothing);
   });
 
+  testWidgets('全景双击章牌打开重命名而不创建新章', (tester) async {
+    await seedNovel();
+    final outline = List.generate(10, (index) => OutlineChapter(
+      chapter: Chapter(id: index + 1, novelId: 1, title: '第${index + 1}章', sortOrder: index),
+      sections: const [],
+    ));
+    await pumpOutline(tester, outline, enableIllustratedCamera: true);
+    await tester.tap(find.byKey(const Key('魔树全景切换')));
+    await tester.pumpAndSettle();
+    await doubleTapAt(tester, tester.getCenter(find.byKey(const Key('静态章交互_9'))));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('重命名输入框')), findsOneWidget);
+    expect(await database.select(database.chapters).get(), isEmpty);
+  });
+
   testWidgets('正式二维右侧最多显示两节且滑动会刷新窗口', (tester) async {
     await seedNovel();
     final sections = List.generate(

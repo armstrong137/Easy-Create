@@ -12,7 +12,12 @@ const browser = await chromium.launch({
   headless: true,
   args: ['--use-angle=swiftshader'],
 });
-const page = await browser.newPage({ viewport: { width: 430, height: 932 } });
+const page = await browser.newPage({
+  viewport: { width: 430, height: 932 },
+  recordVideo: process.argv.includes('--audit-overview')
+    ? { dir: resolve(output, 'video'), size: { width: 430, height: 932 } }
+    : undefined,
+});
 const errors = [];
 let phase = '首页启动';
 page.on('pageerror', (error) => errors.push({ phase, message: error.message }));
@@ -62,6 +67,21 @@ try {
   await capture('12-mature-430');
   const visibleChapters = page.getByRole('button', { name: /^(引子|第[一二三四五六七八九十]+章)$/ });
   assert.equal(await visibleChapters.count(), 2, '左侧只能显示两章');
+  if (process.argv.includes('--audit-overview')) {
+    await page.getByRole('button', { name: '全景', exact: true }).click();
+    await capture('overview-complete-430');
+    assert.equal(await visibleChapters.count(), 2, '全景不改变章节窗口');
+    const chapterHit = await page.getByRole('button', { name: '第九章', exact: true }).boundingBox();
+    // 语义层的点击会转成辅助操作；双击需验证实际 Flutter 指针路径。
+    const pointerStyle = await page.addStyleTag({ content: 'flt-semantics-host, flt-semantics-host * { pointer-events: none !important; }' });
+    await page.mouse.dblclick(chapterHit.x + chapterHit.width / 2, chapterHit.y + chapterHit.height / 2, { delay: 60 });
+    await pointerStyle.evaluate(element => element.remove());
+    await page.getByText('重命名这一章', { exact: true }).waitFor();
+    await capture('overview-chapter-hit-430');
+    await page.getByText('取消', { exact: true }).click();
+    await page.getByRole('button', { name: '返回章节', exact: true }).click();
+    await capture('overview-return-430');
+  }
   if (process.argv.includes('--audit-history')) {
     phase = '历史章节镜头验收';
     // 取不被左右枝牌遮挡的下段树干；标签替换不能充当镜头移动的证据。
@@ -86,6 +106,10 @@ try {
   }
   await page.setViewportSize({ width: 910, height: 800 });
   await capture('12-mature-910');
+  if (process.argv.includes('--audit-overview')) {
+    await page.getByRole('button', { name: '全景', exact: true }).click();
+    await capture('overview-complete-910');
+  }
   assert.deepEqual(errors, [], '浏览器不应发生运行错误');
   await writeFile(resolve(output, 'result.json'), JSON.stringify({
     runId, url,

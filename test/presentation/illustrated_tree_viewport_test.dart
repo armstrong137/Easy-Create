@@ -3,6 +3,48 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:novel_app/presentation/outline/tree_scene/illustrated_tree_viewport.dart';
 
 void main() {
+  testWidgets('全景完整容纳原始画幅且缩放后的枝牌仍可点击', (tester) async {
+    var tapped = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: SizedBox(
+            width: 300,
+            height: 500,
+            child: IllustratedTreeViewport(
+              sceneWidth: 600,
+              sceneHeight: 1000,
+              focusY: 700,
+              overview: true,
+              child: ColoredBox(
+                key: const Key('完整画幅'),
+                color: Colors.brown,
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () => tapped++,
+                    child: const SizedBox(
+                      key: Key('全景枝牌'),
+                      width: 100,
+                      height: 80,
+                      child: ColoredBox(color: Colors.green),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final frame = tester.getRect(find.byKey(const Key('完整画幅')));
+    expect(frame.width, closeTo(300, 0.01));
+    expect(frame.height, closeTo(500, 0.01));
+    await tester.tap(find.byKey(const Key('全景枝牌')));
+    expect(tapped, 1);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('浏览只移动场景，枝牌与树体保持相对位置和点击命中', (tester) async {
     var tapped = 0;
     Future<void> show(double focusY) => tester.pumpWidget(

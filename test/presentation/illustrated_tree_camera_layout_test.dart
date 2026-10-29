@@ -3,6 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:novel_app/presentation/outline/tree_scene/illustrated_tree_camera_layout.dart';
 
 void main() {
+  test('宽屏完整画幅不因 cover 再次裁掉树冠', () {
+    final layout = IllustratedTreeCameraLayout(const Size(910, 800), 10, 0);
+    expect(layout.sceneWidth / layout.sceneHeight, closeTo(941 / 1672, 0.001));
+  });
   test('同一章节切换浏览窗口时保留固定树干锚点', () {
     for (final size in [
       const Size(360, 800),
