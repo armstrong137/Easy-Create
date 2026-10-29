@@ -8,10 +8,12 @@ class IllustratedTreeTrunk extends StatelessWidget {
     super.key,
     required this.stage,
     this.completeCrown = false,
+    this.branchNecks,
   });
 
   final int stage;
   final bool completeCrown;
+  final List<Rect>? branchNecks;
 
   @override
   Widget build(BuildContext context) => IgnorePointer(
@@ -20,6 +22,7 @@ class IllustratedTreeTrunk extends StatelessWidget {
         clipper: IllustratedTreeTrunkClipper(
           stage: stage,
           completeCrown: completeCrown,
+          branchNecks: branchNecks,
         ),
         child: LayoutBuilder(
           builder: (context, constraints) => Image.asset(
@@ -46,10 +49,12 @@ class IllustratedTreeTrunkClipper extends CustomClipper<Path> {
   const IllustratedTreeTrunkClipper({
     required this.stage,
     this.completeCrown = false,
+    this.branchNecks,
   });
 
   final int stage;
   final bool completeCrown;
+  final List<Rect>? branchNecks;
 
   @override
   Path getClip(Size size) {
@@ -187,10 +192,19 @@ class IllustratedTreeTrunkClipper extends CustomClipper<Path> {
       target.left + (p.dx - source.left) * target.width / source.width,
       target.top + (p.dy - source.top) * target.height / source.height,
     );
-    return Path()..addPolygon(points.map(map).toList(), true);
+    final trunk = Path()..addPolygon(points.map(map).toList(), true);
+    final necks = branchNecks;
+    if (necks == null) return trunk;
+    final junctions = Path();
+    for (final neck in necks) {
+      junctions.addOval(neck);
+    }
+    return Path.combine(PathOperation.intersect, trunk, junctions);
   }
 
   @override
   bool shouldReclip(IllustratedTreeTrunkClipper oldClipper) =>
-      oldClipper.stage != stage || oldClipper.completeCrown != completeCrown;
+      oldClipper.stage != stage ||
+      oldClipper.completeCrown != completeCrown ||
+      oldClipper.branchNecks != branchNecks;
 }

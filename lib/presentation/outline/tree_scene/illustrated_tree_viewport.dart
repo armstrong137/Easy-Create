@@ -11,6 +11,8 @@ class IllustratedTreeViewport extends StatefulWidget {
     required this.child,
     this.sceneWidth,
     this.overview = false,
+    this.chapterScale = 1,
+    this.focusX,
   }) : assert(sceneHeight > 0);
 
   final double sceneHeight;
@@ -18,6 +20,8 @@ class IllustratedTreeViewport extends StatefulWidget {
   final Widget child;
   final double? sceneWidth;
   final bool overview;
+  final double chapterScale;
+  final double? focusX;
 
   @override
   State<IllustratedTreeViewport> createState() =>
@@ -41,12 +45,20 @@ class _IllustratedTreeViewportState extends State<IllustratedTreeViewport> {
         constraints.maxWidth / width,
         constraints.maxHeight / height,
       );
-      final maxOffset = height - constraints.maxHeight;
-      final target = overview
+      final scale = overview ? overviewScale : widget.chapterScale;
+      final maxOffset = math.max(0.0, height * scale - constraints.maxHeight);
+      final targetY = overview
           ? -(constraints.maxHeight - height * overviewScale) / 2
-          : (focusY - constraints.maxHeight * 0.5).clamp(0.0, maxOffset);
+          : (focusY * scale - constraints.maxHeight * 0.5).clamp(
+              0.0,
+              maxOffset,
+            );
+      final targetX = overview
+          ? 0.0
+          : ((widget.focusX ?? width / 2) - width / 2) * scale;
+      final target = Offset(targetX, targetY);
       return ClipRect(
-        child: TweenAnimationBuilder<double>(
+        child: TweenAnimationBuilder<Offset>(
           tween: Tween(begin: target, end: target),
           duration: const Duration(milliseconds: 460),
           curve: Curves.easeInOutCubic,
@@ -55,12 +67,12 @@ class _IllustratedTreeViewportState extends State<IllustratedTreeViewport> {
             fit: StackFit.expand,
             children: [
               Positioned(
-                left: (constraints.maxWidth - width) / 2,
+                left: (constraints.maxWidth - width) / 2 - offset.dx,
                 width: width,
-                top: -offset,
+                top: -offset.dy,
                 height: height,
                 child: AnimatedScale(
-                  scale: overview ? overviewScale : 1,
+                  scale: scale,
                   alignment: Alignment.topCenter,
                   duration: const Duration(milliseconds: 460),
                   curve: Curves.easeInOutCubic,

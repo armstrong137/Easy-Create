@@ -638,6 +638,8 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                         child: IllustratedTreeViewport(
                           sceneHeight: sceneHeight,
                           sceneWidth: cameraMode ? cameraLayout.sceneWidth : null,
+                          chapterScale: cameraMode ? cameraLayout.chapterScale : 1,
+                          focusX: cameraMode ? cameraLayout.focusX : null,
                           overview: cameraMode && _treeOverview,
                           focusY: cameraMode ? cameraLayout.focusY : constraints.maxHeight * 0.5,
                           child: Stack(
@@ -658,6 +660,16 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                                     side: item.side, selected: item.selected),
                               if (staticMode)
                                 IllustratedTreeTrunk(
+                                  branchNecks: cameraMode ? [
+                                    for (final item in windowLabels)
+                                      Rect.fromCenter(
+                                        center: Offset(item.rect.left + item.rect.width *
+                                            (item.side == IllustratedBranchSide.left ? .88 : .12),
+                                          item.rect.top + item.rect.height * .7),
+                                        width: item.rect.width * .2,
+                                        height: item.rect.height * .22,
+                                      ),
+                                  ] : null,
                                   stage: illustratedTreeStageForNodeCount(
                                     _illustratedNodeCount(outline),
                                   ),

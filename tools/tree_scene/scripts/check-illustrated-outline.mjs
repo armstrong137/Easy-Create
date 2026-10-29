@@ -25,6 +25,16 @@ page.on('console', (message) => {
   if (message.type() === 'error') errors.push({ phase, message: message.text() });
 });
 const captures = [];
+async function auditChapterPointerHit(name) {
+  const hit = await page.getByRole('button', { name, exact: true }).boundingBox();
+  assert.ok(hit.width > 180, '放大后牌面保持可读尺寸');
+  const style = await page.addStyleTag({ content: 'flt-semantics-host, flt-semantics-host * { pointer-events: none !important; }' });
+  await page.mouse.dblclick(hit.x + hit.width / 2, hit.y + hit.height / 2, { delay: 60 });
+  await style.evaluate(element => element.remove());
+  await page.getByText('重命名这一章', { exact: true }).waitFor();
+  assert.equal(await page.locator('input').inputValue(), name, '不能误击相邻章节');
+  await page.getByText('取消', { exact: true }).click();
+}
 async function capture(name) {
   // 等待已有 240ms 延迟和 920ms 生长播放完毕，只记录稳定态。
   await page.waitForTimeout(1500);
@@ -37,6 +47,8 @@ try {
   await page.locator('flt-semantics-placeholder').evaluate((element) => element.click());
   await page.getByText('Create Something', { exact: true }).click({ timeout: 30000 });
   await page.locator('input').click();
+  // 等待 Flutter 焦点桥接建立，否则首个真实按键可能落在旧编辑连接上。
+  await page.waitForTimeout(300);
   // Flutter 编辑桥接需真实键盘事件，直接改 DOM input 值不代表控制器收到输入。
   await page.locator('input').pressSequentially('Visual QA', { delay: 60 });
   await page.getByText('诞生', { exact: true }).click();
@@ -133,8 +145,24 @@ try {
     }, null, 2));
     assert.ok(treeRegionChanged, '滑回引子后树干区域完全未变：标签切换不等于镜头移动');
   }
+  if (process.argv.includes('--audit-dense')) {
+    phase = '三十章密集近景验收';
+    for (let index = 10; index < 30; index++) {
+      const numeral = `${index < 20 ? '十' : '二十'}${['', '一', '二', '三', '四', '五', '六', '七', '八', '九'][index % 10]}`;
+      await addChapter.click();
+      await page.getByRole('button', { name: `第${numeral}章`, exact: true }).waitFor();
+      await page.waitForTimeout(1300);
+    }
+    await capture('dense-30-chapters-430');
+    for (const name of ['第二十八章', '第二十九章']) {
+      await auditChapterPointerHit(name);
+    }
+  }
   await page.setViewportSize({ width: 910, height: 800 });
   await capture('12-mature-910');
+  if (process.argv.includes('--audit-dense')) {
+    for (const name of ['第二十八章', '第二十九章']) await auditChapterPointerHit(name);
+  }
   if (process.argv.includes('--audit-overview')) {
     await page.getByRole('button', { name: '全景', exact: true }).click();
     await capture('overview-complete-910');
@@ -142,7 +170,8 @@ try {
   assert.deepEqual(errors, [], '浏览器不应发生运行错误');
   await writeFile(resolve(output, 'result.json'), JSON.stringify({
     runId, url,
-    checksPassed: ['创建十章和两节', '末态语义窗口只有两章', '浏览器零错误'],
+    checksPassed: ['创建十章和两节', '末态语义窗口只有两章', '浏览器零错误',
+      ...(process.argv.includes('--audit-dense') ? ['三十章手机和宽屏双牌真实指针命中正确章节'] : [])],
     visualAcceptance: '待人工对照参考图', captures, errors,
   }, null, 2));
   console.log(JSON.stringify({ output, captures: captures.map(({ name }) => name), errors }));

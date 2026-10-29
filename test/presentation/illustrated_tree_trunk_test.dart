@@ -7,6 +7,19 @@ import 'package:novel_app/presentation/outline/tree_scene/illustrated_tree_trunk
 import 'package:novel_app/presentation/outline/tree_scene/tree_standin.dart';
 
 void main() {
+  test('实验前景只遮挡枝根，保留落在树干前方的文字牌面', () {
+    final clip = IllustratedTreeTrunkClipper(
+      stage: 5,
+      completeCrown: true,
+      branchNecks: [
+        Rect.fromCenter(center: const Offset(500, 1000), width: 40, height: 30),
+      ],
+    ).getClip(const Size(941, 1672));
+    expect(clip.contains(const Offset(500, 1000)), isTrue);
+    expect(clip.contains(const Offset(500, 950)), isFalse);
+    expect(clip.getBounds().width, lessThanOrEqualTo(40));
+    expect(clip.getBounds().height, lessThanOrEqualTo(30));
+  });
   testWidgets('未解码的新阶段不能沿新轮廓显示旧树干', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(home: IllustratedTreeTrunk(stage: 5)),

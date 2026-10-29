@@ -3,6 +3,53 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:novel_app/presentation/outline/tree_scene/illustrated_tree_viewport.dart';
 
 void main() {
+  testWidgets('近景放大围绕指定树干锚点并保持热区命中', (tester) async {
+    var taps = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: SizedBox(
+            key: const Key('近景窗口'),
+            width: 300,
+            height: 500,
+            child: IllustratedTreeViewport(
+              sceneWidth: 600,
+              sceneHeight: 1500,
+              focusX: 360,
+              focusY: 700,
+              chapterScale: 3,
+              child: Stack(
+                children: [
+                  Positioned(
+                    left: 360 - 20 / 3,
+                    top: 700 - 20 / 3,
+                    width: 40 / 3,
+                    height: 40 / 3,
+                    child: GestureDetector(
+                      onTap: () => taps++,
+                      child: const ColoredBox(
+                        key: Key('放大枝牌'),
+                        color: Colors.green,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final window = tester.getRect(find.byKey(const Key('近景窗口')));
+    final plaque = tester.getRect(find.byKey(const Key('放大枝牌')));
+    expect(plaque.width, closeTo(40, .001));
+    expect(plaque.center.dx, closeTo(window.center.dx, .001));
+    expect(plaque.center.dy, closeTo(window.center.dy, .001));
+    await tester.tap(find.byKey(const Key('放大枝牌')));
+    expect(taps, 1);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('全景往返不重建树体状态或重播生长', (tester) async {
     var mounts = 0;
     Future<void> show(bool overview) => tester.pumpWidget(

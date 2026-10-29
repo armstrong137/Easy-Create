@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-10-29 22:24:06　对应提交：9d33cb7 之后的工作区状态
+> 生成时间：2026-10-29 22:46:11　对应提交：e86bdf4 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,20 +13,20 @@ Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
   Files:     189
-  Nodes:     5,173
-  Edges:     22,052
-  DB Size:   25.09 MB
+  Nodes:     5,178
+  Edges:     22,072
+  DB Size:   25.16 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,797
-  function        1,561
+  method          1,799
+  function        1,562
   import          643
   class           515
-  constant        289
+  constant        290
   file            181
-  variable        139
+  variable        140
   enum_member     25
   type_alias      15
   enum            6
@@ -175,7 +175,7 @@ Project Structure (189 files):
 |   |   |   `-- starfield.dart (dart, 31 symbols)
 |   |   |-- outline
 |   |   |   |-- tree_scene
-|   |   |   |   |-- illustrated_tree_camera_layout.dart (dart, 13 symbols)
+|   |   |   |   |-- illustrated_tree_camera_layout.dart (dart, 15 symbols)
 |   |   |   |   |-- illustrated_tree_growth.dart (dart, 7 symbols)
 |   |   |   |   |-- illustrated_tree_scene.dart (dart, 27 symbols)
 |   |   |   |   |-- illustrated_tree_trunk.dart (dart, 10 symbols)
@@ -284,7 +284,7 @@ Project Structure (189 files):
 |       |   |-- build.mjs (javascript, 10 symbols)
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
-|       |   |-- check-illustrated-outline.mjs (javascript, 26 symbols)
+|       |   |-- check-illustrated-outline.mjs (javascript, 29 symbols)
 |       |   |-- check-startup.mjs (javascript, 23 symbols)
 |       |   |-- render-branch-study.mjs (javascript, 21 symbols)
 |       |   |-- validate-gltf.mjs (javascript, 7 symbols)
