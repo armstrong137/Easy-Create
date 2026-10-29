@@ -266,6 +266,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
     canvas.drawPath(
       frame.wood,
       Paint()
+        ..filterQuality = FilterQuality.high
         ..colorFilter = const ColorFilter.matrix([
           1.8,
           0,
@@ -292,7 +293,13 @@ class OrganicTreeStudyPainter extends CustomPainter {
           bark,
           TileMode.repeated,
           TileMode.repeated,
-          (Matrix4.identity()..scaleByDouble(.7, .7, 1, 1)).storage,
+          (Matrix4.identity()..scaleByDouble(
+                .7 * 512 / bark.width,
+                .7 * 512 / bark.width,
+                1,
+                1,
+              ))
+              .storage,
         ),
     );
     // 沿每条枝干的方向铺设树皮，并由圆截面法向形成体积光照。
@@ -385,7 +392,8 @@ class OrganicTreeStudyPainter extends CustomPainter {
         points.add(tangent.position + normal * radius * cross);
         // 纹理随截面周长取样，细枝不能横向塞入整张粗树皮。
         uv.add(
-          Offset((angle + math.pi / 2) * radius, metric.length * along * .8),
+          Offset((angle + math.pi / 2) * radius, metric.length * along * .8) *
+              (bark.width / 512),
         );
         final light =
             .18 +
@@ -428,6 +436,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
       vertices,
       BlendMode.modulate,
       Paint()
+        ..filterQuality = FilterQuality.high
         ..shader = ImageShader(
           bark,
           TileMode.repeated,
