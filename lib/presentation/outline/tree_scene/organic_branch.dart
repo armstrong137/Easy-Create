@@ -167,18 +167,24 @@ class OrganicBranchPainter extends CustomPainter {
       final along = growth * index / samples;
       final tangent = metric.getTangentForOffset(metric.length * along)!;
       final normal = Offset(-tangent.vector.dy, tangent.vector.dx);
-      final taper = math.min(1.0, (growth - along) * 18 + .06);
-      final radius =
-          rootRadius *
-          (1 - along * (1 - tipRatio)) *
-          math.sqrt(growth) *
-          taper *
-          (1 + .06 * math.sin(along * 37));
+      final radius = radiusAt(along, growth, rootRadius, tipRatio);
       upper.add(tangent.position + normal * radius);
       lower.add(tangent.position - normal * radius);
     }
     return Path()..addPolygon([...upper, ...lower.reversed], true);
   }
+
+  static double radiusAt(
+    double along,
+    double growth,
+    double rootRadius,
+    double tipRatio,
+  ) =>
+      rootRadius *
+      (1 - along * (1 - tipRatio)) *
+      math.sqrt(growth) *
+      math.min(1.0, (growth - along) * 18 + .06) *
+      (1 + .06 * math.sin(along * 37));
 
   @override
   bool shouldRepaint(OrganicBranchPainter oldDelegate) =>

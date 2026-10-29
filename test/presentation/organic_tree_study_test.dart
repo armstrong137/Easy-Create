@@ -27,6 +27,23 @@ void main() {
     );
   });
 
+  test('连续树龄的枝干交叠不会产生空洞或无效轮廓', () {
+    for (var step = 0; step <= 100; step++) {
+      final frame = OrganicTreeFrame(step / 100);
+      final bounds = frame.wood.getBounds();
+      expect(bounds.isFinite, isTrue, reason: '树龄 $step');
+      expect(bounds.left, greaterThanOrEqualTo(0));
+      expect(bounds.right, lessThanOrEqualTo(941));
+      for (final limb in frame.limbs) {
+        final metric = limb.spine.computeMetrics().first;
+        final center = metric
+            .getTangentForOffset(metric.length * limb.growth * .5)!
+            .position;
+        expect(frame.wood.contains(center), isTrue, reason: '树龄 $step 枝干交叠');
+      }
+    }
+  });
+
   testWidgets('渲染主树连续形态美术样件', (tester) async {
     await tester.runAsync(() async {
       Future<ui.Image> load(String file) async {

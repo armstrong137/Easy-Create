@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-10-29 21:55:41　对应提交：daadc09 之后的工作区状态
+> 生成时间：2026-10-29 22:04:55　对应提交：b9a6f07 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,14 +13,14 @@ Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
   Files:     189
-  Nodes:     5,169
-  Edges:     22,028
+  Nodes:     5,172
+  Edges:     22,036
   DB Size:   25.06 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,795
+  method          1,797
   function        1,561
   import          643
   class           515
@@ -28,7 +28,7 @@ Nodes by Kind:
   file            181
   variable        139
   enum_member     25
-  type_alias      14
+  type_alias      15
   enum            6
   namespace       2
 
@@ -180,8 +180,8 @@ Project Structure (189 files):
 |   |   |   |   |-- illustrated_tree_scene.dart (dart, 27 symbols)
 |   |   |   |   |-- illustrated_tree_trunk.dart (dart, 10 symbols)
 |   |   |   |   |-- illustrated_tree_viewport.dart (dart, 7 symbols)
-|   |   |   |   |-- organic_branch.dart (dart, 16 symbols)
-|   |   |   |   |-- organic_tree_study.dart (dart, 12 symbols)
+|   |   |   |   |-- organic_branch.dart (dart, 17 symbols)
+|   |   |   |   |-- organic_tree_study.dart (dart, 14 symbols)
 |   |   |   |   |-- sapling_plaque.dart (dart, 5 symbols)
 |   |   |   |   |-- tree_scene_controller.dart (dart, 51 symbols)
 |   |   |   |   |-- tree_scene_gestures.dart (dart, 17 symbols)

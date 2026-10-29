@@ -4,6 +4,12 @@ import 'package:flutter/material.dart';
 import 'organic_branch.dart';
 
 typedef OrganicTreeLeaf = ({Offset point, double angle, double scale});
+typedef OrganicTreeLimb = ({
+  Path spine,
+  double growth,
+  double radius,
+  double tipRatio,
+});
 
 /// 同一拓扑在连续树龄下的二维几何；当前仅用于独立美术验证。
 class OrganicTreeFrame {
@@ -20,18 +26,33 @@ class OrganicTreeFrame {
       14 + age * 78,
       tipRatio: .025,
     );
+    limbs.add((
+      spine: trunk,
+      growth: growth,
+      radius: 14 + age * 78,
+      tipRatio: .025,
+    ));
     for (var index = 0; index < 9; index++) {
-      final side = index.isEven ? -1 : 1;
-      final reach = 80 + index * 28.0;
+      final end = const [
+        Offset(90, 1450),
+        Offset(210, 1510),
+        Offset(330, 1550),
+        Offset(430, 1570),
+        Offset(560, 1540),
+        Offset(690, 1500),
+        Offset(820, 1480),
+        Offset(870, 1420),
+        Offset(310, 1460),
+      ][index];
       final root = Path()
-        ..moveTo(490, 1405)
+        ..moveTo(490 + (index - 4) * 6, 1405)
         ..cubicTo(
-          490 + side * reach * .35,
-          1460,
-          490 + side * reach * .7,
-          1460 + index % 3 * 9,
-          490 + side * reach,
-          1490 + index % 3 * 9,
+          490 + (end.dx - 490) * .25,
+          1470,
+          end.dx - (end.dx - 490) * .15,
+          end.dy - 18,
+          end.dx,
+          end.dy,
         );
       _join(root, growth, 18 + age * 25);
     }
@@ -46,20 +67,27 @@ class OrganicTreeFrame {
           .getTangentForOffset(metric.length * attachment)!
           .position;
       final side = index.isEven ? -1 : 1;
-      final reach = [290.0, 255.0, 365.0, 325.0, 280.0, 215.0, 135.0][index];
-      final rise = [205.0, 170.0, 290.0, 245.0, 280.0, 250.0, 180.0][index];
+      final end = const [
+        Offset(200, 870),
+        Offset(740, 820),
+        Offset(190, 580),
+        Offset(740, 470),
+        Offset(280, 280),
+        Offset(690, 220),
+        Offset(450, 180),
+      ][index];
+      final reach = (end.dx - start.dx).abs();
       final branch = Path()
         ..moveTo(start.dx, start.dy)
         ..cubicTo(
           start.dx + side * reach * .32,
           start.dy - 20,
-          start.dx + side * reach * .8,
-          start.dy - rise * .7,
-          start.dx + side * reach,
-          start.dy - rise,
+          end.dx - side * reach * .1,
+          end.dy + 80,
+          end.dx,
+          end.dy,
         );
       _join(branch, branchGrowth, (12 + age * 20) * (1 - index * .07));
-      _foliage(branch, branchGrowth, index * 100);
       final branchMetric = branch.computeMetrics().first;
       for (var twigIndex = 0; twigIndex < 4; twigIndex++) {
         final birth = .25 + twigIndex * .2;
@@ -68,20 +96,24 @@ class OrganicTreeFrame {
           1.0,
         );
         if (twigGrowth == 0) continue;
-        final anchor = branchMetric
-            .getTangentForOffset(branchMetric.length * birth)!
-            .position;
+        final tangent = branchMetric.getTangentForOffset(
+          branchMetric.length * birth,
+        )!;
+        final anchor = tangent.position;
+        final angle = -math.pi / 2 + side * (.25 + twigIndex * .19);
+        final direction = Offset(math.cos(angle), math.sin(angle));
+        final length = 70 + twigIndex * 10.0;
         final twig = Path()
           ..moveTo(anchor.dx, anchor.dy)
           ..cubicTo(
-            anchor.dx + side * 15,
-            anchor.dy - 35,
-            anchor.dx + side * 40,
-            anchor.dy - 100,
-            anchor.dx + side * 85,
-            anchor.dy - 130,
+            anchor.dx + tangent.vector.dx * 35,
+            anchor.dy + tangent.vector.dy * 35,
+            anchor.dx + direction.dx * length * .7,
+            anchor.dy + direction.dy * length * .7,
+            anchor.dx + direction.dx * length,
+            anchor.dy + direction.dy * length,
           );
-        _join(twig, twigGrowth, 9 + age * 10);
+        _join(twig, twigGrowth, 4 + age * 6);
         _foliage(twig, twigGrowth, index * 100 + twigIndex * 20 + 10);
       }
     }
@@ -89,27 +121,37 @@ class OrganicTreeFrame {
 
   late Path wood;
   final leaves = <OrganicTreeLeaf>[];
+  final limbs = <OrganicTreeLimb>[];
 
-  void _join(Path spine, double growth, double radius) => wood = Path.combine(
-    PathOperation.union,
-    wood,
-    OrganicBranchPainter.stem(spine, growth, radius, tipRatio: .04),
-  );
+  void _join(Path spine, double growth, double radius) {
+    limbs.add((spine: spine, growth: growth, radius: radius, tipRatio: .04));
+    // 同向闭合轮廓使用非零填充合并，避免密集枝叉反复布尔运算的精度问题。
+    wood.addPath(
+      OrganicBranchPainter.stem(spine, growth, radius, tipRatio: .04),
+      Offset.zero,
+    );
+  }
 
   void _foliage(Path spine, double growth, int seed) {
     final metric = spine.computeMetrics().first;
-    for (var index = 0; index < 60; index++) {
-      final along = .4 + index / 60 * .59;
+    for (var index = 0; index < 180; index++) {
+      final along = .35 + index / 180 * .64;
       if (growth <= along) continue;
       final opening = ((growth - along) / .16).clamp(0.0, 1.0);
       final anchor = metric
           .getTangentForOffset(metric.length * along)!
           .position;
       final phase = (seed + index) * 2.39996;
+      final spread = math.sqrt(((index * 73 + seed) % 181) / 181);
       leaves.add((
-        point: anchor + Offset(math.cos(phase) * 55, math.sin(phase) * 42),
+        point:
+            anchor +
+            Offset(
+              math.cos(phase) * 90 * spread,
+              math.sin(phase) * 65 * spread,
+            ),
         angle: math.sin(phase) * 1.9,
-        scale: (.07 + .012 * math.cos(phase * 3)) * opening,
+        scale: (.045 + .012 * math.cos(phase * 3)) * opening,
       ));
     }
   }
@@ -150,6 +192,10 @@ class OrganicTreeStudyPainter extends CustomPainter {
           (Matrix4.identity()..scaleByDouble(.7, .7, 1, 1)).storage,
         ),
     );
+    // 沿每条枝干的方向铺设树皮，并由圆截面法向形成体积光照。
+    for (final limb in frame.limbs) {
+      _surface(canvas, limb);
+    }
     canvas.drawPath(
       frame.wood,
       Paint()
@@ -186,6 +232,82 @@ class OrganicTreeStudyPainter extends CustomPainter {
         ),
     );
     canvas.restore();
+  }
+
+  void _surface(Canvas canvas, OrganicTreeLimb limb) {
+    final metric = limb.spine.computeMetrics().first;
+    final points = <Offset>[];
+    final uv = <Offset>[];
+    final colors = <Color>[];
+    final triangles = <int>[];
+    const rings = 36;
+    const slices = 8;
+    for (var ring = 0; ring <= rings; ring++) {
+      final along = limb.growth * ring / rings;
+      final tangent = metric.getTangentForOffset(metric.length * along)!;
+      final normal = Offset(-tangent.vector.dy, tangent.vector.dx);
+      final radius = OrganicBranchPainter.radiusAt(
+        along,
+        limb.growth,
+        limb.radius,
+        limb.tipRatio,
+      );
+      for (var slice = 0; slice <= slices; slice++) {
+        final angle = -math.pi / 2 + math.pi * slice / slices;
+        final cross = math.sin(angle);
+        points.add(tangent.position + normal * radius * cross);
+        uv.add(
+          Offset(slice / slices * bark.width, metric.length * along * 1.8),
+        );
+        final light =
+            .3 +
+            .7 *
+                math.max(
+                  0.0,
+                  -.42 * normal.dx * cross -
+                      .55 * normal.dy * cross +
+                      .72 * math.cos(angle),
+                );
+        colors.add(
+          Color.fromARGB(
+            (255 * math.min(1.0, along * 12 + .15)).round(),
+            (255 * light).clamp(0, 255).round(),
+            (235 * light).clamp(0, 255).round(),
+            (185 * light).clamp(0, 255).round(),
+          ),
+        );
+        if (ring < rings && slice < slices) {
+          final here = ring * (slices + 1) + slice;
+          triangles.addAll([
+            here,
+            here + 1,
+            here + slices + 1,
+            here + 1,
+            here + slices + 2,
+            here + slices + 1,
+          ]);
+        }
+      }
+    }
+    final vertices = ui.Vertices(
+      ui.VertexMode.triangles,
+      points,
+      textureCoordinates: uv,
+      colors: colors,
+      indices: triangles,
+    );
+    canvas.drawVertices(
+      vertices,
+      BlendMode.modulate,
+      Paint()
+        ..shader = ImageShader(
+          bark,
+          TileMode.repeated,
+          TileMode.repeated,
+          Matrix4.identity().storage,
+        ),
+    );
+    vertices.dispose();
   }
 
   @override
