@@ -109,7 +109,17 @@ class OrganicTreeFrame {
           end.dx,
           end.dy,
         );
-      _join(branch, branchGrowth, (12 + age * 20) * (1 - index * .07));
+      final parentRadius = OrganicBranchPainter.radiusAt(
+        attachment,
+        growth,
+        14 + age * 78,
+        .025,
+      );
+      final branchRadius = math.min(
+        (12 + age * 20) * (1 - index * .07),
+        parentRadius * .75,
+      );
+      _join(branch, branchGrowth, branchRadius);
       _foliage(branch, branchGrowth, index * 1000 + 900);
       final branchMetric = branch.computeMetrics().first;
       for (var twigIndex = 0; twigIndex < 4; twigIndex++) {
@@ -136,7 +146,17 @@ class OrganicTreeFrame {
             anchor.dx + direction.dx * length,
             anchor.dy + direction.dy * length,
           );
-        _join(twig, twigGrowth, 4 + age * 6);
+        final twigRadius = math.min(
+          4 + age * 6,
+          OrganicBranchPainter.radiusAt(
+                birth,
+                branchGrowth,
+                branchRadius,
+                .04,
+              ) *
+              .75,
+        );
+        _join(twig, twigGrowth, twigRadius);
         final twigMetric = twig.computeMetrics().first;
         for (var sprayIndex = 0; sprayIndex < 3; sprayIndex++) {
           final birth = .4 + sprayIndex * .24;
@@ -155,7 +175,12 @@ class OrganicTreeFrame {
           final spray = Path()
             ..moveTo(start.dx, start.dy)
             ..quadraticBezierTo(start.dx, end.dy, end.dx, end.dy);
-          _join(spray, sprayGrowth, 2 + age * 2);
+          final sprayRadius = math.min(
+            2 + age * 2,
+            OrganicBranchPainter.radiusAt(birth, twigGrowth, twigRadius, .04) *
+                .75,
+          );
+          _join(spray, sprayGrowth, sprayRadius);
           _foliage(
             spray,
             sprayGrowth,
@@ -309,7 +334,8 @@ class OrganicTreeStudyPainter extends CustomPainter {
     final uv = <Offset>[];
     final colors = <Color>[];
     final triangles = <int>[];
-    const rings = 36;
+    // 表面与外轮廓共用截面位置，弯曲处不露出另一套树皮的尖角。
+    const rings = OrganicBranchPainter.stemSamples;
     const slices = 8;
     for (var ring = 0; ring <= rings; ring++) {
       final along = limb.growth * ring / rings;
@@ -321,6 +347,11 @@ class OrganicTreeStudyPainter extends CustomPainter {
         limb.radius,
         limb.tipRatio,
       );
+      final collar = (metric.length * along / (limb.radius * 2)).clamp(
+        0.0,
+        1.0,
+      );
+      final coverage = collar * collar * (3 - 2 * collar);
       for (var slice = 0; slice <= slices; slice++) {
         final angle = -math.pi / 2 + math.pi * slice / slices;
         final cross = math.sin(angle);
@@ -340,7 +371,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
                 );
         colors.add(
           Color.fromARGB(
-            (255 * math.min(1.0, along * 12 + .15)).round(),
+            (255 * coverage).round(),
             (255 * light).clamp(0, 255).round(),
             (245 * light).clamp(0, 255).round(),
             (220 * light).clamp(0, 255).round(),

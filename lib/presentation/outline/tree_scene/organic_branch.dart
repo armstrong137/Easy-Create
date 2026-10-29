@@ -153,6 +153,8 @@ class OrganicBranchPainter extends CustomPainter {
   }
 
   /// 主树和承托枝共用同一连续截面生成器。
+  static const stemSamples = 48;
+
   static Path stem(
     Path spine,
     double growth,
@@ -162,9 +164,8 @@ class OrganicBranchPainter extends CustomPainter {
     final metric = spine.computeMetrics().first;
     final upper = <Offset>[];
     final lower = <Offset>[];
-    const samples = 48;
-    for (var index = 0; index <= samples; index++) {
-      final along = growth * index / samples;
+    for (var index = 0; index <= stemSamples; index++) {
+      final along = growth * index / stemSamples;
       final tangent = metric.getTangentForOffset(metric.length * along)!;
       final normal = Offset(-tangent.vector.dy, tangent.vector.dx);
       final radius = radiusAt(along, growth, rootRadius, tipRatio);
