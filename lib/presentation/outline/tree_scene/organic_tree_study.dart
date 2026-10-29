@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'organic_branch.dart';
+import 'organic_tree_projection.dart';
 
 typedef OrganicTreeLeaf = ({Offset point, double angle, double scale});
 typedef OrganicTreeLimb = ({
@@ -203,6 +204,16 @@ class OrganicTreeFrame {
   final leaves = <OrganicTreeLeaf>[];
   final limbs = <OrganicTreeLimb>[];
 
+  /// 章枝沿真实主干弧长连接，已有叶节和枝干不会因浏览窗口变化搬动。
+  /// 未长到的连接位置不投影，避免把牌面挂在尚未出现的树干上。
+  Offset? chapterAnchor(int chapterIndex, int chapterCount) {
+    final along = .14 + .72 * chapterIndex / math.max(9, chapterCount - 1);
+    final trunk = limbs.first;
+    if (along > trunk.growth) return null;
+    final metric = trunk.spine.computeMetrics().first;
+    return metric.getTangentForOffset(metric.length * along)!.position;
+  }
+
   void _join(Path spine, double growth, double radius) {
     limbs.add((spine: spine, growth: growth, radius: radius, tipRatio: .04));
     // 同向闭合轮廓使用非零填充合并，避免密集枝叉反复布尔运算的精度问题。
@@ -239,10 +250,12 @@ class OrganicTreeFrame {
 }
 
 class OrganicTreeStudyPainter extends CustomPainter {
-  OrganicTreeStudyPainter(this.age, this.bark, this.leaf);
+  OrganicTreeStudyPainter(this.age, this.bark, this.leaf)
+    : frame = OrganicTreeFrame(age);
   final double age;
   final ui.Image bark;
   final ui.Image leaf;
+  final OrganicTreeFrame frame;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -256,13 +269,9 @@ class OrganicTreeStudyPainter extends CustomPainter {
         ).createShader(Offset.zero & size),
     );
     canvas.save();
-    final scale = math.min(size.width / 941, size.height / 1672);
-    canvas.translate(
-      (size.width - 941 * scale) / 2,
-      (size.height - 1672 * scale) / 2,
-    );
-    canvas.scale(scale);
-    final frame = OrganicTreeFrame(age);
+    final projection = OrganicTreeProjection(size);
+    canvas.translate(projection.origin.dx, projection.origin.dy);
+    canvas.scale(projection.scale);
     canvas.drawPath(
       frame.wood,
       Paint()

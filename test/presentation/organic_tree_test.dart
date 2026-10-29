@@ -34,19 +34,40 @@ void main() {
           as OrganicTreeStudyPainter;
 
   testWidgets('真实材质只加载一次，树龄更新经过连续中间值', (tester) async {
-    Future<void> show(double age) =>
-        tester.pumpWidget(MaterialApp(home: OrganicTree(age: age)));
+    OrganicTreeFrame? overlayFrame;
+    var foregroundPaints = 0;
+    Future<void> show(double age) => tester.pumpWidget(
+      MaterialApp(
+        home: OrganicTree(
+          age: age,
+          foregroundBuilder: (context, frame) {
+            overlayFrame = frame;
+            return CustomPaint(
+              painter: _CountPainter(() => foregroundPaints++),
+              child: const SizedBox.expand(),
+            );
+          },
+        ),
+      ),
+    );
     await show(.2);
     await loadMaterials(tester);
     final initial = painter(tester);
     expect(initial.age, .2);
+    final initialPaints = foregroundPaints;
     await show(.8);
     await tester.pump(const Duration(milliseconds: 700));
     final middle = painter(tester);
+    expect(
+      identical(middle.frame, overlayFrame),
+      isTrue,
+      reason: '枝牌必须使用正在绘制的同一几何帧，而非目标树龄',
+    );
     expect(middle.age, greaterThan(.2));
     expect(middle.age, lessThan(.8));
     expect(identical(middle.bark, initial.bark), isTrue);
     expect(identical(middle.leaf, initial.leaf), isTrue);
+    expect(foregroundPaints, initialPaints, reason: '主树生长不能反复重画未变化的枝牌前景');
     await tester.pumpAndSettle();
     expect(painter(tester).age, .8);
   });
@@ -95,4 +116,18 @@ void main() {
     await tester.runAsync(() => future);
     expect(tester.takeException(), isNull);
   });
+}
+
+class _CountPainter extends CustomPainter {
+  _CountPainter(this.onPaint);
+  final VoidCallback onPaint;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    onPaint();
+    canvas.drawCircle(const Offset(10, 10), 3, Paint()..color = Colors.green);
+  }
+
+  @override
+  bool shouldRepaint(_CountPainter oldDelegate) => false;
 }

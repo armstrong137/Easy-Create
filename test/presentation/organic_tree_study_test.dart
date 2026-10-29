@@ -5,6 +5,29 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:novel_app/presentation/outline/tree_scene/organic_tree_study.dart';
 
 void main() {
+  test('章枝连接真实树干，浏览及继续成长不移动已有锚点', () {
+    final mature = OrganicTreeFrame(1);
+    for (var count = 1; count <= 10; count++) {
+      final growing = OrganicTreeFrame(count / 10);
+      for (var index = 0; index < count; index++) {
+        final anchor = growing.chapterAnchor(index, count);
+        expect(anchor, isNotNull, reason: '$count 个节点的第 $index 章');
+        expect(growing.wood.contains(anchor!), isTrue);
+        expect(anchor, mature.chapterAnchor(index, count));
+      }
+    }
+    final young = OrganicTreeFrame(.1);
+    expect(young.chapterAnchor(9, 10), isNull, reason: '不能把成熟树锚点用在幼树尚未长出的部分');
+    for (final count in [30, 100, 1000]) {
+      Offset? previous;
+      for (var index = 0; index < count; index++) {
+        final anchor = mature.chapterAnchor(index, count)!;
+        expect(mature.wood.contains(anchor), isTrue);
+        if (previous != null) expect(anchor.dy, lessThan(previous.dy));
+        previous = anchor;
+      }
+    }
+  });
   test('主树由同一根部连续延伸，枝叶随树龄生成', () {
     final young = OrganicTreeFrame(.2);
     final middle = OrganicTreeFrame(.55);

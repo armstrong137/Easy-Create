@@ -7,9 +7,10 @@ import 'organic_tree_study.dart';
 
 /// 连续主树的运行时容器；树龄只由创作进度传入，与浏览镜头无关。
 class OrganicTree extends StatefulWidget {
-  const OrganicTree({super.key, required this.age});
+  const OrganicTree({super.key, required this.age, this.foregroundBuilder});
 
   final double age;
+  final Widget Function(BuildContext, OrganicTreeFrame)? foregroundBuilder;
 
   @override
   State<OrganicTree> createState() => _OrganicTreeState();
@@ -77,18 +78,27 @@ class _OrganicTreeState extends State<OrganicTree> {
             ? Duration.zero
             : const Duration(milliseconds: 1400),
         curve: Curves.easeInOutCubic,
-        builder: (context, currentAge, _) => RepaintBoundary(
-          child: CustomPaint(
-            isComplex: true,
-            willChange: currentAge != age,
-            painter: OrganicTreeStudyPainter(
-              currentAge,
-              materials[0],
-              materials[1],
+        builder: (context, currentAge, _) {
+          final painter = OrganicTreeStudyPainter(
+            currentAge,
+            materials[0],
+            materials[1],
+          );
+          final foreground = widget.foregroundBuilder?.call(
+            context,
+            painter.frame,
+          );
+          return RepaintBoundary(
+            child: CustomPaint(
+              isComplex: true,
+              willChange: currentAge != age,
+              painter: painter,
+              child: foreground == null
+                  ? const SizedBox.expand()
+                  : RepaintBoundary(child: foreground),
             ),
-            child: const SizedBox.expand(),
-          ),
-        ),
+          );
+        },
       );
     },
   );

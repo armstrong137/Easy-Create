@@ -43,6 +43,13 @@ try {
   await page.screenshot({ path: resolve(output, 'growing-430.png') });
   await page.waitForTimeout(1400);
   await page.screenshot({ path: resolve(output, 'mature-430.png') });
+  for (const name of ['左枝牌', '右枝牌']) {
+    const hit = await page.getByRole('button', { name, exact: true }).boundingBox();
+    const style = await page.addStyleTag({ content: 'flt-semantics-host, flt-semantics-host * { pointer-events: none !important; }' });
+    await page.mouse.click(hit.x + hit.width / 2, hit.y + hit.height / 2);
+    await style.evaluate(element => element.remove());
+    await page.getByText(`命中：${name}`, { exact: true }).waitFor();
+  }
   await page.waitForFunction(() => window.__organicTiming);
   const timing = await page.evaluate(() => window.__organicTiming);
   assert.ok(!(await readFile(resolve(output, 'young-430.png'))).equals(await readFile(resolve(output, 'mature-430.png'))));
