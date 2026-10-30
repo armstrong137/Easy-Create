@@ -4,6 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'organic_bark.dart';
 
+typedef OrganicStemSection = ({
+  Offset center,
+  Offset normal,
+  double radius,
+  double distance,
+});
+
 /// 枝梢沿曲线延伸并增厚；树皮只是填充材质，不缩放整张枝条图片。
 class OrganicBranch extends StatefulWidget {
   const OrganicBranch({
@@ -242,18 +249,41 @@ class OrganicBranchPainter extends CustomPainter {
     double growth,
     double rootRadius, {
     double tipRatio = .48,
+  }) => sectionPath(sampleStem(spine, growth, rootRadius, tipRatio: tipRatio));
+
+  /// 每帧只采样一次，轮廓和体积表面复用完全相同的截面。
+  static List<OrganicStemSection> sampleStem(
+    Path spine,
+    double growth,
+    double rootRadius, {
+    double tipRatio = .48,
   }) {
     final metric = spine.computeMetrics().first;
-    final upper = <Offset>[];
-    final lower = <Offset>[];
+    final sections = <OrganicStemSection>[];
     for (var index = 0; index <= stemSamples; index++) {
       final along = growth * index / stemSamples;
       final tangent = metric.getTangentForOffset(metric.length * along)!;
       final normal = Offset(-tangent.vector.dy, tangent.vector.dx);
       final radius = radiusAt(along, growth, rootRadius, tipRatio);
-      upper.add(tangent.position + normal * radius);
-      lower.add(tangent.position - normal * radius);
+      sections.add((
+        center: tangent.position,
+        normal: normal,
+        radius: radius,
+        distance: metric.length * along,
+      ));
     }
+    return sections;
+  }
+
+  static Path sectionPath(List<OrganicStemSection> sections) {
+    final upper = [
+      for (final section in sections)
+        section.center + section.normal * section.radius,
+    ];
+    final lower = [
+      for (final section in sections)
+        section.center - section.normal * section.radius,
+    ];
     return Path()..addPolygon([...upper, ...lower.reversed], true);
   }
 

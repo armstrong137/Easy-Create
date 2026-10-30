@@ -11,6 +11,7 @@ typedef OrganicTreeLimb = ({
   double growth,
   double radius,
   double tipRatio,
+  List<OrganicStemSection> sections,
 });
 
 /// 同一拓扑在连续树龄下的二维几何；当前仅用于独立美术验证。
@@ -32,17 +33,19 @@ class OrganicTreeFrame {
     final growth = .12 + age * .88;
     final trunk = _trunk;
     final metric = trunk.computeMetrics().first;
-    wood = OrganicBranchPainter.stem(
+    final trunkSections = OrganicBranchPainter.sampleStem(
       trunk,
       growth,
       14 + age * 78,
       tipRatio: .025,
     );
+    wood = OrganicBranchPainter.sectionPath(trunkSections);
     limbs.add((
       spine: trunk,
       growth: growth,
       radius: 14 + age * 78,
       tipRatio: .025,
+      sections: trunkSections,
     ));
     _foliage(trunk, growth, 9999);
     // 幼龄细根先探索土壤，粗度仍跟随树龄，避免短粗根挤成星形尖片。
@@ -240,12 +243,21 @@ class OrganicTreeFrame {
       fraction > limbs.first.growth ? null : trunkPoint(fraction);
 
   void _join(Path spine, double growth, double radius) {
-    limbs.add((spine: spine, growth: growth, radius: radius, tipRatio: .04));
-    // 同向闭合轮廓使用非零填充合并，避免密集枝叉反复布尔运算的精度问题。
-    wood.addPath(
-      OrganicBranchPainter.stem(spine, growth, radius, tipRatio: .04),
-      Offset.zero,
+    final sections = OrganicBranchPainter.sampleStem(
+      spine,
+      growth,
+      radius,
+      tipRatio: .04,
     );
+    limbs.add((
+      spine: spine,
+      growth: growth,
+      radius: radius,
+      tipRatio: .04,
+      sections: sections,
+    ));
+    // 同向闭合轮廓使用非零填充合并，避免密集枝叉反复布尔运算的精度问题。
+    wood.addPath(OrganicBranchPainter.sectionPath(sections), Offset.zero);
   }
 
   void _foliage(Path spine, double growth, int seed) {
@@ -376,7 +388,6 @@ class OrganicTreeStudyPainter extends CustomPainter {
   }
 
   void _surface(Canvas canvas, OrganicTreeLimb limb) {
-    final metric = limb.spine.computeMetrics().first;
     final points = <Offset>[];
     final uv = <Offset>[];
     final colors = <Color>[];
@@ -385,27 +396,18 @@ class OrganicTreeStudyPainter extends CustomPainter {
     const rings = OrganicBranchPainter.stemSamples;
     const slices = 8;
     for (var ring = 0; ring <= rings; ring++) {
-      final along = limb.growth * ring / rings;
-      final tangent = metric.getTangentForOffset(metric.length * along)!;
-      final normal = Offset(-tangent.vector.dy, tangent.vector.dx);
-      final radius = OrganicBranchPainter.radiusAt(
-        along,
-        limb.growth,
-        limb.radius,
-        limb.tipRatio,
-      );
-      final collar = (metric.length * along / (limb.radius * 2)).clamp(
-        0.0,
-        1.0,
-      );
+      final section = limb.sections[ring];
+      final normal = section.normal;
+      final radius = section.radius;
+      final collar = (section.distance / (limb.radius * 2)).clamp(0.0, 1.0);
       final coverage = collar * collar * (3 - 2 * collar);
       for (var slice = 0; slice <= slices; slice++) {
         final angle = -math.pi / 2 + math.pi * slice / slices;
         final cross = math.sin(angle);
-        points.add(tangent.position + normal * radius * cross);
+        points.add(section.center + normal * radius * cross);
         // 纹理随截面周长取样，细枝不能横向塞入整张粗树皮。
         uv.add(
-          Offset((angle + math.pi / 2) * radius, metric.length * along * .8) *
+          Offset((angle + math.pi / 2) * radius, section.distance * .8) *
               (bark.width / 512),
         );
         final light =
