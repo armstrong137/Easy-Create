@@ -257,8 +257,9 @@ class OrganicBranchPainter extends CustomPainter {
     double growth,
     double rootRadius, {
     double tipRatio = .48,
+    ui.PathMetric? pathMetric,
   }) {
-    final metric = spine.computeMetrics().first;
+    final metric = pathMetric ?? spine.computeMetrics().first;
     final sections = <OrganicStemSection>[];
     for (var index = 0; index <= stemSamples; index++) {
       final along = growth * index / stemSamples;

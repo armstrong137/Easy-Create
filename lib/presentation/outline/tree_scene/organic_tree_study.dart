@@ -21,6 +21,13 @@ class OrganicTreeFrame {
     ..moveTo(490, 1410)
     ..cubicTo(430, 1180, 575, 840, 500, 410);
   static final _trunkMetric = _trunk.computeMetrics().first;
+  // 拓扑及中心线固定；缓存只含这棵树有限的枝干，不缓存动态生长截面。
+  static final _curves = <String, Path>{};
+  static final _metrics = <Path, ui.PathMetric>{_trunk: _trunkMetric};
+  static Path _curve(String key, Path Function() create) =>
+      _curves.putIfAbsent(key, create);
+  static ui.PathMetric _measure(Path path) =>
+      _metrics.putIfAbsent(path, () => path.computeMetrics().first);
 
   static double chapterFraction(int index, int count) =>
       .14 + .72 * index / math.max(9, count - 1);
@@ -33,12 +40,13 @@ class OrganicTreeFrame {
     age = age.clamp(0.0, 1.0);
     final growth = .12 + age * .88;
     final trunk = _trunk;
-    final metric = trunk.computeMetrics().first;
+    final metric = _trunkMetric;
     final trunkSections = OrganicBranchPainter.sampleStem(
       trunk,
       growth,
       14 + age * 78,
       tipRatio: .025,
+      pathMetric: metric,
     );
     wood = OrganicBranchPainter.sectionPath(trunkSections);
     limbs.add((
@@ -61,18 +69,21 @@ class OrganicTreeFrame {
         Offset(790, 1480),
         Offset(850, 1430),
       ][index];
-      final root = Path()
-        ..moveTo(490, 1380)
-        ..cubicTo(
-          490 + (end.dx - 490) * .12,
-          1470 + (index % 2) * 15,
-          end.dx - (end.dx - 490) * .38,
-          end.dy - 20,
-          end.dx,
-          end.dy,
-        );
+      final root = _curve(
+        'root:$index',
+        () => Path()
+          ..moveTo(490, 1380)
+          ..cubicTo(
+            490 + (end.dx - 490) * .12,
+            1470 + (index % 2) * 15,
+            end.dx - (end.dx - 490) * .38,
+            end.dy - 20,
+            end.dx,
+            end.dy,
+          ),
+      );
       _join(root, rootGrowth, rootRadius);
-      final rootMetric = root.computeMetrics().first;
+      final rootMetric = _measure(root);
       for (var forkIndex = 0; forkIndex < 2; forkIndex++) {
         final birth = .3 + forkIndex * .3;
         final forkGrowth = ((rootGrowth - birth) / (1 - birth)).clamp(0.0, 1.0);
@@ -84,16 +95,19 @@ class OrganicTreeFrame {
         final normal = Offset(-tangent.vector.dy, tangent.vector.dx);
         final direction =
             tangent.vector * 65 + normal * (forkIndex.isEven ? 35 : -28);
-        final fork = Path()
-          ..moveTo(start.dx, start.dy)
-          ..cubicTo(
-            start.dx + tangent.vector.dx * 20,
-            start.dy + tangent.vector.dy * 20,
-            start.dx + direction.dx * .7,
-            start.dy + direction.dy * .7,
-            start.dx + direction.dx,
-            start.dy + direction.dy,
-          );
+        final fork = _curve(
+          'fork:$index:$forkIndex',
+          () => Path()
+            ..moveTo(start.dx, start.dy)
+            ..cubicTo(
+              start.dx + tangent.vector.dx * 20,
+              start.dy + tangent.vector.dy * 20,
+              start.dx + direction.dx * .7,
+              start.dy + direction.dy * .7,
+              start.dx + direction.dx,
+              start.dy + direction.dy,
+            ),
+        );
         final forkRadius = math.min(
           (10 + age * 12) * (1 - forkIndex * .3),
           OrganicBranchPainter.radiusAt(birth, rootGrowth, rootRadius, .04) *
@@ -123,16 +137,19 @@ class OrganicTreeFrame {
         Offset(450, 300),
       ][index];
       final reach = (end.dx - start.dx).abs();
-      final branch = Path()
-        ..moveTo(start.dx, start.dy)
-        ..cubicTo(
-          start.dx + side * reach * .20,
-          start.dy + 20,
-          end.dx - side * reach * .35,
-          end.dy - 45,
-          end.dx,
-          end.dy,
-        );
+      final branch = _curve(
+        'branch:$index',
+        () => Path()
+          ..moveTo(start.dx, start.dy)
+          ..cubicTo(
+            start.dx + side * reach * .20,
+            start.dy + 20,
+            end.dx - side * reach * .35,
+            end.dy - 45,
+            end.dx,
+            end.dy,
+          ),
+      );
       final parentRadius = OrganicBranchPainter.radiusAt(
         attachment,
         growth,
@@ -145,7 +162,7 @@ class OrganicTreeFrame {
       );
       _join(branch, branchGrowth, branchRadius);
       _foliage(branch, branchGrowth, index * 1000 + 900);
-      final branchMetric = branch.computeMetrics().first;
+      final branchMetric = _measure(branch);
       for (var twigIndex = 0; twigIndex < 4; twigIndex++) {
         final birth = .25 + twigIndex * .2;
         final twigGrowth = ((branchGrowth - birth) / (1 - birth)).clamp(
@@ -160,16 +177,19 @@ class OrganicTreeFrame {
         final angle = -math.pi / 2 + side * (.25 + twigIndex * .19);
         final direction = Offset(math.cos(angle), math.sin(angle));
         final length = 70 + twigIndex * 10.0;
-        final twig = Path()
-          ..moveTo(anchor.dx, anchor.dy)
-          ..cubicTo(
-            anchor.dx + tangent.vector.dx * 35,
-            anchor.dy + tangent.vector.dy * 35,
-            anchor.dx + direction.dx * length * .7,
-            anchor.dy + direction.dy * length * .7,
-            anchor.dx + direction.dx * length,
-            anchor.dy + direction.dy * length,
-          );
+        final twig = _curve(
+          'twig:$index:$twigIndex',
+          () => Path()
+            ..moveTo(anchor.dx, anchor.dy)
+            ..cubicTo(
+              anchor.dx + tangent.vector.dx * 35,
+              anchor.dy + tangent.vector.dy * 35,
+              anchor.dx + direction.dx * length * .7,
+              anchor.dy + direction.dy * length * .7,
+              anchor.dx + direction.dx * length,
+              anchor.dy + direction.dy * length,
+            ),
+        );
         final twigRadius = math.min(
           4 + age * 6,
           OrganicBranchPainter.radiusAt(
@@ -181,7 +201,7 @@ class OrganicTreeFrame {
               .75,
         );
         _join(twig, twigGrowth, twigRadius);
-        final twigMetric = twig.computeMetrics().first;
+        final twigMetric = _measure(twig);
         for (var sprayIndex = 0; sprayIndex < 5; sprayIndex++) {
           final birth = .2 + sprayIndex * .16;
           final sprayGrowth = ((twigGrowth - birth) / (1 - birth)).clamp(
@@ -199,14 +219,17 @@ class OrganicTreeFrame {
           final end =
               start +
               Offset(math.cos(angle), math.sin(angle)) * (60 + sprayIndex * 8);
-          final spray = Path()
-            ..moveTo(start.dx, start.dy)
-            ..quadraticBezierTo(
-              start.dx + tangent.vector.dx * 25,
-              start.dy + tangent.vector.dy * 25,
-              end.dx,
-              end.dy,
-            );
+          final spray = _curve(
+            'spray:$index:$twigIndex:$sprayIndex',
+            () => Path()
+              ..moveTo(start.dx, start.dy)
+              ..quadraticBezierTo(
+                start.dx + tangent.vector.dx * 25,
+                start.dy + tangent.vector.dy * 25,
+                end.dx,
+                end.dy,
+              ),
+          );
           final sprayRadius = math.min(
             2 + age * 2,
             OrganicBranchPainter.radiusAt(birth, twigGrowth, twigRadius, .04) *
@@ -249,6 +272,7 @@ class OrganicTreeFrame {
       growth,
       radius,
       tipRatio: .04,
+      pathMetric: _measure(spine),
     );
     limbs.add((
       spine: spine,
@@ -262,7 +286,7 @@ class OrganicTreeFrame {
   }
 
   void _foliage(Path spine, double growth, int seed) {
-    final metric = spine.computeMetrics().first;
+    final metric = _measure(spine);
     final nodes = (metric.length / 18).round().clamp(3, 24);
     final bladeScale = metric.length < 100 ? .055 : .025;
     for (var index = 0; index < nodes; index++) {

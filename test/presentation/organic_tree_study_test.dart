@@ -7,6 +7,22 @@ import 'package:novel_app/presentation/outline/tree_scene/organic_tree_study.dar
 void main() {
   test('章枝连接真实树干，浏览及继续成长不移动已有锚点', () {
     final mature = OrganicTreeFrame(1);
+    final matureCurves = mature.limbs.map((limb) => limb.spine).toSet();
+    for (final limb in OrganicTreeFrame(.2).limbs) {
+      expect(
+        matureCurves.contains(limb.spine),
+        isTrue,
+        reason: '固定中心线应复用，不为每个树龄重建原生路径',
+      );
+    }
+    expect(
+      identical(
+        OrganicTreeFrame(.2).limbs.first.sections,
+        mature.limbs.first.sections,
+      ),
+      isFalse,
+      reason: '只缓存固定曲线，生长截面必须逐帧生成',
+    );
     for (var count = 1; count <= 10; count++) {
       final growing = OrganicTreeFrame(count / 10);
       for (var index = 0; index < count; index++) {
