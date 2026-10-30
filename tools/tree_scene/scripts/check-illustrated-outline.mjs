@@ -176,9 +176,11 @@ try {
   }, null, 2));
   console.log(JSON.stringify({ output, captures: captures.map(({ name }) => name), errors }));
 } catch (error) {
-  await page.screenshot({ path: resolve(output, 'failure.png') });
+  // 浏览器断连时截图也可能失败，仍需保留导致验收中断的原始错误。
+  await page.screenshot({ path: resolve(output, 'failure.png') }).catch(() => {});
+  const failureText = await page.locator('body').innerText().catch(() => '页面已不可读取');
   await writeFile(resolve(output, 'failure.json'), JSON.stringify({
-    runId, error: String(error), text: await page.locator('body').innerText(), captures, errors,
+    runId, error: String(error), text: failureText, captures, errors,
   }, null, 2));
   throw error;
 } finally {

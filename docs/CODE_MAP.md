@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-10-30 20:17:58　对应提交：d029bd1 之后的工作区状态
+> 生成时间：2026-10-30 20:21:03　对应提交：ca94438 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,8 +13,8 @@ Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
   Files:     197
-  Nodes:     5,275
-  Edges:     22,322
+  Nodes:     5,276
+  Edges:     22,324
   DB Size:   25.57 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
@@ -24,7 +24,7 @@ Nodes by Kind:
   function        1,571
   import          683
   class           522
-  constant        300
+  constant        301
   file            189
   variable        140
   enum_member     25
@@ -290,7 +290,7 @@ Project Structure (197 files):
 |       |   |-- build.mjs (javascript, 10 symbols)
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
-|       |   |-- check-illustrated-outline.mjs (javascript, 29 symbols)
+|       |   |-- check-illustrated-outline.mjs (javascript, 30 symbols)
 |       |   |-- check-organic-tree.mjs (javascript, 14 symbols)
 |       |   |-- check-startup.mjs (javascript, 23 symbols)
 |       |   |-- render-branch-study.mjs (javascript, 21 symbols)
