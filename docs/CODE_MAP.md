@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-10-30 21:29:47　对应提交：4e209b0 之后的工作区状态
+> 生成时间：2026-10-30 21:41:11　对应提交：f3670cb 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,8 +13,8 @@ Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
   Files:     198
-  Nodes:     5,296
-  Edges:     22,389
+  Nodes:     5,298
+  Edges:     22,393
   DB Size:   26.00 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
@@ -22,9 +22,9 @@ Index Statistics:
 Nodes by Kind:
   method          1,827
   function        1,572
-  import          688
+  import          689
   class           522
-  constant        308
+  constant        309
   file            190
   variable        140
   enum_member     25
@@ -181,7 +181,7 @@ Project Structure (198 files):
 |   |   |   |   |-- illustrated_tree_trunk.dart (dart, 10 symbols)
 |   |   |   |   |-- illustrated_tree_viewport.dart (dart, 7 symbols)
 |   |   |   |   |-- organic_bark.dart (dart, 3 symbols)
-|   |   |   |   |-- organic_branch.dart (dart, 22 symbols)
+|   |   |   |   |-- organic_branch.dart (dart, 23 symbols)
 |   |   |   |   |-- organic_tree_camera_layout.dart (dart, 14 symbols)
 |   |   |   |   |-- organic_tree_projection.dart (dart, 6 symbols)
 |   |   |   |   |-- organic_tree_study.dart (dart, 29 symbols)
@@ -198,7 +198,7 @@ Project Structure (198 files):
 |   |   |   |-- label_layout.dart (dart, 2 symbols)
 |   |   |   |-- magic_carpet.dart (dart, 67 symbols)
 |   |   |   |-- outline_controller.dart (dart, 34 symbols)
-|   |   |   |-- outline_page.dart (dart, 78 symbols)
+|   |   |   |-- outline_page.dart (dart, 79 symbols)
 |   |   |   `-- scroll_carpet.dart (dart, 38 symbols)
 |   |   |-- section
 |   |   |   |-- card_deck_sheet.dart (dart, 19 symbols)

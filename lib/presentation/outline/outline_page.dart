@@ -25,6 +25,7 @@ import 'tree_scene/illustrated_tree_trunk.dart';
 import 'tree_scene/sapling_plaque.dart';
 import 'tree_scene/illustrated_tree_camera_layout.dart';
 import 'tree_scene/organic_tree.dart';
+import 'tree_scene/organic_branch.dart' show organicBranchRootRatio;
 import 'tree_scene/organic_tree_camera_layout.dart';
 
 /// 某小说的大纲流（章+节），魔树数据源
@@ -657,8 +658,9 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                                 for (final item in windowLabels)
                                   if (frame.anchorAt(item.nativeFraction!) != null)
                                     staticLabel(item.label, item.rect, side: item.side, selected: item.selected,
-                                      maxSupportRadius: frame.trunkRadiusAt(item.nativeFraction!) *
-                                          (cameraLayout as OrganicTreeCameraLayout).projection.scale * .75),
+                                      maxSupportRadius: math.min(item.rect.height * organicBranchRootRatio,
+                                        frame.trunkRadiusAt(item.nativeFraction!) *
+                                          (cameraLayout as OrganicTreeCameraLayout).projection.scale * .75)),
                               ],
                             ),
                           ) : Stack(

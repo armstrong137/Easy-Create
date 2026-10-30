@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'organic_bark.dart';
 
+const organicBranchRootRatio = .08;
+
 typedef OrganicStemSection = ({
   Offset center,
   Offset normal,
@@ -102,7 +104,7 @@ class OrganicBranchPainter extends CustomPainter {
       );
     final metric = spine.computeMetrics().first;
     final rootRadius = math.min(
-      size.height * .08,
+      size.height * organicBranchRootRatio,
       maxRootRadius ?? double.infinity,
     );
     var silhouette = stem(spine, progress, rootRadius);

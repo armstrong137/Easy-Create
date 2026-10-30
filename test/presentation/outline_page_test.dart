@@ -416,6 +416,11 @@ void main() {
     await pumpOutline(tester, outline, enableIllustratedCamera: true);
     await tester.pump(const Duration(seconds: 2));
     final beforeTree = tester.getRect(find.byType(OrganicTree));
+    for (final element in find.byType(OrganicBranch).evaluate()) {
+      expect((element.widget as OrganicBranch).maxRootRadius,
+          closeTo(element.size!.height * .08, .0001),
+          reason: '成年枝只传入生效半径，避免超出默认粗度的母干数值引发无效重绘');
+    }
     final beforeBranch = tester.getRect(find.byKey(const Key('静态章交互_9')));
     await tester.dragFrom(const Offset(80, 650), const Offset(0, 100));
     await tester.pump();
