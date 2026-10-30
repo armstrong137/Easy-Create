@@ -35,11 +35,13 @@ class OrganicTreeCameraLayout extends IllustratedTreeCameraLayout {
       2;
 
   @override
-  double get chapterScale => math.max(
-    1.0,
-    (math.min(viewport.width * .5, 220) / 1.5 + 12) /
-        (900 * .72 / math.max(9, chapterCount - 1) * projection.scale),
-  );
+  double get chapterScale => chapterCount <= 1
+      ? 1
+      : math.max(
+          1.0,
+          (math.min(viewport.width * .5, 220) / 1.5 + 12) /
+              (900 * .72 / math.max(9, chapterCount - 1) * projection.scale),
+        );
 
   @override
   double get focusX => _center.dx;

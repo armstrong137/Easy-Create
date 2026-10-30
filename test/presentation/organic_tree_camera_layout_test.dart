@@ -4,6 +4,25 @@ import 'package:novel_app/presentation/outline/tree_scene/organic_tree_camera_la
 import 'package:novel_app/presentation/outline/tree_scene/organic_tree_study.dart';
 
 void main() {
+  test('单章幼树不因双牌密度规则放大，根冠保留在手机窗口内', () {
+    const size = Size(430, 932);
+    final layout = OrganicTreeCameraLayout(size, 1, 0, focusedChapter: 0);
+    expect(layout.chapterScale, 1);
+    final offset = (layout.focusY - size.height / 2).clamp(
+      0.0,
+      layout.sceneHeight - size.height,
+    );
+    for (final age in [0.0, .1, .2]) {
+      final bounds = OrganicTreeFrame(age).wood.getBounds();
+      final shift = Offset(size.width / 2 - layout.focusX, -offset);
+      final topLeft = layout.projection.project(bounds.topLeft) + shift;
+      final bottomRight = layout.projection.project(bounds.bottomRight) + shift;
+      expect(topLeft.dx, greaterThanOrEqualTo(0));
+      expect(topLeft.dy, greaterThanOrEqualTo(0));
+      expect(bottomRight.dx, lessThanOrEqualTo(size.width));
+      expect(bottomRight.dy, lessThanOrEqualTo(size.height));
+    }
+  });
   test('连续主树的章牌保持真实主干锚点和完整交互间距', () {
     for (final size in [
       const Size(360, 800),

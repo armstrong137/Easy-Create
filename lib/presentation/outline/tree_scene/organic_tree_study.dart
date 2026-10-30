@@ -45,6 +45,9 @@ class OrganicTreeFrame {
       tipRatio: .025,
     ));
     _foliage(trunk, growth, 9999);
+    // 幼龄细根先探索土壤，粗度仍跟随树龄，避免短粗根挤成星形尖片。
+    final rootGrowth = .35 + age * .65;
+    final rootRadius = (12 + age * 90) * math.sqrt(growth / rootGrowth);
     for (var index = 0; index < 6; index++) {
       final end = const [
         Offset(115, 1450),
@@ -64,11 +67,11 @@ class OrganicTreeFrame {
           end.dx,
           end.dy,
         );
-      _join(root, growth, 12 + age * 90);
+      _join(root, rootGrowth, rootRadius);
       final rootMetric = root.computeMetrics().first;
       for (var forkIndex = 0; forkIndex < 2; forkIndex++) {
-        final birth = .55 + forkIndex * .23;
-        final forkGrowth = ((growth - birth) / (1 - birth)).clamp(0.0, 1.0);
+        final birth = .3 + forkIndex * .3;
+        final forkGrowth = ((rootGrowth - birth) / (1 - birth)).clamp(0.0, 1.0);
         if (forkGrowth == 0) continue;
         final tangent = rootMetric.getTangentForOffset(
           rootMetric.length * birth,
@@ -87,7 +90,12 @@ class OrganicTreeFrame {
             start.dx + direction.dx,
             start.dy + direction.dy,
           );
-        _join(fork, forkGrowth, (10 + age * 12) * (1 - forkIndex * .3));
+        final forkRadius = math.min(
+          (10 + age * 12) * (1 - forkIndex * .3),
+          OrganicBranchPainter.radiusAt(birth, rootGrowth, rootRadius, .04) *
+              .7,
+        );
+        _join(fork, forkGrowth, forkRadius);
       }
     }
     for (var index = 0; index < 7; index++) {
