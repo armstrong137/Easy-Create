@@ -287,6 +287,15 @@ class OrganicTreeFrame {
 }
 
 class OrganicTreeStudyPainter extends CustomPainter {
+  // 截面方向固定，不在每帧的每个顶点上重复求三角函数。
+  static final _surfaceProfile = List.generate(9, (slice) {
+    final angle = -math.pi / 2 + math.pi * slice / 8;
+    return (
+      cross: math.sin(angle),
+      facing: math.cos(angle),
+      arc: angle + math.pi / 2,
+    );
+  });
   OrganicTreeStudyPainter(this.age, this.bark, this.leaf)
     : frame = OrganicTreeFrame(age);
   final double age;
@@ -408,12 +417,12 @@ class OrganicTreeStudyPainter extends CustomPainter {
         final collar = (section.distance / (limb.radius * 2)).clamp(0.0, 1.0);
         final coverage = collar * collar * (3 - 2 * collar);
         for (var slice = 0; slice <= slices; slice++) {
-          final angle = -math.pi / 2 + math.pi * slice / slices;
-          final cross = math.sin(angle);
+          final profile = _surfaceProfile[slice];
+          final cross = profile.cross;
           points.add(section.center + normal * radius * cross);
           // 纹理随截面周长取样，细枝不能横向塞入整张粗树皮。
           uv.add(
-            Offset((angle + math.pi / 2) * radius, section.distance * .8) *
+            Offset(profile.arc * radius, section.distance * .8) *
                 (bark.width / 512),
           );
           final light =
@@ -423,7 +432,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
                     0.0,
                     -.7 * normal.dx * cross -
                         .55 * normal.dy * cross +
-                        .8 * math.cos(angle),
+                        .8 * profile.facing,
                   );
           colors.add(
             Color.fromARGB(

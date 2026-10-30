@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-10-30 21:05:48　对应提交：ddccd81 之后的工作区状态
+> 生成时间：2026-10-30 21:10:33　对应提交：0c7e196 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,8 +13,8 @@ Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
   Files:     198
-  Nodes:     5,286
-  Edges:     22,357
+  Nodes:     5,288
+  Edges:     22,361
   DB Size:   26.00 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
@@ -24,7 +24,7 @@ Nodes by Kind:
   function        1,571
   import          687
   class           522
-  constant        302
+  constant        304
   file            190
   variable        140
   enum_member     25
@@ -184,7 +184,7 @@ Project Structure (198 files):
 |   |   |   |   |-- organic_branch.dart (dart, 22 symbols)
 |   |   |   |   |-- organic_tree_camera_layout.dart (dart, 14 symbols)
 |   |   |   |   |-- organic_tree_projection.dart (dart, 6 symbols)
-|   |   |   |   |-- organic_tree_study.dart (dart, 23 symbols)
+|   |   |   |   |-- organic_tree_study.dart (dart, 24 symbols)
 |   |   |   |   |-- organic_tree.dart (dart, 13 symbols)
 |   |   |   |   |-- sapling_plaque.dart (dart, 5 symbols)
 |   |   |   |   |-- tree_scene_controller.dart (dart, 51 symbols)
@@ -292,7 +292,7 @@ Project Structure (198 files):
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
 |       |   |-- check-illustrated-outline.mjs (javascript, 30 symbols)
-|       |   |-- check-organic-tree.mjs (javascript, 14 symbols)
+|       |   |-- check-organic-tree.mjs (javascript, 15 symbols)
 |       |   |-- check-startup.mjs (javascript, 23 symbols)
 |       |   |-- render-branch-study.mjs (javascript, 21 symbols)
 |       |   |-- validate-gltf.mjs (javascript, 7 symbols)

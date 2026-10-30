@@ -7,7 +7,7 @@ const output = resolve(process.argv[3] ?? 'build/qa/organic-tree-runtime', new D
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
-  headless: true, args: ['--use-angle=swiftshader'],
+  headless: true, args: process.argv.includes('--default-gpu') ? [] : ['--use-angle=swiftshader'],
 });
 const context = await browser.newContext({ viewport: { width: 430, height: 932 },
   recordVideo: { dir: resolve(output, 'video'), size: { width: 430, height: 932 } } });
@@ -60,8 +60,15 @@ try {
   await page.setViewportSize({ width: 910, height: 800 });
   await page.waitForTimeout(700);
   await page.screenshot({ path: resolve(output, 'mature-910.png') });
+  const renderer = await page.evaluate(() => {
+    const gl = document.createElement('canvas').getContext('webgl');
+    if (!gl) return 'WebGL 不可用';
+    const info = gl.getExtension('WEBGL_debug_renderer_info');
+    return gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER);
+  });
   assert.deepEqual(errors, []);
-  await writeFile(resolve(output, 'result.json'), JSON.stringify({ output, errors, timing,
+  await writeFile(resolve(output, 'result.json'), JSON.stringify({ output, errors, timing, renderer,
+    graphicsRequest: process.argv.includes('--default-gpu') ? '浏览器默认' : '强制 SwiftShader',
     scope: '独立运行时入口，仅验证真实材质与连续树龄，不代表正式大纲页验收或视觉通过。' }, null, 2));
   console.log(JSON.stringify({ output, errors }));
 } finally {
