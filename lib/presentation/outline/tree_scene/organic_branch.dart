@@ -131,6 +131,54 @@ class OrganicBranchPainter extends CustomPainter {
       paint.colorFilter = organicBarkTint;
     }
     canvas.drawPath(silhouette, paint);
+    // 沿曲线法向铺设截面明暗，避免树皮填充看起来像一条扁平纸带。
+    final surface = <Offset>[];
+    final shading = <Color>[];
+    final faces = <int>[];
+    const slices = 6;
+    for (var ring = 0; ring <= stemSamples; ring++) {
+      final along = progress * ring / stemSamples;
+      final tangent = metric.getTangentForOffset(metric.length * along)!;
+      final normal = Offset(-tangent.vector.dy, tangent.vector.dx);
+      final radius = radiusAt(along, progress, size.height * .052, .48);
+      for (var slice = 0; slice <= slices; slice++) {
+        final across = slice * 2 / slices - 1;
+        surface.add(tangent.position + normal * radius * across);
+        final light =
+            (.25 +
+                    .75 * math.sqrt(math.max(0, 1 - across * across)) -
+                    normal.dy * across * .25)
+                .clamp(0.0, 1.0);
+        shading.add(
+          light > .7
+              ? Color.fromARGB(((light - .7) * 90).round(), 255, 235, 190)
+              : Color.fromARGB(((.7 - light) * 130).round(), 20, 12, 5),
+        );
+        if (ring < stemSamples && slice < slices) {
+          final here = ring * (slices + 1) + slice;
+          faces.addAll([
+            here,
+            here + 1,
+            here + slices + 1,
+            here + 1,
+            here + slices + 2,
+            here + slices + 1,
+          ]);
+        }
+      }
+    }
+    final volume = ui.Vertices(
+      VertexMode.triangles,
+      surface,
+      colors: shading,
+      indices: faces,
+    );
+    canvas.drawVertices(
+      volume,
+      BlendMode.modulate,
+      Paint()..color = Colors.white,
+    );
+    volume.dispose();
     canvas.drawPath(
       silhouette,
       Paint()
