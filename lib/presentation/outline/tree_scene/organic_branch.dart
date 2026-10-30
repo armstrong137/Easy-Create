@@ -77,7 +77,8 @@ class OrganicBranchPainter extends CustomPainter {
         size.height * .63,
       );
     final metric = spine.computeMetrics().first;
-    var silhouette = stem(spine, progress, size.height * .052);
+    final rootRadius = size.height * .08;
+    var silhouette = stem(spine, progress, rootRadius);
     final leaves = <({Offset point, double angle, double opening})>[];
     for (final birth in [.38, .64]) {
       final growth = ((progress - birth) / (1 - birth)).clamp(0.0, 1.0);
@@ -140,7 +141,7 @@ class OrganicBranchPainter extends CustomPainter {
       final along = progress * ring / stemSamples;
       final tangent = metric.getTangentForOffset(metric.length * along)!;
       final normal = Offset(-tangent.vector.dy, tangent.vector.dx);
-      final radius = radiusAt(along, progress, size.height * .052, .48);
+      final radius = radiusAt(along, progress, rootRadius, .48);
       for (var slice = 0; slice <= slices; slice++) {
         final across = slice * 2 / slices - 1;
         surface.add(tangent.position + normal * radius * across);
