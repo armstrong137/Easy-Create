@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'organic_branch.dart';
+import 'organic_bark.dart';
 import 'organic_tree_projection.dart';
 
 typedef OrganicTreeLeaf = ({Offset point, double angle, double scale});
@@ -285,28 +286,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
       frame.wood,
       Paint()
         ..filterQuality = FilterQuality.high
-        ..colorFilter = const ColorFilter.matrix([
-          1.8,
-          0,
-          0,
-          0,
-          12,
-          0,
-          1.6,
-          0,
-          0,
-          9,
-          0,
-          0,
-          1.3,
-          0,
-          4,
-          0,
-          0,
-          0,
-          1,
-          0,
-        ])
+        ..colorFilter = organicBarkTint
         ..shader = ImageShader(
           bark,
           TileMode.repeated,
@@ -461,28 +441,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
           TileMode.repeated,
           Matrix4.identity().storage,
         )
-        ..colorFilter = const ColorFilter.matrix([
-          1.8,
-          0,
-          0,
-          0,
-          12,
-          0,
-          1.6,
-          0,
-          0,
-          9,
-          0,
-          0,
-          1.3,
-          0,
-          4,
-          0,
-          0,
-          0,
-          1,
-          0,
-        ]),
+        ..colorFilter = organicBarkTint,
     );
     vertices.dispose();
   }

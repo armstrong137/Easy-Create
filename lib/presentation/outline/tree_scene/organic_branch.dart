@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'organic_bark.dart';
 
 /// 枝梢沿曲线延伸并增厚；树皮只是填充材质，不缩放整张枝条图片。
 class OrganicBranch extends StatefulWidget {
@@ -111,18 +112,23 @@ class OrganicBranchPainter extends CustomPainter {
       }
     }
     canvas.drawShadow(silhouette, const Color(0x663A2515), 3, false);
-    final paint = Paint()..color = const Color(0xFF6B4B2A);
+    final paint = Paint()
+      ..color = const Color(0xFF6B4B2A)
+      ..filterQuality = FilterQuality.high;
     if (bark != null) {
       paint.shader = ImageShader(
         bark!,
         TileMode.repeated,
         TileMode.repeated,
-        (Matrix4.identity()..scaleByDouble(.4, .4, 1, 1)).storage,
+        (Matrix4.identity()..scaleByDouble(
+              .7 * 512 / bark!.width,
+              .7 * 512 / bark!.width,
+              1,
+              1,
+            ))
+            .storage,
       );
-      paint.colorFilter = const ColorFilter.mode(
-        Color(0xFFB59B58),
-        BlendMode.modulate,
-      );
+      paint.colorFilter = organicBarkTint;
     }
     canvas.drawPath(silhouette, paint);
     canvas.drawPath(

@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-10-30 20:21:03　对应提交：ca94438 之后的工作区状态
+> 生成时间：2026-10-30 20:25:29　对应提交：b26ec4c 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,20 +12,20 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     197
-  Nodes:     5,276
-  Edges:     22,324
-  DB Size:   25.57 MB
+  Files:     198
+  Nodes:     5,281
+  Edges:     22,331
+  DB Size:   25.58 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,822
   function        1,571
-  import          683
+  import          686
   class           522
-  constant        301
-  file            189
+  constant        302
+  file            190
   variable        140
   enum_member     25
   type_alias      15
@@ -33,7 +33,7 @@ Nodes by Kind:
   namespace       2
 
 Files by Language:
-  dart            110
+  dart            111
   javascript      44
   python          15
   kotlin          8
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (197 files):
+Project Structure (198 files):
 
 |-- .agents
 |   `-- skills
@@ -180,10 +180,11 @@ Project Structure (197 files):
 |   |   |   |   |-- illustrated_tree_scene.dart (dart, 27 symbols)
 |   |   |   |   |-- illustrated_tree_trunk.dart (dart, 10 symbols)
 |   |   |   |   |-- illustrated_tree_viewport.dart (dart, 7 symbols)
-|   |   |   |   |-- organic_branch.dart (dart, 18 symbols)
+|   |   |   |   |-- organic_bark.dart (dart, 3 symbols)
+|   |   |   |   |-- organic_branch.dart (dart, 19 symbols)
 |   |   |   |   |-- organic_tree_camera_layout.dart (dart, 14 symbols)
 |   |   |   |   |-- organic_tree_projection.dart (dart, 6 symbols)
-|   |   |   |   |-- organic_tree_study.dart (dart, 21 symbols)
+|   |   |   |   |-- organic_tree_study.dart (dart, 22 symbols)
 |   |   |   |   |-- organic_tree.dart (dart, 13 symbols)
 |   |   |   |   |-- sapling_plaque.dart (dart, 5 symbols)
 |   |   |   |   |-- tree_scene_controller.dart (dart, 51 symbols)
