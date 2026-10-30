@@ -229,6 +229,13 @@ class OrganicTreeFrame {
     return anchorAt(chapterFraction(chapterIndex, chapterCount));
   }
 
+  double trunkRadiusAt(double fraction) => OrganicBranchPainter.radiusAt(
+    fraction,
+    limbs.first.growth,
+    limbs.first.radius,
+    limbs.first.tipRatio,
+  );
+
   Offset? anchorAt(double fraction) =>
       fraction > limbs.first.growth ? null : trunkPoint(fraction);
 

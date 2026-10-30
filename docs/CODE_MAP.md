@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-10-30 20:48:38　对应提交：680008b 之后的工作区状态
+> 生成时间：2026-10-30 20:54:33　对应提交：c29078b 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,16 +13,16 @@ Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
   Files:     198
-  Nodes:     5,281
-  Edges:     22,339
-  DB Size:   25.63 MB
+  Nodes:     5,283
+  Edges:     22,346
+  DB Size:   26.00 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,822
+  method          1,823
   function        1,571
-  import          686
+  import          687
   class           522
   constant        302
   file            190
@@ -184,7 +184,7 @@ Project Structure (198 files):
 |   |   |   |   |-- organic_branch.dart (dart, 19 symbols)
 |   |   |   |   |-- organic_tree_camera_layout.dart (dart, 14 symbols)
 |   |   |   |   |-- organic_tree_projection.dart (dart, 6 symbols)
-|   |   |   |   |-- organic_tree_study.dart (dart, 22 symbols)
+|   |   |   |   |-- organic_tree_study.dart (dart, 23 symbols)
 |   |   |   |   |-- organic_tree.dart (dart, 13 symbols)
 |   |   |   |   |-- sapling_plaque.dart (dart, 5 symbols)
 |   |   |   |   |-- tree_scene_controller.dart (dart, 51 symbols)
@@ -259,7 +259,7 @@ Project Structure (198 files):
 |   |   |-- organic_tree_study_test.dart (dart, 9 symbols)
 |   |   |-- organic_tree_test.dart (dart, 19 symbols)
 |   |   |-- outline_controller_test.dart (dart, 10 symbols)
-|   |   |-- outline_page_test.dart (dart, 35 symbols)
+|   |   |-- outline_page_test.dart (dart, 36 symbols)
 |   |   |-- planet_scene_touch_config_test.dart (dart, 8 symbols)
 |   |   |-- quick_capture_test.dart (dart, 16 symbols)
 |   |   |-- realtime_tree_single_path_test.dart (dart, 4 symbols)

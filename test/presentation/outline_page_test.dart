@@ -19,6 +19,7 @@ import 'package:novel_app/presentation/outline/tree_scene/tree_scene_controller.
 import 'package:novel_app/presentation/outline/tree_scene/tree_scene_protocol.dart';
 import 'package:novel_app/presentation/outline/tree_scene/tree_standin.dart';
 import 'package:novel_app/presentation/outline/tree_scene/organic_tree.dart';
+import 'package:novel_app/presentation/outline/tree_scene/organic_branch.dart';
 import 'package:novel_app/presentation/section/section_page.dart';
 
 class ControllableNovelRepository extends NovelRepository {
@@ -437,6 +438,14 @@ void main() {
     expect(tester.widget<OrganicTree>(find.byType(OrganicTree)).age, .2);
     expect(find.byKey(Key('静态章交互_${seeded.chapterId}')), findsOneWidget);
     expect(find.byKey(Key('静态节交互_${seeded.sectionId}')), findsOneWidget);
+    for (final element in find.byType(OrganicBranch).evaluate()) {
+      final branch = element.widget as OrganicBranch;
+      expect(branch.maxRootRadius, greaterThan(0));
+      expect(branch.maxRootRadius, lessThan(element.size!.height * .08),
+          reason: '幼树承托枝应受母干限制，不使用成年枝默认粗度');
+    }
+    expect(tester.getSize(find.byKey(Key('静态章交互_${seeded.chapterId}'))).width,
+        closeTo(215, .001), reason: '只约束木质截面，不缩小牌面与热区');
   });
 
   testWidgets('全景双击章牌打开重命名而不创建新章', (tester) async {

@@ -6,7 +6,13 @@ import 'organic_bark.dart';
 
 /// 枝梢沿曲线延伸并增厚；树皮只是填充材质，不缩放整张枝条图片。
 class OrganicBranch extends StatefulWidget {
-  const OrganicBranch({super.key, required this.progress, required this.right});
+  const OrganicBranch({
+    super.key,
+    required this.progress,
+    required this.right,
+    this.maxRootRadius,
+  });
+  final double? maxRootRadius;
   final double progress;
   final bool right;
 
@@ -48,12 +54,23 @@ class _OrganicBranchState extends State<OrganicBranch> {
 
   @override
   Widget build(BuildContext context) => CustomPaint(
-    painter: OrganicBranchPainter(widget.progress, widget.right, _bark),
+    painter: OrganicBranchPainter(
+      widget.progress,
+      widget.right,
+      _bark,
+      maxRootRadius: widget.maxRootRadius,
+    ),
   );
 }
 
 class OrganicBranchPainter extends CustomPainter {
-  const OrganicBranchPainter(this.progress, this.right, this.bark);
+  const OrganicBranchPainter(
+    this.progress,
+    this.right,
+    this.bark, {
+    this.maxRootRadius,
+  });
+  final double? maxRootRadius;
   final double progress;
   final bool right;
   final ui.Image? bark;
@@ -77,7 +94,10 @@ class OrganicBranchPainter extends CustomPainter {
         size.height * .63,
       );
     final metric = spine.computeMetrics().first;
-    final rootRadius = size.height * .08;
+    final rootRadius = math.min(
+      size.height * .08,
+      maxRootRadius ?? double.infinity,
+    );
     var silhouette = stem(spine, progress, rootRadius);
     final leaves = <({Offset point, double angle, double opening})>[];
     for (final birth in [.38, .64]) {
@@ -97,7 +117,14 @@ class OrganicBranchPainter extends CustomPainter {
       silhouette = Path.combine(
         PathOperation.union,
         silhouette,
-        stem(twig, growth, size.height * .023),
+        stem(
+          twig,
+          growth,
+          math.min(
+            size.height * .023,
+            radiusAt(birth, progress, rootRadius, .48) * .65,
+          ),
+        ),
       );
       final twigMetric = twig.computeMetrics().first;
       for (var leaf = 0; leaf < 4; leaf++) {
@@ -245,6 +272,7 @@ class OrganicBranchPainter extends CustomPainter {
   @override
   bool shouldRepaint(OrganicBranchPainter oldDelegate) =>
       oldDelegate.progress != progress ||
+      oldDelegate.maxRootRadius != maxRootRadius ||
       oldDelegate.right != right ||
       oldDelegate.bark != bark;
 }
