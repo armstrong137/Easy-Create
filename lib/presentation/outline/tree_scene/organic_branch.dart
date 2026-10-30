@@ -29,7 +29,7 @@ class _OrganicBranchState extends State<OrganicBranch> {
     );
     final codec = await ui.instantiateImageCodec(
       bytes.buffer.asUint8List(),
-      targetWidth: 256,
+      targetWidth: 1024,
     );
     final frame = await codec.getNextFrame();
     codec.dispose();
