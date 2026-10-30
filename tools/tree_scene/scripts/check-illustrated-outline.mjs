@@ -10,7 +10,7 @@ await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
   headless: true,
-  args: ['--use-angle=swiftshader'],
+  args: process.argv.includes('--default-gpu') ? [] : ['--use-angle=swiftshader'],
 });
 const page = await browser.newPage({
   viewport: { width: 430, height: 932 },
@@ -41,6 +41,28 @@ async function capture(name) {
   await page.screenshot({ path: resolve(output, `${name}.png`) });
   captures.push({ name, text: await page.locator('body').innerText() });
 }
+async function startFrameSample() {
+  await page.evaluate(() => {
+    window.__treeGrowthTiming = undefined;
+    const intervals = [];
+    const end = performance.now() + 2000;
+    let previous;
+    function sample(now) {
+      if (previous !== undefined) intervals.push(now - previous);
+      previous = now;
+      if (now < end) requestAnimationFrame(sample);
+      else {
+        intervals.sort((a, b) => a - b);
+        window.__treeGrowthTiming = {
+          frames: intervals.length,
+          p95Ms: intervals[Math.floor(intervals.length * .95)],
+          worstMs: intervals.at(-1),
+        };
+      }
+    }
+    requestAnimationFrame(sample);
+  });
+}
 try {
   // 独立临时浏览器上下文，只通过正式 UI 建数据，不触碰用户的小说。
   await page.goto(url);
@@ -63,27 +85,7 @@ try {
   await addChapter.click();
   await page.getByRole('button', { name: '引子', exact: true }).waitFor();
   await capture('01-prologue-430');
-  if (process.argv.includes('--audit-growth')) {
-    await page.evaluate(() => {
-      const intervals = [];
-      const end = performance.now() + 2000;
-      let previous;
-      function sample(now) {
-        if (previous !== undefined) intervals.push(now - previous);
-        previous = now;
-        if (now < end) requestAnimationFrame(sample);
-        else {
-          intervals.sort((a, b) => a - b);
-          window.__treeGrowthTiming = {
-            frames: intervals.length,
-            p95Ms: intervals[Math.floor(intervals.length * .95)],
-            worstMs: intervals.at(-1),
-          };
-        }
-      }
-      requestAnimationFrame(sample);
-    });
-  }
+  if (process.argv.includes('--audit-growth')) await startFrameSample();
   await addChapter.click();
   await page.getByRole('button', { name: '第一章', exact: true }).waitFor();
   if (process.argv.includes('--audit-growth')) {
@@ -101,9 +103,17 @@ try {
   await capture('04-four-branches-430');
   const titles = ['第二章', '第三章', '第四章', '第五章', '第六章', '第七章', '第八章', '第九章'];
   for (const title of titles) {
+    // 引子、第一章及两节共四节点，第七章使结构节点达到十个。
+    const matureGrowth = title === '第七章' && process.argv.includes('--audit-growth');
+    if (matureGrowth) await startFrameSample();
     await addChapter.click();
     await page.getByRole('button', { name: title, exact: true }).waitFor();
     await page.waitForTimeout(1300);
+    if (matureGrowth) {
+      await page.waitForFunction(() => window.__treeGrowthTiming);
+      await writeFile(resolve(output, 'mature-growth-timing.json'), JSON.stringify(
+        await page.evaluate(() => window.__treeGrowthTiming), null, 2));
+    }
   }
   await capture('12-mature-430');
   const visibleChapters = page.getByRole('button', { name: /^(引子|第[一二三四五六七八九十]+章)$/ });
@@ -167,9 +177,16 @@ try {
     await page.getByRole('button', { name: '全景', exact: true }).click();
     await capture('overview-complete-910');
   }
+  const renderer = await page.evaluate(() => {
+    const gl = document.createElement('canvas').getContext('webgl');
+    if (!gl) return 'WebGL 不可用';
+    const info = gl.getExtension('WEBGL_debug_renderer_info');
+    return gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER);
+  });
   assert.deepEqual(errors, [], '浏览器不应发生运行错误');
   await writeFile(resolve(output, 'result.json'), JSON.stringify({
-    runId, url,
+    runId, url, renderer,
+    graphicsRequest: process.argv.includes('--default-gpu') ? '浏览器默认' : '强制 SwiftShader',
     checksPassed: ['创建十章和两节', '末态语义窗口只有两章', '浏览器零错误',
       ...(process.argv.includes('--audit-dense') ? ['三十章手机和宽屏双牌真实指针命中正确章节'] : [])],
     visualAcceptance: '待人工对照参考图', captures, errors,
