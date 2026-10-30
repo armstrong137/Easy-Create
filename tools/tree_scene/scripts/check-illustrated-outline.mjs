@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 import { chromium } from 'playwright';
 
 const url = process.argv[2] ?? 'http://127.0.0.1:8780/';
+assert.ok(!process.argv.includes('--cpu-profile') || process.argv.includes('--audit-growth'),
+  '--cpu-profile 需要同时启用 --audit-growth');
 const runId = new Date().toISOString().replaceAll(':', '-');
 const output = resolve(process.argv[3] ?? '../../build/illustrated-outline-check', runId);
 await mkdir(output, { recursive: true });
@@ -66,6 +68,11 @@ async function startFrameSample() {
 try {
   // 独立临时浏览器上下文，只通过正式 UI 建数据，不触碰用户的小说。
   await page.goto(url);
+  if (process.argv.includes('--cpu-profile')) {
+    const map = await page.request.get(new URL('main.dart.js.map', url).href);
+    assert.ok(map.ok(), 'CPU 剖析需要使用 --source-maps 构建，并保存同次源码映射');
+    await writeFile(resolve(output, 'main.dart.js.map'), await map.body());
+  }
   await page.locator('flt-semantics-placeholder').evaluate((element) => element.click());
   await page.getByText('Create Something', { exact: true }).click({ timeout: 30000 });
   await page.locator('input').click();
@@ -106,6 +113,13 @@ try {
     // 引子、第一章及两节共四节点，第七章使结构节点达到十个。
     const matureGrowth = title === '第七章' && process.argv.includes('--audit-growth');
     if (matureGrowth) await startFrameSample();
+    let profiler;
+    if (matureGrowth && process.argv.includes('--cpu-profile')) {
+      profiler = await page.context().newCDPSession(page);
+      await profiler.send('Profiler.enable');
+      await profiler.send('Profiler.setSamplingInterval', { interval: 1000 });
+      await profiler.send('Profiler.start');
+    }
     await addChapter.click();
     await page.getByRole('button', { name: title, exact: true }).waitFor();
     await page.waitForTimeout(1300);
@@ -113,6 +127,24 @@ try {
       await page.waitForFunction(() => window.__treeGrowthTiming);
       await writeFile(resolve(output, 'mature-growth-timing.json'), JSON.stringify(
         await page.evaluate(() => window.__treeGrowthTiming), null, 2));
+      if (profiler) {
+        const { profile } = await profiler.send('Profiler.stop');
+        await writeFile(resolve(output, 'mature-growth.cpuprofile'), JSON.stringify(profile));
+        const times = new Map();
+        for (let index = 0; index < profile.samples.length; index++) {
+          const id = profile.samples[index];
+          times.set(id, (times.get(id) ?? 0) + profile.timeDeltas[index]);
+        }
+        const topSelf = profile.nodes.map(node => ({ ...node.callFrame,
+          microseconds: times.get(node.id) ?? 0 }))
+          .sort((a, b) => b.microseconds - a.microseconds).slice(0, 30);
+        await writeFile(resolve(output, 'mature-cpu-summary.json'), JSON.stringify({
+          durationMicroseconds: profile.endTime - profile.startTime,
+          samples: profile.samples.length, topSelf,
+          note: '采样器会增加开销，此记录用于定位，不作为无剖析性能达标证据。',
+        }, null, 2));
+        await profiler.detach();
+      }
     }
   }
   await capture('12-mature-430');
@@ -187,6 +219,7 @@ try {
   await writeFile(resolve(output, 'result.json'), JSON.stringify({
     runId, url, renderer,
     graphicsRequest: process.argv.includes('--default-gpu') ? '浏览器默认' : '强制 SwiftShader',
+    cpuProfiling: process.argv.includes('--cpu-profile'),
     checksPassed: ['创建十章和两节', '末态语义窗口只有两章', '浏览器零错误',
       ...(process.argv.includes('--audit-dense') ? ['三十章手机和宽屏双牌真实指针命中正确章节'] : [])],
     visualAcceptance: '待人工对照参考图', captures, errors,

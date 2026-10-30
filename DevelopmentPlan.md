@@ -930,3 +930,13 @@
 - 尝试逐牌RepaintBoundary后，成熟p95为58.4ms，未证明收益，已撤回额外边界，仅保留半径修正。试验证据保留在 build/qa/native-stable-plaques/2026-10-30T13-33-51.663Z。
 - 最终默认NVIDIA D3D11真实十章两节、生长、历史引子、全景双击、手机/宽屏零错误，证据：build/qa/native-effective-radius/2026-10-30T13-38-58.545Z。早期p95 8.5ms/最慢37.6ms，成熟p95 50ms/最慢66.7ms；未确认性能改善，也不能把不同单次测量直接解释为某一改动的因果效果。
 - 整体视觉与性能仍未通过，正式默认不切换；下一步需用CPU时间剖析定位，避免继续猜测瓶颈。
+
+### 2026-10-30 成熟生长CPU采样与同次源码映射还原
+
+- 验收工具新增可选 --cpu-profile，只采集接近成熟到成熟阶段；保留原始 Chrome .cpuprofile、采样自耗时摘要，并标记剖析开销。参数要求同时启用 --audit-growth，避免生成误导性的空剖析声明。
+- 增加 summarize-tree-cpu.mjs，使用 Node 内置 SourceMap 还原 Dart 文件、行号和函数，输出热点自耗时、调用者及按源文件归属的包含时间。包含时间会重叠，不能相加或当作优化收益。
+- 使用 --source-maps 构建，工具把同次 main.dart.js.map 随剖析文件保存，分析器默认读取同目录映射，防止后续重建导致旧采样映射错误。无需新增第三方依赖。
+- 两次真实大纲剖析均完成十章两节、历史引子、全景双击及手机/宽屏，零浏览器错误。最终可复现证据：build/qa/native-mature-cpu-bundled/2026-10-30T13-50-47.722Z。
+- 最终约1.93秒采样：OrganicTreeStudyPainter._surface自耗时约243ms，其直接CanvasKit网格处理调用约338ms；ListBase.any约48ms，调用链来自CkVertices.raw。首份采样也指向相同热点，下一步应优先处理表面网格构建和引擎桥接，而非继续猜测页面重绘。
+- 本轮只修改验收工具；源码映射Web release构建、两份脚本语法检查、自动保存映射与默认路径还原实际执行通过。含剖析的帧间隔不能当无剖析性能证据；整体视觉与性能仍未通过，正式默认不切换。
+- 复跑：flutter build web --release --no-pub --source-maps --dart-define=ENABLE_ILLUSTRATED_TREE_CAMERA=true；浏览器工具加 --audit-growth --default-gpu --cpu-profile；node tools/tree_scene/scripts/summarize-tree-cpu.mjs <mature-growth.cpuprofile>。

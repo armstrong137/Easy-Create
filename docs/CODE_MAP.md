@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-10-30 21:41:11　对应提交：f3670cb 之后的工作区状态
+> 生成时间：2026-10-30 21:54:29　对应提交：08703dd 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,9 +12,9 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     198
-  Nodes:     5,298
-  Edges:     22,393
+  Files:     199
+  Nodes:     5,323
+  Edges:     22,426
   DB Size:   26.00 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
@@ -22,11 +22,11 @@ Index Statistics:
 Nodes by Kind:
   method          1,827
   function        1,572
-  import          689
+  import          692
   class           522
-  constant        309
-  file            190
-  variable        140
+  constant        326
+  file            191
+  variable        144
   enum_member     25
   type_alias      16
   enum            6
@@ -34,7 +34,7 @@ Nodes by Kind:
 
 Files by Language:
   dart            111
-  javascript      44
+  javascript      45
   python          15
   kotlin          8
   xml             6
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (198 files):
+Project Structure (199 files):
 
 |-- .agents
 |   `-- skills
@@ -291,10 +291,11 @@ Project Structure (198 files):
 |       |   |-- build.mjs (javascript, 10 symbols)
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
-|       |   |-- check-illustrated-outline.mjs (javascript, 33 symbols)
+|       |   |-- check-illustrated-outline.mjs (javascript, 39 symbols)
 |       |   |-- check-organic-tree.mjs (javascript, 15 symbols)
 |       |   |-- check-startup.mjs (javascript, 23 symbols)
 |       |   |-- render-branch-study.mjs (javascript, 21 symbols)
+|       |   |-- summarize-tree-cpu.mjs (javascript, 19 symbols)
 |       |   |-- validate-gltf.mjs (javascript, 7 symbols)
 |       |   `-- verify-workbench.mjs (javascript, 8 symbols)
 |       |-- src
