@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -17,6 +18,7 @@ import 'package:novel_app/presentation/outline/outline_page.dart';
 import 'package:novel_app/presentation/outline/tree_scene/tree_scene_controller.dart';
 import 'package:novel_app/presentation/outline/tree_scene/tree_scene_protocol.dart';
 import 'package:novel_app/presentation/outline/tree_scene/tree_standin.dart';
+import 'package:novel_app/presentation/outline/tree_scene/organic_tree.dart';
 import 'package:novel_app/presentation/section/section_page.dart';
 
 class ControllableNovelRepository extends NovelRepository {
@@ -193,6 +195,13 @@ void main() {
       );
     });
     await tester.pump();
+    if (enableIllustratedCamera) {
+      final future = tester.widget<FutureBuilder<List<ui.Image>>>(
+        find.descendant(of: find.byType(OrganicTree), matching: find.byType(FutureBuilder<List<ui.Image>>)),
+      ).future!;
+      await tester.runAsync(() => future);
+      await tester.pump();
+    }
   }
 
   Future<void> doubleTapAt(WidgetTester tester, Offset point) async {
@@ -405,18 +414,29 @@ void main() {
     ));
     await pumpOutline(tester, outline, enableIllustratedCamera: true);
     await tester.pump(const Duration(seconds: 2));
-    final beforeTree = tester.getRect(find.byType(TreeStandin));
+    final beforeTree = tester.getRect(find.byType(OrganicTree));
     final beforeBranch = tester.getRect(find.byKey(const Key('静态章交互_9')));
     await tester.dragFrom(const Offset(80, 650), const Offset(0, 100));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
-    final afterTree = tester.getRect(find.byType(TreeStandin));
+    final afterTree = tester.getRect(find.byType(OrganicTree));
     final afterBranch = tester.getRect(find.byKey(const Key('静态章交互_9')));
-    expect(tester.widget<TreeStandin>(find.byType(TreeStandin)).stage, 5);
-    expect(afterTree.size, beforeTree.size);
-    expect(afterTree.top, greaterThan(beforeTree.top));
+    expect(tester.widget<OrganicTree>(find.byType(OrganicTree)).age, 1);
+    expect(afterTree.width, closeTo(beforeTree.width, .001));
+    expect(afterTree.height, closeTo(beforeTree.height, .001));
+    expect(afterTree.top, lessThan(beforeTree.top));
     expect(afterBranch.top - afterTree.top, closeTo(beforeBranch.top - beforeTree.top, 0.1));
     expect(find.byKey(const Key('静态章交互_10')), findsNothing);
+  });
+
+  testWidgets('实验大纲从幼树开始使用连续主树和真实章节热区', (tester) async {
+    await seedNovel();
+    final seeded = await seedOutline();
+    await pumpOutline(tester, seeded.outline, enableIllustratedCamera: true);
+    expect(find.byType(TreeStandin), findsNothing);
+    expect(tester.widget<OrganicTree>(find.byType(OrganicTree)).age, .2);
+    expect(find.byKey(Key('静态章交互_${seeded.chapterId}')), findsOneWidget);
+    expect(find.byKey(Key('静态节交互_${seeded.sectionId}')), findsOneWidget);
   });
 
   testWidgets('全景双击章牌打开重命名而不创建新章', (tester) async {

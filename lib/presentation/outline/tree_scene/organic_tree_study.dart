@@ -14,12 +14,22 @@ typedef OrganicTreeLimb = ({
 
 /// 同一拓扑在连续树龄下的二维几何；当前仅用于独立美术验证。
 class OrganicTreeFrame {
+  static final _trunk = Path()
+    ..moveTo(490, 1410)
+    ..cubicTo(430, 1180, 575, 840, 500, 410);
+  static final _trunkMetric = _trunk.computeMetrics().first;
+
+  static double chapterFraction(int index, int count) =>
+      .14 + .72 * index / math.max(9, count - 1);
+
+  static Offset trunkPoint(double fraction) => _trunkMetric
+      .getTangentForOffset(_trunkMetric.length * fraction)!
+      .position;
+
   OrganicTreeFrame(double age) {
     age = age.clamp(0.0, 1.0);
     final growth = .12 + age * .88;
-    final trunk = Path()
-      ..moveTo(490, 1410)
-      ..cubicTo(430, 1180, 575, 840, 500, 410);
+    final trunk = _trunk;
     final metric = trunk.computeMetrics().first;
     wood = OrganicBranchPainter.stem(
       trunk,
@@ -207,12 +217,11 @@ class OrganicTreeFrame {
   /// 章枝沿真实主干弧长连接，已有叶节和枝干不会因浏览窗口变化搬动。
   /// 未长到的连接位置不投影，避免把牌面挂在尚未出现的树干上。
   Offset? chapterAnchor(int chapterIndex, int chapterCount) {
-    final along = .14 + .72 * chapterIndex / math.max(9, chapterCount - 1);
-    final trunk = limbs.first;
-    if (along > trunk.growth) return null;
-    final metric = trunk.spine.computeMetrics().first;
-    return metric.getTangentForOffset(metric.length * along)!.position;
+    return anchorAt(chapterFraction(chapterIndex, chapterCount));
   }
+
+  Offset? anchorAt(double fraction) =>
+      fraction > limbs.first.growth ? null : trunkPoint(fraction);
 
   void _join(Path spine, double growth, double radius) {
     limbs.add((spine: spine, growth: growth, radius: radius, tipRatio: .04));

@@ -24,6 +24,8 @@ import 'tree_scene/illustrated_tree_viewport.dart';
 import 'tree_scene/illustrated_tree_trunk.dart';
 import 'tree_scene/sapling_plaque.dart';
 import 'tree_scene/illustrated_tree_camera_layout.dart';
+import 'tree_scene/organic_tree.dart';
+import 'tree_scene/organic_tree_camera_layout.dart';
 
 /// 某小说的大纲流（章+节），魔树数据源
 final outlineProvider = StreamProvider.family<List<OutlineChapter>, int>(
@@ -454,7 +456,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                             assignInspiration(details.data, label),
                         builder: (context, candidates, rejected) =>
                             ExcludeSemantics(
-                              child: _illustratedNodeCount(outline) == 1
+                              child: _illustratedNodeCount(outline) == 1 && !widget.enableIllustratedCamera
                                 ? SaplingPlaqueTitle(title: label.text,
                                     selected: selected || candidates.isNotEmpty)
                                 : IllustratedBranchPlaque(
@@ -472,11 +474,10 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
               }
 
               final chapterStep = constraints.maxHeight * 0.22;
-              final cameraMode = staticMode && widget.enableIllustratedCamera &&
-                  _illustratedNodeCount(outline) >= 10 && outline.length > 2;
-              var cameraLayout = IllustratedTreeCameraLayout(
-                Size(constraints.maxWidth, constraints.maxHeight), outline.length, 0,
-              );
+              final cameraMode = staticMode && widget.enableIllustratedCamera;
+              IllustratedTreeCameraLayout cameraLayout = cameraMode
+                  ? OrganicTreeCameraLayout(Size(constraints.maxWidth, constraints.maxHeight), outline.length, 0, focusedChapter: 0)
+                  : IllustratedTreeCameraLayout(Size(constraints.maxWidth, constraints.maxHeight), outline.length, 0);
               final sceneHeight = cameraMode ? cameraLayout.sceneHeight : constraints.maxHeight;
               var cameraRow = 0;
               final windowLabels =
@@ -486,6 +487,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                       Rect rect,
                       IllustratedBranchSide side,
                       bool selected,
+                      double? nativeFraction,
                     })
                   >[];
               if (outline.isNotEmpty) {
@@ -501,9 +503,9 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                   (outline.length - 2).clamp(0, outline.length),
                 );
                 cameraRow = cameraMode ? firstChapter : 0;
-                cameraLayout = IllustratedTreeCameraLayout(
-                  Size(constraints.maxWidth, constraints.maxHeight), outline.length, firstChapter,
-                );
+                cameraLayout = cameraMode
+                    ? OrganicTreeCameraLayout(Size(constraints.maxWidth, constraints.maxHeight), outline.length, firstChapter, focusedChapter: focusedIndex)
+                    : IllustratedTreeCameraLayout(Size(constraints.maxWidth, constraints.maxHeight), outline.length, firstChapter);
                 final chapters = outline
                     .skip(firstChapter)
                     .take(2)
@@ -533,6 +535,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                       branchHeight,
                     ),
                     side: IllustratedBranchSide.left,
+                    nativeFraction: cameraMode ? (cameraLayout as OrganicTreeCameraLayout).anchorFraction(right: false, index: index) : null,
                     selected: chapter.chapter.id == focusedChapterId,
                   ));
                 }
@@ -580,6 +583,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                       branchHeight,
                     ),
                     side: IllustratedBranchSide.right,
+                    nativeFraction: cameraMode ? (cameraLayout as OrganicTreeCameraLayout).anchorFraction(right: true, index: index) : null,
                     selected: section.id == selectedSectionId,
                   ));
                 }
@@ -642,7 +646,18 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                           focusX: cameraMode ? cameraLayout.focusX : null,
                           overview: cameraMode && _treeOverview,
                           focusY: cameraMode ? cameraLayout.focusY : constraints.maxHeight * 0.5,
-                          child: Stack(
+                          child: cameraMode ? OrganicTree(
+                            age: (_illustratedNodeCount(outline) / 10).clamp(0.0, 1.0),
+                            foregroundBuilder: (context, frame) => Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                _creationZones(outline),
+                                for (final item in windowLabels)
+                                  if (frame.anchorAt(item.nativeFraction!) != null)
+                                    staticLabel(item.label, item.rect, side: item.side, selected: item.selected),
+                              ],
+                            ),
+                          ) : Stack(
                             fit: StackFit.expand,
                             children: [
                               TreeStandin(
