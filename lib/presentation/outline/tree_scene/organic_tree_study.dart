@@ -328,8 +328,12 @@ class OrganicTreeStudyPainter extends CustomPainter {
         ),
     );
     // 沿每条枝干的方向铺设树皮，并由圆截面法向形成体积光照。
-    for (final limb in frame.limbs) {
-      _surface(canvas, limb);
+    // 每批最多 64×49×9 个顶点，低于 16 位索引上限，保持原枝干顺序。
+    for (var start = 0; start < frame.limbs.length; start += 64) {
+      _surface(
+        canvas,
+        frame.limbs.sublist(start, math.min(start + 64, frame.limbs.length)),
+      );
     }
     canvas.drawPath(
       frame.wood,
@@ -387,7 +391,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
     canvas.restore();
   }
 
-  void _surface(Canvas canvas, OrganicTreeLimb limb) {
+  void _surface(Canvas canvas, List<OrganicTreeLimb> limbs) {
     final points = <Offset>[];
     final uv = <Offset>[];
     final colors = <Color>[];
@@ -395,48 +399,51 @@ class OrganicTreeStudyPainter extends CustomPainter {
     // 表面与外轮廓共用截面位置，弯曲处不露出另一套树皮的尖角。
     const rings = OrganicBranchPainter.stemSamples;
     const slices = 8;
-    for (var ring = 0; ring <= rings; ring++) {
-      final section = limb.sections[ring];
-      final normal = section.normal;
-      final radius = section.radius;
-      final collar = (section.distance / (limb.radius * 2)).clamp(0.0, 1.0);
-      final coverage = collar * collar * (3 - 2 * collar);
-      for (var slice = 0; slice <= slices; slice++) {
-        final angle = -math.pi / 2 + math.pi * slice / slices;
-        final cross = math.sin(angle);
-        points.add(section.center + normal * radius * cross);
-        // 纹理随截面周长取样，细枝不能横向塞入整张粗树皮。
-        uv.add(
-          Offset((angle + math.pi / 2) * radius, section.distance * .8) *
-              (bark.width / 512),
-        );
-        final light =
-            .18 +
-            .82 *
-                math.max(
-                  0.0,
-                  -.7 * normal.dx * cross -
-                      .55 * normal.dy * cross +
-                      .8 * math.cos(angle),
-                );
-        colors.add(
-          Color.fromARGB(
-            (255 * coverage).round(),
-            (255 * light).clamp(0, 255).round(),
-            (245 * light).clamp(0, 255).round(),
-            (220 * light).clamp(0, 255).round(),
-          ),
-        );
-        if (ring < rings && slice < slices) {
-          final here = ring * (slices + 1) + slice;
-          triangles.addAll([
-            here,
-            here + 1,
-            here + slices + 1,
-            here + 1,
-            here + slices + 2,
-            here + slices + 1,
-          ]);
+    for (final limb in limbs) {
+      final base = points.length;
+      for (var ring = 0; ring <= rings; ring++) {
+        final section = limb.sections[ring];
+        final normal = section.normal;
+        final radius = section.radius;
+        final collar = (section.distance / (limb.radius * 2)).clamp(0.0, 1.0);
+        final coverage = collar * collar * (3 - 2 * collar);
+        for (var slice = 0; slice <= slices; slice++) {
+          final angle = -math.pi / 2 + math.pi * slice / slices;
+          final cross = math.sin(angle);
+          points.add(section.center + normal * radius * cross);
+          // 纹理随截面周长取样，细枝不能横向塞入整张粗树皮。
+          uv.add(
+            Offset((angle + math.pi / 2) * radius, section.distance * .8) *
+                (bark.width / 512),
+          );
+          final light =
+              .18 +
+              .82 *
+                  math.max(
+                    0.0,
+                    -.7 * normal.dx * cross -
+                        .55 * normal.dy * cross +
+                        .8 * math.cos(angle),
+                  );
+          colors.add(
+            Color.fromARGB(
+              (255 * coverage).round(),
+              (255 * light).clamp(0, 255).round(),
+              (245 * light).clamp(0, 255).round(),
+              (220 * light).clamp(0, 255).round(),
+            ),
+          );
+          if (ring < rings && slice < slices) {
+            final here = base + ring * (slices + 1) + slice;
+            triangles.addAll([
+              here,
+              here + 1,
+              here + slices + 1,
+              here + 1,
+              here + slices + 2,
+              here + slices + 1,
+            ]);
+          }
         }
       }
     }
