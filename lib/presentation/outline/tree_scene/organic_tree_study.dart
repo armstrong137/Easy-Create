@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'organic_branch.dart';
 import 'organic_bark.dart';
@@ -401,15 +402,18 @@ class OrganicTreeStudyPainter extends CustomPainter {
   }
 
   void _surface(Canvas canvas, List<OrganicTreeLimb> limbs) {
-    final points = <Offset>[];
-    final uv = <Offset>[];
-    final colors = <Color>[];
-    final triangles = <int>[];
     // 表面与外轮廓共用截面位置，弯曲处不露出另一套树皮的尖角。
     const rings = OrganicBranchPainter.stemSamples;
     const slices = 8;
+    final vertexCount = limbs.length * (rings + 1) * (slices + 1);
+    final points = Float32List(vertexCount * 2);
+    final uv = Float32List(vertexCount * 2);
+    final colors = Int32List(vertexCount);
+    final triangles = Uint16List(limbs.length * rings * slices * 6);
+    var vertex = 0;
+    var face = 0;
     for (final limb in limbs) {
-      final base = points.length;
+      final base = vertex;
       for (var ring = 0; ring <= rings; ring++) {
         final section = limb.sections[ring];
         final normal = section.normal;
@@ -419,12 +423,12 @@ class OrganicTreeStudyPainter extends CustomPainter {
         for (var slice = 0; slice <= slices; slice++) {
           final profile = _surfaceProfile[slice];
           final cross = profile.cross;
-          points.add(section.center + normal * radius * cross);
+          points[vertex * 2] = section.center.dx + normal.dx * (radius * cross);
+          points[vertex * 2 + 1] =
+              section.center.dy + normal.dy * (radius * cross);
           // 纹理随截面周长取样，细枝不能横向塞入整张粗树皮。
-          uv.add(
-            Offset(profile.arc * radius, section.distance * .8) *
-                (bark.width / 512),
-          );
+          uv[vertex * 2] = profile.arc * radius * (bark.width / 512);
+          uv[vertex * 2 + 1] = section.distance * .8 * (bark.width / 512);
           final light =
               .18 +
               .82 *
@@ -434,29 +438,25 @@ class OrganicTreeStudyPainter extends CustomPainter {
                         .55 * normal.dy * cross +
                         .8 * profile.facing,
                   );
-          colors.add(
-            Color.fromARGB(
-              (255 * coverage).round(),
-              (255 * light).clamp(0, 255).round(),
-              (245 * light).clamp(0, 255).round(),
-              (220 * light).clamp(0, 255).round(),
-            ),
-          );
+          colors[vertex] =
+              ((255 * coverage).round() << 24) |
+              ((255 * light).clamp(0, 255).round() << 16) |
+              ((245 * light).clamp(0, 255).round() << 8) |
+              (220 * light).clamp(0, 255).round();
+          vertex++;
           if (ring < rings && slice < slices) {
             final here = base + ring * (slices + 1) + slice;
-            triangles.addAll([
-              here,
-              here + 1,
-              here + slices + 1,
-              here + 1,
-              here + slices + 2,
-              here + slices + 1,
-            ]);
+            triangles[face++] = here;
+            triangles[face++] = here + 1;
+            triangles[face++] = here + slices + 1;
+            triangles[face++] = here + 1;
+            triangles[face++] = here + slices + 2;
+            triangles[face++] = here + slices + 1;
           }
         }
       }
     }
-    final vertices = ui.Vertices(
+    final vertices = ui.Vertices.raw(
       ui.VertexMode.triangles,
       points,
       textureCoordinates: uv,
