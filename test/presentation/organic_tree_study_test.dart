@@ -6,6 +6,24 @@ import 'package:novel_app/presentation/outline/tree_scene/organic_branch.dart';
 import 'package:novel_app/presentation/outline/tree_scene/organic_tree_study.dart';
 
 void main() {
+  test('只复用上一帧参数完全相同的枝干截面，成长变化不沿用旧几何', () {
+    var previous = OrganicTreeFrame(.55, chapterCount: 15);
+    var reused = 0;
+    for (final state in [(1.0, 20.0), (1.0, 20.1), (1.0, 21.0), (.7, 12.0)]) {
+      final frame = OrganicTreeFrame(state.$1, chapterCount: state.$2, previous: previous);
+      final fresh = OrganicTreeFrame(state.$1, chapterCount: state.$2);
+      final old = {for (final limb in previous.limbs) limb.spine: limb};
+      expect(frame.limbs.length, fresh.limbs.length);
+      for (var index = 0; index < frame.limbs.length; index++) {
+        final limb = frame.limbs[index];
+        expect(limb.sections, orderedEquals(fresh.limbs[index].sections));
+        if (identical(limb.sections, old[limb.spine]?.sections)) reused++;
+      }
+      expect(frame.leaves, orderedEquals(fresh.leaves));
+      previous = frame;
+    }
+    expect(reused, greaterThan(100), reason: '成熟后的固定细枝应避免反复求取切线');
+  });
   test('快速批量增章时先连通基础主干，不生成悬空或负半径上干', () {
     for (final count in [10.000000001, 22.5, 47.5, 72.5]) {
       expect(OrganicTreeFrame(1, chapterCount: count).wood.getBounds().isFinite, isTrue);

@@ -94,7 +94,11 @@ class _OrganicTreeState extends State<OrganicTree> {
           // 只保留当前几何帧；浏览镜头不变更树龄或规模，也不重建枝干。
           if (_geometry?.age != currentAge ||
               _geometry?.chapterCount != current.dy) {
-            _geometry = OrganicTreeFrame(currentAge, chapterCount: current.dy);
+            _geometry = OrganicTreeFrame(
+              currentAge,
+              chapterCount: current.dy,
+              previous: _geometry,
+            );
           }
           final painter = OrganicTreeStudyPainter(
             currentAge,

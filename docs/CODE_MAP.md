@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-10-31 22:29:19　对应提交：0b90801 之后的工作区状态
+> 生成时间：2026-10-31 22:36:25　对应提交：9c729f4 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,15 +13,15 @@ Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
   Files:     201
-  Nodes:     5,394
-  Edges:     22,696
-  DB Size:   26.21 MB
+  Nodes:     5,395
+  Edges:     22,703
+  DB Size:   26.24 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,837
-  function        1,584
+  function        1,585
   import          715
   class           524
   constant        343
@@ -184,7 +184,7 @@ Project Structure (201 files):
 |   |   |   |   |-- organic_branch.dart (dart, 23 symbols)
 |   |   |   |   |-- organic_tree_camera_layout.dart (dart, 20 symbols)
 |   |   |   |   |-- organic_tree_projection.dart (dart, 6 symbols)
-|   |   |   |   |-- organic_tree_study.dart (dart, 43 symbols)
+|   |   |   |   |-- organic_tree_study.dart (dart, 45 symbols)
 |   |   |   |   |-- organic_tree.dart (dart, 13 symbols)
 |   |   |   |   |-- sapling_plaque.dart (dart, 5 symbols)
 |   |   |   |   |-- tree_scene_controller.dart (dart, 51 symbols)

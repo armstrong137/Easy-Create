@@ -64,8 +64,15 @@ class OrganicTreeFrame {
     return Offset(487, 330 - distance + _extensionMetric.length);
   }
 
-  OrganicTreeFrame(double age, {double? chapterCount})
+  OrganicTreeFrame(double age, {double? chapterCount, OrganicTreeFrame? previous})
     : chapterCount = chapterCount ?? age.clamp(0.0, 1.0) * 10 {
+    // 只借用上一帧仍完全相同的截面，不保留历史帧链或近似生长参数。
+    final previousLimbs = {
+      if (previous != null)
+        for (final limb in previous.limbs) limb.spine: limb,
+    };
+    void join(Path spine, double growth, double radius) =>
+        _join(spine, growth, radius, previousLimbs[spine]);
     age = age.clamp(0.0, 1.0);
     this.age = age;
     final ageGrowth = .12 + age * .88;
@@ -197,7 +204,7 @@ class OrganicTreeFrame {
             end.dy,
           ),
       );
-      _join(root, rootGrowth, radius);
+      join(root, rootGrowth, radius);
       final rootMetric = _measure(root);
       for (var forkIndex = 0; forkIndex < 2; forkIndex++) {
         final birth = .3 + forkIndex * .3;
@@ -227,7 +234,7 @@ class OrganicTreeFrame {
           (10 + age * 12) * (1 - forkIndex * .3),
           OrganicBranchPainter.radiusAt(birth, rootGrowth, radius, .04) * .7,
         );
-        _join(fork, forkGrowth, forkRadius);
+        join(fork, forkGrowth, forkRadius);
       }
     }
     rootBounds = wood.getBounds();
@@ -276,7 +283,7 @@ class OrganicTreeFrame {
         (12 + age * 40) * (index < 7 ? 1 - index * .07 : .65),
         parentRadius * .75,
       );
-      _join(branch, growingBranch, branchRadius);
+      join(branch, growingBranch, branchRadius);
       _foliage(branch, growingBranch, index * 1000 + 900, sparse: true);
       final branchMetric = _measure(branch);
       for (var twigIndex = 0; twigIndex < 4; twigIndex++) {
@@ -320,7 +327,7 @@ class OrganicTreeFrame {
               ) *
               .75,
         );
-        _join(twig, twigGrowth, twigRadius);
+        join(twig, twigGrowth, twigRadius);
         _foliage(
           twig,
           twigGrowth,
@@ -363,7 +370,7 @@ class OrganicTreeFrame {
             OrganicBranchPainter.radiusAt(birth, twigGrowth, twigRadius, .04) *
                 .75,
           );
-          _join(spray, sprayGrowth, sprayRadius);
+          join(spray, sprayGrowth, sprayRadius);
           _foliage(
             spray,
             sprayGrowth,
@@ -410,14 +417,19 @@ class OrganicTreeFrame {
   Offset? anchorAt(double fraction) =>
       fraction > _growthExtent ? null : trunkPoint(fraction);
 
-  void _join(Path spine, double growth, double radius) {
-    final sections = OrganicBranchPainter.sampleStem(
-      spine,
-      growth,
-      radius,
-      tipRatio: .04,
-      pathMetric: _measure(spine),
-    );
+  void _join(Path spine, double growth, double radius, OrganicTreeLimb? previous) {
+    final sections = previous != null &&
+            previous.growth == growth &&
+            previous.radius == radius &&
+            previous.tipRatio == .04
+        ? previous.sections
+        : OrganicBranchPainter.sampleStem(
+            spine,
+            growth,
+            radius,
+            tipRatio: .04,
+            pathMetric: _measure(spine),
+          );
     limbs.add((
       spine: spine,
       growth: growth,
