@@ -357,7 +357,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
     final angle = -math.pi / 2 + math.pi * slice / 8;
     return (
       cross: math.sin(angle),
-      facing: math.cos(angle),
+      facingLight: .8 * math.cos(angle),
       arc: angle + math.pi / 2,
     );
   });
@@ -480,6 +480,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
     final points = Float32List(vertexCount * 2);
     final uv = Float32List(vertexCount * 2);
     final colors = Int32List(vertexCount);
+    final textureResolution = bark.width / 512;
     // 只有一个完整批次的索引表；尾批使用零拷贝视图，不随树龄积累缓存。
     final triangles = Uint16List.sublistView(
       _surfaceIndices,
@@ -488,14 +489,17 @@ class OrganicTreeStudyPainter extends CustomPainter {
     );
     var vertex = 0;
     for (final limb in limbs) {
+      final collarLength = limb.radius * 2;
       for (var ring = 0; ring <= rings; ring++) {
         final section = limb.sections[ring];
         final normal = section.normal;
         final radius = section.radius;
-        final collar = (section.distance / (limb.radius * 2)).clamp(0.0, 1.0);
+        final lightX = -.7 * normal.dx;
+        final lightY = .55 * normal.dy;
+        final collar = (section.distance / collarLength).clamp(0.0, 1.0);
         final coverage = collar * collar * (3 - 2 * collar);
         final alpha = (255 * coverage).round() << 24;
-        final textureY = section.distance * .8 * (bark.width / 512);
+        final textureY = section.distance * .8 * textureResolution;
         for (var slice = 0; slice <= slices; slice++) {
           final profile = _surfaceProfile[slice];
           final cross = profile.cross;
@@ -503,16 +507,14 @@ class OrganicTreeStudyPainter extends CustomPainter {
           points[vertex * 2 + 1] =
               section.center.dy + normal.dy * (radius * cross);
           // 纹理随截面周长取样，细枝不能横向塞入整张粗树皮。
-          uv[vertex * 2] = profile.arc * radius * (bark.width / 512);
+          uv[vertex * 2] = profile.arc * radius * textureResolution;
           uv[vertex * 2 + 1] = textureY;
           final light =
               .18 +
               .82 *
                   math.max(
                     0.0,
-                    -.7 * normal.dx * cross -
-                        .55 * normal.dy * cross +
-                        .8 * profile.facing,
+                    lightX * cross - lightY * cross + profile.facingLight,
                   );
           colors[vertex] =
               alpha |
