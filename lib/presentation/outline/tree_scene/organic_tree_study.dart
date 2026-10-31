@@ -75,7 +75,8 @@ class OrganicTreeFrame {
         _join(spine, growth, radius, previousLimbs[spine]);
     age = age.clamp(0.0, 1.0);
     this.age = age;
-    final ageGrowth = .12 + age * .88;
+    // 空书从已扎根的完整幼树起步，随后真实延伸到相同的成年中心线末端。
+    final ageGrowth = .32 + age * .68;
     final growth = math.max(ageGrowth, math.min(1.0, this.chapterCount / 10));
     _originalGrowth = growth;
     final extra = upperExtentFor(this.chapterCount);

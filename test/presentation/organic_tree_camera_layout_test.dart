@@ -5,6 +5,15 @@ import 'package:novel_app/presentation/outline/tree_scene/organic_tree_study.dar
 import 'package:novel_app/presentation/outline/tree_scene/illustrated_tree_scene.dart';
 
 void main() {
+  test('空书完整幼树占手机可用高度约三成，保持普通镜头倍率', () {
+    final bounds = OrganicTreeFrame(0, chapterCount: 0).wood.getBounds();
+    for (final size in [const Size(360, 800), const Size(430, 932), const Size(480, 800)]) {
+      final layout = OrganicTreeCameraLayout(size, 0, 0, focusedChapter: 0);
+      expect(layout.chapterScale, 1);
+      final height = bounds.height * layout.projection.scale;
+      expect(height, inInclusiveRange(size.height * .28, size.height * .38));
+    }
+  });
   test('成熟历史近景的小节文字牌面不陷入主干', () {
     final submerged = <String>[];
     for (final count in [10, 30, 1000]) {

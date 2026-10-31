@@ -648,7 +648,8 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                     .transform(Matrix4.diagonal3Values(layout.projection.scale,
                       layout.projection.scale, 1).storage)
                     .shift(layout.projection.origin - placed.topLeft),
-                  maxSupportRadius: math.min(placed.height * organicBranchRootRatio,
+                  maxSupportRadius: math.min(placed.height * organicBranchRootRatio *
+                    (.55 + frame.age * .45),
                     frame.trunkRadiusAt(fraction) * layout.projection.scale * .75));
               }
 
