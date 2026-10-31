@@ -282,6 +282,14 @@ try {
       const numeral = `${index < 20 ? '十' : '二十'}${['', '一', '二', '三', '四', '五', '六', '七', '八', '九'][index % 10]}`;
       const extendedGrowth = index === 20 && process.argv.includes('--audit-growth');
       if (extendedGrowth) await startFrameSample();
+      // 上层延伸的几何规模不同，单独保留剖析，不用十章以内的热点代替。
+      let profiler;
+      if (extendedGrowth && process.argv.includes('--cpu-profile')) {
+        profiler = await page.context().newCDPSession(page);
+        await profiler.send('Profiler.enable');
+        await profiler.send('Profiler.setSamplingInterval', { interval: 1000 });
+        await profiler.send('Profiler.start');
+      }
       await addChapter.click();
       await page.getByRole('button', { name: `第${numeral}章`, exact: true }).waitFor();
       if (index === 10) {
@@ -298,6 +306,11 @@ try {
       await page.waitForTimeout(1300);
       if (extendedGrowth) {
         await page.waitForFunction(() => window.__treeGrowthTiming);
+        if (profiler) {
+          const { profile } = await profiler.send('Profiler.stop');
+          await writeFile(resolve(output, 'extended-growth.cpuprofile'), JSON.stringify(profile));
+          await profiler.detach();
+        }
         await page.screenshot({ path: resolve(output, 'extended-growth-settled.png') });
         await writeFile(resolve(output, 'extended-growth-timing.json'), JSON.stringify(
           await page.evaluate(() => window.__treeGrowthTiming), null, 2));
