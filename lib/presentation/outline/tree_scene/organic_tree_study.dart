@@ -22,6 +22,8 @@ class OrganicTreeFrame {
     ..moveTo(490, 1410)
     ..cubicTo(430, 1180, 575, 840, 500, 410);
   static final _trunkMetric = _trunk.computeMetrics().first;
+  // 根颈沿真实主干弧长取点，幼干变细时也不会露出偏置的平切截面。
+  static final _rootStart = trunkPoint(.08);
   // 拓扑及中心线固定；缓存只含这棵树有限的枝干，不缓存动态生长截面。
   static final _curves = <String, Path>{};
   static final _metrics = <Path, ui.PathMetric>{_trunk: _trunkMetric};
@@ -78,11 +80,11 @@ class OrganicTreeFrame {
       final root = _curve(
         'root:$index',
         () => Path()
-          ..moveTo(490, 1330)
+          ..moveTo(_rootStart.dx, _rootStart.dy)
           ..cubicTo(
-            490 + (end.dx - 490) * .08,
+            _rootStart.dx + (end.dx - _rootStart.dx) * .08,
             1420 + (index % 2) * 15,
-            end.dx - (end.dx - 490) * .38,
+            end.dx - (end.dx - _rootStart.dx) * .38,
             end.dy - 20,
             end.dx,
             end.dy,

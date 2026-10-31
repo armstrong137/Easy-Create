@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:novel_app/presentation/outline/tree_scene/organic_branch.dart';
 import 'package:novel_app/presentation/outline/tree_scene/organic_tree_study.dart';
 
 void main() {
@@ -66,6 +67,25 @@ void main() {
       OrganicTreeFrame(.551).wood.getBounds().top - middle.wood.getBounds().top,
       inInclusiveRange(-10, 0),
     );
+  });
+
+  test('六条根颈的完整截面始终埋在主干内部，不露出平切台阶', () {
+    final rootNeck = OrganicTreeFrame.trunkPoint(.08);
+    for (var step = 0; step <= 100; step++) {
+      final frame = OrganicTreeFrame(step / 100);
+      final trunk = OrganicBranchPainter.sectionPath(frame.limbs.first.sections);
+      final roots = frame.limbs.skip(1).where((limb) =>
+          (limb.sections.first.center - rootNeck).distance < 25);
+      expect(roots.length, 6);
+      for (final root in roots) {
+        final neck = root.sections.first;
+        for (final point in [neck.center + neck.normal * neck.radius,
+          neck.center - neck.normal * neck.radius]) {
+          expect(trunk.contains(point), isTrue,
+              reason: '树龄 $step 根颈截面 $point 不能越出母干');
+        }
+      }
+    }
   });
 
   test('连续树龄的枝干交叠不会产生空洞或无效轮廓', () {

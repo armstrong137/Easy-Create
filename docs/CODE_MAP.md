@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-10-31 16:46:20　对应提交：b750575 之后的工作区状态
+> 生成时间：2026-10-31 16:52:23　对应提交：abb5c76 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,8 +13,8 @@ Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
   Files:     200
-  Nodes:     5,351
-  Edges:     22,518
+  Nodes:     5,353
+  Edges:     22,526
   DB Size:   26.00 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
@@ -22,9 +22,9 @@ Index Statistics:
 Nodes by Kind:
   method          1,827
   function        1,577
-  import          703
+  import          704
   class           522
-  constant        335
+  constant        336
   file            192
   variable        145
   enum_member     25
@@ -184,7 +184,7 @@ Project Structure (200 files):
 |   |   |   |   |-- organic_branch.dart (dart, 23 symbols)
 |   |   |   |   |-- organic_tree_camera_layout.dart (dart, 14 symbols)
 |   |   |   |   |-- organic_tree_projection.dart (dart, 6 symbols)
-|   |   |   |   |-- organic_tree_study.dart (dart, 37 symbols)
+|   |   |   |   |-- organic_tree_study.dart (dart, 38 symbols)
 |   |   |   |   |-- organic_tree.dart (dart, 13 symbols)
 |   |   |   |   |-- sapling_plaque.dart (dart, 5 symbols)
 |   |   |   |   |-- tree_scene_controller.dart (dart, 51 symbols)
@@ -257,7 +257,7 @@ Project Structure (200 files):
 |   |   |-- organic_leaf_crop_test.dart (dart, 10 symbols)
 |   |   |-- organic_tree_camera_layout_test.dart (dart, 6 symbols)
 |   |   |-- organic_tree_projection_test.dart (dart, 6 symbols)
-|   |   |-- organic_tree_study_test.dart (dart, 9 symbols)
+|   |   |-- organic_tree_study_test.dart (dart, 10 symbols)
 |   |   |-- organic_tree_test.dart (dart, 22 symbols)
 |   |   |-- outline_controller_test.dart (dart, 10 symbols)
 |   |   |-- outline_page_test.dart (dart, 38 symbols)
