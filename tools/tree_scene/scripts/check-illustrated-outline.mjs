@@ -7,6 +7,8 @@ const url = process.argv[2] ?? 'http://127.0.0.1:8780/';
 assert.ok(!process.argv.includes('--cpu-profile') || process.argv.includes('--audit-growth'),
   '--cpu-profile 需要同时启用 --audit-growth');
 const runId = new Date().toISOString().replaceAll(':', '-');
+const videoRecording = !process.argv.includes('--no-video') &&
+  (process.argv.includes('--audit-overview') || process.argv.includes('--audit-growth'));
 const output = resolve(process.argv[3] ?? '../../build/illustrated-outline-check', runId);
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
@@ -16,7 +18,7 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({
   viewport: { width: 430, height: 932 },
-  recordVideo: process.argv.includes('--audit-overview') || process.argv.includes('--audit-growth')
+  recordVideo: videoRecording
     ? { dir: resolve(output, 'video'), size: { width: 430, height: 932 } }
     : undefined,
 });
@@ -229,6 +231,7 @@ try {
   assert.deepEqual(errors, [], '浏览器不应发生运行错误');
   await writeFile(resolve(output, 'result.json'), JSON.stringify({
     runId, url, renderer,
+    videoRecording,
     runtimeResources: [...runtimeResources],
     crossOriginIsolated: await page.evaluate(() => globalThis.crossOriginIsolated),
     graphicsRequest: process.argv.includes('--default-gpu') ? '浏览器默认' : '强制 SwiftShader',
@@ -243,7 +246,7 @@ try {
   await page.screenshot({ path: resolve(output, 'failure.png'), timeout: 5000 }).catch(() => {});
   const failureText = await page.locator('body').innerText({ timeout: 5000 }).catch(() => '页面已不可读取');
   await writeFile(resolve(output, 'failure.json'), JSON.stringify({
-    runId, phase, error: String(error), text: failureText, runtimeResources: [...runtimeResources], captures, errors,
+    runId, phase, videoRecording, error: String(error), text: failureText, runtimeResources: [...runtimeResources], captures, errors,
   }, null, 2));
   throw error;
 } finally {
