@@ -90,9 +90,18 @@ void main() {
     final anchors = mature.leaves
         .map((leaf) => (leaf.point, leaf.angle))
         .toSet();
-    for (final age in [.2, .55, .8, 1.0]) {
+    var previous = <(Offset, double), double>{};
+    for (var step = 0; step <= 100; step++) {
+      final age = step / 100;
       final frame = OrganicTreeFrame(age);
       expect(frame.leaves, isNotEmpty);
+      final current = {
+        for (final leaf in frame.leaves) (leaf.point, leaf.angle): leaf.scale,
+      };
+      for (final entry in previous.entries) {
+        expect(current[entry.key], greaterThanOrEqualTo(entry.value),
+            reason: '树龄 $age 已展开的叶片不能消失或反向缩小');
+      }
       for (final leaf in frame.leaves) {
         expect(frame.wood.contains(leaf.point), isTrue, reason: '树龄 $age 叶柄悬空');
         expect(
@@ -101,6 +110,7 @@ void main() {
           reason: '树龄 $age 已有叶节发生位移',
         );
       }
+      previous = current;
     }
   });
 

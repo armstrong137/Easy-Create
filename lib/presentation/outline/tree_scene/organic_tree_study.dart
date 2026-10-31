@@ -307,12 +307,13 @@ class OrganicTreeFrame {
     final buds = _leafBuds.putIfAbsent(spine, () {
       final result = <_OrganicLeafBud>[];
       final metric = _measure(spine);
-      final nodes = sparse ? 3 : (metric.length / 24).round().clamp(3, 7);
+      // 主枝较早展叶且缩短叶节空档，末级枝仍保留原有疏密。
+      final nodes = sparse ? 5 : (metric.length / 24).round().clamp(3, 7);
       for (var index = 0; index < nodes; index++) {
         final phase = seed * .37 + index * .83;
         final along =
-            (sparse ? .14 : .22) +
-            index / (nodes - 1) * .70 +
+            (sparse ? .08 : .22) +
+            index / (nodes - 1) * (sparse ? .80 : .70) +
             .025 * math.sin(phase);
         final tangent = metric.getTangentForOffset(metric.length * along)!;
         // 末级枝上疏密错落地对生阔叶，保留主枝负空间，避免五叶轮生重复成蕨片。
@@ -338,7 +339,8 @@ class OrganicTreeFrame {
     });
     for (final bud in buds) {
       if (growth <= bud.along) continue;
-      final opening = ((growth - bud.along - bud.delay) / .08).clamp(0.0, 1.0);
+      final opening = ((growth - bud.along - bud.delay) / (sparse ? .04 : .08))
+          .clamp(0.0, 1.0);
       if (opening == 0) continue;
       leaves.add((
         point: bud.leaf.point,
