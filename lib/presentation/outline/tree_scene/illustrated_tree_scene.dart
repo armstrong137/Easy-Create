@@ -19,6 +19,7 @@ class IllustratedBranchPlaque extends StatefulWidget {
     required this.animateIn,
     this.organicGrowth = false,
     this.maxSupportRadius,
+    this.treeScale = 1,
   });
 
   final String title;
@@ -27,6 +28,7 @@ class IllustratedBranchPlaque extends StatefulWidget {
   final bool animateIn;
   final bool organicGrowth;
   final double? maxSupportRadius;
+  final double treeScale;
 
   @override
   State<IllustratedBranchPlaque> createState() =>
@@ -84,7 +86,7 @@ class _IllustratedBranchPlaqueState extends State<IllustratedBranchPlaque>
         final frameProgress = ((progress - .72) / .28).clamp(0.0, 1.0);
         return Stack(fit: StackFit.expand, children: [
           if (widget.organicGrowth)
-            OrganicBranch(progress: progress, right: widget.side == IllustratedBranchSide.right, maxRootRadius: widget.maxSupportRadius),
+            OrganicBranch(progress: progress, right: widget.side == IllustratedBranchSide.right, maxRootRadius: widget.maxSupportRadius, treeScale: widget.treeScale),
           ClipRect(
           clipper: widget.organicGrowth
               ? _PlaqueFrameClipper(widget.side)

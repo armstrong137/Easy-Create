@@ -20,6 +20,7 @@ import 'package:novel_app/presentation/outline/tree_scene/tree_scene_protocol.da
 import 'package:novel_app/presentation/outline/tree_scene/tree_standin.dart';
 import 'package:novel_app/presentation/outline/tree_scene/organic_tree.dart';
 import 'package:novel_app/presentation/outline/tree_scene/organic_branch.dart';
+import 'package:novel_app/presentation/outline/tree_scene/organic_tree_projection.dart';
 import 'package:novel_app/presentation/section/section_page.dart';
 
 class ControllableNovelRepository extends NovelRepository {
@@ -416,7 +417,12 @@ void main() {
     await pumpOutline(tester, outline, enableIllustratedCamera: true);
     await tester.pump(const Duration(seconds: 2));
     final beforeTree = tester.getRect(find.byType(OrganicTree));
+    final materialScale = OrganicTreeProjection(
+      tester.getSize(find.byType(OrganicTree)),
+    ).scale;
     for (final element in find.byType(OrganicBranch).evaluate()) {
+      expect((element.widget as OrganicBranch).treeScale, materialScale,
+          reason: '枝条基础纹理密度应使用主树实际投影，不额外乘章节镜头缩放');
       expect((element.widget as OrganicBranch).maxRootRadius,
           closeTo(element.size!.height * .08, .0001),
           reason: '成年枝只传入生效半径，避免超出默认粗度的母干数值引发无效重绘');

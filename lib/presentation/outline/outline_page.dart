@@ -403,6 +403,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                 required IllustratedBranchSide side,
                 required bool selected,
                 double? maxSupportRadius,
+                double treeScale = 1,
               }) {
                 final key = label.chapterId != null
                     ? Key('静态章热区_${label.chapterId}')
@@ -468,6 +469,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                                 animateIn: animateIn,
                                 organicGrowth: widget.enableIllustratedCamera,
                                 maxSupportRadius: maxSupportRadius,
+                                treeScale: treeScale,
                               ),
                             ),
                       ),
@@ -658,9 +660,10 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                                 for (final item in windowLabels)
                                   if (frame.anchorAt(item.nativeFraction!) != null)
                                     staticLabel(item.label, item.rect, side: item.side, selected: item.selected,
+                                      treeScale: (cameraLayout as OrganicTreeCameraLayout).projection.scale,
                                       maxSupportRadius: math.min(item.rect.height * organicBranchRootRatio,
                                         frame.trunkRadiusAt(item.nativeFraction!) *
-                                          (cameraLayout as OrganicTreeCameraLayout).projection.scale * .75)),
+                                          cameraLayout.projection.scale * .75)),
                               ],
                             ),
                           ) : Stack(

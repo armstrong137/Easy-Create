@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-10-31 11:24:28　对应提交：5f61b42 之后的工作区状态
+> 生成时间：2026-10-31 11:28:52　对应提交：24fd618 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,8 +13,8 @@ Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
   Files:     199
-  Nodes:     5,325
-  Edges:     22,431
+  Nodes:     5,326
+  Edges:     22,434
   DB Size:   26.00 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
@@ -22,7 +22,7 @@ Index Statistics:
 Nodes by Kind:
   method          1,827
   function        1,572
-  import          692
+  import          693
   class           522
   constant        328
   file            191
@@ -259,7 +259,7 @@ Project Structure (199 files):
 |   |   |-- organic_tree_study_test.dart (dart, 9 symbols)
 |   |   |-- organic_tree_test.dart (dart, 19 symbols)
 |   |   |-- outline_controller_test.dart (dart, 10 symbols)
-|   |   |-- outline_page_test.dart (dart, 36 symbols)
+|   |   |-- outline_page_test.dart (dart, 37 symbols)
 |   |   |-- planet_scene_touch_config_test.dart (dart, 8 symbols)
 |   |   |-- quick_capture_test.dart (dart, 16 symbols)
 |   |   |-- realtime_tree_single_path_test.dart (dart, 4 symbols)

@@ -20,8 +20,11 @@ class OrganicBranch extends StatefulWidget {
     required this.progress,
     required this.right,
     this.maxRootRadius,
+    this.treeScale = 1,
   });
   final double? maxRootRadius;
+  // 仅含母版到场景的投影；章节和全景镜头由父层统一应用。
+  final double treeScale;
   final double progress;
   final bool right;
 
@@ -68,6 +71,7 @@ class _OrganicBranchState extends State<OrganicBranch> {
       widget.right,
       _bark,
       maxRootRadius: widget.maxRootRadius,
+      treeScale: widget.treeScale,
     ),
   );
 }
@@ -78,8 +82,10 @@ class OrganicBranchPainter extends CustomPainter {
     this.right,
     this.bark, {
     this.maxRootRadius,
+    this.treeScale = 1,
   });
   final double? maxRootRadius;
+  final double treeScale;
   final double progress;
   final bool right;
   final ui.Image? bark;
@@ -158,8 +164,8 @@ class OrganicBranchPainter extends CustomPainter {
         TileMode.repeated,
         TileMode.repeated,
         (Matrix4.identity()..scaleByDouble(
-              .7 * 512 / bark!.width,
-              .7 * 512 / bark!.width,
+              .7 * treeScale * 512 / bark!.width,
+              .7 * treeScale * 512 / bark!.width,
               1,
               1,
             ))
@@ -306,6 +312,7 @@ class OrganicBranchPainter extends CustomPainter {
   bool shouldRepaint(OrganicBranchPainter oldDelegate) =>
       oldDelegate.progress != progress ||
       oldDelegate.maxRootRadius != maxRootRadius ||
+      oldDelegate.treeScale != treeScale ||
       oldDelegate.right != right ||
       oldDelegate.bark != bark;
 }
