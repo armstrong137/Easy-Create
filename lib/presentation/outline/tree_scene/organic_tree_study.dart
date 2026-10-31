@@ -61,6 +61,8 @@ class OrganicTreeFrame {
     final rootGrowth = .35 + age * .65;
     final rootRadius = (12 + age * 90) * math.sqrt(growth / rootGrowth);
     for (var index = 0; index < 6; index++) {
+      // 根颈从主干内部向下分流，各根粗度不同，避免六条等粗扁片堆成底座。
+      final radius = rootRadius * const [.62, .48, .38, .46, .58, .42][index];
       final end = const [
         Offset(115, 1450),
         Offset(255, 1510),
@@ -72,17 +74,17 @@ class OrganicTreeFrame {
       final root = _curve(
         'root:$index',
         () => Path()
-          ..moveTo(490, 1380)
+          ..moveTo(490, 1330)
           ..cubicTo(
-            490 + (end.dx - 490) * .12,
-            1470 + (index % 2) * 15,
+            490 + (end.dx - 490) * .08,
+            1420 + (index % 2) * 15,
             end.dx - (end.dx - 490) * .38,
             end.dy - 20,
             end.dx,
             end.dy,
           ),
       );
-      _join(root, rootGrowth, rootRadius);
+      _join(root, rootGrowth, radius);
       final rootMetric = _measure(root);
       for (var forkIndex = 0; forkIndex < 2; forkIndex++) {
         final birth = .3 + forkIndex * .3;
@@ -110,8 +112,7 @@ class OrganicTreeFrame {
         );
         final forkRadius = math.min(
           (10 + age * 12) * (1 - forkIndex * .3),
-          OrganicBranchPainter.radiusAt(birth, rootGrowth, rootRadius, .04) *
-              .7,
+          OrganicBranchPainter.radiusAt(birth, rootGrowth, radius, .04) * .7,
         );
         _join(fork, forkGrowth, forkRadius);
       }
