@@ -66,13 +66,14 @@ class OrganicTreeFrame {
     for (var index = 0; index < 6; index++) {
       // 根颈从主干内部向下分流，各根粗度不同，避免六条等粗扁片堆成底座。
       final radius = rootRadius * const [.62, .48, .38, .46, .58, .42][index];
+      // 根梢靠近同一地面，保留前后层次，避免左右平伸而前根过长。
       final end = const [
-        Offset(115, 1450),
-        Offset(255, 1510),
-        Offset(450, 1570),
+        Offset(150, 1500),
+        Offset(285, 1520),
+        Offset(450, 1540),
         Offset(625, 1530),
-        Offset(790, 1480),
-        Offset(850, 1430),
+        Offset(775, 1500),
+        Offset(830, 1475),
       ][index];
       final root = _curve(
         'root:$index',
@@ -99,7 +100,7 @@ class OrganicTreeFrame {
         final start = tangent.position;
         final normal = Offset(-tangent.vector.dy, tangent.vector.dx);
         final direction =
-            tangent.vector * 65 + normal * (forkIndex.isEven ? 35 : -28);
+            tangent.vector * 35 + normal * (forkIndex.isEven ? 14 : -12);
         final fork = _curve(
           'fork:$index:$forkIndex',
           () => Path()
