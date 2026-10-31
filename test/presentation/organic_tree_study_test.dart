@@ -28,7 +28,8 @@ void main() {
       for (var index = 0; index < count; index++) {
         final anchor = growing.chapterAnchor(index, count);
         expect(anchor, isNotNull, reason: '$count 个节点的第 $index 章');
-        expect(growing.wood.contains(anchor!), isTrue);
+        expect(growing.wood.contains(anchor!), isTrue,
+            reason: '$count 个节点的第 $index 章锚点 $anchor 不应出现空洞');
         expect(anchor, mature.chapterAnchor(index, count));
       }
     }
@@ -38,7 +39,8 @@ void main() {
       Offset? previous;
       for (var index = 0; index < count; index++) {
         final anchor = mature.chapterAnchor(index, count)!;
-        expect(mature.wood.contains(anchor), isTrue);
+        expect(mature.wood.contains(anchor), isTrue,
+            reason: '$count 章的第 $index 个锚点 $anchor 不应出现空洞');
         if (previous != null) expect(anchor.dy, lessThan(previous.dy));
         previous = anchor;
       }

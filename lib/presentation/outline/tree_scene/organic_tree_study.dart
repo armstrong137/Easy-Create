@@ -144,7 +144,7 @@ class OrganicTreeFrame {
           ..moveTo(start.dx, start.dy)
           ..cubicTo(
             start.dx + side * reach * .20,
-            start.dy + 20,
+            start.dy - 20,
             end.dx - side * reach * .35,
             end.dy - 45,
             end.dx,
@@ -158,7 +158,7 @@ class OrganicTreeFrame {
         .025,
       );
       final branchRadius = math.min(
-        (12 + age * 20) * (1 - index * .07),
+        (12 + age * 40) * (1 - index * .07),
         parentRadius * .75,
       );
       _join(branch, branchGrowth, branchRadius);
@@ -316,7 +316,7 @@ class OrganicTreeFrame {
           point: tangent.position,
           angle: angle + math.pi / 2,
           scale:
-              (sparse ? .085 : .12) *
+              (sparse ? .045 : .07) *
               (1 + .25 * math.sin(phase + blade * 2)) *
               opening,
         ));
