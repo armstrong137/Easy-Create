@@ -312,7 +312,7 @@ class OrganicTreeFrame {
 }
 
 class OrganicTreeStudyPainter extends CustomPainter {
-  static const _surfaceBatchSize = 64;
+  static const _surfaceBatchSize = 128;
   static final _surfaceIndices = (() {
     const rings = OrganicBranchPainter.stemSamples;
     const slices = 8;
@@ -384,7 +384,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
         ),
     );
     // 沿每条枝干的方向铺设树皮，并由圆截面法向形成体积光照。
-    // 每批最多 64×49×9 个顶点，低于 16 位索引上限，保持原枝干顺序。
+    // 每批最多 128×49×9=56448 个顶点，低于 16 位索引上限，保持原枝干顺序。
     for (
       var start = 0;
       start < frame.limbs.length;
