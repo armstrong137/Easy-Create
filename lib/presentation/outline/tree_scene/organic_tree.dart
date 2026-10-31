@@ -77,7 +77,7 @@ class _OrganicTreeState extends State<OrganicTree> {
     builder: (context, snapshot) {
       if (snapshot.hasError) throw snapshot.error!;
       if (!snapshot.hasData) {
-        return const ColoredBox(color: Color(0xFFF4D9A5));
+        return const SizedBox.expand();
       }
       final materials = snapshot.requireData;
       final age = widget.age.clamp(0.0, 1.0);

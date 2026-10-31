@@ -231,6 +231,8 @@ void main() {
         ).paint(Canvas(recorder), const Size(941, 1672));
         final picture = recorder.endRecording();
         final image = await picture.toImage(941, 1672);
+        final raw = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+        expect(raw!.getUint8(3), 0, reason: '全景画布角落必须透明，不能形成缩放色块');
         final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
         expect(bytes, isNotNull);
         final nextRecorder = ui.PictureRecorder();

@@ -604,15 +604,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()
-        ..shader = const RadialGradient(
-          center: Alignment(-.35, -.3),
-          radius: 1.2,
-          colors: [Color(0xFFFFF1CE), Color(0xFFF4D9A5)],
-        ).createShader(Offset.zero & size),
-    );
+    // 页面持有羊皮纸背景，树体画布保持透明，避免全景缩放后显出矩形底色。
     canvas.save();
     final projection = OrganicTreeProjection(
       size,

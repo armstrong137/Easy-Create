@@ -23,6 +23,7 @@ class _PreviewState extends State<_Preview> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+    backgroundColor: const Color(0xFFFDF6EC),
     body: Column(
       children: [
         Expanded(
