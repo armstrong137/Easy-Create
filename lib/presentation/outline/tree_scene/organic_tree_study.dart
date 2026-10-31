@@ -330,18 +330,22 @@ class OrganicTreeStudyPainter extends CustomPainter {
   static final _surfaceIndices = (() {
     const rings = OrganicBranchPainter.stemSamples;
     const slices = 8;
-    final indices = Uint16List(_surfaceBatchSize * rings * slices * 6);
+    final indices = Uint16List(
+      _surfaceBatchSize * rings * (2 * (slices + 1) + 2) - 2,
+    );
     var face = 0;
     for (var limb = 0; limb < _surfaceBatchSize; limb++) {
       final base = limb * (rings + 1) * (slices + 1);
       for (var ring = 0; ring < rings; ring++) {
-        for (var slice = 0; slice < slices; slice++) {
+        // 重复端点形成零面积连接，不在相邻环或不同枝干之间生成可见三角形。
+        if (face > 0) {
+          indices[face] = indices[face - 1];
+          face++;
+          indices[face++] = base + ring * (slices + 1);
+        }
+        for (var slice = 0; slice <= slices; slice++) {
           final here = base + ring * (slices + 1) + slice;
           indices[face++] = here;
-          indices[face++] = here + 1;
-          indices[face++] = here + slices + 1;
-          indices[face++] = here + 1;
-          indices[face++] = here + slices + 2;
           indices[face++] = here + slices + 1;
         }
       }
@@ -480,7 +484,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
     final triangles = Uint16List.sublistView(
       _surfaceIndices,
       0,
-      limbs.length * rings * slices * 6,
+      limbs.length * rings * (2 * (slices + 1) + 2) - 2,
     );
     var vertex = 0;
     for (final limb in limbs) {
@@ -520,7 +524,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
       }
     }
     final vertices = ui.Vertices.raw(
-      ui.VertexMode.triangles,
+      ui.VertexMode.triangleStrip,
       points,
       textureCoordinates: uv,
       colors: colors,
