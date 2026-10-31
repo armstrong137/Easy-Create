@@ -168,8 +168,9 @@ class OrganicTreeFrame {
       _foliage(branch, branchGrowth, index * 1000 + 900, sparse: true);
       final branchMetric = _measure(branch);
       for (var twigIndex = 0; twigIndex < 4; twigIndex++) {
-        final birth = .25 + twigIndex * .2;
-        final twigGrowth = ((branchGrowth - birth) / (1 - birth)).clamp(
+        final birth = .12 + twigIndex * .22;
+        // 早发细枝先伸展展叶，母枝继续生长；后发细枝仍在母枝末态前长成。
+        final twigGrowth = ((branchGrowth - birth) / math.min(.4, 1 - birth)).clamp(
           0.0,
           1.0,
         );
@@ -210,6 +211,7 @@ class OrganicTreeFrame {
               .75,
         );
         _join(twig, twigGrowth, twigRadius);
+        _foliage(twig, twigGrowth, index * 1000 + twigIndex * 100 + 95, sparse: true);
         final twigMetric = _measure(twig);
         for (var sprayIndex = 0; sprayIndex < 5; sprayIndex++) {
           final birth = .2 + sprayIndex * .16;
