@@ -265,6 +265,30 @@ class OrganicTreeFrame {
       }
     }
     rootBounds = wood.getBounds();
+    // 首批细枝在冠枝之前萌发，使早期也是有叶簇的完整幼树。
+    for (var index = 0; index < 3; index++) {
+      final attachment = const [.035, .045, .17][index];
+      final sproutGrowth = ((growth - attachment) / .08).clamp(0.0, 1.0);
+      if (sproutGrowth == 0) continue;
+      final start = trunkPoint(attachment);
+      final side = index.isEven ? -1 : 1;
+      final sprout = _curve(
+        'sprout:$index',
+        () => Path()
+          ..moveTo(start.dx, start.dy)
+          ..cubicTo(
+            start.dx + side * 25,
+            start.dy - 5,
+            start.dx + side * 70,
+            start.dy - 55,
+            start.dx + side * 85,
+            start.dy - 80,
+          ),
+      );
+      final radius = math.min(2 + age * 2, trunkRadiusAt(attachment) * .65);
+      join(sprout, sproutGrowth, radius);
+      _foliage(sprout, sproutGrowth, 30000 + index * 100);
+    }
     final upperBranches = (extra / (_trunkMetric.length * .16)).ceil();
     for (var index = 0; index < 7 + upperBranches; index++) {
       final attachment = index < 7

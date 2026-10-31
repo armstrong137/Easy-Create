@@ -220,7 +220,7 @@ void main() {
       const writeFrames = bool.fromEnvironment('WRITE_TREE_STUDY_FRAMES');
       final ages = writeFrames
           ? List.generate(121, (index) => index / 120)
-          : [.2, .55, 1.0];
+          : [0.0, .05, .2, .55, 1.0];
       for (var index = 0; index < ages.length; index++) {
         final age = ages[index];
         final recorder = ui.PictureRecorder();
