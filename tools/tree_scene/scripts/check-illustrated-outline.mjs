@@ -39,11 +39,41 @@ page.on('console', (message) => {
   if (message.type() === 'error') errors.push({ phase, message: message.text() });
 });
 const captures = [];
+const sectionPointerChecks = [];
+async function auditSectionPointerHit(name, stage = 'initial') {
+  phase = `小节实际指针命中：${name}`;
+  const viewport = page.viewportSize();
+  const hit = await page.getByRole('button', { name, exact: true }).boundingBox();
+  assert.ok(hit.width > 180, '小节牌面保持可读尺寸');
+  // 对准右侧实际文字牌面，而非整块承托枝热区的中心。
+  const clickPoint = { x: hit.x + hit.width * (1 - 320 / 1536),
+    y: hit.y + hit.height * 468 / 1024 };
+  const style = await page.addStyleTag({ content: 'flt-semantics-host, flt-semantics-host * { pointer-events: none !important; }' });
+  try {
+    await page.mouse.click(clickPoint.x, clickPoint.y);
+  } finally {
+    await style.evaluate(element => element.remove());
+  }
+  const title = page.getByRole('textbox').first();
+  await title.waitFor();
+  const titleBox = await title.boundingBox();
+  await title.click();
+  const input = page.locator('input');
+  await input.waitFor();
+  assert.equal(await input.inputValue(), name, '实际点击必须打开对应小节，不能误中相邻枝牌');
+  await capture(`section-hit-${stage}-${name}-${viewport.width}`);
+  // 返回箭头位于标题框左侧；从实际布局推导，兼容宽屏居中应用壳。
+  await page.mouse.click(titleBox.x - 24, titleBox.y + titleBox.height / 2);
+  await page.getByRole('button', { name: '新增小节', exact: true }).waitFor();
+  await page.waitForTimeout(700);
+  sectionPointerChecks.push({ stage, name, viewport, hit, clickPoint, openedTitle: name });
+}
 async function auditChapterPointerHit(name) {
   const hit = await page.getByRole('button', { name, exact: true }).boundingBox();
   assert.ok(hit.width > 180, '放大后牌面保持可读尺寸');
   const style = await page.addStyleTag({ content: 'flt-semantics-host, flt-semantics-host * { pointer-events: none !important; }' });
-  await page.mouse.dblclick(hit.x + hit.width / 2, hit.y + hit.height / 2, { delay: 60 });
+  await page.mouse.dblclick(hit.x + hit.width * 320 / 1536,
+    hit.y + hit.height * 468 / 1024, { delay: 60 });
   await style.evaluate(element => element.remove());
   await page.getByText('重命名这一章', { exact: true }).waitFor();
   assert.equal(await page.locator('input').inputValue(), name, '不能误击相邻章节');
@@ -121,6 +151,14 @@ try {
   await addSection.click();
   await page.getByRole('button', { name: '第二节', exact: true }).waitFor();
   await capture('04-four-branches-430');
+  if (process.argv.includes('--audit-sections')) {
+    for (const name of ['第一节', '第二节']) await auditSectionPointerHit(name);
+    await page.setViewportSize({ width: 910, height: 800 });
+    await page.waitForTimeout(1500);
+    for (const name of ['第一节', '第二节']) await auditSectionPointerHit(name);
+    await page.setViewportSize({ width: 430, height: 932 });
+    await page.waitForTimeout(1500);
+  }
   const titles = ['第二章', '第三章', '第四章', '第五章', '第六章', '第七章', '第八章', '第九章'];
   for (const title of titles) {
     // 引子、第一章及两节共四节点，第七章使结构节点达到十个。
@@ -200,6 +238,35 @@ try {
     }, null, 2));
     assert.ok(treeRegionChanged, '滑回引子后树干区域完全未变：标签切换不等于镜头移动');
   }
+  if (process.argv.includes('--audit-sections')) {
+    phase = '右侧小节历史浏览';
+    const chaptersBefore = await visibleChapters.allTextContents();
+    // 当前章在十章流程末尾或历史流程引子处，均尚无小节。
+    for (const name of ['第一节', '第二节', '第三节', '第四节', '第五节', '第六节']) {
+      await addSection.click();
+      await page.getByRole('button', { name, exact: true }).waitFor();
+      await page.waitForTimeout(1300);
+    }
+    await capture('six-sections-latest-430');
+    for (let index = 0; index < 5; index++) {
+      await page.mouse.move(350, 590);
+      await page.mouse.down();
+      await page.mouse.move(350, 780, { steps: 16 });
+      await page.mouse.up();
+      await page.waitForTimeout(600);
+    }
+    await page.getByRole('button', { name: '第一节', exact: true }).waitFor();
+    assert.equal(await page.getByRole('button', { name: '第六节', exact: true }).count(), 0);
+    assert.deepEqual(await visibleChapters.allTextContents(), chaptersBefore,
+      '右侧小节历史不能更换左侧章节窗口');
+    await capture('six-sections-history-430');
+    for (const name of ['第一节', '第二节']) await auditSectionPointerHit(name, 'history');
+    await page.setViewportSize({ width: 910, height: 800 });
+    await page.waitForTimeout(1500);
+    for (const name of ['第一节', '第二节']) await auditSectionPointerHit(name, 'history');
+    await page.setViewportSize({ width: 430, height: 932 });
+    await page.waitForTimeout(1500);
+  }
   if (process.argv.includes('--audit-dense')) {
     phase = '三十章密集近景验收';
     for (let index = 10; index < 30; index++) {
@@ -242,8 +309,10 @@ try {
     graphicsRequest: process.argv.includes('--default-gpu') ? '浏览器默认' : '强制 SwiftShader',
     cpuProfiling: process.argv.includes('--cpu-profile'),
     checksPassed: ['创建十章和两节', '末态语义窗口只有两章', '浏览器零错误',
+      ...(process.argv.includes('--audit-sections') ? ['手机和宽屏初始及历史小节八次真实指针命中正确页面',
+        '六节右侧历史滑动保持左侧章节窗口'] : []),
       ...(process.argv.includes('--audit-dense') ? ['三十章手机和宽屏双牌真实指针命中正确章节'] : [])],
-    visualAcceptance: '待人工对照参考图', captures, errors,
+    visualAcceptance: '待人工对照参考图', sectionPointerChecks, captures, errors,
   }, null, 2));
   console.log(JSON.stringify({ output, captures: captures.map(({ name }) => name), errors }));
 } catch (error) {
