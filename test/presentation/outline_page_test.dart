@@ -456,6 +456,37 @@ void main() {
     expect(find.byKey(const Key('静态章交互_10')), findsNothing);
   });
 
+  testWidgets('成熟树滑回首章后，小节文字在母干外而枝根仍接在母干内', (tester) async {
+    await seedNovel();
+    final outline = List.generate(10, (index) => OutlineChapter(
+      chapter: Chapter(id: index + 1, novelId: 1, title: '第${index + 1}章', sortOrder: index),
+      sections: index == 0 ? [
+        Section(id: 101, chapterId: 1, title: '第一节', sortOrder: 0),
+        Section(id: 102, chapterId: 1, title: '第二节', sortOrder: 1),
+      ] : const [],
+    ));
+    await pumpOutline(tester, outline, enableIllustratedCamera: true);
+    for (var index = 0; index < 9; index++) {
+      await tester.dragFrom(const Offset(80, 650), const Offset(0, 100));
+      await tester.pump(const Duration(milliseconds: 600));
+    }
+    for (final id in [101, 102]) {
+      final plaque = find.byKey(Key('静态节交互_$id'));
+      final branchFinder = find.descendant(of: plaque, matching: find.byType(OrganicBranch));
+      final branch = tester.widget<OrganicBranch>(branchFinder);
+      final box = tester.renderObject<RenderBox>(branchFinder);
+      final text = find.descendant(of: plaque, matching: find.byKey(const Key('枝牌文字区')));
+      final titleRect = tester.getRect(text);
+      expect(titleRect.right, lessThanOrEqualTo(430));
+      for (final point in [titleRect.topLeft, titleRect.topRight,
+        titleRect.bottomLeft, titleRect.bottomRight, titleRect.center]) {
+        expect(branch.trunkMask!.contains(box.globalToLocal(point)), isFalse);
+      }
+      expect(branch.trunkMask!.contains(Offset(box.size.width * .12, box.size.height * .7)), isTrue,
+          reason: '向外避让牌面后，承托枝的根颈仍必须留在真实母干内');
+    }
+  });
+
   testWidgets('新增第十一章时，移动中的枝牌遮罩仍与真实主干重合', (tester) async {
     await seedNovel();
     for (var index = 0; index < 10; index++) {

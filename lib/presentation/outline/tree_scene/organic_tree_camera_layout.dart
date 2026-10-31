@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'illustrated_tree_camera_layout.dart';
 import 'organic_tree_projection.dart';
 import 'organic_tree_study.dart';
+import 'illustrated_tree_scene.dart';
 
 /// 连续主树的镜头使用真实弧长锚点，复用统一场景与全景浏览机制。
 class OrganicTreeCameraLayout extends IllustratedTreeCameraLayout {
@@ -39,7 +40,10 @@ class OrganicTreeCameraLayout extends IllustratedTreeCameraLayout {
       ? 1
       : math.max(
           1.0,
-          (math.min(viewport.width * .5, 220) / 1.5 + 12) /
+          (math.min(viewport.width * .5, 220) /
+                      1.5 *
+                      illustratedBranchHitHeightRatio +
+                  12) /
               (900 * .72 / math.max(9, chapterCount - 1) * projection.scale),
         );
 
@@ -69,5 +73,22 @@ class OrganicTreeCameraLayout extends IllustratedTreeCameraLayout {
       width,
       width / 1.5,
     );
+  }
+
+  /// 右侧牌面避开同帧母干；枝根仍留在母干内，牌面不越过近景屏幕边缘。
+  Rect sectionRectOutsideTrunk(
+    Rect rect,
+    double fraction,
+    OrganicTreeFrame frame,
+  ) {
+    const titleRatio = 1 - 320 / 1536;
+    final radius = frame.trunkRadiusAt(fraction) * projection.scale;
+    final clearance = rect.width * .12 + 4 / chapterScale;
+    final needed = radius + clearance - rect.width * (titleRatio - .12);
+    final available =
+        focusX +
+        viewport.width / (2 * chapterScale) -
+        (rect.left + rect.width * titleRatio + clearance);
+    return rect.shift(Offset(needed.clamp(0.0, math.max(0.0, available)), 0));
   }
 }

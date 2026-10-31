@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-10-31 17:13:15　对应提交：25ecbe3 之后的工作区状态
+> 生成时间：2026-10-31 20:41:29　对应提交：66dea5d 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,20 +12,20 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     200
-  Nodes:     5,357
-  Edges:     22,540
-  DB Size:   26.00 MB
+  Files:     201
+  Nodes:     5,376
+  Edges:     22,605
+  DB Size:   26.08 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,827
-  function        1,578
-  import          704
-  class           522
-  constant        338
-  file            192
+  method          1,831
+  function        1,581
+  import          712
+  class           524
+  constant        339
+  file            193
   variable        146
   enum_member     25
   type_alias      17
@@ -33,7 +33,7 @@ Nodes by Kind:
   namespace       2
 
 Files by Language:
-  dart            112
+  dart            113
   javascript      45
   python          15
   kotlin          8
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (200 files):
+Project Structure (201 files):
 
 |-- .agents
 |   `-- skills
@@ -177,12 +177,12 @@ Project Structure (200 files):
 |   |   |   |-- tree_scene
 |   |   |   |   |-- illustrated_tree_camera_layout.dart (dart, 15 symbols)
 |   |   |   |   |-- illustrated_tree_growth.dart (dart, 7 symbols)
-|   |   |   |   |-- illustrated_tree_scene.dart (dart, 28 symbols)
+|   |   |   |   |-- illustrated_tree_scene.dart (dart, 36 symbols)
 |   |   |   |   |-- illustrated_tree_trunk.dart (dart, 10 symbols)
 |   |   |   |   |-- illustrated_tree_viewport.dart (dart, 7 symbols)
 |   |   |   |   |-- organic_bark.dart (dart, 4 symbols)
 |   |   |   |   |-- organic_branch.dart (dart, 23 symbols)
-|   |   |   |   |-- organic_tree_camera_layout.dart (dart, 14 symbols)
+|   |   |   |   |-- organic_tree_camera_layout.dart (dart, 16 symbols)
 |   |   |   |   |-- organic_tree_projection.dart (dart, 6 symbols)
 |   |   |   |   |-- organic_tree_study.dart (dart, 38 symbols)
 |   |   |   |   |-- organic_tree.dart (dart, 13 symbols)
@@ -198,7 +198,7 @@ Project Structure (200 files):
 |   |   |   |-- label_layout.dart (dart, 2 symbols)
 |   |   |   |-- magic_carpet.dart (dart, 67 symbols)
 |   |   |   |-- outline_controller.dart (dart, 34 symbols)
-|   |   |   |-- outline_page.dart (dart, 84 symbols)
+|   |   |   |-- outline_page.dart (dart, 87 symbols)
 |   |   |   `-- scroll_carpet.dart (dart, 38 symbols)
 |   |   |-- section
 |   |   |   |-- card_deck_sheet.dart (dart, 19 symbols)
@@ -248,6 +248,7 @@ Project Structure (200 files):
 |   |-- presentation
 |   |   |-- home_loading_regression_test.dart (dart, 4 symbols)
 |   |   |-- home_page_test.dart (dart, 21 symbols)
+|   |   |-- illustrated_branch_hit_region_test.dart (dart, 5 symbols)
 |   |   |-- illustrated_tree_camera_layout_test.dart (dart, 5 symbols)
 |   |   |-- illustrated_tree_trunk_test.dart (dart, 12 symbols)
 |   |   |-- illustrated_tree_viewport_test.dart (dart, 16 symbols)
@@ -255,7 +256,7 @@ Project Structure (200 files):
 |   |   |-- orbiting_inspirations_test.dart (dart, 11 symbols)
 |   |   |-- organic_branch_test.dart (dart, 8 symbols)
 |   |   |-- organic_leaf_crop_test.dart (dart, 10 symbols)
-|   |   |-- organic_tree_camera_layout_test.dart (dart, 6 symbols)
+|   |   |-- organic_tree_camera_layout_test.dart (dart, 8 symbols)
 |   |   |-- organic_tree_projection_test.dart (dart, 6 symbols)
 |   |   |-- organic_tree_study_test.dart (dart, 10 symbols)
 |   |   |-- organic_tree_test.dart (dart, 22 symbols)

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'organic_branch.dart';
 
 export 'illustrated_tree_growth.dart';
@@ -10,6 +11,37 @@ enum IllustratedBranchSide { left, right }
 
 const illustratedBranchAsset =
     'assets/tree_scene/illustrated/chapter_branch.png';
+
+const illustratedBranchHitHeightRatio = .8;
+
+Rect illustratedBranchHitRect(Size size) => Rect.fromLTWH(
+  0, size.height * .08, size.width, size.height * illustratedBranchHitHeightRatio,
+);
+
+/// 保留完整枝条绘制，透明上下留白不抢占相邻牌面的指针。
+class IllustratedBranchHitRegion extends SingleChildRenderObjectWidget {
+  const IllustratedBranchHitRegion({super.key, required this.enabled, required super.child});
+  final bool enabled;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => RenderIllustratedBranchHitRegion(enabled);
+
+  @override
+  void updateRenderObject(BuildContext context, covariant RenderIllustratedBranchHitRegion renderObject) {
+    renderObject.enabled = enabled;
+  }
+}
+
+class RenderIllustratedBranchHitRegion extends RenderProxyBox {
+  RenderIllustratedBranchHitRegion(this.enabled);
+  bool enabled;
+
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) {
+    if (enabled && !illustratedBranchHitRect(size).contains(position)) return false;
+    return super.hitTest(result, position: position);
+  }
+}
 
 class IllustratedBranchPlaque extends StatefulWidget {
   const IllustratedBranchPlaque({

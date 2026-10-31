@@ -44,10 +44,16 @@ async function auditSectionPointerHit(name, stage = 'initial') {
   phase = `小节实际指针命中：${name}`;
   const viewport = page.viewportSize();
   const hit = await page.getByRole('button', { name, exact: true }).boundingBox();
-  assert.ok(hit.width > 180, '小节牌面保持可读尺寸');
+  // 语义框会被屏幕边缘裁短，不能把裁短后的宽度当成原始枝牌尺寸。
+  const branchWidth = Math.min(viewport.width * .5, 220);
+  assert.ok(branchWidth >= 180 && hit.width > 0, '小节牌面保持可读尺寸');
   // 对准右侧实际文字牌面，而非整块承托枝热区的中心。
-  const clickPoint = { x: hit.x + hit.width * (1 - 320 / 1536),
-    y: hit.y + hit.height * 468 / 1024 };
+  const clickPoint = { x: hit.x + branchWidth * (1 - 320 / 1536),
+    y: hit.y + branchWidth / 1.5 * 468 / 1024 };
+  assert.ok(clickPoint.x < viewport.width && clickPoint.y < viewport.height,
+    '实际文字牌面必须留在屏幕内');
+  const beforeImage = `section-face-${stage}-${name}-${viewport.width}.png`;
+  await page.screenshot({ path: resolve(output, beforeImage) });
   const style = await page.addStyleTag({ content: 'flt-semantics-host, flt-semantics-host * { pointer-events: none !important; }' });
   try {
     await page.mouse.click(clickPoint.x, clickPoint.y);
@@ -66,7 +72,7 @@ async function auditSectionPointerHit(name, stage = 'initial') {
   await page.mouse.click(titleBox.x - 24, titleBox.y + titleBox.height / 2);
   await page.getByRole('button', { name: '新增小节', exact: true }).waitFor();
   await page.waitForTimeout(700);
-  sectionPointerChecks.push({ stage, name, viewport, hit, clickPoint, openedTitle: name });
+  sectionPointerChecks.push({ stage, name, viewport, hit, clickPoint, beforeImage, openedTitle: name });
 }
 async function auditChapterPointerHit(name) {
   const hit = await page.getByRole('button', { name, exact: true }).boundingBox();

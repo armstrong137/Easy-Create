@@ -2,8 +2,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:novel_app/presentation/outline/tree_scene/organic_tree_camera_layout.dart';
 import 'package:novel_app/presentation/outline/tree_scene/organic_tree_study.dart';
+import 'package:novel_app/presentation/outline/tree_scene/organic_branch.dart';
+import 'package:novel_app/presentation/outline/tree_scene/illustrated_tree_scene.dart';
 
 void main() {
+  test('成熟历史近景的小节文字牌面不陷入主干', () {
+    final frame = OrganicTreeFrame(1);
+    final trunk = OrganicBranchPainter.sectionPath(frame.limbs.first.sections);
+    final submerged = <String>[];
+    for (final size in [const Size(360, 800), const Size(430, 932), const Size(480, 800)]) {
+      final layout = OrganicTreeCameraLayout(size, 10, 0, focusedChapter: 0);
+      for (var index = 0; index < 2; index++) {
+        final rect = layout.sectionRectOutsideTrunk(
+          layout.branchRect(right: true, index: index),
+          layout.anchorFraction(right: true, index: index), frame);
+        final title = Rect.fromLTWH(rect.right - rect.width * 394 / 1536,
+          rect.top + rect.height * 268 / 1024,
+          rect.width * 148 / 1536, rect.height * 400 / 1024);
+        for (final point in [title.topLeft, title.topRight, title.bottomLeft,
+          title.bottomRight, title.center]) {
+          final native = (point - layout.projection.origin) / layout.projection.scale;
+          if (trunk.contains(native)) submerged.add('$size 第 $index 块文字 $point');
+        }
+      }
+    }
+    expect(submerged, isEmpty, reason: '小节文字的四角和中心都不能落入主干');
+  });
   test('单章幼树不因双牌密度规则放大，根冠保留在手机窗口内', () {
     const size = Size(430, 932);
     final layout = OrganicTreeCameraLayout(size, 1, 0, focusedChapter: 0);
@@ -47,7 +71,8 @@ void main() {
         final upper = layout.branchRect(right: false, index: 1);
         expect(lower, previous.branchRect(right: false, index: 1));
         expect(
-          (lower.top - upper.bottom) * layout.chapterScale,
+          (illustratedBranchHitRect(lower.size).shift(lower.topLeft).top -
+            illustratedBranchHitRect(upper.size).shift(upper.topLeft).bottom) * layout.chapterScale,
           greaterThanOrEqualTo(12),
         );
         final point = OrganicTreeFrame.trunkPoint(

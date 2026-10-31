@@ -26,6 +26,7 @@ import 'tree_scene/illustrated_tree_trunk.dart';
 import 'tree_scene/sapling_plaque.dart';
 import 'tree_scene/illustrated_tree_camera_layout.dart';
 import 'tree_scene/organic_tree.dart';
+import 'tree_scene/organic_tree_study.dart';
 import 'tree_scene/organic_branch.dart' show organicBranchRootRatio, OrganicBranchPainter;
 import 'tree_scene/organic_tree_camera_layout.dart';
 
@@ -427,7 +428,9 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                 Widget plaque(Path? currentTrunkMask) => Semantics(
                     label: label.text,
                     button: true,
-                    child: GestureDetector(
+                    child: IllustratedBranchHitRegion(
+                      enabled: widget.enableIllustratedCamera,
+                      child: GestureDetector(
                       key: interactionKey,
                       behavior: HitTestBehavior.opaque,
                       onTap: () {
@@ -472,6 +475,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                               ),
                             ),
                       ),
+                    ),
                     ),
                 );
                 if (widget.enableIllustratedCamera) {
@@ -615,6 +619,25 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                 }
               }
 
+              Widget organicLabel(PlacedLabel label, Rect rect,
+                  IllustratedBranchSide side, bool selected, double fraction,
+                  OrganicTreeFrame frame, ui.Image bark) {
+                final layout = cameraLayout as OrganicTreeCameraLayout;
+                final placed = side == IllustratedBranchSide.right
+                    ? layout.sectionRectOutsideTrunk(rect, fraction, frame)
+                    : rect;
+                return staticLabel(label, placed, side: side, selected: selected,
+                  treeScale: layout.projection.scale,
+                  barkAge: frame.age,
+                  bark: bark,
+                  trunkMask: OrganicBranchPainter.sectionPath(frame.limbs.first.sections)
+                    .transform(Matrix4.diagonal3Values(layout.projection.scale,
+                      layout.projection.scale, 1).storage)
+                    .shift(layout.projection.origin - placed.topLeft),
+                  maxSupportRadius: math.min(placed.height * organicBranchRootRatio,
+                    frame.trunkRadiusAt(fraction) * layout.projection.scale * .75));
+              }
+
               bool awaitsProjection(PlacedLabel label) {
                 final key = label.chapterId != null
                     ? 'chapter:${label.chapterId}'
@@ -680,17 +703,8 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                                 _creationZones(outline),
                                 for (final item in windowLabels)
                                   if (frame.anchorAt(item.nativeFraction!) != null)
-                                    staticLabel(item.label, item.rect, side: item.side, selected: item.selected,
-                                      treeScale: (cameraLayout as OrganicTreeCameraLayout).projection.scale,
-                                      barkAge: frame.age,
-                                      bark: bark,
-                                      trunkMask: OrganicBranchPainter.sectionPath(frame.limbs.first.sections)
-                                        .transform(Matrix4.diagonal3Values(cameraLayout.projection.scale,
-                                          cameraLayout.projection.scale, 1).storage)
-                                        .shift(cameraLayout.projection.origin - item.rect.topLeft),
-                                      maxSupportRadius: math.min(item.rect.height * organicBranchRootRatio,
-                                        frame.trunkRadiusAt(item.nativeFraction!) *
-                                          cameraLayout.projection.scale * .75)),
+                                    organicLabel(item.label, item.rect, item.side,
+                                      item.selected, item.nativeFraction!, frame, bark),
                               ],
                             ),
                           ) : Stack(
