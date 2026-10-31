@@ -65,6 +65,8 @@ void main() {
     );
     expect(middle.age, greaterThan(.2));
     expect(middle.age, lessThan(.8));
+    expect(overlayFrame!.age, middle.age,
+        reason: '承托枝材质必须读取同帧真实树龄，不能提前变为目标树龄');
     expect(identical(middle.bark, initial.bark), isTrue);
     expect(identical(middle.leaf, initial.leaf), isTrue);
     expect(foregroundPaints, initialPaints, reason: '主树生长不能反复重画未变化的枝牌前景');

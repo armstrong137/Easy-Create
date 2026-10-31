@@ -405,6 +405,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                 double? maxSupportRadius,
                 double treeScale = 1,
                 Path? trunkMask,
+                double barkAge = 1,
               }) {
                 final key = label.chapterId != null
                     ? Key('静态章热区_${label.chapterId}')
@@ -472,6 +473,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                                 maxSupportRadius: maxSupportRadius,
                                 treeScale: treeScale,
                                 trunkMask: trunkMask,
+                                barkAge: barkAge,
                               ),
                             ),
                       ),
@@ -663,6 +665,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                                   if (frame.anchorAt(item.nativeFraction!) != null)
                                     staticLabel(item.label, item.rect, side: item.side, selected: item.selected,
                                       treeScale: (cameraLayout as OrganicTreeCameraLayout).projection.scale,
+                                      barkAge: frame.age,
                                       trunkMask: OrganicBranchPainter.sectionPath(frame.limbs.first.sections)
                                         .transform(Matrix4.diagonal3Values(cameraLayout.projection.scale,
                                           cameraLayout.projection.scale, 1).storage)

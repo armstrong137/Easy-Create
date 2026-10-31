@@ -40,6 +40,7 @@ class OrganicTreeFrame {
 
   OrganicTreeFrame(double age) {
     age = age.clamp(0.0, 1.0);
+    this.age = age;
     final growth = .12 + age * .88;
     final trunk = _trunk;
     final metric = _trunkMetric;
@@ -260,6 +261,7 @@ class OrganicTreeFrame {
   }
 
   late Path wood;
+  late final double age;
   late final Rect rootBounds;
   final leaves = <OrganicTreeLeaf>[];
   final limbs = <OrganicTreeLimb>[];
@@ -389,11 +391,12 @@ class OrganicTreeStudyPainter extends CustomPainter {
     );
   });
   OrganicTreeStudyPainter(this.age, this.bark, this.leaf)
-    : frame = OrganicTreeFrame(age);
+    : frame = OrganicTreeFrame(age), barkTint = organicBarkTintForAge(age);
   final double age;
   final ui.Image bark;
   final ui.Image leaf;
   final OrganicTreeFrame frame;
+  final ColorFilter barkTint;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -430,7 +433,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
       frame.wood,
       Paint()
         ..filterQuality = FilterQuality.high
-        ..colorFilter = organicBarkTint
+        ..colorFilter = barkTint
         ..shader = ImageShader(
           bark,
           TileMode.repeated,
@@ -597,7 +600,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
           TileMode.repeated,
           Matrix4.identity().storage,
         )
-        ..colorFilter = organicBarkTint,
+        ..colorFilter = barkTint,
     );
     vertices.dispose();
   }

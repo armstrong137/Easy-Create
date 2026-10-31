@@ -67,6 +67,7 @@ class _PreviewState extends State<_Preview> {
                                   onTap: () => setState(() => _lastHit = title),
                                   child: ExcludeSemantics(
                                     child: IllustratedBranchPlaque(
+                                      barkAge: frame.age,
                                       title: title,
                                       side: right
                                           ? IllustratedBranchSide.right

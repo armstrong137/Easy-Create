@@ -440,6 +440,9 @@ void main() {
     final afterTree = tester.getRect(find.byType(OrganicTree));
     final afterBranch = tester.getRect(find.byKey(const Key('静态章交互_9')));
     expect(tester.widget<OrganicTree>(find.byType(OrganicTree)).age, 1);
+    for (final branch in tester.widgetList<OrganicBranch>(find.byType(OrganicBranch))) {
+      expect(branch.barkAge, 1, reason: '浏览旧章不能回退承托枝的材质树龄');
+    }
     expect(afterTree.width, closeTo(beforeTree.width, .001));
     expect(afterTree.height, closeTo(beforeTree.height, .001));
     expect(afterTree.top, lessThan(beforeTree.top));
@@ -457,6 +460,7 @@ void main() {
     expect(find.byKey(Key('静态节交互_${seeded.sectionId}')), findsOneWidget);
     for (final element in find.byType(OrganicBranch).evaluate()) {
       final branch = element.widget as OrganicBranch;
+      expect(branch.barkAge, .2, reason: '幼树承托枝必须接收主树同帧树龄，不能沿用成年树皮');
       expect(branch.maxRootRadius, greaterThan(0));
       expect(branch.maxRootRadius, lessThan(element.size!.height * .08),
           reason: '幼树承托枝应受母干限制，不使用成年枝默认粗度');
