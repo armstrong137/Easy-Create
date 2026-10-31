@@ -476,6 +476,8 @@ class OrganicTreeStudyPainter extends CustomPainter {
         final radius = section.radius;
         final collar = (section.distance / (limb.radius * 2)).clamp(0.0, 1.0);
         final coverage = collar * collar * (3 - 2 * collar);
+        final alpha = (255 * coverage).round() << 24;
+        final textureY = section.distance * .8 * (bark.width / 512);
         for (var slice = 0; slice <= slices; slice++) {
           final profile = _surfaceProfile[slice];
           final cross = profile.cross;
@@ -484,7 +486,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
               section.center.dy + normal.dy * (radius * cross);
           // 纹理随截面周长取样，细枝不能横向塞入整张粗树皮。
           uv[vertex * 2] = profile.arc * radius * (bark.width / 512);
-          uv[vertex * 2 + 1] = section.distance * .8 * (bark.width / 512);
+          uv[vertex * 2 + 1] = textureY;
           final light =
               .18 +
               .82 *
@@ -495,7 +497,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
                         .8 * profile.facing,
                   );
           colors[vertex] =
-              ((255 * coverage).round() << 24) |
+              alpha |
               ((255 * light).clamp(0, 255).round() << 16) |
               ((245 * light).clamp(0, 255).round() << 8) |
               (220 * light).clamp(0, 255).round();
