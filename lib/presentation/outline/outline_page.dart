@@ -25,7 +25,7 @@ import 'tree_scene/illustrated_tree_trunk.dart';
 import 'tree_scene/sapling_plaque.dart';
 import 'tree_scene/illustrated_tree_camera_layout.dart';
 import 'tree_scene/organic_tree.dart';
-import 'tree_scene/organic_branch.dart' show organicBranchRootRatio;
+import 'tree_scene/organic_branch.dart' show organicBranchRootRatio, OrganicBranchPainter;
 import 'tree_scene/organic_tree_camera_layout.dart';
 
 /// 某小说的大纲流（章+节），魔树数据源
@@ -404,6 +404,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                 required bool selected,
                 double? maxSupportRadius,
                 double treeScale = 1,
+                Path? trunkMask,
               }) {
                 final key = label.chapterId != null
                     ? Key('静态章热区_${label.chapterId}')
@@ -470,6 +471,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                                 organicGrowth: widget.enableIllustratedCamera,
                                 maxSupportRadius: maxSupportRadius,
                                 treeScale: treeScale,
+                                trunkMask: trunkMask,
                               ),
                             ),
                       ),
@@ -661,6 +663,10 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                                   if (frame.anchorAt(item.nativeFraction!) != null)
                                     staticLabel(item.label, item.rect, side: item.side, selected: item.selected,
                                       treeScale: (cameraLayout as OrganicTreeCameraLayout).projection.scale,
+                                      trunkMask: OrganicBranchPainter.sectionPath(frame.limbs.first.sections)
+                                        .transform(Matrix4.diagonal3Values(cameraLayout.projection.scale,
+                                          cameraLayout.projection.scale, 1).storage)
+                                        .shift(cameraLayout.projection.origin - item.rect.topLeft),
                                       maxSupportRadius: math.min(item.rect.height * organicBranchRootRatio,
                                         frame.trunkRadiusAt(item.nativeFraction!) *
                                           cameraLayout.projection.scale * .75)),

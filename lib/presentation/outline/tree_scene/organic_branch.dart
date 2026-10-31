@@ -21,10 +21,12 @@ class OrganicBranch extends StatefulWidget {
     required this.right,
     this.maxRootRadius,
     this.treeScale = 1,
+    this.trunkMask,
   });
   final double? maxRootRadius;
   // 仅含母版到场景的投影；章节和全景镜头由父层统一应用。
   final double treeScale;
+  final Path? trunkMask;
   final double progress;
   final bool right;
 
@@ -72,6 +74,7 @@ class _OrganicBranchState extends State<OrganicBranch> {
       _bark,
       maxRootRadius: widget.maxRootRadius,
       treeScale: widget.treeScale,
+      trunkMask: widget.trunkMask,
     ),
   );
 }
@@ -83,9 +86,11 @@ class OrganicBranchPainter extends CustomPainter {
     this.bark, {
     this.maxRootRadius,
     this.treeScale = 1,
+    this.trunkMask,
   });
   final double? maxRootRadius;
   final double treeScale;
+  final Path? trunkMask;
   final double progress;
   final bool right;
   final ui.Image? bark;
@@ -94,6 +99,16 @@ class OrganicBranchPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (progress <= 0) return;
     canvas.save();
+    // 母干遮住插入内部的枝根，直接露出下层同帧树皮，不另画一块接缝补丁。
+    if (trunkMask != null) {
+      canvas.clipPath(
+        Path.combine(
+          PathOperation.difference,
+          Path()..addRect(Offset.zero & size),
+          trunkMask!,
+        ),
+      );
+    }
     if (right) {
       canvas.translate(size.width, 0);
       canvas.scale(-1, 1);
@@ -313,6 +328,7 @@ class OrganicBranchPainter extends CustomPainter {
       oldDelegate.progress != progress ||
       oldDelegate.maxRootRadius != maxRootRadius ||
       oldDelegate.treeScale != treeScale ||
+      oldDelegate.trunkMask != trunkMask ||
       oldDelegate.right != right ||
       oldDelegate.bark != bark;
 }

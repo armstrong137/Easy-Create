@@ -421,6 +421,12 @@ void main() {
       tester.getSize(find.byType(OrganicTree)),
     ).scale;
     for (final element in find.byType(OrganicBranch).evaluate()) {
+      final branch = element.widget as OrganicBranch;
+      expect(branch.trunkMask != null, isTrue);
+      expect(branch.trunkMask!.contains(Offset(
+        element.size!.width * (branch.right ? .12 : .88),
+        element.size!.height * .7,
+      )), isTrue, reason: '主干遮罩必须覆盖同帧真实枝根，不能使用错位的母版路径');
       expect((element.widget as OrganicBranch).treeScale, materialScale,
           reason: '枝条基础纹理密度应使用主树实际投影，不额外乘章节镜头缩放');
       expect((element.widget as OrganicBranch).maxRootRadius,
