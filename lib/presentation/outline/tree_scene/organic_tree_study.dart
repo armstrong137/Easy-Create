@@ -7,6 +7,7 @@ import 'organic_bark.dart';
 import 'organic_tree_projection.dart';
 
 typedef OrganicTreeLeaf = ({Offset point, double angle, double scale});
+typedef _OrganicLeafBud = ({double along, double delay, OrganicTreeLeaf leaf});
 typedef OrganicTreeLimb = ({
   Path spine,
   double growth,
@@ -24,6 +25,7 @@ class OrganicTreeFrame {
   // 拓扑及中心线固定；缓存只含这棵树有限的枝干，不缓存动态生长截面。
   static final _curves = <String, Path>{};
   static final _metrics = <Path, ui.PathMetric>{_trunk: _trunkMetric};
+  static final _leafBuds = <Path, List<_OrganicLeafBud>>{};
   static Path _curve(String key, Path Function() create) =>
       _curves.putIfAbsent(key, create);
   static ui.PathMetric _measure(Path path) =>
@@ -294,33 +296,48 @@ class OrganicTreeFrame {
   }
 
   void _foliage(Path spine, double growth, int seed, {bool sparse = false}) {
-    final metric = _measure(spine);
-    final nodes = sparse ? 3 : (metric.length / 24).round().clamp(3, 7);
-    for (var index = 0; index < nodes; index++) {
-      final phase = seed * .37 + index * .83;
-      final along =
-          (sparse ? .14 : .22) +
-          index / (nodes - 1) * .70 +
-          .025 * math.sin(phase);
-      if (growth <= along) continue;
-      final tangent = metric.getTangentForOffset(metric.length * along)!;
-      // 末级枝上疏密错落地对生阔叶，保留主枝负空间，避免五叶轮生重复成蕨片。
-      for (var blade = 0; blade < 2; blade++) {
-        final opening = ((growth - along - blade * .012) / .08).clamp(0.0, 1.0);
-        if (opening == 0) continue;
-        final angle =
-            math.atan2(tangent.vector.dy, tangent.vector.dx) +
-            (blade == 0 ? -.85 : .85) +
-            .25 * math.sin(phase + blade);
-        leaves.add((
-          point: tangent.position,
-          angle: angle + math.pi / 2,
-          scale:
-              (sparse ? .045 : .07) *
-              (1 + .25 * math.sin(phase + blade * 2)) *
-              opening,
-        ));
+    // 每条固定枝线只有一套叶节；仅预计算位置与完全展开形态，不缓存树龄画面。
+    final buds = _leafBuds.putIfAbsent(spine, () {
+      final result = <_OrganicLeafBud>[];
+      final metric = _measure(spine);
+      final nodes = sparse ? 3 : (metric.length / 24).round().clamp(3, 7);
+      for (var index = 0; index < nodes; index++) {
+        final phase = seed * .37 + index * .83;
+        final along =
+            (sparse ? .14 : .22) +
+            index / (nodes - 1) * .70 +
+            .025 * math.sin(phase);
+        final tangent = metric.getTangentForOffset(metric.length * along)!;
+        // 末级枝上疏密错落地对生阔叶，保留主枝负空间，避免五叶轮生重复成蕨片。
+        for (var blade = 0; blade < 2; blade++) {
+          final angle =
+              math.atan2(tangent.vector.dy, tangent.vector.dx) +
+              (blade == 0 ? -.85 : .85) +
+              .25 * math.sin(phase + blade);
+          result.add((
+            along: along,
+            delay: blade * .012,
+            leaf: (
+              point: tangent.position,
+              angle: angle + math.pi / 2,
+              scale:
+                  (sparse ? .045 : .07) *
+                  (1 + .25 * math.sin(phase + blade * 2)),
+            ),
+          ));
+        }
       }
+      return result;
+    });
+    for (final bud in buds) {
+      if (growth <= bud.along) continue;
+      final opening = ((growth - bud.along - bud.delay) / .08).clamp(0.0, 1.0);
+      if (opening == 0) continue;
+      leaves.add((
+        point: bud.leaf.point,
+        angle: bud.leaf.angle,
+        scale: bud.leaf.scale * opening,
+      ));
     }
   }
 }
