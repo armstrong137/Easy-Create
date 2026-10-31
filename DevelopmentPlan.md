@@ -1005,3 +1005,10 @@
 - 新增页面断言确认遮罩存在且覆盖同帧真实根点；初次断言遇到drift与matcher重名，改成布尔断言后页面24项通过，未放宽几何要求。
 - 默认NVIDIA D3D11真实十章两节、生长、历史引子、全景点击及手机/宽屏零错误，证据：build/qa/native-trunk-occlusion/2026-10-31T03-32-40.887Z。检查幼树与成年近景：幼树无可见断口，成年主干内部横向覆盖块消除；枝颈明暗、叶片遮挡接合及整体美术仍未达到最终要求。
 - 成熟p95 33.4ms/最慢37.5ms，早期p95 12.5ms/最慢33.4ms；未证实性能达标，测试与验收启动有短暂重叠，不能据此声称改善。正式默认仍不切换，整体目标继续。
+### 2026-10-31 Wasm独立构建与验收等待边界
+
+- 不改变产品几何与默认构建，独立执行flutter build web --wasm --release --no-pub --dart-define=ENABLE_ILLUSTRATED_TREE_CAMERA=true --output build/organic-wasm/build/web，构建成功；使用独立8790服务，未覆盖原有8788产物。
+- 首次验收卡住且浏览器主进程已退出，仅有本次临时配置的孤立子进程；保存进程证据后结束本次验收所属进程。没有把超时直接解释为应用不兼容，也未因此重启正常服务。
+- 补充运行时资源记录后再次验收，failure.json证实实际加载main.dart.mjs、main.dart.wasm、skwasm.js与skwasm.wasm，流程已到创建小说后的首张截图；截图超时、页面不可再读、浏览器退出，无应用控制台错误。当前证据只能证明Wasm截图/录屏验收路径失败，不能证明启动失败或成熟性能改善，故不切换默认构建。
+- 验收脚本新增实际运行时资源与crossOriginIsolated记录；页面操作/导航上限30秒，失败截图/文本上限5秒，浏览器关闭上限10秒，并保存失败阶段，避免长期等待掩盖原始错误。语法检查通过。证据：build/qa/native-wasm/2026-10-31T03-36-39.377Z、build/qa/native-wasm-bounded/2026-10-31T03-39-29.841Z。
+- 改进后的脚本复跑原有JavaScript/CanvasKit：十章两节、生长、历史引子、全景点击及手机/宽屏零错误，正常关闭；result.json实际记录main.dart.js、canvaskit.js/wasm及crossOriginIsolated=false。证据：build/qa/native-runtime-audit/2026-10-31T03-41-34.524Z。成熟p95 33.3ms/最慢41.7ms，整体性能与视觉仍未达标。本轮仅修改验收工具和记录。

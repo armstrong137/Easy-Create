@@ -20,7 +20,17 @@ const page = await browser.newPage({
     ? { dir: resolve(output, 'video'), size: { width: 430, height: 932 } }
     : undefined,
 });
+page.setDefaultTimeout(30000);
+page.setDefaultNavigationTimeout(30000);
 const errors = [];
+const runtimeResources = new Set();
+// 记录实际加载的运行时，避免把请求Wasm构建误当成实际运行Wasm。
+page.on('requestfinished', request => {
+  const path = new URL(request.url()).pathname;
+  if (/\/(main\.dart\.(?:js|mjs|wasm)|(?:skwasm|canvaskit)[^/]*)$/.test(path)) {
+    runtimeResources.add(path);
+  }
+});
 let phase = '首页启动';
 page.on('pageerror', (error) => errors.push({ phase, message: error.message }));
 page.on('console', (message) => {
@@ -38,6 +48,7 @@ async function auditChapterPointerHit(name) {
   await page.getByText('取消', { exact: true }).click();
 }
 async function capture(name) {
+  phase = `截图：${name}`;
   // 等待已有 240ms 延迟和 920ms 生长播放完毕，只记录稳定态。
   await page.waitForTimeout(1500);
   await page.screenshot({ path: resolve(output, `${name}.png`) });
@@ -218,6 +229,8 @@ try {
   assert.deepEqual(errors, [], '浏览器不应发生运行错误');
   await writeFile(resolve(output, 'result.json'), JSON.stringify({
     runId, url, renderer,
+    runtimeResources: [...runtimeResources],
+    crossOriginIsolated: await page.evaluate(() => globalThis.crossOriginIsolated),
     graphicsRequest: process.argv.includes('--default-gpu') ? '浏览器默认' : '强制 SwiftShader',
     cpuProfiling: process.argv.includes('--cpu-profile'),
     checksPassed: ['创建十章和两节', '末态语义窗口只有两章', '浏览器零错误',
@@ -227,12 +240,22 @@ try {
   console.log(JSON.stringify({ output, captures: captures.map(({ name }) => name), errors }));
 } catch (error) {
   // 浏览器断连时截图也可能失败，仍需保留导致验收中断的原始错误。
-  await page.screenshot({ path: resolve(output, 'failure.png') }).catch(() => {});
-  const failureText = await page.locator('body').innerText().catch(() => '页面已不可读取');
+  await page.screenshot({ path: resolve(output, 'failure.png'), timeout: 5000 }).catch(() => {});
+  const failureText = await page.locator('body').innerText({ timeout: 5000 }).catch(() => '页面已不可读取');
   await writeFile(resolve(output, 'failure.json'), JSON.stringify({
-    runId, error: String(error), text: failureText, captures, errors,
+    runId, phase, error: String(error), text: failureText, runtimeResources: [...runtimeResources], captures, errors,
   }, null, 2));
   throw error;
 } finally {
-  await browser.close();
+  let closeTimeout;
+  try {
+    await Promise.race([
+      browser.close(),
+      new Promise((_, reject) => {
+        closeTimeout = setTimeout(() => reject(new Error('浏览器关闭超时；原始验收错误见failure.json')), 10000);
+      }),
+    ]);
+  } finally {
+    clearTimeout(closeTimeout);
+  }
 }
