@@ -539,11 +539,15 @@ class OrganicTreeStudyPainter extends CustomPainter {
                     0.0,
                     lightX * cross - lightY * cross + profile.facingLight,
                   );
+          // 光照至少为0.18；正数先取整再截上限与原夹取后取整等价。
+          final red = (255 * light).round();
+          final green = (245 * light).round();
+          final blue = (220 * light).round();
           colors[vertex] =
               alpha |
-              ((255 * light).clamp(0, 255).round() << 16) |
-              ((245 * light).clamp(0, 255).round() << 8) |
-              (220 * light).clamp(0, 255).round();
+              ((red > 255 ? 255 : red) << 16) |
+              ((green > 255 ? 255 : green) << 8) |
+              (blue > 255 ? 255 : blue);
           vertex++;
         }
       }
