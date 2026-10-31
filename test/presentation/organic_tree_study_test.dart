@@ -69,14 +69,14 @@ void main() {
     );
   });
 
-  test('六条根颈的完整截面始终埋在主干内部，不露出平切台阶', () {
+  test('十二条根颈的完整截面始终埋在主干内部，不露出平切台阶', () {
     final rootNeck = OrganicTreeFrame.trunkPoint(.08);
     for (var step = 0; step <= 100; step++) {
       final frame = OrganicTreeFrame(step / 100);
       final trunk = OrganicBranchPainter.sectionPath(frame.limbs.first.sections);
       final roots = frame.limbs.skip(1).where((limb) =>
           (limb.sections.first.center - rootNeck).distance < 25);
-      expect(roots.length, 6);
+      expect(roots.length, 12);
       for (final root in roots) {
         final neck = root.sections.first;
         for (final point in [neck.center + neck.normal * neck.radius,

@@ -65,16 +65,24 @@ class OrganicTreeFrame {
     // 幼龄细根先探索土壤，粗度仍跟随树龄，避免短粗根挤成星形尖片。
     final rootGrowth = .35 + age * .65;
     final rootRadius = (12 + age * 90) * math.sqrt(growth / rootGrowth);
-    for (var index = 0; index < 6; index++) {
+    for (var index = 0; index < 12; index++) {
       // 根颈从主干内部向下分流，各根粗度不同，避免六条等粗扁片堆成底座。
-      final radius = rootRadius * const [.62, .48, .38, .46, .58, .42][index];
+      final radius = rootRadius * const [
+        .62, .38, .48, .30, .4, .38, .34, .46, .30, .42, .58, .42,
+      ][index];
       // 根梢靠近同一地面，保留前后层次，避免左右平伸而前根过长。
       final end = const [
         Offset(150, 1500),
-        Offset(285, 1520),
+        Offset(205, 1510),
+        Offset(265, 1525),
+        Offset(320, 1535),
+        Offset(385, 1540),
         Offset(450, 1540),
-        Offset(625, 1530),
-        Offset(775, 1500),
+        Offset(520, 1542),
+        Offset(580, 1535),
+        Offset(640, 1530),
+        Offset(700, 1520),
+        Offset(765, 1500),
         Offset(830, 1475),
       ][index];
       final root = _curve(
