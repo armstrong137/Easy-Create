@@ -199,24 +199,24 @@ class OrganicTreeFrame {
     final rootGrowth = .35 + age * .65;
     final rootRadius = (12 + age * 90) * math.sqrt(growth / rootGrowth);
     for (var index = 0; index < 12; index++) {
-      // 根颈从主干内部向下分流，各根粗度不同，避免六条等粗扁片堆成底座。
+      // 后侧细根先绘制，前侧粗根随后覆盖；长短交错而非沿同一扇缘排齐。
       final radius = rootRadius * const [
-        .62, .38, .48, .30, .4, .38, .34, .46, .30, .42, .58, .42,
+        .30, .28, .45, .34, .56, .48, .30, .36, .46, .38, .58, .42,
       ][index];
       // 根梢靠近同一地面，保留前后层次，避免左右平伸而前根过长。
       final end = const [
-        Offset(150, 1500),
-        Offset(205, 1510),
-        Offset(265, 1525),
-        Offset(320, 1535),
-        Offset(385, 1540),
-        Offset(450, 1540),
-        Offset(520, 1542),
-        Offset(580, 1535),
-        Offset(640, 1530),
+        Offset(205, 1460),
+        Offset(760, 1455),
+        Offset(310, 1488),
+        Offset(675, 1490),
+        Offset(150, 1508),
+        Offset(825, 1500),
+        Offset(395, 1510),
+        Offset(565, 1517),
+        Offset(285, 1538),
         Offset(700, 1520),
-        Offset(765, 1500),
-        Offset(830, 1475),
+        Offset(445, 1540),
+        Offset(530, 1545),
       ][index];
       final root = _curve(
         'root:$index',
@@ -225,8 +225,8 @@ class OrganicTreeFrame {
           ..cubicTo(
             _rootStart.dx + (end.dx - _rootStart.dx) * .08,
             1420 + (index % 2) * 15,
-            end.dx - (end.dx - _rootStart.dx) * .38,
-            end.dy - 20,
+            end.dx - (end.dx - _rootStart.dx) * .30 + (index.isEven ? 20 : -16),
+            end.dy - 4 - (index % 3) * 8,
             end.dx,
             end.dy,
           ),
