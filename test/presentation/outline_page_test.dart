@@ -456,6 +456,36 @@ void main() {
     expect(find.byKey(const Key('静态章交互_10')), findsNothing);
   });
 
+  testWidgets('新增第十一章时，移动中的枝牌遮罩仍与真实主干重合', (tester) async {
+    await seedNovel();
+    for (var index = 0; index < 10; index++) {
+      await database.into(database.chapters).insert(ChaptersCompanion.insert(
+        novelId: 1, title: '第${index + 1}章', sortOrder: index));
+    }
+    await pumpOutline(tester, null, enableIllustratedCamera: true,
+        useProductionRepository: true);
+    await tester.pump(const Duration(seconds: 2));
+    await tester.tap(find.byKey(const Key('新增章节入口')));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byKey(const Key('静态章交互_11')), findsOneWidget);
+    for (var step = 0; step < 4; step++) {
+      await tester.pump(const Duration(milliseconds: 70));
+      final tree = tester.renderObject<RenderBox>(find.byType(OrganicTree));
+      final projection = OrganicTreeProjection(tree.size);
+      final trunk = OrganicBranchPainter.sectionPath(OrganicTreeFrame(1).limbs.first.sections);
+      final expected = tree.localToGlobal(projection.project(trunk.getBounds().topLeft));
+      for (final element in find.byType(OrganicBranch).evaluate()) {
+        final branch = element.widget as OrganicBranch;
+        final box = element.renderObject! as RenderBox;
+        final actual = box.localToGlobal(branch.trunkMask!.getBounds().topLeft);
+        expect((actual - expected).distance, lessThan(.01),
+            reason: '动画中遮罩必须从当前枝牌位置反算，不能提前使用目标位置');
+      }
+    }
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
   testWidgets('实验大纲从幼树开始使用连续主树和真实章节热区', (tester) async {
     await seedNovel();
     final seeded = await seedOutline();

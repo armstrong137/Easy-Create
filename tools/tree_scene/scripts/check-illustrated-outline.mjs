@@ -206,6 +206,11 @@ try {
       const numeral = `${index < 20 ? '十' : '二十'}${['', '一', '二', '三', '四', '五', '六', '七', '八', '九'][index % 10]}`;
       await addChapter.click();
       await page.getByRole('button', { name: `第${numeral}章`, exact: true }).waitFor();
+      if (index === 10) {
+        // 第十一章改变既有锚点间距，保留位置补间期间的枝根接合证据。
+        await page.waitForTimeout(140);
+        await page.screenshot({ path: resolve(output, 'eleventh-chapter-moving.png') });
+      }
       await page.waitForTimeout(1300);
     }
     await capture('dense-30-chapters-430');

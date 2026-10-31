@@ -424,15 +424,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                 if (animateIn && staticMode) {
                   _markIllustratedGrowthStarted(revealKey);
                 }
-                return AnimatedPositioned(
-                  key: ValueKey(revealKey),
-                  left: rect.left,
-                  top: rect.top,
-                  width: rect.width,
-                  height: rect.height,
-                  duration: const Duration(milliseconds: 460),
-                  curve: Curves.easeOutCubic,
-                  child: Semantics(
+                Widget plaque(Path? currentTrunkMask) => Semantics(
                     label: label.text,
                     button: true,
                     child: GestureDetector(
@@ -474,14 +466,36 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                                 organicGrowth: widget.enableIllustratedCamera,
                                 maxSupportRadius: maxSupportRadius,
                                 treeScale: treeScale,
-                                trunkMask: trunkMask,
+                                trunkMask: currentTrunkMask,
                                 barkAge: barkAge,
                                 bark: bark,
                               ),
                             ),
                       ),
                     ),
-                  ),
+                );
+                if (widget.enableIllustratedCamera) {
+                  return TweenAnimationBuilder<Rect?>(
+                    key: ValueKey(revealKey),
+                    tween: RectTween(begin: rect, end: rect),
+                    duration: const Duration(milliseconds: 460),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, currentRect, _) => Positioned.fromRect(
+                      rect: currentRect!,
+                      // 遮罩固定在主干上，不能随着枝牌的位置补间滑动。
+                      child: plaque(trunkMask?.shift(rect.topLeft - currentRect.topLeft)),
+                    ),
+                  );
+                }
+                return AnimatedPositioned(
+                  key: ValueKey(revealKey),
+                  left: rect.left,
+                  top: rect.top,
+                  width: rect.width,
+                  height: rect.height,
+                  duration: const Duration(milliseconds: 460),
+                  curve: Curves.easeOutCubic,
+                  child: plaque(trunkMask),
                 );
               }
 
