@@ -16,15 +16,19 @@ typedef OrganicTreeLimb = ({
   List<OrganicStemSection> sections,
 });
 
-/// 同一拓扑在连续树龄下的二维几何；当前仅用于独立美术验证。
+/// 连续生长的二维几何；实验大纲运行时与独立美术验收共用。
 class OrganicTreeFrame {
   static final _trunk = Path()
     ..moveTo(490, 1410)
     ..cubicTo(430, 1180, 575, 840, 500, 410);
   static final _trunkMetric = _trunk.computeMetrics().first;
+  static final _extensionStart = Path()
+    ..moveTo(500, 410)
+    ..cubicTo(495.3, 383.3, 487, 356.7, 487, 330);
+  static final _extensionMetric = _extensionStart.computeMetrics().first;
   // 根颈沿真实主干弧长取点，幼干变细时也不会露出偏置的平切截面。
   static final _rootStart = trunkPoint(.08);
-  // 拓扑及中心线固定；缓存只含这棵树有限的枝干，不缓存动态生长截面。
+  // 按章节追加固定中心线；只缓存枝干，不缓存动态生长截面或阶段画面。
   static final _curves = <String, Path>{};
   static final _metrics = <Path, ui.PathMetric>{_trunk: _trunkMetric};
   static final _leafBuds = <Path, List<_OrganicLeafBud>>{};
@@ -33,26 +37,63 @@ class OrganicTreeFrame {
   static ui.PathMetric _measure(Path path) =>
       _metrics.putIfAbsent(path, () => path.computeMetrics().first);
 
-  static double chapterFraction(int index, int count) =>
-      .14 + .72 * index / math.max(9, count - 1);
+  // 以最初主干弧长为单位，可超过 1；已有章锚点不随章节总量重排。
+  static double chapterFraction(int index, int count) => .14 + .08 * index;
+  static double get trunkLength => _trunkMetric.length;
+  static final chapterSpacing = List.generate(
+    12,
+    (index) =>
+        (trunkPoint(chapterFraction(index + 1, 0)).dy -
+                trunkPoint(chapterFraction(index, 0)).dy)
+            .abs(),
+  ).reduce((a, b) => math.min(a, b));
 
-  static Offset trunkPoint(double fraction) => _trunkMetric
-      .getTangentForOffset(_trunkMetric.length * fraction)!
-      .position;
+  static double upperExtentFor(double chapters) =>
+      math.max(0.0, chapters - 10) * .08 * _trunkMetric.length;
 
-  OrganicTreeFrame(double age) {
+  static Offset trunkPoint(double fraction) {
+    if (fraction <= 1) {
+      return _trunkMetric
+          .getTangentForOffset(_trunkMetric.length * fraction)!
+          .position;
+    }
+    final distance = (fraction - 1) * _trunkMetric.length;
+    if (distance <= _extensionMetric.length) {
+      return _extensionMetric.getTangentForOffset(distance)!.position;
+    }
+    return Offset(487, 330 - distance + _extensionMetric.length);
+  }
+
+  OrganicTreeFrame(double age, {double? chapterCount})
+    : chapterCount = chapterCount ?? age.clamp(0.0, 1.0) * 10 {
     age = age.clamp(0.0, 1.0);
     this.age = age;
-    final growth = .12 + age * .88;
+    final ageGrowth = .12 + age * .88;
+    final growth = math.max(ageGrowth, math.min(1.0, this.chapterCount / 10));
+    _originalGrowth = growth;
+    final extra = upperExtentFor(this.chapterCount);
+    _stemExtent = 1 + extra / _trunkMetric.length;
+    _growthExtent = growth + extra / _trunkMetric.length;
     final trunk = _trunk;
     final metric = _trunkMetric;
-    final trunkSections = OrganicBranchPainter.sampleStem(
+    var trunkSections = OrganicBranchPainter.sampleStem(
       trunk,
       growth,
       14 + age * 78,
       tipRatio: .025,
       pathMetric: metric,
     );
+    if (extra > 0) {
+      trunkSections = [
+        for (final section in trunkSections)
+          (
+            center: section.center,
+            normal: section.normal,
+            radius: trunkRadiusAt(section.distance / _trunkMetric.length),
+            distance: section.distance,
+          ),
+      ];
+    }
     wood = OrganicBranchPainter.sectionPath(trunkSections);
     limbs.add((
       spine: trunk,
@@ -61,6 +102,64 @@ class OrganicTreeFrame {
       tipRatio: .025,
       sections: trunkSections,
     ));
+    trunkWood = Path.from(wood);
+    if (extra > 0) {
+      // 原主干保持原位，沿顶端切线继续长出几何，不拉长既有贴图或枝条。
+      final extension = _extensionMetric.extractPath(
+        0,
+        math.min(extra, _extensionMetric.length),
+      );
+      if (extra > _extensionMetric.length) {
+        final end = trunkPoint(_stemExtent);
+        extension.lineTo(end.dx, end.dy);
+      }
+      final extensionMetrics = extension.computeMetrics().iterator;
+      if (extensionMetrics.moveNext()) {
+        final metric = extensionMetrics.current;
+        // 固定弧长分段保持截面精度；纹理沿全主干累计距离连续铺设。
+        for (
+          var segment = 0;
+          segment < (extra / _trunkMetric.length).ceil();
+          segment++
+        ) {
+          final startDistance = segment * _trunkMetric.length;
+          final spine = metric.extractPath(
+            startDistance,
+            math.min(extra, startDistance + _trunkMetric.length),
+          );
+          final segmentMetrics = spine.computeMetrics().iterator;
+          if (!segmentMetrics.moveNext()) continue;
+          final spineMetric = segmentMetrics.current;
+          final sections = [
+            for (final section in OrganicBranchPainter.sampleStem(
+              spine,
+              1,
+              1,
+              pathMetric: spineMetric,
+            ))
+              (
+                center: section.center,
+                normal: section.normal,
+                radius: trunkRadiusAt(
+                  1 + (startDistance + section.distance) / _trunkMetric.length,
+                ),
+                distance:
+                    _trunkMetric.length + startDistance + section.distance,
+              ),
+          ];
+          final shape = OrganicBranchPainter.sectionPath(sections);
+          wood.addPath(shape, Offset.zero);
+          trunkWood.addPath(shape, Offset.zero);
+          limbs.add((
+            spine: spine,
+            growth: 1,
+            radius: trunkRadiusAt(1 + startDistance / _trunkMetric.length),
+            tipRatio: .025,
+            sections: sections,
+          ));
+        }
+      }
+    }
     _foliage(trunk, growth, 9999, sparse: true);
     // 幼龄细根先探索土壤，粗度仍跟随树龄，避免短粗根挤成星形尖片。
     final rootGrowth = .35 + age * .65;
@@ -132,26 +231,32 @@ class OrganicTreeFrame {
       }
     }
     rootBounds = wood.getBounds();
-    for (var index = 0; index < 7; index++) {
-      final attachment = [.22, .34, .43, .53, .65, .76, .88][index];
-      final branchGrowth = ((growth - attachment) / (1 - attachment)).clamp(
-        0.0,
-        1.0,
-      );
-      if (branchGrowth == 0) continue;
-      final start = metric
-          .getTangentForOffset(metric.length * attachment)!
-          .position;
+    final upperBranches = (extra / (_trunkMetric.length * .16)).ceil();
+    for (var index = 0; index < 7 + upperBranches; index++) {
+      final attachment = index < 7
+          ? [.22, .34, .43, .53, .65, .76, .88][index]
+          : 1 + (index - 7) * .16;
+      final branchGrowth =
+          ((index < 7 ? growth : _growthExtent) - attachment) /
+          (index < 7 ? 1 - attachment : .16);
+      final growingBranch = branchGrowth.clamp(0.0, 1.0);
+      if (growingBranch == 0) continue;
+      final start = trunkPoint(attachment);
       final side = index.isEven ? -1 : 1;
-      final end = const [
-        Offset(170, 1030),
-        Offset(760, 930),
-        Offset(170, 790),
-        Offset(760, 650),
-        Offset(220, 510),
-        Offset(680, 420),
-        Offset(450, 300),
-      ][index];
+      final end = index < 7
+          ? const [
+              Offset(170, 1030),
+              Offset(760, 930),
+              Offset(170, 790),
+              Offset(760, 650),
+              Offset(220, 510),
+              Offset(680, 420),
+              Offset(450, 300),
+            ][index]
+          : Offset(
+              start.dx + side * (160 + 40 * math.sin(index * 1.73)),
+              start.dy - 180 - 40 * math.sin(index * 2.11),
+            );
       final reach = (end.dx - start.dx).abs();
       final branch = _curve(
         'branch:$index',
@@ -166,26 +271,19 @@ class OrganicTreeFrame {
             end.dy,
           ),
       );
-      final parentRadius = OrganicBranchPainter.radiusAt(
-        attachment,
-        growth,
-        14 + age * 78,
-        .025,
-      );
+      final parentRadius = trunkRadiusAt(attachment);
       final branchRadius = math.min(
-        (12 + age * 40) * (1 - index * .07),
+        (12 + age * 40) * (index < 7 ? 1 - index * .07 : .65),
         parentRadius * .75,
       );
-      _join(branch, branchGrowth, branchRadius);
-      _foliage(branch, branchGrowth, index * 1000 + 900, sparse: true);
+      _join(branch, growingBranch, branchRadius);
+      _foliage(branch, growingBranch, index * 1000 + 900, sparse: true);
       final branchMetric = _measure(branch);
       for (var twigIndex = 0; twigIndex < 4; twigIndex++) {
         final birth = .12 + twigIndex * .22;
         // 早发细枝先伸展展叶，母枝继续生长；后发细枝仍在母枝末态前长成。
-        final twigGrowth = ((branchGrowth - birth) / math.min(.4, 1 - birth)).clamp(
-          0.0,
-          1.0,
-        );
+        final twigGrowth = ((growingBranch - birth) / math.min(.4, 1 - birth))
+            .clamp(0.0, 1.0);
         if (twigGrowth == 0) continue;
         final tangent = branchMetric.getTangentForOffset(
           branchMetric.length * birth,
@@ -216,14 +314,19 @@ class OrganicTreeFrame {
           4 + age * 6,
           OrganicBranchPainter.radiusAt(
                 birth,
-                branchGrowth,
+                growingBranch,
                 branchRadius,
                 .04,
               ) *
               .75,
         );
         _join(twig, twigGrowth, twigRadius);
-        _foliage(twig, twigGrowth, index * 1000 + twigIndex * 100 + 95, sparse: true);
+        _foliage(
+          twig,
+          twigGrowth,
+          index * 1000 + twigIndex * 100 + 95,
+          sparse: true,
+        );
         final twigMetric = _measure(twig);
         for (var sprayIndex = 0; sprayIndex < 5; sprayIndex++) {
           final birth = .2 + sprayIndex * .16;
@@ -272,7 +375,12 @@ class OrganicTreeFrame {
   }
 
   late Path wood;
+  late final Path trunkWood;
+  final double chapterCount;
   late final double age;
+  late final double _originalGrowth;
+  late final double _growthExtent;
+  late final double _stemExtent;
   late final Rect rootBounds;
   final leaves = <OrganicTreeLeaf>[];
   final limbs = <OrganicTreeLimb>[];
@@ -283,15 +391,24 @@ class OrganicTreeFrame {
     return anchorAt(chapterFraction(chapterIndex, chapterCount));
   }
 
-  double trunkRadiusAt(double fraction) => OrganicBranchPainter.radiusAt(
-    fraction,
-    limbs.first.growth,
-    limbs.first.radius,
-    limbs.first.tipRatio,
-  );
+  double trunkRadiusAt(double fraction) {
+    if (_stemExtent == 1) {
+      return OrganicBranchPainter.radiusAt(
+        fraction,
+        _originalGrowth,
+        14 + age * 78,
+        .025,
+      );
+    }
+    return (14 + age * 78) *
+        (1 - fraction / _stemExtent * .975) *
+        math.sqrt(_originalGrowth) *
+        math.min(1.0, (_growthExtent - fraction) * 18 + .06) *
+        (1 + .06 * math.sin(fraction * 37));
+  }
 
   Offset? anchorAt(double fraction) =>
-      fraction > limbs.first.growth ? null : trunkPoint(fraction);
+      fraction > _growthExtent ? null : trunkPoint(fraction);
 
   void _join(Path spine, double growth, double radius) {
     final sections = OrganicBranchPainter.sampleStem(
@@ -403,13 +520,24 @@ class OrganicTreeStudyPainter extends CustomPainter {
       arc: angle + math.pi / 2,
     );
   });
-  OrganicTreeStudyPainter(this.age, this.bark, this.leaf)
-    : frame = OrganicTreeFrame(age), barkTint = organicBarkTintForAge(age);
+  OrganicTreeStudyPainter(
+    this.age,
+    this.bark,
+    this.leaf, {
+    double? chapterCount,
+    double? projectionExtent,
+    OrganicTreeFrame? geometry,
+  }) : frame = geometry ?? OrganicTreeFrame(age, chapterCount: chapterCount),
+       projectionExtent =
+           projectionExtent ??
+           OrganicTreeFrame.upperExtentFor(chapterCount ?? 10),
+       barkTint = organicBarkTintForAge(age);
   final double age;
   final ui.Image bark;
   final ui.Image leaf;
   final OrganicTreeFrame frame;
   final ColorFilter barkTint;
+  final double projectionExtent;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -423,7 +551,10 @@ class OrganicTreeStudyPainter extends CustomPainter {
         ).createShader(Offset.zero & size),
     );
     canvas.save();
-    final projection = OrganicTreeProjection(size);
+    final projection = OrganicTreeProjection(
+      size,
+      upperExtent: projectionExtent,
+    );
     canvas.translate(projection.origin.dx, projection.origin.dy);
     canvas.scale(projection.scale);
     // 接地阴影跟随真实根幅展开，不随章节镜头单独缩放或使用树龄阶段图。
@@ -621,6 +752,8 @@ class OrganicTreeStudyPainter extends CustomPainter {
   @override
   bool shouldRepaint(OrganicTreeStudyPainter oldDelegate) =>
       oldDelegate.age != age ||
+      oldDelegate.frame.chapterCount != frame.chapterCount ||
+      oldDelegate.projectionExtent != projectionExtent ||
       oldDelegate.bark != bark ||
       oldDelegate.leaf != leaf;
 }

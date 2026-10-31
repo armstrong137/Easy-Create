@@ -6,6 +6,37 @@ import 'package:novel_app/presentation/outline/tree_scene/organic_branch.dart';
 import 'package:novel_app/presentation/outline/tree_scene/organic_tree_study.dart';
 
 void main() {
+  test('快速批量增章时先连通基础主干，不生成悬空或负半径上干', () {
+    for (final count in [10.000000001, 22.5, 47.5, 72.5]) {
+      expect(OrganicTreeFrame(1, chapterCount: count).wood.getBounds().isFinite, isTrue);
+    }
+    for (var step = 0; step <= 50; step++) {
+      final progress = step / 50;
+      final count = 1 + 29 * progress;
+      final frame = OrganicTreeFrame(.2 + .8 * progress, chapterCount: count);
+      if (count > 10) expect(frame.anchorAt(1), isNotNull);
+      for (final limb in frame.limbs) {
+        expect(limb.sections.every((section) => section.radius >= 0), isTrue);
+      }
+    }
+  });
+  test('成熟后新增章节延伸主干，既有章锚点和叶节不搬动', () {
+    final base = OrganicTreeFrame(1);
+    final expanded = OrganicTreeFrame(1, chapterCount: 30);
+    final middle = OrganicTreeFrame(1, chapterCount: 20);
+    expect(expanded.wood.getBounds().top, lessThan(middle.wood.getBounds().top));
+    expect(middle.wood.getBounds().top, lessThan(base.wood.getBounds().top));
+    expect(expanded.rootBounds.bottom, base.rootBounds.bottom);
+    for (var index = 0; index < 10; index++) {
+      expect(expanded.chapterAnchor(index, 30), base.chapterAnchor(index, 10));
+    }
+    final leaves = expanded.leaves.map((leaf) => (leaf.point, leaf.angle)).toSet();
+    for (final leaf in base.leaves) {
+      expect(leaves.contains((leaf.point, leaf.angle)), isTrue);
+    }
+    final next = OrganicTreeFrame(1, chapterCount: 30.01);
+    expect((next.wood.getBounds().top - expanded.wood.getBounds().top).abs(), lessThan(2));
+  });
   test('章枝连接真实树干，浏览及继续成长不移动已有锚点', () {
     final mature = OrganicTreeFrame(1);
     final matureCurves = mature.limbs.map((limb) => limb.spine).toSet();
@@ -37,10 +68,13 @@ void main() {
     final young = OrganicTreeFrame(.1);
     expect(young.chapterAnchor(9, 10), isNull, reason: '不能把成熟树锚点用在幼树尚未长出的部分');
     for (final count in [30, 100, 1000]) {
+      final expanded = OrganicTreeFrame(1, chapterCount: count.toDouble());
+      expect(expanded.wood.getBounds().left, greaterThanOrEqualTo(0));
+      expect(expanded.wood.getBounds().right, lessThanOrEqualTo(941));
       Offset? previous;
       for (var index = 0; index < count; index++) {
-        final anchor = mature.chapterAnchor(index, count)!;
-        expect(mature.wood.contains(anchor), isTrue,
+        final anchor = expanded.chapterAnchor(index, count)!;
+        expect(expanded.wood.contains(anchor), isTrue,
             reason: '$count 章的第 $index 个锚点 $anchor 不应出现空洞');
         if (previous != null) expect(anchor.dy, lessThan(previous.dy));
         previous = anchor;
@@ -187,6 +221,19 @@ void main() {
             '${output.path}/$name.png',
           ).writeAsBytes(bytes.buffer.asUint8List());
         }
+        image.dispose();
+        picture.dispose();
+      }
+      if (const bool.fromEnvironment('WRITE_TREE_STUDY')) {
+        final height = (1672 + OrganicTreeFrame.upperExtentFor(30)).ceil();
+        final recorder = ui.PictureRecorder();
+        OrganicTreeStudyPainter(1, bark, leaf, chapterCount: 30)
+            .paint(Canvas(recorder), Size(941, height.toDouble()));
+        final picture = recorder.endRecording();
+        final image = await picture.toImage(941, height);
+        final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+        await File('build/qa/main-tree-study/chapters_30.png')
+            .writeAsBytes(bytes!.buffer.asUint8List());
         image.dispose();
         picture.dispose();
       }

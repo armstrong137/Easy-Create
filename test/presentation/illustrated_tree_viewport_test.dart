@@ -1,8 +1,52 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:novel_app/presentation/outline/tree_scene/illustrated_tree_viewport.dart';
 
 void main() {
+  testWidgets('增长后的全景边缘渐隐不吞掉原始留白内的树冠', (tester) async {
+    await tester.pumpWidget(MaterialApp(home: Center(child: RepaintBoundary(
+      key: const Key('全景像素验收'),
+      child: const SizedBox(width: 300, height: 500,
+        child: ColoredBox(color: Colors.white,
+          child: IllustratedTreeViewport(sceneWidth: 300, sceneHeight: 4000,
+            sceneTopInset: 3000, focusY: 3500, overview: true,
+            child: ColoredBox(color: Color(0xFFFF0000))),
+        ),
+      ),
+    ))));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      final boundary = tester.renderObject<RenderRepaintBoundary>(find.byKey(const Key('全景像素验收')));
+      final image = await boundary.toImage();
+      final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      final rgba = data!.buffer.asUint8List();
+      final pixel = (15 * image.width + 150) * 4;
+      expect(rgba[pixel], 255);
+      expect(rgba[pixel + 1], lessThan(5), reason: '树冠安全留白之外应完整可见，不能随画布增高扩大渐隐带');
+      image.dispose();
+    });
+  });
+  testWidgets('顶部扩展画布时，已有枝牌不随场景原点跳动', (tester) async {
+    Future<void> show(double inset) => tester.pumpWidget(MaterialApp(home: Center(
+      child: SizedBox(width: 300, height: 500,
+        child: IllustratedTreeViewport(sceneWidth: 600, sceneHeight: 1000 + inset,
+          sceneTopInset: inset, focusX: 300, focusY: 700 + inset, chapterScale: 2,
+          child: Stack(children: [Positioned(left: 280, top: 680 + inset,
+            width: 40, height: 40, child: const ColoredBox(
+              key: Key('固定世界枝牌'), color: Colors.green))]),
+        ),
+      ),
+    )));
+    await show(0);
+    final before = tester.getRect(find.byKey(const Key('固定世界枝牌')));
+    await show(800);
+    for (final elapsed in [0, 100, 230, 460]) {
+      await tester.pump(Duration(milliseconds: elapsed));
+      expect(tester.getRect(find.byKey(const Key('固定世界枝牌'))), before);
+    }
+  });
   testWidgets('近景放大围绕指定树干锚点并保持热区命中', (tester) async {
     var taps = 0;
     await tester.pumpWidget(

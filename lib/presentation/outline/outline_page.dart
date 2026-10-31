@@ -27,7 +27,8 @@ import 'tree_scene/sapling_plaque.dart';
 import 'tree_scene/illustrated_tree_camera_layout.dart';
 import 'tree_scene/organic_tree.dart';
 import 'tree_scene/organic_tree_study.dart';
-import 'tree_scene/organic_branch.dart' show organicBranchRootRatio, OrganicBranchPainter;
+import 'tree_scene/organic_tree_projection.dart';
+import 'tree_scene/organic_branch.dart' show organicBranchRootRatio;
 import 'tree_scene/organic_tree_camera_layout.dart';
 
 /// 某小说的大纲流（章+节），魔树数据源
@@ -409,6 +410,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                 Path? trunkMask,
                 double barkAge = 1,
                 ui.Image? bark,
+                OrganicTreeProjection? treeProjection,
               }) {
                 final key = label.chapterId != null
                     ? Key('静态章热区_${label.chapterId}')
@@ -479,16 +481,27 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                     ),
                 );
                 if (widget.enableIllustratedCamera) {
+                  final origin = treeProjection?.origin ?? Offset.zero;
+                  final scale = treeProjection?.scale ?? 1;
+                  // 母版坐标补间不携带旧投影的偏移或缩放，扩顶和转屏时枝根仍对齐。
+                  final nativeRect = Rect.fromLTWH(
+                    (rect.left - origin.dx) / scale, (rect.top - origin.dy) / scale,
+                    rect.width / scale, rect.height / scale);
                   return TweenAnimationBuilder<Rect?>(
                     key: ValueKey(revealKey),
-                    tween: RectTween(begin: rect, end: rect),
+                    tween: RectTween(begin: nativeRect, end: nativeRect),
                     duration: const Duration(milliseconds: 460),
                     curve: Curves.easeOutCubic,
-                    builder: (context, currentRect, _) => Positioned.fromRect(
-                      rect: currentRect!,
+                    builder: (context, worldRect, _) {
+                      final currentRect = Rect.fromLTWH(
+                        worldRect!.left * scale + origin.dx, worldRect.top * scale + origin.dy,
+                        worldRect.width * scale, worldRect.height * scale);
+                      return Positioned.fromRect(
+                      rect: currentRect,
                       // 遮罩固定在主干上，不能随着枝牌的位置补间滑动。
                       child: plaque(trunkMask?.shift(rect.topLeft - currentRect.topLeft)),
-                    ),
+                    );
+                    },
                   );
                 }
                 return AnimatedPositioned(
@@ -627,10 +640,11 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                     ? layout.sectionRectOutsideTrunk(rect, fraction, frame)
                     : rect;
                 return staticLabel(label, placed, side: side, selected: selected,
+                  treeProjection: layout.projection,
                   treeScale: layout.projection.scale,
                   barkAge: frame.age,
                   bark: bark,
-                  trunkMask: OrganicBranchPainter.sectionPath(frame.limbs.first.sections)
+                  trunkMask: frame.trunkWood
                     .transform(Matrix4.diagonal3Values(layout.projection.scale,
                       layout.projection.scale, 1).storage)
                     .shift(layout.projection.origin - placed.topLeft),
@@ -690,12 +704,14 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                       Positioned.fill(
                         child: IllustratedTreeViewport(
                           sceneHeight: sceneHeight,
+                          sceneTopInset: cameraMode ? (cameraLayout as OrganicTreeCameraLayout).sceneTopInset : 0,
                           sceneWidth: cameraMode ? cameraLayout.sceneWidth : null,
                           chapterScale: cameraMode ? cameraLayout.chapterScale : 1,
                           focusX: cameraMode ? cameraLayout.focusX : null,
                           overview: cameraMode && _treeOverview,
                           focusY: cameraMode ? cameraLayout.focusY : constraints.maxHeight * 0.5,
                           child: cameraMode ? OrganicTree(
+                            chapterCount: outline.length,
                             age: (_illustratedNodeCount(outline) / 10).clamp(0.0, 1.0),
                             foregroundBuilder: (context, frame, bark) => Stack(
                               fit: StackFit.expand,

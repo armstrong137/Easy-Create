@@ -6,6 +6,9 @@ import { chromium } from 'playwright';
 const url = process.argv[2] ?? 'http://127.0.0.1:8780/';
 assert.ok(!process.argv.includes('--cpu-profile') || process.argv.includes('--audit-growth'),
   '--cpu-profile 需要同时启用 --audit-growth');
+assert.ok(!process.argv.includes('--audit-dense-history') ||
+  (process.argv.includes('--audit-dense') && process.argv.includes('--audit-sections') && process.argv.includes('--audit-history')),
+  '--audit-dense-history 需要同时启用 --audit-dense、--audit-sections 与 --audit-history');
 const runId = new Date().toISOString().replaceAll(':', '-');
 const videoRecording = !process.argv.includes('--no-video') &&
   (process.argv.includes('--audit-overview') || process.argv.includes('--audit-growth'));
@@ -277,14 +280,28 @@ try {
     phase = '三十章密集近景验收';
     for (let index = 10; index < 30; index++) {
       const numeral = `${index < 20 ? '十' : '二十'}${['', '一', '二', '三', '四', '五', '六', '七', '八', '九'][index % 10]}`;
+      const extendedGrowth = index === 20 && process.argv.includes('--audit-growth');
+      if (extendedGrowth) await startFrameSample();
       await addChapter.click();
       await page.getByRole('button', { name: `第${numeral}章`, exact: true }).waitFor();
       if (index === 10) {
-        // 第十一章改变既有锚点间距，保留位置补间期间的枝根接合证据。
+        // 第十一章开始扩展顶部画布，保留原有枝根锚点的补偿证据。
         await page.waitForTimeout(140);
         await page.screenshot({ path: resolve(output, 'eleventh-chapter-moving.png') });
       }
+      if (extendedGrowth) {
+        await page.waitForTimeout(260);
+        await page.screenshot({ path: resolve(output, 'extended-growth-early.png') });
+        await page.waitForTimeout(300);
+        await page.screenshot({ path: resolve(output, 'extended-growth-middle.png') });
+      }
       await page.waitForTimeout(1300);
+      if (extendedGrowth) {
+        await page.waitForFunction(() => window.__treeGrowthTiming);
+        await page.screenshot({ path: resolve(output, 'extended-growth-settled.png') });
+        await writeFile(resolve(output, 'extended-growth-timing.json'), JSON.stringify(
+          await page.evaluate(() => window.__treeGrowthTiming), null, 2));
+      }
     }
     await capture('dense-30-chapters-430');
     for (const name of ['第二十八章', '第二十九章']) {
@@ -299,6 +316,39 @@ try {
   if (process.argv.includes('--audit-overview')) {
     await page.getByRole('button', { name: '全景', exact: true }).click();
     await capture('overview-complete-910');
+  }
+  if (process.argv.includes('--audit-dense-history')) {
+    phase = '三十章历史中段与根部验收';
+    if (process.argv.includes('--audit-overview')) {
+      await page.getByRole('button', { name: '返回章节', exact: true }).click();
+    }
+    await page.setViewportSize({ width: 430, height: 932 });
+    await page.waitForTimeout(1500);
+    for (let chapter = 28; chapter >= 0; chapter--) {
+      await page.mouse.move(80, 590);
+      await page.mouse.down();
+      await page.mouse.move(80, 780, { steps: 16 });
+      await page.mouse.up();
+      await page.waitForTimeout(600);
+      if (chapter === 15) {
+        await page.getByRole('button', { name: '第十五章', exact: true }).waitFor();
+        await capture('dense-history-middle-430');
+        for (const name of ['第十四章', '第十五章']) await auditChapterPointerHit(name);
+        await page.setViewportSize({ width: 910, height: 800 });
+        await capture('dense-history-middle-910');
+        for (const name of ['第十四章', '第十五章']) await auditChapterPointerHit(name);
+        await page.setViewportSize({ width: 430, height: 932 });
+        await page.waitForTimeout(1000);
+      }
+    }
+    await page.getByRole('button', { name: '引子', exact: true }).waitFor();
+    await capture('dense-history-root-430');
+    for (const name of ['第一节', '第二节']) await auditSectionPointerHit(name, 'dense-history');
+    await page.setViewportSize({ width: 910, height: 800 });
+    await capture('dense-history-root-910');
+    for (const name of ['第一节', '第二节']) await auditSectionPointerHit(name, 'dense-history');
+    await page.getByRole('button', { name: '全景', exact: true }).click();
+    await capture('dense-history-full-910');
   }
   const renderer = await page.evaluate(() => {
     const gl = document.createElement('canvas').getContext('webgl');
@@ -315,9 +365,10 @@ try {
     graphicsRequest: process.argv.includes('--default-gpu') ? '浏览器默认' : '强制 SwiftShader',
     cpuProfiling: process.argv.includes('--cpu-profile'),
     checksPassed: ['创建十章和两节', '末态语义窗口只有两章', '浏览器零错误',
-      ...(process.argv.includes('--audit-sections') ? ['手机和宽屏初始及历史小节八次真实指针命中正确页面',
+      ...(process.argv.includes('--audit-sections') ? [`手机和宽屏小节${sectionPointerChecks.length}次真实指针命中正确页面`,
         '六节右侧历史滑动保持左侧章节窗口'] : []),
-      ...(process.argv.includes('--audit-dense') ? ['三十章手机和宽屏双牌真实指针命中正确章节'] : [])],
+      ...(process.argv.includes('--audit-dense') ? ['三十章手机和宽屏双牌真实指针命中正确章节'] : []),
+      ...(process.argv.includes('--audit-dense-history') ? ['三十章历史中段及根部手机与宽屏实际牌面命中'] : [])],
     visualAcceptance: '待人工对照参考图', sectionPointerChecks, captures, errors,
   }, null, 2));
   console.log(JSON.stringify({ output, captures: captures.map(({ name }) => name), errors }));

@@ -7,12 +7,18 @@ import 'organic_tree_study.dart';
 
 /// 连续主树的运行时容器；树龄只由创作进度传入，与浏览镜头无关。
 class OrganicTree extends StatefulWidget {
-  const OrganicTree({super.key, required this.age, this.foregroundBuilder});
+  const OrganicTree({
+    super.key,
+    required this.age,
+    this.chapterCount,
+    this.foregroundBuilder,
+  });
 
   final double age;
+  final int? chapterCount;
   // 前景只借用树皮；图片生命周期由树体管理，不能由枝条释放。
   final Widget Function(BuildContext, OrganicTreeFrame, ui.Image)?
-      foregroundBuilder;
+  foregroundBuilder;
 
   @override
   State<OrganicTree> createState() => _OrganicTreeState();
@@ -21,6 +27,7 @@ class OrganicTree extends StatefulWidget {
 class _OrganicTreeState extends State<OrganicTree> {
   late final Future<List<ui.Image>> _materials;
   List<ui.Image> _images = [];
+  OrganicTreeFrame? _geometry;
 
   @override
   void initState() {
@@ -74,17 +81,28 @@ class _OrganicTreeState extends State<OrganicTree> {
       }
       final materials = snapshot.requireData;
       final age = widget.age.clamp(0.0, 1.0);
-      return TweenAnimationBuilder<double>(
-        tween: Tween(begin: age, end: age),
+      final count = widget.chapterCount?.toDouble() ?? age * 10;
+      final target = Offset(age, count);
+      return TweenAnimationBuilder<Offset>(
+        tween: Tween(begin: target, end: target),
         duration: MediaQuery.disableAnimationsOf(context)
             ? Duration.zero
             : const Duration(milliseconds: 1400),
         curve: Curves.easeInOutCubic,
-        builder: (context, currentAge, _) {
+        builder: (context, current, _) {
+          final currentAge = current.dx;
+          // 只保留当前几何帧；浏览镜头不变更树龄或规模，也不重建枝干。
+          if (_geometry?.age != currentAge ||
+              _geometry?.chapterCount != current.dy) {
+            _geometry = OrganicTreeFrame(currentAge, chapterCount: current.dy);
+          }
           final painter = OrganicTreeStudyPainter(
             currentAge,
             materials[0],
             materials[1],
+            chapterCount: current.dy,
+            geometry: _geometry,
+            projectionExtent: OrganicTreeFrame.upperExtentFor(count),
           );
           final foreground = widget.foregroundBuilder?.call(
             context,
@@ -94,7 +112,7 @@ class _OrganicTreeState extends State<OrganicTree> {
           return RepaintBoundary(
             child: CustomPaint(
               isComplex: true,
-              willChange: currentAge != age,
+              willChange: current != target,
               painter: painter,
               child: foreground == null
                   ? const SizedBox.expand()

@@ -500,11 +500,21 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.byKey(const Key('静态章交互_11')), findsOneWidget);
     for (var step = 0; step < 4; step++) {
+      if (step == 1) tester.view.physicalSize = const Size(480, 800);
       await tester.pump(const Duration(milliseconds: 70));
       final tree = tester.renderObject<RenderBox>(find.byType(OrganicTree));
-      final projection = OrganicTreeProjection(tree.size);
-      final trunk = OrganicBranchPainter.sectionPath(OrganicTreeFrame(1).limbs.first.sections);
+      final painter = tester.widgetList<CustomPaint>(find.byType(CustomPaint))
+          .map((paint) => paint.painter).whereType<OrganicTreeStudyPainter>().single;
+      final projection = OrganicTreeProjection(tree.size, upperExtent: painter.projectionExtent);
+      final trunk = painter.frame.trunkWood;
       final expected = tree.localToGlobal(projection.project(trunk.getBounds().topLeft));
+      final previousBranch = tester.renderObject<RenderBox>(find.byKey(const Key('静态章交互_10')));
+      final root = previousBranch.localToGlobal(Offset(previousBranch.size.width * .88,
+        previousBranch.size.height * .7));
+      final anchor = tree.localToGlobal(projection.project(OrganicTreeFrame.trunkPoint(
+        OrganicTreeFrame.chapterFraction(9, 11))));
+      expect((root - anchor).distance, lessThan(.01),
+          reason: '新增顶部画布时，既有章枝根不能随局部矩形补间跳离主干锚点');
       for (final element in find.byType(OrganicBranch).evaluate()) {
         final branch = element.widget as OrganicBranch;
         final box = element.renderObject! as RenderBox;

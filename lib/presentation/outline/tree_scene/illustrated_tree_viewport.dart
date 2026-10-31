@@ -13,6 +13,7 @@ class IllustratedTreeViewport extends StatefulWidget {
     this.overview = false,
     this.chapterScale = 1,
     this.focusX,
+    this.sceneTopInset = 0,
   }) : assert(sceneHeight > 0);
 
   final double sceneHeight;
@@ -22,6 +23,8 @@ class IllustratedTreeViewport extends StatefulWidget {
   final bool overview;
   final double chapterScale;
   final double? focusX;
+  // 新增顶部空间的场景像素；镜头补间保留稳定世界坐标。
+  final double sceneTopInset;
 
   @override
   State<IllustratedTreeViewport> createState() =>
@@ -41,18 +44,22 @@ class _IllustratedTreeViewportState extends State<IllustratedTreeViewport> {
       final overview = widget.overview;
       final height = math.max(sceneHeight, constraints.maxHeight);
       final width = sceneWidth ?? constraints.maxWidth;
+      final verticalFade = widget.sceneTopInset == 0
+          ? .08
+          : .08 * (height - widget.sceneTopInset) / height;
       final overviewScale = math.min(
         constraints.maxWidth / width,
         constraints.maxHeight / height,
       );
       final scale = overview ? overviewScale : widget.chapterScale;
       final maxOffset = math.max(0.0, height * scale - constraints.maxHeight);
-      final targetY = overview
+      final absoluteY = overview
           ? -(constraints.maxHeight - height * overviewScale) / 2
           : (focusY * scale - constraints.maxHeight * 0.5).clamp(
               0.0,
               maxOffset,
             );
+      final targetY = absoluteY - widget.sceneTopInset * scale;
       final targetX = overview
           ? 0.0
           : ((widget.focusX ?? width / 2) - width / 2) * scale;
@@ -76,35 +83,38 @@ class _IllustratedTreeViewportState extends State<IllustratedTreeViewport> {
                   alignment: Alignment.topCenter,
                   duration: const Duration(milliseconds: 460),
                   curve: Curves.easeInOutCubic,
-                  child: overview
-                      ? ShaderMask(
-                          blendMode: BlendMode.dstIn,
-                          shaderCallback: (bounds) => const LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              Colors.white,
-                              Colors.white,
-                              Colors.transparent,
-                            ],
-                            stops: [0, 0.08, 0.92, 1],
-                          ).createShader(bounds),
-                          child: ShaderMask(
+                  child: Transform.translate(
+                    offset: Offset(0, -widget.sceneTopInset),
+                    child: overview
+                        ? ShaderMask(
                             blendMode: BlendMode.dstIn,
-                            shaderCallback: (bounds) => const LinearGradient(
-                              colors: [
+                            shaderCallback: (bounds) => LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: const [
                                 Colors.transparent,
                                 Colors.white,
                                 Colors.white,
                                 Colors.transparent,
                               ],
-                              stops: [0, 0.06, 0.94, 1],
+                              stops: [0, verticalFade, 1 - verticalFade, 1],
                             ).createShader(bounds),
-                            child: scene!,
-                          ),
-                        )
-                      : scene!,
+                            child: ShaderMask(
+                              blendMode: BlendMode.dstIn,
+                              shaderCallback: (bounds) => const LinearGradient(
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.white,
+                                  Colors.white,
+                                  Colors.transparent,
+                                ],
+                                stops: [0, 0.06, 0.94, 1],
+                              ).createShader(bounds),
+                              child: scene!,
+                            ),
+                          )
+                        : scene!,
+                  ),
                 ),
               ),
             ],

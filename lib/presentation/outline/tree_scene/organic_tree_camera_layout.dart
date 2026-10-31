@@ -16,8 +16,18 @@ class OrganicTreeCameraLayout extends IllustratedTreeCameraLayout {
   });
 
   final int focusedChapter;
-  OrganicTreeProjection get projection =>
-      OrganicTreeProjection(Size(sceneWidth, sceneHeight));
+  @override
+  double get sceneWidth =>
+      math.max(viewport.width, super.sceneHeight * 941 / 1672);
+  double get upperExtent =>
+      OrganicTreeFrame.upperExtentFor(chapterCount.toDouble());
+  double get sceneTopInset => upperExtent * sceneWidth / 941;
+  @override
+  double get sceneHeight => super.sceneHeight + sceneTopInset;
+  OrganicTreeProjection get projection => OrganicTreeProjection(
+    Size(sceneWidth, sceneHeight),
+    upperExtent: upperExtent,
+  );
 
   Offset get _center =>
       (projection.project(
@@ -44,7 +54,7 @@ class OrganicTreeCameraLayout extends IllustratedTreeCameraLayout {
                       1.5 *
                       illustratedBranchHitHeightRatio +
                   12) /
-              (900 * .72 / math.max(9, chapterCount - 1) * projection.scale),
+              (OrganicTreeFrame.chapterSpacing * projection.scale),
         );
 
   @override
@@ -58,7 +68,7 @@ class OrganicTreeCameraLayout extends IllustratedTreeCameraLayout {
             (index - .5) *
                 viewport.height *
                 .22 /
-                (900 * projection.scale * chapterScale)
+                (OrganicTreeFrame.trunkLength * projection.scale * chapterScale)
       : OrganicTreeFrame.chapterFraction(firstChapter + index, chapterCount);
 
   @override

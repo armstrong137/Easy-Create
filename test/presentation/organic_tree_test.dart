@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:novel_app/presentation/outline/tree_scene/illustrated_tree_viewport.dart';
 import 'package:novel_app/presentation/outline/tree_scene/organic_tree.dart';
@@ -106,6 +107,11 @@ void main() {
     }
     await tester.pumpAndSettle();
     expect(painter(tester).age, .8);
+    final settled = painter(tester).frame;
+    await show(true, 400, .8);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(identical(painter(tester).frame, settled), isTrue,
+        reason: '树龄和规模不变时，镜头只复用当前几何，不重新生成所有枝叶');
   });
 
   testWidgets('新枝首帧借用主树材质，卸载枝条不会释放主树图片', (tester) async {
@@ -136,6 +142,37 @@ void main() {
     }
     await tester.pumpWidget(const SizedBox());
     expect(bark.debugDisposed, isTrue, reason: '最后由主树所有者释放');
+  });
+
+  testWidgets('成熟后新增章节仍有真实的主干生长中间帧', (tester) async {
+    Future<void> show(int chapters) => tester.pumpWidget(MaterialApp(
+      home: OrganicTree(age: 1, chapterCount: chapters),
+    ));
+    await show(10);
+    await loadMaterials(tester);
+    final initial = painter(tester);
+    await show(30);
+    await tester.pump(const Duration(milliseconds: 700));
+    final middle = painter(tester);
+    expect(middle.age, 1);
+    expect(middle.frame.chapterCount, greaterThan(10));
+    expect(middle.frame.chapterCount, lessThan(30));
+    expect(identical(middle.bark, initial.bark), isTrue);
+    expect(middle.frame.chapterAnchor(25, 30), isNull);
+    Future<List<int>> pixels() async => (await tester.runAsync(() async {
+      final boundary = tester.renderObject<RenderRepaintBoundary>(find.descendant(
+        of: find.byType(OrganicTree), matching: find.byType(RepaintBoundary)).first);
+      final image = await boundary.toImage();
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      image.dispose();
+      return bytes!.buffer.asUint8List();
+    }))!;
+    final middlePixels = await pixels();
+    await tester.pumpAndSettle();
+    expect(painter(tester).frame.chapterCount, 30);
+    expect(painter(tester).frame.chapterAnchor(29, 30), isNotNull);
+    expect(await pixels(), isNot(orderedEquals(middlePixels)),
+        reason: '树龄封顶后新增章节必须重绘真实树干，不能只更新前景和几何元数据');
   });
 
   testWidgets('材质解码期间退出后不会更新已卸载树体', (tester) async {
