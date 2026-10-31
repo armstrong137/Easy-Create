@@ -6,6 +6,23 @@ import 'package:novel_app/presentation/outline/tree_scene/organic_branch.dart';
 import 'package:novel_app/presentation/outline/tree_scene/organic_tree_study.dart';
 
 void main() {
+  test('延伸主干连续展叶，已出生叶节不搬动且叶柄留在树干内', () {
+    var previous = <(Offset, double), double>{};
+    for (var step = 0; step <= 100; step++) {
+      final frame = OrganicTreeFrame(1, chapterCount: 10 + step * .2);
+      final current = {
+        for (final leaf in frame.leaves)
+          if (leaf.point.dy < 410 && frame.trunkWood.contains(leaf.point))
+            (leaf.point, leaf.angle): leaf.scale,
+      };
+      for (final entry in previous.entries) {
+        expect(current[entry.key], greaterThanOrEqualTo(entry.value),
+            reason: '延伸过程中已展开的主干芽叶不能消失或反向缩小');
+      }
+      previous = current;
+    }
+    expect(previous.length, greaterThan(50));
+  });
   test('只复用上一帧参数完全相同的枝干截面，成长变化不沿用旧几何', () {
     var previous = OrganicTreeFrame(.55, chapterCount: 15);
     var reused = 0;

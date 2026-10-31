@@ -168,6 +168,33 @@ class OrganicTreeFrame {
       }
     }
     _foliage(trunk, growth, 9999, sparse: true);
+    // 延伸主干的叶节也绑定固定弧长，不在动态截取的路径上积累芽叶缓存。
+    final leaderSpan = _trunkMetric.length * .16;
+    for (var index = 0; index < (extra / leaderSpan).ceil(); index++) {
+      final startDistance = index * leaderSpan;
+      final leader = _curve('leader:$index', () {
+        if (index == 0) {
+          final path = _extensionMetric.extractPath(
+            0,
+            math.min(leaderSpan, _extensionMetric.length),
+          );
+          if (leaderSpan > _extensionMetric.length) {
+            final end = trunkPoint(1 + leaderSpan / _trunkMetric.length);
+            path.lineTo(end.dx, end.dy);
+          }
+          return path;
+        }
+        final start = trunkPoint(1 + startDistance / _trunkMetric.length);
+        final end = trunkPoint(1 + (startDistance + leaderSpan) / _trunkMetric.length);
+        return Path()..moveTo(start.dx, start.dy)..lineTo(end.dx, end.dy);
+      });
+      _foliage(
+        leader,
+        ((extra - startDistance) / leaderSpan).clamp(0.0, 1.0),
+        20000 + index * 100,
+        sparse: true,
+      );
+    }
     // 幼龄细根先探索土壤，粗度仍跟随树龄，避免短粗根挤成星形尖片。
     final rootGrowth = .35 + age * .65;
     final rootRadius = (12 + age * 90) * math.sqrt(growth / rootGrowth);
