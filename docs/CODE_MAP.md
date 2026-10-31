@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-10-31 12:46:21　对应提交：8397272 之后的工作区状态
+> 生成时间：2026-10-31 15:23:05　对应提交：bfcfe75 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,20 +12,20 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     199
-  Nodes:     5,335
-  Edges:     22,458
+  Files:     200
+  Nodes:     5,344
+  Edges:     22,471
   DB Size:   26.00 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,827
-  function        1,572
-  import          693
+  function        1,574
+  import          699
   class           522
   constant        335
-  file            191
+  file            192
   variable        145
   enum_member     25
   type_alias      17
@@ -33,7 +33,7 @@ Nodes by Kind:
   namespace       2
 
 Files by Language:
-  dart            111
+  dart            112
   javascript      45
   python          15
   kotlin          8
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (199 files):
+Project Structure (200 files):
 
 |-- .agents
 |   `-- skills
@@ -254,6 +254,7 @@ Project Structure (199 files):
 |   |   |-- magic_carpet_test.dart (dart, 18 symbols)
 |   |   |-- orbiting_inspirations_test.dart (dart, 11 symbols)
 |   |   |-- organic_branch_test.dart (dart, 8 symbols)
+|   |   |-- organic_leaf_crop_test.dart (dart, 10 symbols)
 |   |   |-- organic_tree_camera_layout_test.dart (dart, 6 symbols)
 |   |   |-- organic_tree_projection_test.dart (dart, 6 symbols)
 |   |   |-- organic_tree_study_test.dart (dart, 9 symbols)

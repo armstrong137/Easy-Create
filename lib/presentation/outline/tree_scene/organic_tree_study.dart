@@ -446,6 +446,13 @@ class OrganicTreeStudyPainter extends CustomPainter {
           colors: [Color(0x22E5B85D), Color(0x004E351C), Color(0x66432E17)],
         ).createShader(frame.wood.getBounds()),
     );
+    // 512母版的透明边界保留至少32像素滤波余量，减少空白覆盖，不缩小叶片。
+    final leafSource = Rect.fromLTRB(
+      leaf.width * 128 / 512,
+      leaf.height * 48 / 512,
+      leaf.width * 400 / 512,
+      leaf.height * 472 / 512,
+    );
     canvas.drawAtlas(
       leaf,
       frame.leaves
@@ -453,8 +460,8 @@ class OrganicTreeStudyPainter extends CustomPainter {
             (item) => ui.RSTransform.fromComponents(
               rotation: item.angle,
               scale: item.scale,
-              anchorX: leaf.width / 2,
-              anchorY: leaf.height * .82,
+              anchorX: leaf.width / 2 - leafSource.left,
+              anchorY: leaf.height * .82 - leafSource.top,
               translateX: item.point.dx,
               translateY: item.point.dy,
             ),
@@ -462,7 +469,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
           .toList(),
       List.filled(
         frame.leaves.length,
-        Rect.fromLTWH(0, 0, leaf.width.toDouble(), leaf.height.toDouble()),
+        leafSource,
       ),
       null,
       null,
