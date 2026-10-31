@@ -134,6 +134,16 @@ void main() {
         final image = await picture.toImage(941, 1672);
         final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
         expect(bytes, isNotNull);
+        final nextRecorder = ui.PictureRecorder();
+        OrganicTreeStudyPainter(age == 1 ? .2 : 1, bark, leaf)
+            .paint(Canvas(nextRecorder), const Size(941, 1672));
+        nextRecorder.endRecording().dispose();
+        final replay = await picture.toImage(941, 1672);
+        final replayBytes = await replay.toByteData(format: ui.ImageByteFormat.png);
+        expect(replayBytes!.buffer.asUint8List(),
+            orderedEquals(bytes!.buffer.asUint8List()),
+            reason: '后续树龄绘制不能覆写已经提交的画面');
+        replay.dispose();
         if (const bool.fromEnvironment('WRITE_TREE_STUDY') || writeFrames) {
           final output = Directory(
             writeFrames
@@ -145,7 +155,7 @@ void main() {
               : 'age_${(age * 100).round()}';
           await File(
             '${output.path}/$name.png',
-          ).writeAsBytes(bytes!.buffer.asUint8List());
+          ).writeAsBytes(bytes.buffer.asUint8List());
         }
         image.dispose();
         picture.dispose();

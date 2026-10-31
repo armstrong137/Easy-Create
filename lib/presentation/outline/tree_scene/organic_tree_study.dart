@@ -327,6 +327,12 @@ class OrganicTreeFrame {
 
 class OrganicTreeStudyPainter extends CustomPainter {
   static const _surfaceBatchSize = 128;
+  static const _surfaceVertexCapacity =
+      _surfaceBatchSize * (OrganicBranchPainter.stemSamples + 1) * 9;
+  // Vertices.raw构造时复制输入；同步绘制批次可复用工作区，不保留各树龄缓冲。
+  static final _surfacePoints = Float32List(_surfaceVertexCapacity * 2);
+  static final _surfaceUV = Float32List(_surfaceVertexCapacity * 2);
+  static final _surfaceColors = Int32List(_surfaceVertexCapacity);
   static final _surfaceIndices = (() {
     const rings = OrganicBranchPainter.stemSamples;
     const slices = 8;
@@ -477,9 +483,9 @@ class OrganicTreeStudyPainter extends CustomPainter {
     const rings = OrganicBranchPainter.stemSamples;
     const slices = 8;
     final vertexCount = limbs.length * (rings + 1) * (slices + 1);
-    final points = Float32List(vertexCount * 2);
-    final uv = Float32List(vertexCount * 2);
-    final colors = Int32List(vertexCount);
+    final points = Float32List.sublistView(_surfacePoints, 0, vertexCount * 2);
+    final uv = Float32List.sublistView(_surfaceUV, 0, vertexCount * 2);
+    final colors = Int32List.sublistView(_surfaceColors, 0, vertexCount);
     final textureResolution = bark.width / 512;
     // 只有一个完整批次的索引表；尾批使用零拷贝视图，不随树龄积累缓存。
     final triangles = Uint16List.sublistView(
