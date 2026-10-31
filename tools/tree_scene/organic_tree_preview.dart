@@ -40,7 +40,7 @@ class _PreviewState extends State<_Preview> {
                 overview: _overview,
                 child: OrganicTree(
                   age: _age,
-                  foregroundBuilder: (context, frame) {
+                  foregroundBuilder: (context, frame, bark) {
                     final projection = OrganicTreeProjection(
                       Size(height * 941 / 1672, height),
                     );
@@ -68,6 +68,7 @@ class _PreviewState extends State<_Preview> {
                                   child: ExcludeSemantics(
                                     child: IllustratedBranchPlaque(
                                       barkAge: frame.age,
+                                      bark: bark,
                                       title: title,
                                       side: right
                                           ? IllustratedBranchSide.right

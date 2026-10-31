@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:novel_app/presentation/outline/tree_scene/illustrated_tree_viewport.dart';
 import 'package:novel_app/presentation/outline/tree_scene/organic_tree.dart';
+import 'package:novel_app/presentation/outline/tree_scene/organic_branch.dart';
 import 'package:novel_app/presentation/outline/tree_scene/organic_tree_study.dart';
 
 void main() {
@@ -40,7 +41,7 @@ void main() {
       MaterialApp(
         home: OrganicTree(
           age: age,
-          foregroundBuilder: (context, frame) {
+          foregroundBuilder: (context, frame, bark) {
             overlayFrame = frame;
             return CustomPaint(
               painter: _CountPainter(() => foregroundPaints++),
@@ -105,6 +106,36 @@ void main() {
     }
     await tester.pumpAndSettle();
     expect(painter(tester).age, .8);
+  });
+
+  testWidgets('新枝首帧借用主树材质，卸载枝条不会释放主树图片', (tester) async {
+    Future<void> show(bool branch) => tester.pumpWidget(
+      MaterialApp(
+        home: OrganicTree(
+          age: .8,
+          foregroundBuilder: (context, frame, bark) => branch
+              ? Center(child: SizedBox(width: 220, height: 180,
+                  child: OrganicBranch(progress: 1, right: false, bark: bark)))
+              : const SizedBox.expand(),
+        ),
+      ),
+    );
+    await show(false);
+    await loadMaterials(tester);
+    final bark = painter(tester).bark;
+    for (var i = 0; i < 2; i++) {
+      await show(true);
+      final branchPaint = tester.widget<CustomPaint>(find.descendant(
+        of: find.byType(OrganicBranch), matching: find.byType(CustomPaint),
+      )).painter! as OrganicBranchPainter;
+      expect(identical(branchPaint.bark, bark), isTrue,
+          reason: '新挂载的历史枝牌首帧就应有材质，不能等待重新解码');
+      await show(false);
+      expect(bark.debugDisposed, isFalse);
+      expect(tester.takeException(), isNull);
+    }
+    await tester.pumpWidget(const SizedBox());
+    expect(bark.debugDisposed, isTrue, reason: '最后由主树所有者释放');
   });
 
   testWidgets('材质解码期间退出后不会更新已卸载树体', (tester) async {

@@ -23,12 +23,15 @@ class OrganicBranch extends StatefulWidget {
     this.treeScale = 1,
     this.trunkMask,
     this.barkAge = 1,
+    this.bark,
   });
   final double? maxRootRadius;
   // 仅含母版到场景的投影；章节和全景镜头由父层统一应用。
   final double treeScale;
   final Path? trunkMask;
   final double barkAge;
+  // 借用主树材质，由主树统一释放；独立枝条才自行解码。
+  final ui.Image? bark;
   final double progress;
   final bool right;
 
@@ -42,7 +45,7 @@ class _OrganicBranchState extends State<OrganicBranch> {
   @override
   void initState() {
     super.initState();
-    _loadBark();
+    if (widget.bark == null) _loadBark();
   }
 
   Future<void> _loadBark() async {
@@ -73,7 +76,7 @@ class _OrganicBranchState extends State<OrganicBranch> {
     painter: OrganicBranchPainter(
       widget.progress,
       widget.right,
-      _bark,
+      widget.bark ?? _bark,
       maxRootRadius: widget.maxRootRadius,
       treeScale: widget.treeScale,
       trunkMask: widget.trunkMask,

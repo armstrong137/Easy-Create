@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
@@ -406,6 +407,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                 double treeScale = 1,
                 Path? trunkMask,
                 double barkAge = 1,
+                ui.Image? bark,
               }) {
                 final key = label.chapterId != null
                     ? Key('静态章热区_${label.chapterId}')
@@ -474,6 +476,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                                 treeScale: treeScale,
                                 trunkMask: trunkMask,
                                 barkAge: barkAge,
+                                bark: bark,
                               ),
                             ),
                       ),
@@ -657,7 +660,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                           focusY: cameraMode ? cameraLayout.focusY : constraints.maxHeight * 0.5,
                           child: cameraMode ? OrganicTree(
                             age: (_illustratedNodeCount(outline) / 10).clamp(0.0, 1.0),
-                            foregroundBuilder: (context, frame) => Stack(
+                            foregroundBuilder: (context, frame, bark) => Stack(
                               fit: StackFit.expand,
                               children: [
                                 _creationZones(outline),
@@ -666,6 +669,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                                     staticLabel(item.label, item.rect, side: item.side, selected: item.selected,
                                       treeScale: (cameraLayout as OrganicTreeCameraLayout).projection.scale,
                                       barkAge: frame.age,
+                                      bark: bark,
                                       trunkMask: OrganicBranchPainter.sectionPath(frame.limbs.first.sections)
                                         .transform(Matrix4.diagonal3Values(cameraLayout.projection.scale,
                                           cameraLayout.projection.scale, 1).storage)

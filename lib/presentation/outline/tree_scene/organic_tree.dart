@@ -10,7 +10,9 @@ class OrganicTree extends StatefulWidget {
   const OrganicTree({super.key, required this.age, this.foregroundBuilder});
 
   final double age;
-  final Widget Function(BuildContext, OrganicTreeFrame)? foregroundBuilder;
+  // 前景只借用树皮；图片生命周期由树体管理，不能由枝条释放。
+  final Widget Function(BuildContext, OrganicTreeFrame, ui.Image)?
+      foregroundBuilder;
 
   @override
   State<OrganicTree> createState() => _OrganicTreeState();
@@ -87,6 +89,7 @@ class _OrganicTreeState extends State<OrganicTree> {
           final foreground = widget.foregroundBuilder?.call(
             context,
             painter.frame,
+            materials[0],
           );
           return RepaintBoundary(
             child: CustomPaint(

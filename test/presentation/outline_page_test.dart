@@ -19,6 +19,7 @@ import 'package:novel_app/presentation/outline/tree_scene/tree_scene_controller.
 import 'package:novel_app/presentation/outline/tree_scene/tree_scene_protocol.dart';
 import 'package:novel_app/presentation/outline/tree_scene/tree_standin.dart';
 import 'package:novel_app/presentation/outline/tree_scene/organic_tree.dart';
+import 'package:novel_app/presentation/outline/tree_scene/organic_tree_study.dart';
 import 'package:novel_app/presentation/outline/tree_scene/organic_branch.dart';
 import 'package:novel_app/presentation/outline/tree_scene/organic_tree_projection.dart';
 import 'package:novel_app/presentation/section/section_page.dart';
@@ -417,6 +418,9 @@ void main() {
     await pumpOutline(tester, outline, enableIllustratedCamera: true);
     await tester.pump(const Duration(seconds: 2));
     final beforeTree = tester.getRect(find.byType(OrganicTree));
+    final treeBark = tester.widgetList<CustomPaint>(find.byType(CustomPaint))
+        .map((paint) => paint.painter).whereType<OrganicTreeStudyPainter>()
+        .single.bark;
     final materialScale = OrganicTreeProjection(
       tester.getSize(find.byType(OrganicTree)),
     ).scale;
@@ -442,6 +446,8 @@ void main() {
     expect(tester.widget<OrganicTree>(find.byType(OrganicTree)).age, 1);
     for (final branch in tester.widgetList<OrganicBranch>(find.byType(OrganicBranch))) {
       expect(branch.barkAge, 1, reason: '浏览旧章不能回退承托枝的材质树龄');
+      expect(identical(branch.bark, treeBark), isTrue,
+          reason: '历史中新显示的枝牌必须继续借用主树图片');
     }
     expect(afterTree.width, closeTo(beforeTree.width, .001));
     expect(afterTree.height, closeTo(beforeTree.height, .001));

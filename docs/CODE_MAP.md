@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-10-31 16:22:07　对应提交：ddb70f9 之后的工作区状态
+> 生成时间：2026-10-31 16:29:17　对应提交：16a1d4c 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,16 +13,16 @@ Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
   Files:     200
-  Nodes:     5,345
-  Edges:     22,475
+  Nodes:     5,350
+  Edges:     22,493
   DB Size:   26.00 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,827
-  function        1,575
-  import          699
+  function        1,576
+  import          703
   class           522
   constant        335
   file            192
@@ -177,7 +177,7 @@ Project Structure (200 files):
 |   |   |   |-- tree_scene
 |   |   |   |   |-- illustrated_tree_camera_layout.dart (dart, 15 symbols)
 |   |   |   |   |-- illustrated_tree_growth.dart (dart, 7 symbols)
-|   |   |   |   |-- illustrated_tree_scene.dart (dart, 27 symbols)
+|   |   |   |   |-- illustrated_tree_scene.dart (dart, 28 symbols)
 |   |   |   |   |-- illustrated_tree_trunk.dart (dart, 10 symbols)
 |   |   |   |   |-- illustrated_tree_viewport.dart (dart, 7 symbols)
 |   |   |   |   |-- organic_bark.dart (dart, 4 symbols)
@@ -198,7 +198,7 @@ Project Structure (200 files):
 |   |   |   |-- label_layout.dart (dart, 2 symbols)
 |   |   |   |-- magic_carpet.dart (dart, 67 symbols)
 |   |   |   |-- outline_controller.dart (dart, 34 symbols)
-|   |   |   |-- outline_page.dart (dart, 79 symbols)
+|   |   |   |-- outline_page.dart (dart, 80 symbols)
 |   |   |   `-- scroll_carpet.dart (dart, 38 symbols)
 |   |   |-- section
 |   |   |   |-- card_deck_sheet.dart (dart, 19 symbols)
@@ -258,9 +258,9 @@ Project Structure (200 files):
 |   |   |-- organic_tree_camera_layout_test.dart (dart, 6 symbols)
 |   |   |-- organic_tree_projection_test.dart (dart, 6 symbols)
 |   |   |-- organic_tree_study_test.dart (dart, 9 symbols)
-|   |   |-- organic_tree_test.dart (dart, 19 symbols)
+|   |   |-- organic_tree_test.dart (dart, 22 symbols)
 |   |   |-- outline_controller_test.dart (dart, 10 symbols)
-|   |   |-- outline_page_test.dart (dart, 37 symbols)
+|   |   |-- outline_page_test.dart (dart, 38 symbols)
 |   |   |-- planet_scene_touch_config_test.dart (dart, 8 symbols)
 |   |   |-- quick_capture_test.dart (dart, 16 symbols)
 |   |   |-- realtime_tree_single_path_test.dart (dart, 4 symbols)
