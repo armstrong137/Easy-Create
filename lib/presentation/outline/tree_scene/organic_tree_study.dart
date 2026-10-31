@@ -56,7 +56,7 @@ class OrganicTreeFrame {
       tipRatio: .025,
       sections: trunkSections,
     ));
-    _foliage(trunk, growth, 9999);
+    _foliage(trunk, growth, 9999, sparse: true);
     // 幼龄细根先探索土壤，粗度仍跟随树龄，避免短粗根挤成星形尖片。
     final rootGrowth = .35 + age * .65;
     final rootRadius = (12 + age * 90) * math.sqrt(growth / rootGrowth);
@@ -161,7 +161,7 @@ class OrganicTreeFrame {
         parentRadius * .75,
       );
       _join(branch, branchGrowth, branchRadius);
-      _foliage(branch, branchGrowth, index * 1000 + 900);
+      _foliage(branch, branchGrowth, index * 1000 + 900, sparse: true);
       final branchMetric = _measure(branch);
       for (var twigIndex = 0; twigIndex < 4; twigIndex++) {
         final birth = .25 + twigIndex * .2;
@@ -285,26 +285,32 @@ class OrganicTreeFrame {
     wood.addPath(OrganicBranchPainter.sectionPath(sections), Offset.zero);
   }
 
-  void _foliage(Path spine, double growth, int seed) {
+  void _foliage(Path spine, double growth, int seed, {bool sparse = false}) {
     final metric = _measure(spine);
-    final nodes = (metric.length / 18).round().clamp(3, 24);
-    final bladeScale = metric.length < 100 ? .055 : .025;
+    final nodes = sparse ? 3 : (metric.length / 24).round().clamp(3, 7);
     for (var index = 0; index < nodes; index++) {
-      final along = .18 + index / (nodes - 1) * .78;
-      if (growth <= along) continue;
-      final anchor = metric
-          .getTangentForOffset(metric.length * along)!
-          .position;
       final phase = seed * .37 + index * .83;
-      // 叶柄固定在同一叶节，叶片逐枚展开；不再把散点叶片撒在枝条周围。
-      for (var blade = 0; blade < 5; blade++) {
-        final opening = ((growth - along - blade * .004) / .06).clamp(0.0, 1.0);
+      final along =
+          (sparse ? .14 : .22) +
+          index / (nodes - 1) * .70 +
+          .025 * math.sin(phase);
+      if (growth <= along) continue;
+      final tangent = metric.getTangentForOffset(metric.length * along)!;
+      // 末级枝上疏密错落地对生阔叶，保留主枝负空间，避免五叶轮生重复成蕨片。
+      for (var blade = 0; blade < 2; blade++) {
+        final opening = ((growth - along - blade * .012) / .08).clamp(0.0, 1.0);
         if (opening == 0) continue;
-        final angle = phase + blade * math.pi * 2 / 5;
+        final angle =
+            math.atan2(tangent.vector.dy, tangent.vector.dx) +
+            (blade == 0 ? -.85 : .85) +
+            .25 * math.sin(phase + blade);
         leaves.add((
-          point: anchor,
+          point: tangent.position,
           angle: angle + math.pi / 2,
-          scale: bladeScale * (1 + .2 * math.sin(phase + blade)) * opening,
+          scale:
+              (sparse ? .085 : .12) *
+              (1 + .25 * math.sin(phase + blade * 2)) *
+              opening,
         ));
       }
     }
