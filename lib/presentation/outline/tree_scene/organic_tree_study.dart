@@ -119,6 +119,7 @@ class OrganicTreeFrame {
         _join(fork, forkGrowth, forkRadius);
       }
     }
+    rootBounds = wood.getBounds();
     for (var index = 0; index < 7; index++) {
       final attachment = [.22, .34, .43, .53, .65, .76, .88][index];
       final branchGrowth = ((growth - attachment) / (1 - attachment)).clamp(
@@ -257,6 +258,7 @@ class OrganicTreeFrame {
   }
 
   late Path wood;
+  late final Rect rootBounds;
   final leaves = <OrganicTreeLeaf>[];
   final limbs = <OrganicTreeLimb>[];
 
@@ -406,6 +408,22 @@ class OrganicTreeStudyPainter extends CustomPainter {
     final projection = OrganicTreeProjection(size);
     canvas.translate(projection.origin.dx, projection.origin.dy);
     canvas.scale(projection.scale);
+    // 接地阴影跟随真实根幅展开，不随章节镜头单独缩放或使用树龄阶段图。
+    final ground = frame.rootBounds;
+    final shadowHeight = ground.width * .17;
+    canvas.save();
+    canvas.translate(ground.center.dx, ground.bottom - shadowHeight * .4);
+    canvas.scale(ground.width * .56, shadowHeight / 2);
+    canvas.drawCircle(
+      Offset.zero,
+      1,
+      Paint()
+        ..shader = const RadialGradient(
+          colors: [Color(0x3D4D321B), Color(0x204D321B), Color(0x004D321B)],
+          stops: [0, .5, 1],
+        ).createShader(Rect.fromCircle(center: Offset.zero, radius: 1)),
+    );
+    canvas.restore();
     canvas.drawPath(
       frame.wood,
       Paint()
