@@ -266,9 +266,9 @@ class OrganicTreeFrame {
       }
     }
     rootBounds = wood.getBounds();
-    // 首批细枝在冠枝之前萌发，使早期也是有叶簇的完整幼树。
-    for (var index = 0; index < 3; index++) {
-      final attachment = const [.035, .045, .17][index];
+    // 早生细枝沿幼干交错形成树冠，避免叶簇集中在根颈而顶部裸露。
+    for (var index = 0; index < 4; index++) {
+      final attachment = const [.14, .23, .30, .39][index];
       final sproutGrowth = ((growth - attachment) / .08).clamp(0.0, 1.0);
       if (sproutGrowth == 0) continue;
       final start = trunkPoint(attachment);
