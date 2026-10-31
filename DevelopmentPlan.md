@@ -940,3 +940,10 @@
 - 最终约1.93秒采样：OrganicTreeStudyPainter._surface自耗时约243ms，其直接CanvasKit网格处理调用约338ms；ListBase.any约48ms，调用链来自CkVertices.raw。首份采样也指向相同热点，下一步应优先处理表面网格构建和引擎桥接，而非继续猜测页面重绘。
 - 本轮只修改验收工具；源码映射Web release构建、两份脚本语法检查、自动保存映射与默认路径还原实际执行通过。含剖析的帧间隔不能当无剖析性能证据；整体视觉与性能仍未通过，正式默认不切换。
 - 复跑：flutter build web --release --no-pub --source-maps --dart-define=ENABLE_ILLUSTRATED_TREE_CAMERA=true；浏览器工具加 --audit-growth --default-gpu --cpu-profile；node tools/tree_scene/scripts/summarize-tree-cpu.mjs <mature-growth.cpuprofile>。
+
+### 2026-10-31 固定网格索引表复用
+
+- 根据CPU剖析中表面构建热点，将固定三角形索引改为一次生成完整64枝批次的Uint16表，尾批使用零拷贝视图；不再每帧重复分配和填充同一拓扑索引。表约288KiB，不按树龄或尾批大小积累缓存。
+- 批次容量与索引上限共用常量，三档树龄PNG SHA-256与此前完全一致；50项相关测试、静态分析及带源码映射的实验Web release构建通过。
+- 默认后端真实十章两节、生长、历史引子、全景双击和手机/宽屏零错误，证据：build/qa/native-shared-indices/2026-10-31T01-03-51.086Z。
+- 未开启CPU剖析的成熟阶段p95 54.1ms/最慢62.6ms，早期p95 8.5ms/最慢33.4ms。本轮没有证实总体提速，不能将消除索引写入当作性能达标；整体视觉与性能仍待整改，正式默认不切换。

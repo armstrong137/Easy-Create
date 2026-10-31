@@ -312,6 +312,28 @@ class OrganicTreeFrame {
 }
 
 class OrganicTreeStudyPainter extends CustomPainter {
+  static const _surfaceBatchSize = 64;
+  static final _surfaceIndices = (() {
+    const rings = OrganicBranchPainter.stemSamples;
+    const slices = 8;
+    final indices = Uint16List(_surfaceBatchSize * rings * slices * 6);
+    var face = 0;
+    for (var limb = 0; limb < _surfaceBatchSize; limb++) {
+      final base = limb * (rings + 1) * (slices + 1);
+      for (var ring = 0; ring < rings; ring++) {
+        for (var slice = 0; slice < slices; slice++) {
+          final here = base + ring * (slices + 1) + slice;
+          indices[face++] = here;
+          indices[face++] = here + 1;
+          indices[face++] = here + slices + 1;
+          indices[face++] = here + 1;
+          indices[face++] = here + slices + 2;
+          indices[face++] = here + slices + 1;
+        }
+      }
+    }
+    return indices;
+  })();
   // 截面方向固定，不在每帧的每个顶点上重复求三角函数。
   static final _surfaceProfile = List.generate(9, (slice) {
     final angle = -math.pi / 2 + math.pi * slice / 8;
@@ -363,10 +385,17 @@ class OrganicTreeStudyPainter extends CustomPainter {
     );
     // 沿每条枝干的方向铺设树皮，并由圆截面法向形成体积光照。
     // 每批最多 64×49×9 个顶点，低于 16 位索引上限，保持原枝干顺序。
-    for (var start = 0; start < frame.limbs.length; start += 64) {
+    for (
+      var start = 0;
+      start < frame.limbs.length;
+      start += _surfaceBatchSize
+    ) {
       _surface(
         canvas,
-        frame.limbs.sublist(start, math.min(start + 64, frame.limbs.length)),
+        frame.limbs.sublist(
+          start,
+          math.min(start + _surfaceBatchSize, frame.limbs.length),
+        ),
       );
     }
     canvas.drawPath(
@@ -433,11 +462,14 @@ class OrganicTreeStudyPainter extends CustomPainter {
     final points = Float32List(vertexCount * 2);
     final uv = Float32List(vertexCount * 2);
     final colors = Int32List(vertexCount);
-    final triangles = Uint16List(limbs.length * rings * slices * 6);
+    // 只有一个完整批次的索引表；尾批使用零拷贝视图，不随树龄积累缓存。
+    final triangles = Uint16List.sublistView(
+      _surfaceIndices,
+      0,
+      limbs.length * rings * slices * 6,
+    );
     var vertex = 0;
-    var face = 0;
     for (final limb in limbs) {
-      final base = vertex;
       for (var ring = 0; ring <= rings; ring++) {
         final section = limb.sections[ring];
         final normal = section.normal;
@@ -468,15 +500,6 @@ class OrganicTreeStudyPainter extends CustomPainter {
               ((245 * light).clamp(0, 255).round() << 8) |
               (220 * light).clamp(0, 255).round();
           vertex++;
-          if (ring < rings && slice < slices) {
-            final here = base + ring * (slices + 1) + slice;
-            triangles[face++] = here;
-            triangles[face++] = here + 1;
-            triangles[face++] = here + slices + 1;
-            triangles[face++] = here + 1;
-            triangles[face++] = here + slices + 2;
-            triangles[face++] = here + slices + 1;
-          }
         }
       }
     }
