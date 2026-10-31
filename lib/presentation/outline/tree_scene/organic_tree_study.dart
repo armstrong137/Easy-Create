@@ -175,9 +175,14 @@ class OrganicTreeFrame {
           branchMetric.length * birth,
         )!;
         final anchor = tangent.position;
-        final angle = -math.pi / 2 + side * (.25 + twigIndex * .19);
+        // 分枝沿母枝交错展开；固定相位只决定形态，不随树龄或浏览改变。
+        final phase = index * 2.17 + twigIndex * 1.43;
+        final angle =
+            math.atan2(tangent.vector.dy, tangent.vector.dx) +
+            (twigIndex.isEven ? -.72 : .63) +
+            .28 * math.sin(phase);
         final direction = Offset(math.cos(angle), math.sin(angle));
-        final length = 70 + twigIndex * 10.0;
+        final length = 95 + 35 * math.sin(phase + .8);
         final twig = _curve(
           'twig:$index:$twigIndex',
           () => Path()
@@ -216,10 +221,12 @@ class OrganicTreeFrame {
           final start = tangent.position;
           final angle =
               math.atan2(tangent.vector.dy, tangent.vector.dx) +
-              const [-1.25, .75, -.7, 1.2, 0.0][sprayIndex];
+              const [-1.25, .75, -.7, 1.2, 0.0][sprayIndex] +
+              .3 * math.sin(phase + sprayIndex * 1.71);
           final end =
               start +
-              Offset(math.cos(angle), math.sin(angle)) * (60 + sprayIndex * 8);
+              Offset(math.cos(angle), math.sin(angle)) *
+                  (65 + 25 * math.sin(phase * .7 + sprayIndex * 2.13));
           final spray = _curve(
             'spray:$index:$twigIndex:$sprayIndex',
             () => Path()
