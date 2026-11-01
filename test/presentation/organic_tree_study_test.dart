@@ -8,6 +8,14 @@ import 'package:novel_app/presentation/outline/tree_scene/organic_tree_study.dar
 import 'package:novel_app/presentation/outline/tree_scene/organic_tree_projection.dart';
 
 void main() {
+  test('高规模冠层挂点保持椭圆包络，角落不长成矩形叉阵列', () {
+    for (var index = 10; index < 1000; index++) {
+      final point = OrganicTreeFrame.chapterPoint(index);
+      final x = (point.dx - 500) / 380;
+      final y = (point.dy - 530) / 350;
+      expect(x * x + y * y, lessThanOrEqualTo(1.05), reason: '第$index章应留在圆润冠幅内');
+    }
+  });
   test('冠层末段自然收尖，真实挂点之前不削细或移动母枝', () {
     for (final count in [10.5, 10.8, 10.9, 11.0, 30.0]) {
       final frame = OrganicTreeFrame(1, chapterCount: count);
@@ -342,17 +350,19 @@ void main() {
         picture.dispose();
       }
       if (const bool.fromEnvironment('WRITE_TREE_STUDY')) {
-        final height = (size.height + OrganicTreeFrame.upperExtentFor(30)).ceil();
+        for (final count in [30.0, 100.0, 1000.0]) {
+        final height = (size.height + OrganicTreeFrame.upperExtentFor(count)).ceil();
         final recorder = ui.PictureRecorder();
-        OrganicTreeStudyPainter(1, bark, leaf, chapterCount: 30)
+        OrganicTreeStudyPainter(1, bark, leaf, chapterCount: count)
             .paint(Canvas(recorder), Size(size.width, height.toDouble()));
         final picture = recorder.endRecording();
         final image = await picture.toImage(width, height);
         final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-        await File('build/qa/main-tree-study/chapters_30.png')
+        await File('build/qa/main-tree-study/chapters_${count.round()}.png')
             .writeAsBytes(bytes!.buffer.asUint8List());
         image.dispose();
         picture.dispose();
+        }
       }
       bark.dispose();
       leaf.dispose();

@@ -339,7 +339,7 @@ class OrganicTreeFrame {
         );
       }
       _foliage(branch.spine, branchGrowth, 40000 + index * 100,
-          sparse: true, leafScale: math.min(1.0, branch.metric.length / 150));
+          sparse: true, leafScale: (branch.metric.length / 150).clamp(.3, 1.0));
     }
 
   }

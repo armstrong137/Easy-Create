@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-01 16:12:56　对应提交：559671e 之后的工作区状态
+> 生成时间：2026-11-01 18:29:08　对应提交：4945161 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,29 +12,29 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     202
-  Nodes:     5,430
-  Edges:     22,916
-  DB Size:   26.65 MB
+  Files:     206
+  Nodes:     5,466
+  Edges:     23,051
+  DB Size:   26.88 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,850
-  function        1,589
-  import          722
-  class           526
-  constant        350
-  file            194
-  variable        148
+  method          1,854
+  function        1,599
+  import          736
+  class           527
+  constant        352
+  file            198
+  variable        149
   enum_member     25
   type_alias      18
   enum            6
   namespace       2
 
 Files by Language:
-  dart            114
-  javascript      45
+  dart            115
+  javascript      48
   python          15
   kotlin          8
   xml             6
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (202 files):
+Project Structure (206 files):
 
 |-- .agents
 |   `-- skills
@@ -252,7 +252,7 @@ Project Structure (202 files):
 |   |   |-- illustrated_branch_hit_region_test.dart (dart, 5 symbols)
 |   |   |-- illustrated_tree_camera_layout_test.dart (dart, 5 symbols)
 |   |   |-- illustrated_tree_trunk_test.dart (dart, 12 symbols)
-|   |   |-- illustrated_tree_viewport_test.dart (dart, 22 symbols)
+|   |   |-- illustrated_tree_viewport_test.dart (dart, 24 symbols)
 |   |   |-- magic_carpet_test.dart (dart, 18 symbols)
 |   |   |-- orbiting_inspirations_test.dart (dart, 11 symbols)
 |   |   |-- organic_branch_test.dart (dart, 8 symbols)
@@ -292,9 +292,10 @@ Project Structure (202 files):
 |   `-- tree_scene
 |       |-- scripts
 |       |   |-- build.mjs (javascript, 10 symbols)
+|       |   |-- canvaskit-path-compat.test.mjs (javascript, 10 symbols)
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
-|       |   |-- check-illustrated-outline.mjs (javascript, 53 symbols)
+|       |   |-- check-illustrated-outline.mjs (javascript, 62 symbols)
 |       |   |-- check-organic-tree.mjs (javascript, 15 symbols)
 |       |   |-- check-startup.mjs (javascript, 23 symbols)
 |       |   |-- render-branch-study.mjs (javascript, 21 symbols)
@@ -328,9 +329,12 @@ Project Structure (202 files):
 |       |   |-- quality-manager.test.js (javascript, 4 symbols)
 |       |   |-- startup-diagnostics.test.js (javascript, 4 symbols)
 |       |   `-- tree-growth.test.js (javascript, 5 symbols)
-|       `-- organic_tree_preview.dart (dart, 12 symbols)
+|       |-- organic_tree_preview.dart (dart, 12 symbols)
+|       `-- seeded_outline_preview.dart (dart, 13 symbols)
 |-- web
-|   `-- drift_worker.js (javascript, 666 symbols)
+|   |-- canvaskit_path_compat.mjs (javascript, 2 symbols)
+|   |-- drift_worker.js (javascript, 666 symbols)
+|   `-- flutter_bootstrap.js (javascript, 1 symbols)
 |-- analysis_options.yaml (yaml, 0 symbols)
 `-- pubspec.yaml (yaml, 0 symbols)
 

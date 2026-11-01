@@ -30,6 +30,7 @@ class IllustratedTreeViewport extends StatefulWidget {
     this.chapterScale = 1,
     this.focusX,
     this.sceneTopInset = 0,
+    this.constrainToFrame = true,
   }) : assert(sceneHeight > 0);
 
   final double sceneHeight;
@@ -41,6 +42,8 @@ class IllustratedTreeViewport extends StatefulWidget {
   final double? focusX;
   // 新增顶部空间的场景像素；镜头补间保留稳定世界坐标。
   final double sceneTopInset;
+  // 阶段插画受图片边界限制；透明连续几何允许镜头居中，边缘实体牌面不渐隐。
+  final bool constrainToFrame;
 
   @override
   State<IllustratedTreeViewport> createState() =>
@@ -71,6 +74,7 @@ class _IllustratedTreeViewportState extends State<IllustratedTreeViewport> {
       final maxOffset = math.max(0.0, height * scale - constraints.maxHeight);
       final absoluteY = overview
           ? -(constraints.maxHeight - height * overviewScale) / 2
+          : !widget.constrainToFrame ? focusY * scale - constraints.maxHeight * .5
           : (focusY * scale - constraints.maxHeight * 0.5).clamp(
               0.0,
               maxOffset,
@@ -112,7 +116,7 @@ class _IllustratedTreeViewportState extends State<IllustratedTreeViewport> {
                           constraints.maxWidth / currentScale,
                           constraints.maxHeight / currentScale,
                         ),
-                        child: overview
+                        child: overview && widget.constrainToFrame
                             ? ShaderMask(
                                 blendMode: BlendMode.dstIn,
                                 shaderCallback: (bounds) => LinearGradient(

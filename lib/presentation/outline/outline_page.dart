@@ -709,6 +709,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                         _treeSceneController.useStaticFallback)
                       Positioned.fill(
                         child: IllustratedTreeViewport(
+                          constrainToFrame: !cameraMode,
                           sceneHeight: sceneHeight,
                           sceneTopInset: cameraMode ? (cameraLayout as OrganicTreeCameraLayout).sceneTopInset : 0,
                           sceneWidth: cameraMode ? cameraLayout.sceneWidth : null,

@@ -5,6 +5,39 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:novel_app/presentation/outline/tree_scene/illustrated_tree_viewport.dart';
 
 void main() {
+  testWidgets('透明几何冠顶牌面可居中命中，全景边缘仍保持不透明', (tester) async {
+    var taps = 0;
+    Future<void> show(bool overview) => tester.pumpWidget(MaterialApp(home: Center(
+      child: RepaintBoundary(key: const Key('透明窗口'), child: SizedBox(width: 300, height: 500,
+        child: IllustratedTreeViewport(sceneWidth: 600, sceneHeight: 1500,
+          focusX: 230, focusY: -15, overview: overview, constrainToFrame: false,
+          child: Stack(children: [Positioned(left: 200, top: 15, width: 60, height: 40,
+            child: GestureDetector(onTap: () => taps++, child: const ColoredBox(
+              key: Key('冠顶牌面'), color: Colors.green))),
+          ]),
+        ),
+      )),
+    )));
+    await show(false);
+    await tester.pumpAndSettle();
+    final window = tester.getRect(find.byKey(const Key('透明窗口')));
+    final badge = tester.getRect(find.byKey(const Key('冠顶牌面')));
+    expect((badge.center - window.topLeft - const Offset(150, 300)).distance, lessThan(.001));
+    await tester.tap(find.byKey(const Key('冠顶牌面')));
+    expect(taps, 1);
+    await show(true);
+    await tester.pumpAndSettle();
+    final boundary = tester.renderObject<RenderRepaintBoundary>(find.byKey(const Key('透明窗口')));
+    final center = boundary.globalToLocal(tester.getCenter(find.byKey(const Key('冠顶牌面'))));
+    await tester.runAsync(() async {
+      final image = await boundary.toImage();
+      final data = (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!;
+      final pixel = (center.dy.floor() * image.width + center.dx.floor()) * 4;
+      expect(data.getUint8(pixel + 3), 255, reason: '实际冠顶牌面不能被旧插画边缘渐隐削淡');
+      expect(data.getUint8(pixel + 1), 175);
+      image.dispose();
+    });
+  });
   testWidgets('可见区域与生长扩展及镜头补间中的真实屏幕变换一致', (tester) async {
     Rect? visible;
     Future<void> show(double inset, bool overview) => tester.pumpWidget(

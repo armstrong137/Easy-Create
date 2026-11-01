@@ -32,7 +32,15 @@ class OrganicCanopyBranch {
               mother.cell.height / 2,
             );
       final start = mother?.anchor ?? root;
-      final end = cell.center;
+      // 地址仍稳定；固定扰动打破等距叉阵列，椭圆映射避免冠顶长成矩形。
+      final jitter = next == 0 ? Offset.zero : Offset(
+        math.sin(next * 12.9898 + 1.7), math.sin(next * 7.233 + 4.1));
+      final point = cell.center + Offset(jitter.dx * cell.width * .28,
+          jitter.dy * cell.height * .28);
+      final u = (point.dx - 500) / 380;
+      final v = (point.dy - 530) / 350;
+      final end = Offset(500 + 380 * u * math.sqrt(1 - v * v / 2),
+          530 + 350 * v * math.sqrt(1 - u * u / 2));
       final delta = end - start;
       final lift = math.min(delta.distance * .16, 35.0);
       final spine = Path()

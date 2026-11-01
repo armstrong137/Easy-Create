@@ -4,6 +4,10 @@ import { resolve } from 'node:path';
 import { chromium } from 'playwright';
 
 const url = process.argv[2] ?? 'http://127.0.0.1:8780/';
+const seededCount = Number(process.argv.find(value => value.startsWith('--seeded-count='))?.split('=')[1] ?? 0);
+assert.ok([0, 100, 1000].includes(seededCount), '预置验收规模只支持100或1000章');
+assert.ok(!seededCount || new URL(url).searchParams.get('chapters') === String(seededCount),
+  '预置入口URL的chapters必须与验收规模相同');
 assert.ok(!process.argv.includes('--audit-touch') ||
   (process.argv.includes('--audit-reentry') && process.argv.includes('--audit-dense') && process.argv.includes('--audit-sections')),
   '--audit-touch 需要已有三十章、两节和重新进入流程');
@@ -26,7 +30,7 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({
   viewport: { width: 430, height: 932 },
-  hasTouch: process.argv.includes('--audit-touch'),
+  hasTouch: seededCount > 0 || process.argv.includes('--audit-touch'),
   recordVideo: videoRecording
     ? { dir: resolve(output, 'video'), size: { width: 430, height: 932 } }
     : undefined,
@@ -49,6 +53,59 @@ page.on('console', (message) => {
 });
 const captures = [];
 const sectionPointerChecks = [];
+const memorySamples = [];
+if (process.argv.includes('--memory-profile')) {
+  await page.exposeFunction('__recordTreeMemory', sample => memorySamples.push(sample));
+  await page.addInitScript(() => {
+    if (window !== window.top) return;
+    const nativeCounts = {};
+    let tracked = false;
+    function trackFactory(owner, method, name) {
+      if (!owner || typeof owner[method] !== 'function') return;
+      const original = owner[method];
+      const counts = nativeCounts[name] ??= { created: 0, deleted: 0 };
+      owner[method] = function(...args) {
+        const object = original.apply(this, args);
+        if (object && typeof object.delete === 'function') {
+          counts.created++;
+          const remove = object.delete;
+          object.delete = function(...deleteArgs) {
+            counts.deleted++;
+            return remove.apply(this, deleteArgs);
+          };
+        }
+        return object;
+      };
+    }
+    function trackConstructor(owner, name, label) {
+      const original = owner?.[name];
+      if (typeof original !== 'function') return;
+      const factory = { create: (...args) => Reflect.construct(original, args) };
+      trackFactory(factory, 'create', label);
+      owner[name] = new Proxy(original, { construct: (_, args) => factory.create(...args) });
+    }
+    setInterval(() => {
+      const kit = window.flutterCanvasKit;
+      if (kit && !tracked) {
+        tracked = true;
+        trackFactory(kit, 'MakeVertices', 'vertices');
+        trackFactory(kit.PictureRecorder?.prototype, 'finishRecordingAsPicture', 'pictures');
+        trackFactory(kit.Surface?.prototype, 'makeImageSnapshot', 'snapshots');
+        trackConstructor(kit, 'PathBuilder', 'pathBuilders');
+        trackFactory(kit.PathBuilder?.prototype, 'snapshot', 'pathSnapshots');
+        trackFactory(kit.Path, 'MakeFromOp', 'combinedPaths');
+        trackFactory(kit.Image?.prototype, 'makeShaderCubic', 'imageShaders');
+        trackFactory(kit.Image?.prototype, 'makeShaderOptions', 'imageShaders');
+        trackFactory(kit.ColorFilter, 'MakeMatrix', 'colorFilters');
+        trackFactory(kit.ParagraphBuilder?.prototype, 'build', 'paragraphs');
+      }
+      window.__recordTreeMemory({
+      timeMs: performance.now(), wasmBytes: window.flutterCanvasKit?.HEAPU8?.byteLength ?? null,
+      jsBytes: performance.memory?.usedJSHeapSize ?? null,
+      nativeCounts,
+    }); }, 1000);
+  });
+}
 async function auditSectionPointerHit(name, stage = 'initial') {
   phase = `小节实际指针命中：${name}`;
   const viewport = page.viewportSize();
@@ -61,6 +118,8 @@ async function auditSectionPointerHit(name, stage = 'initial') {
     y: hit.y + branchWidth / 1.5 * 468 / 1024 };
   assert.ok(clickPoint.x < viewport.width && clickPoint.y < viewport.height,
     '实际文字牌面必须留在屏幕内');
+  assert.ok(clickPoint.y >= 88 && clickPoint.y <= viewport.height - 72,
+    '实际小节文字必须避开顶部标题/魔毯及底部按钮区域');
   const beforeImage = `section-face-${stage}-${name}-${viewport.width}.png`;
   await page.screenshot({ path: resolve(output, beforeImage) });
   const style = await page.addStyleTag({ content: 'flt-semantics-host, flt-semantics-host * { pointer-events: none !important; }' });
@@ -95,7 +154,7 @@ async function auditChapterPointerHit(name) {
   assert.equal(await page.locator('input').inputValue(), name, '不能误击相邻章节');
   await page.getByText('取消', { exact: true }).click();
 }
-async function dragTree(x, { touch = false, reverse = false } = {}) {
+async function dragTree(x, { touch = false, reverse = false, steps = 16 } = {}) {
   // 与牌面点击相同，绕开仅用于查询的语义DOM，验证画布本身的手势命中。
   const style = await page.addStyleTag({ content: 'flt-semantics-host, flt-semantics-host * { pointer-events: none !important; }' });
   try {
@@ -116,7 +175,7 @@ async function dragTree(x, { touch = false, reverse = false } = {}) {
     } else {
       await page.mouse.move(x, from);
       await page.mouse.down();
-      await page.mouse.move(x, to, { steps: 16 });
+      await page.mouse.move(x, to, { steps });
       await page.mouse.up();
     }
   } finally {
@@ -152,6 +211,104 @@ async function startFrameSample() {
     requestAnimationFrame(sample);
   });
 }
+function chapterTitle(index) {
+  if (index === 0) return '引子';
+  if (index > 99) return `第${index}章`;
+  const digits = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  return '第' + (index < 10 ? '' : index < 20 ? '十' : digits[Math.floor(index / 10)] + '十') + digits[index % 10] + '章';
+}
+async function auditSeededOutline(count) {
+  phase = `预置${count}章真实大纲验收`;
+  async function enter() {
+    await page.getByText(`规模验收${count}`, { exact: true }).waitFor();
+    await page.waitForTimeout(6000);
+    await page.mouse.click(215, 440);
+    await page.getByRole('button', { name: '新增章节', exact: true }).waitFor();
+  }
+  await enter();
+  await page.getByRole('button', { name: chapterTitle(count - 1), exact: true }).waitFor();
+  const checkpointIndices = new Set([count - 1, count / 2 - 1, 351, 350, 95, 94, 31, 30, 15, 14, 11, 10, 9, 0].filter(index => index < count));
+  const visited = [];
+  async function checkpoint(index) {
+    await capture(`scale-${count}-chapter-${index}-430`);
+    await auditChapterPointerHit(chapterTitle(index));
+    if ([0, count / 2 - 1, count - 1].includes(index)) {
+      for (const name of ['第一节', '第二节']) await auditSectionPointerHit(name, `scale-${index}`);
+    }
+    await page.setViewportSize({ width: 910, height: 800 });
+    await capture(`scale-${count}-chapter-${index}-910`);
+    await auditChapterPointerHit(chapterTitle(index));
+    if ([0, count / 2 - 1, count - 1].includes(index)) {
+      for (const name of ['第一节', '第二节']) await auditSectionPointerHit(name, `scale-${index}`);
+    }
+    if (index === count - 1 || index === 0) {
+      await page.getByRole('button', { name: '全景', exact: true }).click();
+      await capture(`scale-${count}-overview-${index}-910`);
+      await page.getByRole('button', { name: '返回章节', exact: true }).click();
+    }
+    await page.setViewportSize({ width: 430, height: 932 });
+    await page.waitForTimeout(700);
+    visited.push(index);
+    // 每个层级边界落盘，长流程中断时保留已完成的实际章节证据。
+    await writeFile(resolve(output, 'scale-progress.json'), JSON.stringify({ count, visited, current: index }, null, 2));
+  }
+  await checkpoint(count - 1);
+  const stressCycles = Number(process.argv.find(value => value.startsWith('--stress-overview='))?.split('=')[1] ?? 0);
+  if (stressCycles) {
+    const gc = process.argv.includes('--diagnostic-gc') ? await page.context().newCDPSession(page) : null;
+    for (let cycle = 0; cycle < stressCycles; cycle++) {
+      phase = `诊断全景往返${cycle + 1}`;
+      await page.getByRole('button', { name: '全景', exact: true }).click();
+      await page.waitForTimeout(500);
+      await page.getByRole('button', { name: '返回章节', exact: true }).click();
+      await page.waitForTimeout(500);
+      assert.equal(errors.length, 0, '全景压力诊断出现运行错误');
+      if (gc && cycle % 10 === 9) await gc.send('HeapProfiler.collectGarbage');
+    }
+    if (gc) await gc.detach();
+    return { diagnosticOnly: true, forcedGc: process.argv.includes('--diagnostic-gc'), seededChapterCount: count, historicalChaptersChecked: 1,
+      checks: [`仅诊断${stressCycles}次全景往返，不代表完整高规模验收`] };
+  }
+  for (let index = count - 2; index >= 0; index--) {
+    phase = `高规模历史第${index}章`;
+    await dragTree(80, { steps: 4 });
+    await page.getByRole('button', { name: chapterTitle(index), exact: true }).waitFor();
+    assert.ok(await page.getByRole('button', { name: /^(引子|第.+章)$/ }).count() <= 2);
+    if (checkpointIndices.has(index)) await checkpoint(index);
+    else if (index % 25 === 0) await writeFile(resolve(output, 'scale-progress.json'),
+      JSON.stringify({ count, visited, current: index, latestMemory: memorySamples.at(-1) }, null, 2));
+  }
+  // 回到首章后创建新章，检验高规模数据库流与新增枝条，不依赖测试侧直接改焦点。
+  await startFrameSample();
+  await page.getByRole('button', { name: '新增章节', exact: true }).click();
+  await page.getByRole('button', { name: chapterTitle(count), exact: true }).waitFor();
+  await capture(`scale-${count}-new-chapter-430`);
+  await page.waitForFunction(() => window.__treeGrowthTiming);
+  await writeFile(resolve(output, 'scale-growth-timing.json'), JSON.stringify(await page.evaluate(() => window.__treeGrowthTiming), null, 2));
+  await auditChapterPointerHit(chapterTitle(count));
+  for (const name of ['第一节', '第二节']) {
+    await page.getByRole('button', { name: '新增小节', exact: true }).click();
+    await page.getByRole('button', { name, exact: true }).waitFor();
+    await page.waitForTimeout(1300);
+  }
+  await dragTree(80, { touch: true });
+  await page.getByRole('button', { name: chapterTitle(count - 1), exact: true }).waitFor();
+  await dragTree(80, { touch: true, reverse: true });
+  await page.getByRole('button', { name: chapterTitle(count), exact: true }).waitFor();
+  await page.waitForTimeout(700);
+  for (const name of ['第一节', '第二节']) await auditSectionPointerHit(name, 'touch');
+  await page.reload();
+  await page.locator('flt-semantics-placeholder, flt-semantics-host').first().waitFor({ state: 'attached' });
+  const placeholder = page.locator('flt-semantics-placeholder');
+  if (await placeholder.count()) await placeholder.evaluate(element => element.click());
+  await enter();
+  await page.getByRole('button', { name: chapterTitle(count), exact: true }).waitFor();
+  await capture(`scale-${count}-reentered-430`);
+  await auditChapterPointerHit(chapterTitle(count));
+  return { seededChapterCount: count, historicalChaptersChecked: count, checkpointIndices: visited,
+    checks: [`${count}章真实仓库及逐章历史`, '手机和宽屏层级边界实际牌面命中',
+      '末章、中段及根部两节实际点击', '高规模新增章及浏览器触摸往返', '刷新重入保留新增章'] };
+}
 try {
   // 独立临时浏览器上下文，只通过正式 UI 建数据，不触碰用户的小说。
   await page.goto(url);
@@ -161,6 +318,9 @@ try {
     await writeFile(resolve(output, 'main.dart.js.map'), await map.body());
   }
   await page.locator('flt-semantics-placeholder').evaluate((element) => element.click());
+  let scaleAudit;
+  if (seededCount) scaleAudit = await auditSeededOutline(seededCount);
+  else {
   await page.getByText('Create Something', { exact: true }).click({ timeout: 30000 });
   await page.locator('input').click();
   // 等待 Flutter 焦点桥接建立，否则首个真实按键可能落在旧编辑连接上。
@@ -457,6 +617,7 @@ try {
     await page.waitForTimeout(700);
     for (const name of ['第一节', '第二节']) await auditSectionPointerHit(name, 'touch');
   }
+  }
   const renderer = await page.evaluate(() => {
     const gl = document.createElement('canvas').getContext('webgl');
     if (!gl) return 'WebGL 不可用';
@@ -468,11 +629,13 @@ try {
     runId, url, renderer,
     videoRecording,
     runtimeResources: [...runtimeResources],
+    rendererCompatibility: await page.evaluate(() => ({ pathFillTypeCopyFixed: window.__easyCreatePathFillFix ?? false })),
     crossOriginIsolated: await page.evaluate(() => globalThis.crossOriginIsolated),
     graphicsRequest: process.argv.includes('--default-gpu') ? '浏览器默认' : '强制 SwiftShader',
     cpuProfiling: process.argv.includes('--cpu-profile'),
     allocationProfiling: process.argv.includes('--allocation-profile'),
-    checksPassed: ['创建十章和两节', '前十章语义窗口只有两章', '浏览器零错误',
+    ...(scaleAudit ? { scaleAudit } : {}),
+    checksPassed: scaleAudit ? scaleAudit.checks : ['创建十章和两节', '前十章语义窗口只有两章', '浏览器零错误',
       ...(process.argv.includes('--audit-sections') ? [`手机和宽屏小节${sectionPointerChecks.length}次真实指针命中正确页面`,
         '六节右侧历史滑动保持左侧章节窗口'] : []),
       ...(process.argv.includes('--audit-dense') ? ['三十章冠层聚焦与相邻历史章手机和宽屏实际牌面命中'] : []),
@@ -491,6 +654,9 @@ try {
   }, null, 2));
   throw error;
 } finally {
+  if (process.argv.includes('--memory-profile')) {
+    await writeFile(resolve(output, 'memory-profile.json'), JSON.stringify(memorySamples, null, 2));
+  }
   let closeTimeout;
   try {
     await Promise.race([
