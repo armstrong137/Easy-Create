@@ -4,6 +4,9 @@ import { resolve } from 'node:path';
 import { chromium } from 'playwright';
 
 const url = process.argv[2] ?? 'http://127.0.0.1:8780/';
+assert.ok(!process.argv.includes('--audit-touch') ||
+  (process.argv.includes('--audit-reentry') && process.argv.includes('--audit-dense') && process.argv.includes('--audit-sections')),
+  '--audit-touch 需要已有三十章、两节和重新进入流程');
 assert.ok(!process.argv.includes('--cpu-profile') || process.argv.includes('--audit-growth'),
   '--cpu-profile 需要同时启用 --audit-growth');
 assert.ok(!process.argv.includes('--allocation-profile') || process.argv.includes('--cpu-profile'),
@@ -23,6 +26,7 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({
   viewport: { width: 430, height: 932 },
+  hasTouch: process.argv.includes('--audit-touch'),
   recordVideo: videoRecording
     ? { dir: resolve(output, 'video'), size: { width: 430, height: 932 } }
     : undefined,
@@ -61,7 +65,8 @@ async function auditSectionPointerHit(name, stage = 'initial') {
   await page.screenshot({ path: resolve(output, beforeImage) });
   const style = await page.addStyleTag({ content: 'flt-semantics-host, flt-semantics-host * { pointer-events: none !important; }' });
   try {
-    await page.mouse.click(clickPoint.x, clickPoint.y);
+    if (stage === 'touch') await page.touchscreen.tap(clickPoint.x, clickPoint.y);
+    else await page.mouse.click(clickPoint.x, clickPoint.y);
   } finally {
     await style.evaluate(element => element.remove());
   }
@@ -90,14 +95,30 @@ async function auditChapterPointerHit(name) {
   assert.equal(await page.locator('input').inputValue(), name, '不能误击相邻章节');
   await page.getByText('取消', { exact: true }).click();
 }
-async function dragTree(x) {
+async function dragTree(x, { touch = false, reverse = false } = {}) {
   // 与牌面点击相同，绕开仅用于查询的语义DOM，验证画布本身的手势命中。
   const style = await page.addStyleTag({ content: 'flt-semantics-host, flt-semantics-host * { pointer-events: none !important; }' });
   try {
-    await page.mouse.move(x, 590);
-    await page.mouse.down();
-    await page.mouse.move(x, 780, { steps: 16 });
-    await page.mouse.up();
+    const from = reverse ? 780 : 590;
+    const to = reverse ? 590 : 780;
+    if (touch) {
+      const input = await page.context().newCDPSession(page);
+      try {
+        await input.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: from }] });
+        for (let step = 1; step <= 16; step++) {
+          await input.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: from + (to - from) * step / 16 }] });
+          await page.waitForTimeout(16);
+        }
+        await input.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      } finally {
+        await input.detach();
+      }
+    } else {
+      await page.mouse.move(x, from);
+      await page.mouse.down();
+      await page.mouse.move(x, to, { steps: 16 });
+      await page.mouse.up();
+    }
   } finally {
     await style.evaluate(element => element.remove());
   }
@@ -410,6 +431,32 @@ try {
     await page.getByRole('button', { name: '全景', exact: true }).click();
     await capture('dense-history-full-910');
   }
+  if (process.argv.includes('--audit-reentry')) {
+    phase = '刷新后重新进入已有小说';
+    await page.setViewportSize({ width: 430, height: 932 });
+    await page.reload();
+    const placeholder = page.locator('flt-semantics-placeholder');
+    await page.locator('flt-semantics-placeholder, flt-semantics-host').first().waitFor({ state: 'attached' });
+    if (await placeholder.count()) await placeholder.evaluate(element => element.click());
+    await page.getByText('Visual QA', { exact: true }).waitFor();
+    await page.waitForTimeout(6000);
+    await page.mouse.click(215, 440);
+    await page.getByRole('button', { name: '新增章节', exact: true }).waitFor();
+    const latest = process.argv.includes('--audit-dense') ? '第二十九章' : '第九章';
+    await page.getByRole('button', { name: latest, exact: true }).waitFor();
+    await capture('reentered-existing-430');
+    await auditChapterPointerHit(latest);
+  }
+  if (process.argv.includes('--audit-touch')) {
+    phase = '触摸历史与真实牌面命中';
+    await dragTree(80, { touch: true });
+    await page.getByRole('button', { name: '第二十八章', exact: true }).waitFor();
+    await capture('touch-previous-chapter-430');
+    await dragTree(80, { touch: true, reverse: true });
+    await page.getByRole('button', { name: '第二十九章', exact: true }).waitFor();
+    await page.waitForTimeout(700);
+    for (const name of ['第一节', '第二节']) await auditSectionPointerHit(name, 'touch');
+  }
   const renderer = await page.evaluate(() => {
     const gl = document.createElement('canvas').getContext('webgl');
     if (!gl) return 'WebGL 不可用';
@@ -429,7 +476,9 @@ try {
       ...(process.argv.includes('--audit-sections') ? [`手机和宽屏小节${sectionPointerChecks.length}次真实指针命中正确页面`,
         '六节右侧历史滑动保持左侧章节窗口'] : []),
       ...(process.argv.includes('--audit-dense') ? ['三十章冠层聚焦与相邻历史章手机和宽屏实际牌面命中'] : []),
-      ...(process.argv.includes('--audit-dense-history') ? ['三十章历史中段及根部手机与宽屏实际牌面命中'] : [])],
+      ...(process.argv.includes('--audit-dense-history') ? ['三十章历史中段及根部手机与宽屏实际牌面命中'] : []),
+      ...(process.argv.includes('--audit-reentry') ? ['刷新后重新进入已有小说与末章实际命中'] : []),
+      ...(process.argv.includes('--audit-touch') ? ['触摸事件往返历史与冠层两节实际牌面命中'] : [])],
     visualAcceptance: '待人工对照参考图', sectionPointerChecks, captures, errors,
   }, null, 2));
   console.log(JSON.stringify({ output, captures: captures.map(({ name }) => name), errors }));

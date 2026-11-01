@@ -81,7 +81,10 @@ void main() {
         );
         final lower = layout.branchRect(right: false, index: 0);
         final upper = layout.branchRect(right: false, index: 1);
-        expect(lower, previous.branchRect(right: false, index: 1));
+        final frame = OrganicTreeFrame(1, chapterCount: count.toDouble());
+        expect(layout.chapterScale, 1);
+        expect(layout.attachment(right: false, index: 0, frame: frame)!.point,
+            previous.attachment(right: false, index: 1, frame: frame)!.point);
         expect(
           (illustratedBranchHitRect(lower.size).shift(lower.topLeft).top -
             illustratedBranchHitRect(upper.size).shift(upper.topLeft).bottom) * layout.chapterScale,
@@ -90,10 +93,7 @@ void main() {
         final point = OrganicTreeFrame.trunkPoint(
           OrganicTreeFrame.chapterFraction(first, count),
         );
-        final root = Offset(
-          lower.left + lower.width * .88,
-          lower.top + lower.height * .7,
-        );
+        final root = layout.projection.project(layout.attachment(right: false, index: 0, frame: frame)!.point);
         expect(
           (root - layout.projection.project(point)).distance *
               layout.chapterScale,
@@ -131,6 +131,11 @@ void main() {
               final root = layout.attachment(right: right, index: index, frame: frame)!;
               expect(root.point, frame.chapterAnchor(chapter, count));
               expect(root.wood.contains(root.point), isTrue);
+              if (!right) {
+                final neck = Offset(rect.left + rect.width * .88, rect.top + rect.height * .7);
+                expect((neck - layout.projection.project(root.point)).distance, lessThan(1e-8),
+                    reason: '主干双章的牌面避让不能改变冠层单章位置');
+              }
               final left = size.width / 2 + (rect.left - layout.focusX) * layout.chapterScale;
               expect(left, greaterThanOrEqualTo(0));
               expect(left + rect.width * layout.chapterScale, lessThanOrEqualTo(size.width));

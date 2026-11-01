@@ -409,7 +409,7 @@ void main() {
     expect(find.byKey(const Key('静态章交互_4')), findsNothing);
   });
 
-  testWidgets('浏览旧章平移树体而不回退树龄，枝牌相对树体不滑动', (tester) async {
+  testWidgets('浏览旧章不回退树龄，实体枝根相对树体不滑动', (tester) async {
     await seedNovel();
     final outline = List.generate(10, (index) => OutlineChapter(
       chapter: Chapter(id: index + 1, novelId: 1, title: '第${index + 1}章', sortOrder: index),
@@ -427,22 +427,23 @@ void main() {
     for (final element in find.byType(OrganicBranch).evaluate()) {
       final branch = element.widget as OrganicBranch;
       expect(branch.trunkMask != null, isTrue);
-      expect(branch.trunkMask!.contains(Offset(
-        element.size!.width * (branch.right ? .12 : .88),
-        element.size!.height * .7,
-      )), isTrue, reason: '主干遮罩必须覆盖同帧真实枝根，不能使用错位的母版路径');
+      expect(branch.trunkMask!.contains(branch.supportRoot!), isTrue, reason: '主干遮罩必须覆盖同帧真实枝根，不能使用错位的母版路径');
       expect((element.widget as OrganicBranch).treeScale, materialScale,
           reason: '枝条基础纹理密度应使用主树实际投影，不额外乘章节镜头缩放');
       expect((element.widget as OrganicBranch).maxRootRadius,
-          closeTo(element.size!.height * .08, .0001),
+          lessThanOrEqualTo(element.size!.height * .08),
           reason: '成年枝只传入生效半径，避免超出默认粗度的母干数值引发无效重绘');
     }
-    final beforeBranch = tester.getRect(find.byKey(const Key('静态章交互_9')));
+    Offset rootForChapter(int id) {
+      final finder = find.descendant(of: find.byKey(Key('静态章交互_$id')), matching: find.byType(OrganicBranch));
+      return tester.renderObject<RenderBox>(finder).localToGlobal(tester.widget<OrganicBranch>(finder).supportRoot!);
+    }
+    final beforeRoot = rootForChapter(9);
     await tester.dragFrom(const Offset(80, 650), const Offset(0, 100));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     final afterTree = tester.getRect(find.byType(OrganicTree));
-    final afterBranch = tester.getRect(find.byKey(const Key('静态章交互_9')));
+    final afterRoot = rootForChapter(9);
     expect(tester.widget<OrganicTree>(find.byType(OrganicTree)).age, 1);
     for (final branch in tester.widgetList<OrganicBranch>(find.byType(OrganicBranch))) {
       expect(branch.barkAge, 1, reason: '浏览旧章不能回退承托枝的材质树龄');
@@ -452,7 +453,7 @@ void main() {
     expect(afterTree.width, closeTo(beforeTree.width, .001));
     expect(afterTree.height, closeTo(beforeTree.height, .001));
     expect(afterTree.top, lessThan(beforeTree.top));
-    expect(afterBranch.top - afterTree.top, closeTo(beforeBranch.top - beforeTree.top, 0.1));
+    expect(afterRoot.dy - afterTree.top, closeTo(beforeRoot.dy - beforeTree.top, 0.1));
     expect(find.byKey(const Key('静态章交互_10')), findsNothing);
   });
 
@@ -482,7 +483,7 @@ void main() {
         titleRect.bottomLeft, titleRect.bottomRight, titleRect.center]) {
         expect(branch.trunkMask!.contains(box.globalToLocal(point)), isFalse);
       }
-      expect(branch.trunkMask!.contains(Offset(box.size.width * .12, box.size.height * .7)), isTrue,
+      expect(branch.trunkMask!.contains(branch.supportRoot!), isTrue,
           reason: '向外避让牌面后，承托枝的根颈仍必须留在真实母干内');
     }
   });

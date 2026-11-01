@@ -6,7 +6,6 @@ import 'organic_tree_projection.dart';
 import 'organic_tree_study.dart';
 import 'organic_branch.dart';
 import 'organic_tree_canopy.dart';
-import 'illustrated_tree_scene.dart';
 
 /// 连续主树的镜头使用真实弧长锚点，复用统一场景与全景浏览机制。
 class OrganicTreeCameraLayout extends IllustratedTreeCameraLayout {
@@ -65,18 +64,7 @@ class OrganicTreeCameraLayout extends IllustratedTreeCameraLayout {
             2;
 
   @override
-  double get chapterScale => inCanopy
-      ? _canopyScale
-      : chapterCount <= 1
-      ? 1
-      : math.max(
-          1.0,
-          (math.min(viewport.width * .5, 220) /
-                      1.5 *
-                      illustratedBranchHitHeightRatio +
-                  12) /
-              (OrganicTreeFrame.chapterSpacing * projection.scale),
-        );
+  double get chapterScale => inCanopy ? _canopyScale : 1;
 
   double get _canopyScale {
     var radius = OrganicBranchPainter.radiusAt(.72, 1, 92, .025);
@@ -140,6 +128,9 @@ class OrganicTreeCameraLayout extends IllustratedTreeCameraLayout {
     );
     if (inCanopy && right) {
       anchor += Offset(0, (index - .5) * viewport.height * .22 / chapterScale);
+    } else if (!inCanopy && !right && chapterCount > 1) {
+      // 牌面为阅读让位，枝根仍由同帧母枝坐标单独连接，不放大粗主干。
+      anchor = Offset(anchor.dx, _center.dy + (.5 - index) * viewport.height * .22);
     }
     return Rect.fromLTWH(
       anchor.dx - width * (right ? .12 : .88),

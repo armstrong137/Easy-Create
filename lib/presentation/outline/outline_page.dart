@@ -648,7 +648,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                   treeScale: layout.projection.scale,
                   barkAge: frame.age,
                   bark: bark,
-                  treeAnchor: layout.inCanopy ? attachment.point : null,
+                  treeAnchor: attachment.point,
                   trunkMask: attachment.wood
                     .transform(Matrix4.diagonal3Values(layout.projection.scale,
                       layout.projection.scale, 1).storage)

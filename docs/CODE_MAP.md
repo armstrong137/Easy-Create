@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-01 12:25:57　对应提交：3f86ad9 之后的工作区状态
+> 生成时间：2026-11-01 12:39:14　对应提交：87841df 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,18 +13,18 @@ Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
   Files:     202
-  Nodes:     5,428
-  Edges:     22,892
-  DB Size:   26.57 MB
+  Nodes:     5,430
+  Edges:     22,906
+  DB Size:   26.63 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,850
-  function        1,588
-  import          723
+  function        1,589
+  import          722
   class           526
-  constant        348
+  constant        350
   file            194
   variable        148
   enum_member     25
@@ -182,7 +182,7 @@ Project Structure (202 files):
 |   |   |   |   |-- illustrated_tree_viewport.dart (dart, 10 symbols)
 |   |   |   |   |-- organic_bark.dart (dart, 4 symbols)
 |   |   |   |   |-- organic_branch.dart (dart, 23 symbols)
-|   |   |   |   |-- organic_tree_camera_layout.dart (dart, 27 symbols)
+|   |   |   |   |-- organic_tree_camera_layout.dart (dart, 26 symbols)
 |   |   |   |   |-- organic_tree_canopy.dart (dart, 11 symbols)
 |   |   |   |   |-- organic_tree_projection.dart (dart, 8 symbols)
 |   |   |   |   |-- organic_tree_study.dart (dart, 48 symbols)
@@ -262,7 +262,7 @@ Project Structure (202 files):
 |   |   |-- organic_tree_study_test.dart (dart, 14 symbols)
 |   |   |-- organic_tree_test.dart (dart, 27 symbols)
 |   |   |-- outline_controller_test.dart (dart, 10 symbols)
-|   |   |-- outline_page_test.dart (dart, 38 symbols)
+|   |   |-- outline_page_test.dart (dart, 40 symbols)
 |   |   |-- planet_scene_touch_config_test.dart (dart, 8 symbols)
 |   |   |-- quick_capture_test.dart (dart, 16 symbols)
 |   |   |-- realtime_tree_single_path_test.dart (dart, 4 symbols)
@@ -294,7 +294,7 @@ Project Structure (202 files):
 |       |   |-- build.mjs (javascript, 10 symbols)
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
-|       |   |-- check-illustrated-outline.mjs (javascript, 51 symbols)
+|       |   |-- check-illustrated-outline.mjs (javascript, 53 symbols)
 |       |   |-- check-organic-tree.mjs (javascript, 15 symbols)
 |       |   |-- check-startup.mjs (javascript, 23 symbols)
 |       |   |-- render-branch-study.mjs (javascript, 21 symbols)
