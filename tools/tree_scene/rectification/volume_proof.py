@@ -9,7 +9,9 @@ from mathutils import Vector
 
 ROOT = Path(__file__).resolve().parents[3]
 BAKED = '--baked' in sys.argv
-OUT = ROOT / ("build/qa/volume-proof-baked" if BAKED else "build/qa/volume-proof")
+COMPACT = '--compact' in sys.argv
+OUT = ROOT / ("build/qa/volume-proof-compact" if COMPACT else
+              "build/qa/volume-proof-baked" if BAKED else "build/qa/volume-proof")
 OUT.mkdir(parents=True, exist_ok=True)
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
@@ -61,6 +63,13 @@ sub = control.modifiers.new("圆润截面", "SUBSURF")
 sub.levels = 1
 sub.render_levels = 1
 bpy.context.view_layer.update()
+reference_mesh = None
+if COMPACT:
+    reference_mesh = bpy.data.meshes.new_from_object(
+        control.evaluated_get(bpy.context.evaluated_depsgraph_get()))
+    simplify = control.modifiers.new("二维验证资产简化", "DECIMATE")
+    simplify.ratio = .15
+    bpy.context.view_layer.update()
 evaluated = control.evaluated_get(bpy.context.evaluated_depsgraph_get())
 surface = bpy.data.meshes.new_from_object(evaluated)
 body = bpy.data.objects.new("连通木质表面", surface)
@@ -71,6 +80,20 @@ for face in surface.polygons:
     face.use_smooth = True
 rest = [v.co.copy() for v in surface.vertices]
 rest_nodes = [Vector(p) for p in nodes]
+deviation = None
+if reference_mesh:
+    from mathutils.bvhtree import BVHTree
+    high = [v.co.copy() for v in reference_mesh.vertices]
+    high_bvh = BVHTree.FromPolygons(high, [list(p.vertices) for p in reference_mesh.polygons])
+    low_bvh = BVHTree.FromPolygons(rest, [list(p.vertices) for p in surface.polygons])
+    distances = [high_bvh.find_nearest(p)[3] for p in rest]
+    distances += [low_bvh.find_nearest(p)[3] for p in high]
+    height = max(p.z for p in high)-min(p.z for p in high)
+    deviation = {"ratio": .15, "reference_vertices": len(high),
+                 "max_sampled_surface_distance": max(distances),
+                 "relative_to_height": max(distances)/height,
+                 "method": "两侧顶点到对侧表面的最近距离，不是严格连续Hausdorff上界"}
+    bpy.data.meshes.remove(reference_mesh)
 
 def nearest(p, a, b):
     tangent = b - a
@@ -224,6 +247,7 @@ report = {
     "components": components,
     "uv": "成熟拓扑固定UV，生长随顶点；分叉图表接缝仍需视觉检查",
     "baked_material": BAKED,
+    "simplification": deviation,
     "deformation": "同一连通网格空间权重形变，非阶段整图、非整体缩放",
     "production_integrated": False,
 }
@@ -233,6 +257,12 @@ if BAKED:
     report['uv'] = '连续沿枝投影混合烘焙至固定2048图集；未凭烘焙完成宣称视觉通过'
 if not report['connected'] or report['non_manifold_edges']:
     raise RuntimeError(json.dumps(report))
+if '--export' in sys.argv:
+    if not BAKED:
+        raise RuntimeError('二维导出必须使用--baked固定图集')
+    from export_volume_mesh import export_mesh
+    report['mesh_export'] = export_mesh(surface, rest_nodes, edges, bindings,
+                                        camera, target, OUT, deform)
 for name, age in [("young", 0), ("middle", .5), ("mature", 1)]:
     deform(age)
     scene.render.filepath = str(OUT / f"{name}.png")

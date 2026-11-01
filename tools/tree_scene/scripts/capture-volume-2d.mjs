@@ -1,0 +1,100 @@
+import { chromium } from 'playwright';
+import { createServer } from 'node:http';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
+import { dirname, resolve, relative, extname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
+
+// 独立构建与实验资产分别提供；不覆盖build/web，不打开小说数据库。
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../..');
+const compact=process.argv.includes('--compact');
+const web=resolve(root,'build/volume-web'), proof=resolve(root,compact?'build/qa/volume-proof-compact':'build/qa/volume-proof-baked');
+const output=resolve(root,compact?'build/qa/volume-2d-compact':'build/qa/volume-2d',new Date().toISOString().replaceAll(':','-'));
+await mkdir(output,{recursive:true});
+const mime={'.js':'text/javascript','.mjs':'text/javascript','.html':'text/html',
+  '.json':'application/json','.wasm':'application/wasm','.png':'image/png','.css':'text/css'};
+const server=createServer(async(req,res)=>{
+  const path=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
+  const base=path.startsWith('/proof/')?proof:web;
+  const suffix=path.startsWith('/proof/')?path.slice(6):(path==='/'?'/index.html':path);
+  const file=resolve(base,'.'+suffix);
+  if(relative(base,file).startsWith('..')){res.writeHead(403);res.end();return;}
+  try{const data=await readFile(file);res.writeHead(200,{'Content-Type':mime[extname(file)]??'application/octet-stream','Cache-Control':'no-store'});res.end(data);}
+  catch{res.writeHead(404);res.end('not found');}
+});
+await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
+const context=await browser.newContext({viewport:{width:900,height:1280},deviceScaleFactor:1,
+  recordVideo:{dir:resolve(output,'video'),size:{width:900,height:1280}}});
+const errors=[];
+const page=await context.newPage();
+page.on('pageerror',e=>errors.push(e.message));
+page.on('console',message=>{if(message.type()==='error')errors.push(message.text());});
+try{
+  await page.goto(`http://127.0.0.1:${server.address().port}/`);
+  await page.waitForFunction(()=>window.volumeProofMetrics,{},{timeout:60000});
+  const startup=await page.evaluate(()=>window.volumeProofMetrics);
+  if(startup.error)throw Error(startup.error);
+  const placeholder=page.locator('flt-semantics-placeholder');
+  if(await placeholder.count())await placeholder.evaluate(el=>el.click());
+  await page.waitForTimeout(4500);
+  const states=[];
+  for(const [title,age,name] of [['较细状态',0,'young'],['中间状态',.5,'middle'],['完整片段',1,'mature']]){
+    await page.getByRole('button',{name:title,exact:true}).click();
+    await page.waitForFunction(age=>window.volumeProofMetrics.age===age,age);
+    await page.waitForTimeout(300);
+    const metrics=await page.evaluate(()=>window.volumeProofMetrics);
+    if(metrics.referenceError>1e-5)throw Error(`跨渲染器形变不一致：${JSON.stringify(metrics)}`);
+    states.push(metrics);
+    await page.screenshot({path:resolve(output,`${name}.png`)});
+  }
+  await page.setViewportSize({width:430,height:932});
+  await page.waitForTimeout(600);
+  await page.screenshot({path:resolve(output,'phone.png')});
+  await page.setViewportSize({width:900,height:1280});
+  await page.evaluate(()=>{
+    window.volumeFrames=[];window.volumeObserved=[];let previous,lastAge;
+    const end=performance.now()+12000;
+    function sample(now){
+      if(previous!==undefined)window.volumeFrames.push(now-previous);previous=now;
+      const paint=window.volumeProofPaint, geometry=window.volumeProofMetrics;
+      if(paint && paint.age!==lastAge){
+        window.volumeObserved.push({...paint,computeMs:geometry.age===paint.age?geometry.computeMs:null});
+        lastAge=paint.age;
+      }
+      if(now<end)requestAnimationFrame(sample);
+    }
+    requestAnimationFrame(sample);
+  });
+  await page.getByRole('button',{name:'连续形变',exact:true}).click();
+  await page.waitForFunction(()=>window.volumeProofMetrics.age<.1);
+  await page.waitForFunction(()=>window.volumeProofMetrics.age===1,{},{timeout:30000});
+  await page.waitForTimeout(2200);
+  const intervals=await page.evaluate(()=>window.volumeFrames);
+  const observed=(await page.evaluate(()=>window.volumeObserved)).filter(frame=>frame.age>0&&frame.age<1);
+  function summary(values){
+    const sorted=values.filter(value=>typeof value==='number').sort((a,b)=>a-b);
+    return {count:sorted.length,p95Ms:sorted[Math.floor(sorted.length*.95)],worstMs:sorted.at(-1)};
+  }
+  intervals.sort((a,b)=>a-b);
+  const result={states,assetBytes:JSON.parse(await readFile(resolve(proof,'mesh.json'),'utf8')).byteLength,
+    frameSample:{count:intervals.length,p95Ms:intervals[Math.floor(intervals.length*.95)],worstMs:intervals.at(-1)},
+    cpuGeometry:summary(observed.map(frame=>frame.computeMs)),cpuPaintRecording:summary(observed.map(frame=>frame.recordMs)),
+    timingScope:'JS RAF探针不是绘制帧率；Dart指标只含几何/排序和绘图记录CPU，不含GPU完成时间',
+    errors,visualAcceptance:'待人工检查，不以坐标校验代替视觉或真机验收'};
+  const hash=async path=>createHash('sha256').update(await readFile(path)).digest('hex');
+  result.provenance={
+    dartSource:await hash(resolve(root,'tools/tree_scene/volume_mesh_preview.dart')),
+    mesh:await hash(resolve(proof,'mesh.bin')),metadata:await hash(resolve(proof,'mesh.json')),
+    atlas:await hash(resolve(proof,'baked-bark.png')),
+    generator:JSON.parse(await readFile(resolve(proof,'result.json'),'utf8')).script_sha256,
+    atlasPngBytes:(await readFile(resolve(proof,'baked-bark.png'))).length,
+  };
+  await writeFile(resolve(output,'result.json'),JSON.stringify(result,null,2));
+  if(errors.length)throw Error(JSON.stringify(errors));
+  console.log(output);
+}catch(error){
+  await page.screenshot({path:resolve(output,'failure.png')}).catch(()=>{});
+  await writeFile(resolve(output,'failure.json'),JSON.stringify({error:String(error),errors},null,2));
+  throw error;
+}finally{await context.close();await browser.close();await new Promise(resolve=>server.close(resolve));}

@@ -1,0 +1,40 @@
+{
+  "script_sha256": "89555f95854b2a284aeeffa2ed526443a2e12023efd844a0ab7ecd872b753ced",
+  "vertices": 5973,
+  "polygons": 10552,
+  "connected": true,
+  "non_manifold_edges": 0,
+  "components": [
+    {
+      "vertices": 5973,
+      "min": [
+        -1.617149829864502,
+        -1.0354524850845337,
+        -0.09721384942531586
+      ],
+      "max": [
+        1.4401838779449463,
+        0.9422586560249329,
+        3.8180859088897705
+      ]
+    }
+  ],
+  "uv": "连续沿枝投影混合烘焙至固定2048图集；未凭烘焙完成宣称视觉通过",
+  "baked_material": true,
+  "simplification": {
+    "ratio": 0.15,
+    "reference_vertices": 39810,
+    "max_sampled_surface_distance": 0.0028584047686308622,
+    "relative_to_height": 0.0007300803821542269,
+    "method": "两侧顶点到对侧表面的最近距离，不是严格连续Hausdorff上界"
+  },
+  "deformation": "同一连通网格空间权重形变，非阶段整图、非整体缩放",
+  "production_integrated": false,
+  "material_script_sha256": "34f11082e8e057bc413fb68fdb3b8e4cb9488075288737b4bcb05c22610ff632",
+  "mesh_export": {
+    "bytes": 931644,
+    "vertices": 5973,
+    "triangles": 11942,
+    "referenceSamples": 9
+  }
+}
