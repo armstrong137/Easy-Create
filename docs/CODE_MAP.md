@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-01 19:25:46　对应提交：8e5abea 之后的工作区状态
+> 生成时间：2026-11-01 19:35:37　对应提交：63085ed 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     209
-  Nodes:     5,539
-  Edges:     23,248
-  DB Size:   27.18 MB
+  Files:     210
+  Nodes:     5,600
+  Edges:     23,318
+  DB Size:   27.25 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,854
-  function        1,614
-  import          744
+  function        1,618
+  import          750
   class           527
   constant        388
-  file            201
-  variable        160
+  variable        210
+  file            202
   enum_member     25
   type_alias      18
   enum            6
@@ -35,7 +35,7 @@ Nodes by Kind:
 Files by Language:
   dart            115
   javascript      50
-  python          16
+  python          17
   kotlin          8
   xml             6
   properties      4
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (209 files):
+Project Structure (210 files):
 
 |-- .agents
 |   `-- skills
@@ -292,7 +292,8 @@ Project Structure (209 files):
 |   `-- tree_scene
 |       |-- rectification
 |       |   |-- inspect_source.py (python, 9 symbols)
-|       |   `-- scene.mjs (javascript, 42 symbols)
+|       |   |-- scene.mjs (javascript, 42 symbols)
+|       |   `-- volume_proof.py (python, 61 symbols)
 |       |-- scripts
 |       |   |-- build.mjs (javascript, 10 symbols)
 |       |   |-- canvaskit-path-compat.test.mjs (javascript, 10 symbols)
