@@ -1,0 +1,26 @@
+{
+  "date": "2026-11-01",
+  "sourceCommit": "f56021e80db94cd5ee118ceea2feac9b6cda442a",
+  "frozenAt": "2c08bff61f02bbbeb911e27920e3c556f8d3fd96",
+  "candidateStash": "71e895a234b4e8c20b9707441289d5f4867c75ed",
+  "baselineRun": "build/qa/default-continuous-tree/2026-11-01T10-36-19.722Z",
+  "candidateStatus": "未发布；原生样图不是正式页面验收",
+  "files": [
+    {
+      "sha256": "545798CD393B505616D9012F79914127235173C555CB8D1D0714041593C91686",
+      "name": "未发布候选-十章原生样图.png"
+    },
+    {
+      "sha256": "FFFA84E398184BE611CC035EA7E9F03B0CE554B57E9BA6E5C775616B40454AFF",
+      "name": "正式版-30章全景.png"
+    },
+    {
+      "sha256": "4C5BA093EC0A8A3BFA2E421E69DF21F5586AFB9FFA839E717DCD32CC74032DA3",
+      "name": "正式版-根部近景.png"
+    },
+    {
+      "sha256": "44CEBB55E996FE5E899DCEFDEF76ECB448015C78EB810A83AFD8EDD7B40AB3FB",
+      "name": "正式版-空书.png"
+    }
+  ]
+}
