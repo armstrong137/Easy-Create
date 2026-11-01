@@ -1,0 +1,27 @@
+{
+  "script_sha256": "4b45916780d8f117776fa9b56cec9c3587682f19275d00c519b7d5a479a95399",
+  "vertices": 39810,
+  "polygons": 39808,
+  "connected": true,
+  "non_manifold_edges": 0,
+  "components": [
+    {
+      "vertices": 39810,
+      "min": [
+        -1.6169428825378418,
+        -1.0363805294036865,
+        -0.09674236178398132
+      ],
+      "max": [
+        1.4410561323165894,
+        0.9427998661994934,
+        3.8184494972229004
+      ]
+    }
+  ],
+  "uv": "连续沿枝投影混合烘焙至固定2048图集；未凭烘焙完成宣称视觉通过",
+  "baked_material": true,
+  "deformation": "同一连通网格空间权重形变，非阶段整图、非整体缩放",
+  "production_integrated": false,
+  "material_script_sha256": "34f11082e8e057bc413fb68fdb3b8e4cb9488075288737b4bcb05c22610ff632"
+}

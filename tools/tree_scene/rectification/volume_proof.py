@@ -2,12 +2,14 @@
 import hashlib
 import json
 import math
+import sys
 from pathlib import Path
 import bpy
 from mathutils import Vector
 
 ROOT = Path(__file__).resolve().parents[3]
-OUT = ROOT / "build/qa/volume-proof"
+BAKED = '--baked' in sys.argv
+OUT = ROOT / ("build/qa/volume-proof-baked" if BAKED else "build/qa/volume-proof")
 OUT.mkdir(parents=True, exist_ok=True)
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
@@ -118,6 +120,10 @@ bump.inputs["Distance"].default_value = .045
 tree.links.new(image.outputs["Color"], bump.inputs["Height"])
 tree.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
 surface.materials.append(material)
+if BAKED:
+    sys.path.insert(0, str(Path(__file__).parent))
+    from bake_volume_material import bake_material
+    bake_material(body, rest_nodes, edges, nearest, image.image, OUT)
 
 def smooth(t):
     t = max(0, min(1, t))
@@ -217,9 +223,14 @@ report = {
     "non_manifold_edges": sum(count != 2 for count in usage.values()),
     "components": components,
     "uv": "成熟拓扑固定UV，生长随顶点；分叉图表接缝仍需视觉检查",
+    "baked_material": BAKED,
     "deformation": "同一连通网格空间权重形变，非阶段整图、非整体缩放",
     "production_integrated": False,
 }
+if BAKED:
+    report['material_script_sha256'] = hashlib.sha256(
+        (Path(__file__).parent / 'bake_volume_material.py').read_bytes()).hexdigest()
+    report['uv'] = '连续沿枝投影混合烘焙至固定2048图集；未凭烘焙完成宣称视觉通过'
 if not report['connected'] or report['non_manifold_edges']:
     raise RuntimeError(json.dumps(report))
 for name, age in [("young", 0), ("middle", .5), ("mature", 1)]:
