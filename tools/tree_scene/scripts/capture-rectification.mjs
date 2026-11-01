@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 
 // 只提供仓库内的本地资源；样件不连接正式应用或小说数据库。
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../..');
-const output=resolve(root,'build/qa/rectification-round-1',new Date().toISOString().replaceAll(':','-'));
+const output=resolve(root,'build/qa/rectification-round-2',new Date().toISOString().replaceAll(':','-'));
 await mkdir(output,{recursive:true});
 const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
 const context=await browser.newContext({viewport:{width:900,height:1280},deviceScaleFactor:1});

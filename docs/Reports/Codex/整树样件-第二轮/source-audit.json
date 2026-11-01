@@ -1,0 +1,150 @@
+{
+  "source": "C:\\Users\\Armstrong\\Desktop\\Easy Create\\assets\\source\\magic_tree\\blender\\magic_tree_master.blend",
+  "mesh_count": 6,
+  "meshes": [
+    {
+      "name": "CrownGuide",
+      "vertices": 7800,
+      "polygons": 2600,
+      "uv_layers": [],
+      "shape_keys": [],
+      "materials": []
+    },
+    {
+      "name": "LeafPrototype",
+      "vertices": 4,
+      "polygons": 1,
+      "uv_layers": [
+        "UVMap"
+      ],
+      "shape_keys": [],
+      "materials": [
+        "LeafBroadPBR"
+      ]
+    },
+    {
+      "name": "MossPatches",
+      "vertices": 112,
+      "polygons": 28,
+      "uv_layers": [],
+      "shape_keys": [],
+      "materials": [
+        "MossPBR"
+      ]
+    },
+    {
+      "name": "Roots",
+      "vertices": 1452,
+      "polygons": 1320,
+      "uv_layers": [
+        "UVMap"
+      ],
+      "shape_keys": [
+        "Basis",
+        "age_00",
+        "age_25",
+        "age_48",
+        "age_72",
+        "age_100"
+      ],
+      "materials": [
+        "BarkOldPBR.001"
+      ]
+    },
+    {
+      "name": "Soil",
+      "vertices": 897,
+      "polygons": 896,
+      "uv_layers": [
+        "UVMap"
+      ],
+      "shape_keys": [],
+      "materials": [
+        "GroundPBR"
+      ]
+    },
+    {
+      "name": "TrunkSkinned",
+      "vertices": 43137,
+      "polygons": 42310,
+      "uv_layers": [
+        "UVMap"
+      ],
+      "shape_keys": [
+        "Basis",
+        "age_00",
+        "age_25",
+        "age_48",
+        "age_72",
+        "age_100"
+      ],
+      "materials": [
+        "BarkOldPBR",
+        "BarkOldPBR.001"
+      ]
+    }
+  ],
+  "materials": [
+    {
+      "name": "BarkOldPBR",
+      "image_nodes": [
+        {
+          "node": "Image Texture",
+          "image": "island_tree_01_diff.png"
+        },
+        {
+          "node": "Image Texture.001",
+          "image": "island_tree_01_rough.png"
+        },
+        {
+          "node": "Image Texture.002",
+          "image": "island_tree_01_nor_gl.png"
+        }
+      ]
+    },
+    {
+      "name": "BarkOldPBR.001",
+      "image_nodes": [
+        {
+          "node": "Image Texture.001",
+          "image": "island_tree_01_branches_rough.png"
+        },
+        {
+          "node": "Image Texture.002",
+          "image": "island_tree_01_branches_nor_gl.png"
+        },
+        {
+          "node": "Image Texture",
+          "image": "island_tree_01_branches_diff.png"
+        }
+      ]
+    },
+    {
+      "name": "GroundPBR",
+      "image_nodes": [
+        {
+          "node": "Image Texture",
+          "image": "soil_basecolor_source.png"
+        }
+      ]
+    },
+    {
+      "name": "LeafBroadPBR",
+      "image_nodes": [
+        {
+          "node": "Image Texture",
+          "image": "leaf_atlas_rgba.png"
+        }
+      ]
+    },
+    {
+      "name": "MagicVeinPBR",
+      "image_nodes": []
+    },
+    {
+      "name": "MossPBR",
+      "image_nodes": []
+    }
+  ],
+  "note": "只读结构检查，不保存源模型，不证明模型视觉质量或可直接复用"
+}

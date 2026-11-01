@@ -44,7 +44,7 @@ const roots = Array.from({length:11},(_,i)=>{
   const side=i%2 ? 1:-1;
   const reach=70+noise(i+10)*315;
   const end=point(580+side*reach,1440+noise(i+88)*75);
-  return {spine:curve(at(trunk,.09),point(568+side*20,1390),
+  return {spine:curve(at(trunk,0),point(580+side*35,1470),
     point(end.x-side*reach*.22,end.y-6),end),seed:i};
 });
 const bark = new Image();
@@ -69,15 +69,28 @@ function wood(c,size,growth,seed,root=false) {
   for(const p of upper.slice(1))shape.lineTo(p.x,p.y);
   for(const p of lower.reverse())shape.lineTo(p.x,p.y);shape.closePath();
   ctx.save();ctx.clip(shape);
-  const bounds=c.map(p=>p.x),min=Math.min(...bounds)-size,max=Math.max(...bounds)+size;
-  const gradient=ctx.createLinearGradient(min,0,max,30);
-  gradient.addColorStop(0,'#302e21');gradient.addColorStop(.30,'#71694b');
-  gradient.addColorStop(.53,'#514b35');gradient.addColorStop(.72,'#302f22');gradient.addColorStop(1,'#1e241b');
-  ctx.fillStyle=gradient;ctx.fill(shape);
-  // 低强度贴图只增加树皮细节；大的明暗与纵向沟脊负责表现体积。
-  ctx.globalAlpha=.20+.12*age;ctx.globalCompositeOperation='multiply';
-  ctx.fillStyle=barkPattern;ctx.fill(shape);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
-  const ridges=Math.max(5,Math.round(size*.30));
+  ctx.fillStyle='#a79872';ctx.fill(shape);
+  ctx.globalAlpha=.55+.25*age;ctx.fillStyle=barkPattern;ctx.fill(shape);ctx.globalAlpha=1;
+  // 每个带片沿截面法线取光，不再用全局渐变把弯枝涂成扁带。
+  for(let band=0;band<12;band++){
+    const left=-1+band/6,right=left+1/6;
+    const strip=new Path2D(),edge=[];
+    let illumination=0;
+    for(let i=0;i<=64;i++){
+      const t=growth*i/64,p=at(c,t),n=normal(c,t);
+      const r=radius(t,size,growth,root)*(1+.06*Math.sin(t*24+seed));
+      const x=p.x+n.x*r*left,y=p.y+n.y*r*left;
+      if(i===0)strip.moveTo(x,y);else strip.lineTo(x,y);
+      edge.push(point(p.x+n.x*r*right,p.y+n.y*r*right));
+      const u=(left+right)/2;
+      illumination+=Math.max(0,-n.x*u*.5-n.y*u*.65+Math.sqrt(1-u*u)*.55);
+    }
+    for(const p of edge.reverse())strip.lineTo(p.x,p.y);strip.closePath();
+    const light=illumination/65;
+    ctx.fillStyle=light>.5?`rgba(213,191,137,${(light-.5)*.65})`:`rgba(15,22,12,${(.5-light)*1.1})`;
+    ctx.fill(strip);
+  }
+  const ridges=Math.max(4,Math.round(size*.12));
   for(let j=0;j<ridges;j++){
     const offset=(j/(ridges-1)*2-1)*.95;
     ctx.beginPath();
@@ -88,7 +101,7 @@ function wood(c,size,growth,seed,root=false) {
       const x=p.x+n.x*r*(offset+drift),y=p.y+n.y*r*(offset+drift);
       if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
     }
-    ctx.strokeStyle=j%3===0?'#c1ae734d':'#151b15a0';ctx.lineWidth=j%3===0?1.3:1.8+noise(j+seed)*2;ctx.stroke();
+    ctx.strokeStyle=j%3===0?'#b8a57955':'#22231855';ctx.lineWidth=j%3===0?1.1:1+noise(j+seed);ctx.stroke();
   }
   ctx.restore();
 }
@@ -104,12 +117,15 @@ function leaf(x,y,angle,size,tone){
 function cluster(p,spread,seed,progress){
   if(progress<=0)return;
   // 固定叶位逐片舒展，不随着新增或树龄重排。
-  for(let i=0;i<30;i++){
+  for(let i=0;i<54;i++){
     const grow=smooth(progress*1.35-noise(seed*9+i)*.35);
     const phase=i*2.39996+seed;
     const reach=Math.sqrt(noise(i*7+seed))*spread;
     const x=p.x+Math.cos(phase)*reach,y=p.y+Math.sin(phase)*reach*.66;
     const size=(13+noise(i+seed*19)*12)*grow;
+    if(size<.1)continue;
+    ctx.strokeStyle='#5a5b32';ctx.lineWidth=.6;
+    ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(x,y);ctx.stroke();
     leaf(x,y,phase*.5,size,i%3===0);
   }
 }
@@ -128,6 +144,14 @@ function plaque(a,right,growth){
   ctx.strokeStyle='#76603c';ctx.lineWidth=1.5;ctx.stroke();
   ctx.fillStyle='#2c281d';ctx.font='25px serif';ctx.textAlign='center';
   for(const [i,char] of [...(right?'第一节':'第九章')].entries())ctx.fillText(char,0,-20+i*29);
+  // 牌框由与承托枝相同的木质曲线围合，保留真实开口和文字面。
+  const frameCurves=[
+    curve(point(-40,63),point(-60,0),point(-57,-74),point(-15,-67)),
+    curve(point(-15,-67),point(30,-86),point(55,-48),point(42,-10)),
+    curve(point(42,-10),point(52,33),point(44,76),point(0,69)),
+    curve(point(0,69),point(-20,77),point(-43,78),point(-40,40)),
+  ];
+  for(let i=0;i<frameCurves.length;i++)wood(frameCurves[i],10,1,70+i);
   ctx.restore();
   cluster(point(end.x+side*22,end.y-133),22,55+side,.9);
 }
@@ -139,24 +163,32 @@ function render(value=age,near=close){
   const scale=near ? Math.min(w/650,h/1000) : Math.min(w/1200,(h-115)/1672);
   ctx.translate(w/2,h/2+20);ctx.scale(scale,scale);ctx.translate(-580,near?-1040:-850);
   const g=.28+.72*smooth(age),thickness=.14+.86*smooth(age);
-  const shadow=ctx.createRadialGradient(580,1480,0,580,1480,420*thickness);
+  const rootGrowth=.55+age*.45;
+  const ground=at(roots[0].spine,rootGrowth).y+8;
+  const shadow=ctx.createRadialGradient(580,ground,0,580,ground,420*thickness);
   shadow.addColorStop(0,'#3b2e2340');shadow.addColorStop(1,'#3b2e2300');
-  ctx.save();ctx.translate(0,1480);ctx.scale(1,.16);ctx.translate(0,-1480);
+  ctx.save();ctx.translate(0,ground);ctx.scale(1,.16);ctx.translate(0,-ground);
   ctx.fillStyle=shadow;ctx.fillRect(100,1000,950,950);ctx.restore();
   for(const root of roots)wood(root.spine,(45+noise(root.seed)*50)*thickness,
-    .35+age*.65,root.seed,true);
+    rootGrowth,root.seed,true);
   const branchGrowth=branches.map(b=>smooth((g-b.birth)/(.96-b.birth)));
   // 先画背部叶簇，再画主骨架与前景叶簇，形成统一前后层次。
   for(const s of sprays){
-    const growth=smooth((branchGrowth[s.parent]-s.attach)/.38);
-    cluster(at(s.spine,1),42+noise(s.seed)*25,s.seed,growth);
+    const growth=smooth((branchGrowth[s.parent]-s.attach)/(1-s.attach));
+    for(const along of [.52,.78,.96]){
+      const leafGrowth=smooth((growth-along)/(1-along));
+      if(growth>=along)cluster(at(s.spine,along),46+noise(s.seed)*20,s.seed+along*100,leafGrowth);
+    }
   }
   wood(trunk,115*thickness,g,11);
+  // 前侧粗根覆盖母干基部的截面边界；不是另加遮盖图片。
+  for(const root of roots.slice(6))wood(root.spine,(45+noise(root.seed)*50)*thickness,
+    rootGrowth,root.seed,true);
   for(let i=0;i<branches.length;i++)wood(branches[i].spine,47*thickness*(1-i*.045),branchGrowth[i],i+1);
   for(const s of sprays){
-    const growth=smooth((branchGrowth[s.parent]-s.attach)/.38);
+    const growth=smooth((branchGrowth[s.parent]-s.attach)/(1-s.attach));
     wood(s.spine,7*thickness,growth,s.seed);
-    if(s.seed%3===0)cluster(at(s.spine,.85),30,s.seed+90,growth);
+    if(s.seed%3===0 && growth>=.85)cluster(at(s.spine,.85),35,s.seed+90,smooth((growth-.85)/.15));
   }
   // 幼苗有完整叶簇，新叶始终依附同一段已伸展中心线。
   for(const t of [.10,.16,.22]){
