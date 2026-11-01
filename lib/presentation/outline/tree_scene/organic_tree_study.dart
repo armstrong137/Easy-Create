@@ -17,6 +17,7 @@ typedef OrganicTreeLimb = ({
   double growth,
   double radius,
   double tipRatio,
+  double taperStart,
   List<OrganicStemSection> sections,
 });
 
@@ -95,6 +96,7 @@ class OrganicTreeFrame {
       radius: 14 + age * 78,
       tipRatio: .025,
       sections: trunkSections,
+      taperStart: 1,
     ));
     trunkWood = Path.from(wood);
     _foliage(trunk, growth, 9999, sparse: true);
@@ -325,7 +327,8 @@ class OrganicTreeFrame {
           ? trunkRadiusAt(.72) : _canopyAttachments[branch.parent!]?.radius ?? 0;
       final radius = parentRadius * OrganicCanopyBranch.rootRatio;
       _join(branch.spine, branchGrowth, radius, previousLimbs[branch.spine],
-          tipRatio: OrganicCanopyBranch.tipRatio);
+          tipRatio: OrganicCanopyBranch.tipRatio,
+          taperStart: OrganicCanopyBranch.attachment);
       final limb = limbs.last;
       if (branchGrowth >= OrganicCanopyBranch.attachment) {
         _canopyAttachments[index - 10] = (
@@ -369,11 +372,11 @@ class OrganicTreeFrame {
       fraction > _growthExtent ? null : trunkPoint(fraction);
 
   void _join(Path spine, double growth, double radius, OrganicTreeLimb? previous,
-      {double tipRatio = .04}) {
-    final sections = previous != null &&
+      {double tipRatio = .04, double taperStart = 1}) {
+    var sections = previous != null &&
             previous.growth == growth &&
             previous.radius == radius &&
-            previous.tipRatio == tipRatio
+            previous.tipRatio == tipRatio && previous.taperStart == taperStart
         ? previous.sections
         : OrganicBranchPainter.sampleStem(
             spine,
@@ -384,6 +387,17 @@ class OrganicTreeFrame {
             completedSections: growth == 1 && previous?.growth == 1
                 ? previous!.sections : null,
           );
+    if (taperStart < 1 && !identical(sections, previous?.sections)) {
+      final length = _measure(spine).length;
+      final tapered = <OrganicStemSection>[];
+      for (final section in sections) {
+        // 真实挂点之前保留母枝体积，仅在末段连续收尖；不移动中心线或叶节。
+        final t = ((section.distance / length - taperStart) / (1 - taperStart)).clamp(0.0, 1.0);
+        tapered.add((center: section.center, normal: section.normal,
+          radius: section.radius * (1 - t * t * (3 - 2 * t)), distance: section.distance));
+      }
+      sections = tapered;
+    }
     final shape = identical(sections, previous?.sections)
         ? previous!.shape : OrganicBranchPainter.sectionPath(sections);
     limbs.add((
@@ -392,6 +406,7 @@ class OrganicTreeFrame {
       growth: growth,
       radius: radius,
       tipRatio: tipRatio,
+      taperStart: taperStart,
       sections: sections,
     ));
     // 同向闭合轮廓使用非零填充合并，避免密集枝叉反复布尔运算的精度问题。

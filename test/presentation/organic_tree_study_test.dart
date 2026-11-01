@@ -8,6 +8,32 @@ import 'package:novel_app/presentation/outline/tree_scene/organic_tree_study.dar
 import 'package:novel_app/presentation/outline/tree_scene/organic_tree_projection.dart';
 
 void main() {
+  test('冠层末段自然收尖，真实挂点之前不削细或移动母枝', () {
+    for (final count in [10.5, 10.8, 10.9, 11.0, 30.0]) {
+      final frame = OrganicTreeFrame(1, chapterCount: count);
+      for (var index = 10; index < count.ceil(); index++) {
+        final branch = OrganicTreeFrame.canopyBranch(index);
+        final limb = frame.limbs.singleWhere((limb) => identical(limb.spine, branch.spine));
+        final original = OrganicBranchPainter.sampleStem(limb.spine, limb.growth,
+            limb.radius, tipRatio: limb.tipRatio);
+        for (var sample = 0; sample < limb.sections.length; sample++) {
+          final section = limb.sections[sample];
+          expect(section.center, original[sample].center);
+          if (section.distance / branch.metric.length <= .8 + 1e-10) {
+            expect(section.radius, closeTo(original[sample].radius, 1e-10));
+          } else {
+            expect(section.radius, lessThan(original[sample].radius));
+          }
+        }
+        if (limb.growth == 1) {
+          expect(limb.sections.last.radius, closeTo(0, 1e-10));
+          final mother = frame.chapterAttachment(index)!;
+          expect(mother.radius, OrganicBranchPainter.radiusAt(.8, 1, limb.radius, limb.tipRatio));
+          expect(mother.wood.contains(mother.point), isTrue);
+        }
+      }
+    }
+  });
   test('冠层追加连续展叶，已出生叶节不搬动且叶柄留在木质内', () {
     var previous = <(Offset, double), double>{};
     for (var step = 0; step <= 100; step++) {
