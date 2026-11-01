@@ -26,6 +26,8 @@
 ## 二、软件开发架构
 
 ### 技术栈
+2026-11-01 新整改整树样件隔离于tools/tree_scene/rectification，Canvas2D曲线验证与正式Flutter运行时分离。采集脚本只提供仓库内的虚拟本地资源，独立生成四图与成长录像，不访问数据库；样件通过前不接入页面。第一轮视觉拒绝，证据与下一轮条件见docs/Reports/Codex/2026-11-01-整树样件第一轮审查.md，不能以程序零错误替代视觉通过。
+
 2026-11-01 连续二维魔树切换为OutlinePage正式默认路径，ENABLE_ILLUSTRATED_TREE_CAMERA未传时默认true；显式false仍可进入旧路径作兼容对照。默认入口回归直接构造未传开关的OutlinePage并检查OrganicTree、原生几何画笔与完整空书树苗，不依赖测试助手强制开启。交付验收必须使用不含该dart-define的真实main.dart构建。
 
 2026-11-01 Web启动在引擎初始化后、应用启动前探测CanvasKit路径填充规则的返回值。旧实现产生独立原生副本时，仅回收该副本；已修复实现及其他渲染器保持原行为。兼容逻辑位于web/canvaskit_path_compat.mjs，由flutter_bootstrap.js加载；不修改全局Flutter SDK。内存诊断与完整浏览器验收分开记录，Wasm容量不能当作RSS。

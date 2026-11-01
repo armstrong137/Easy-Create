@@ -1,0 +1,13 @@
+{
+  "sourceSha256": "bc7d43be35dc10877eddffb9612a20f7fa52e424085a5328a63e90e648b91ce0",
+  "renderer": "独立Canvas2D连续曲线样件，尚未集成Flutter",
+  "images": [
+    "sapling.png",
+    "middle.png",
+    "mature.png",
+    "plaque-close.png"
+  ],
+  "animation": "growth.webm：独立上下文只录制树龄0到1；固定相机，不混入静帧及镜头切换",
+  "errors": [],
+  "visualAcceptance": "待整套人工审查，不由本脚本自动判定"
+}
