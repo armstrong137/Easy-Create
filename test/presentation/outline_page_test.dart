@@ -254,7 +254,36 @@ void main() {
     );
   }
 
-  testWidgets('大纲页默认渲染正式二维古树和书名', (tester) async {
+  testWidgets('无实验参数的正式入口渲染连续树苗和原生几何', (tester) async {
+    await seedNovel();
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(database),
+        advanced3DProvider.overrideWithValue(false),
+        outlineProvider.overrideWith((ref, novelId) => Stream.value(const [])),
+        sectionInspirationsProvider.overrideWith((ref, novelId) => Stream.value(const {})),
+        chapterInspirationsProvider.overrideWith((ref, novelId) => Stream.value(const {})),
+      ],
+      child: const MaterialApp(home: OutlinePage(novelId: 1, title: '测试小说')),
+    ));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(OrganicTree), findsOneWidget);
+    expect(find.byType(TreeStandin), findsNothing);
+    final future = tester.widget<FutureBuilder<List<ui.Image>>>(
+      find.descendant(of: find.byType(OrganicTree), matching: find.byType(FutureBuilder<List<ui.Image>>)),
+    ).future!;
+    await tester.runAsync(() => future);
+    await tester.pump();
+    expect(tester.widget<OrganicTree>(find.byType(OrganicTree)).age, 0);
+    expect(tester.widget<OrganicTree>(find.byType(OrganicTree)).chapterCount, 0);
+    expect(tester.widgetList<CustomPaint>(find.byType(CustomPaint))
+        .map((paint) => paint.painter).whereType<OrganicTreeStudyPainter>(), hasLength(1));
+    expect(tester.takeException(), null);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+  });
+
+  testWidgets('显式关闭连续镜头时保留旧二维古树和书名', (tester) async {
     await seedNovel();
     await pumpOutline(tester, const []);
 

@@ -69,7 +69,8 @@ class OutlinePage extends ConsumerStatefulWidget {
     required this.novelId,
     required this.title,
     this.treeSceneBuilder,
-    this.enableIllustratedCamera = const bool.fromEnvironment('ENABLE_ILLUSTRATED_TREE_CAMERA'),
+    this.enableIllustratedCamera = const bool.fromEnvironment(
+      'ENABLE_ILLUSTRATED_TREE_CAMERA', defaultValue: true),
   });
 
   final int novelId;

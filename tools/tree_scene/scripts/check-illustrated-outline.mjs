@@ -5,6 +5,8 @@ import { chromium } from 'playwright';
 
 const url = process.argv[2] ?? 'http://127.0.0.1:8780/';
 const seededCount = Number(process.argv.find(value => value.startsWith('--seeded-count='))?.split('=')[1] ?? 0);
+assert.ok(!process.argv.includes('--audit-edit') || (!seededCount && process.argv.includes('--audit-reentry') && process.argv.includes('--audit-dense')),
+  '--audit-edit 需要正式入口的三十章与刷新流程');
 assert.ok([0, 100, 1000].includes(seededCount), '预置验收规模只支持100或1000章');
 assert.ok(!seededCount || new URL(url).searchParams.get('chapters') === String(seededCount),
   '预置入口URL的chapters必须与验收规模相同');
@@ -618,6 +620,41 @@ try {
     for (const name of ['第一节', '第二节']) await auditSectionPointerHit(name, 'touch');
   }
   }
+  if (process.argv.includes('--audit-edit')) {
+    phase = '正式入口重命名持久化与长按菜单';
+    const renamed = '冠层验收章';
+    const hit = await page.getByRole('button', { name: '第二十九章', exact: true }).boundingBox();
+    const style = await page.addStyleTag({ content: 'flt-semantics-host, flt-semantics-host * { pointer-events: none !important; }' });
+    await page.mouse.dblclick(hit.x + hit.width * 320 / 1536,
+      hit.y + hit.height * 468 / 1024, { delay: 60 });
+    await style.evaluate(element => element.remove());
+    await page.getByText('重命名这一章', { exact: true }).waitFor();
+    await page.locator('input').fill(renamed);
+    await page.getByText('保存', { exact: true }).click();
+    await page.getByRole('button', { name: renamed, exact: true }).waitFor();
+    await page.reload();
+    await page.locator('flt-semantics-placeholder, flt-semantics-host').first().waitFor({ state: 'attached' });
+    const placeholder = page.locator('flt-semantics-placeholder');
+    if (await placeholder.count()) await placeholder.evaluate(element => element.click());
+    await page.getByText('Visual QA', { exact: true }).waitFor();
+    await page.waitForTimeout(6000);
+    await page.mouse.click(215, 440);
+    await page.getByRole('button', { name: renamed, exact: true }).waitFor();
+    await capture('renamed-persisted-430');
+    await auditChapterPointerHit(renamed);
+    const current = await page.getByRole('button', { name: renamed, exact: true }).boundingBox();
+    const native = await page.addStyleTag({ content: 'flt-semantics-host, flt-semantics-host * { pointer-events: none !important; }' });
+    await page.mouse.move(current.x + current.width * 320 / 1536,
+      current.y + current.height * 468 / 1024);
+    await page.mouse.down();
+    await page.waitForTimeout(800);
+    await page.mouse.up();
+    await native.evaluate(element => element.remove());
+    await page.getByText('剪掉这根枝丫', { exact: true }).waitFor();
+    await page.getByText('重命名这一章', { exact: true }).waitFor();
+    await capture('branch-long-press-menu-430');
+    await page.getByText('取消', { exact: true }).click();
+  }
   const renderer = await page.evaluate(() => {
     const gl = document.createElement('canvas').getContext('webgl');
     if (!gl) return 'WebGL 不可用';
@@ -641,7 +678,8 @@ try {
       ...(process.argv.includes('--audit-dense') ? ['三十章冠层聚焦与相邻历史章手机和宽屏实际牌面命中'] : []),
       ...(process.argv.includes('--audit-dense-history') ? ['三十章历史中段及根部手机与宽屏实际牌面命中'] : []),
       ...(process.argv.includes('--audit-reentry') ? ['刷新后重新进入已有小说与末章实际命中'] : []),
-      ...(process.argv.includes('--audit-touch') ? ['触摸事件往返历史与冠层两节实际牌面命中'] : [])],
+      ...(process.argv.includes('--audit-touch') ? ['触摸事件往返历史与冠层两节实际牌面命中'] : []),
+      ...(process.argv.includes('--audit-edit') ? ['真实章牌重命名刷新后保留，长按菜单可用'] : [])],
     visualAcceptance: '待人工对照参考图', sectionPointerChecks, captures, errors,
   }, null, 2));
   console.log(JSON.stringify({ output, captures: captures.map(({ name }) => name), errors }));

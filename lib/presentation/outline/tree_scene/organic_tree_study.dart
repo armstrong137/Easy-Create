@@ -21,7 +21,7 @@ typedef OrganicTreeLimb = ({
   List<OrganicStemSection> sections,
 });
 
-/// 连续生长的二维几何；实验大纲运行时与独立美术验收共用。
+/// 连续生长的二维几何；正式大纲运行时与独立美术验收共用。
 class OrganicTreeFrame {
   static final _trunk = Path()
     ..moveTo(490, 1410)
