@@ -10,6 +10,7 @@ typedef OrganicTreeLeaf = ({Offset point, double angle, double scale});
 typedef _OrganicLeafBud = ({double along, double delay, OrganicTreeLeaf leaf});
 typedef OrganicTreeLimb = ({
   Path spine,
+  Path shape,
   double growth,
   double radius,
   double tipRatio,
@@ -102,9 +103,11 @@ class OrganicTreeFrame {
           ),
       ];
     }
-    wood = OrganicBranchPainter.sectionPath(trunkSections);
+    final trunkShape = OrganicBranchPainter.sectionPath(trunkSections);
+    wood = Path.from(trunkShape);
     limbs.add((
       spine: trunk,
+      shape: trunkShape,
       growth: growth,
       radius: 14 + age * 78,
       tipRatio: .025,
@@ -160,6 +163,7 @@ class OrganicTreeFrame {
           trunkWood.addPath(shape, Offset.zero);
           limbs.add((
             spine: spine,
+            shape: shape,
             growth: 1,
             radius: trunkRadiusAt(1 + startDistance / _trunkMetric.length),
             tipRatio: .025,
@@ -482,15 +486,18 @@ class OrganicTreeFrame {
             tipRatio: .04,
             pathMetric: _measure(spine),
           );
+    final shape = identical(sections, previous?.sections)
+        ? previous!.shape : OrganicBranchPainter.sectionPath(sections);
     limbs.add((
       spine: spine,
+      shape: shape,
       growth: growth,
       radius: radius,
       tipRatio: .04,
       sections: sections,
     ));
     // 同向闭合轮廓使用非零填充合并，避免密集枝叉反复布尔运算的精度问题。
-    wood.addPath(OrganicBranchPainter.sectionPath(sections), Offset.zero);
+    wood.addPath(shape, Offset.zero);
   }
 
   void _foliage(Path spine, double growth, int seed, {bool sparse = false}) {
@@ -628,6 +635,13 @@ class OrganicTreeStudyPainter extends CustomPainter {
     final leaves = visible == null ? frame.leaves : frame.leaves.where((item) =>
       Rect.fromCircle(center: item.point, radius: leaf.width * item.scale)
         .overlaps(visible)).toList();
+    // 复用同一截面的闭合轮廓，只组合可见枝干；整树渐变范围仍保持不变。
+    final wood = visible == null ? frame.wood : Path();
+    if (visible != null) {
+      for (final limb in limbs) {
+        wood.addPath(limb.shape, Offset.zero);
+      }
+    }
     // 接地阴影跟随真实根幅展开，不随章节镜头单独缩放或使用树龄阶段图。
     final ground = frame.rootBounds;
     final shadowHeight = ground.width * .17;
@@ -645,7 +659,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
     );
     canvas.restore();
     canvas.drawPath(
-      frame.wood,
+      wood,
       Paint()
         ..filterQuality = FilterQuality.high
         ..colorFilter = barkTint
@@ -678,7 +692,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
       );
     }
     canvas.drawPath(
-      frame.wood,
+      wood,
       Paint()
         ..shader = const LinearGradient(
           colors: [Color(0x22E5B85D), Color(0x004E351C), Color(0x66432E17)],
