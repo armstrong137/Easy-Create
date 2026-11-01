@@ -7,6 +7,7 @@ from mathutils import Vector
 
 def bake_material(body, rest_nodes, edges, nearest, image_source, output, groups=None):
     mesh = body.data
+    whole_tree = groups is not None
     groups = groups or [[0, 1, 2, 3], [4, 5, 6], [7, 8, 9],
               [10, 11], [12, 13], [14, 15], [16, 17]]
     attributes = [f"枝向权重{i}" for i in range(len(groups))]
@@ -15,7 +16,7 @@ def bake_material(body, rest_nodes, edges, nearest, image_source, output, groups
     for vertex in mesh.vertices:
         distances = [min(nearest(vertex.co, rest_nodes[edges[i][0]],
                                   rest_nodes[edges[i][1]])[2] for i in group) for group in groups]
-        weights = [1 / (distance + .08)**2 for distance in distances]
+        weights = [1 / (distance + (.035 if whole_tree else .08))**2 for distance in distances]
         total = sum(weights)
         for name, weight in zip(attributes, weights):
             mesh.attributes[name].data[vertex.index].value = weight / total
@@ -71,8 +72,8 @@ def bake_material(body, rest_nodes, edges, nearest, image_source, output, groups
             group_weight.attribute_name = attributes[index]
             for axis_index, (u, v) in enumerate([(y, z), (x, z), (x, y)]):
                 uv = nodes.new('ShaderNodeCombineXYZ')
-                links.new(math_node('MULTIPLY', dot(coordinates, u), .8), uv.inputs[0])
-                links.new(math_node('MULTIPLY', dot(coordinates, v), .8), uv.inputs[1])
+                links.new(math_node('MULTIPLY', dot(coordinates, u), .35 if whole_tree else .8), uv.inputs[0])
+                links.new(math_node('MULTIPLY', dot(coordinates, v), .22 if whole_tree else .8), uv.inputs[1])
                 texture = nodes.new('ShaderNodeTexImage')
                 texture.image = image_source
                 texture.extension = 'REPEAT'

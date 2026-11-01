@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[3]
 BAKED = '--baked' in sys.argv
 COMPACT = '--compact' in sys.argv
 TREE = '--tree' in sys.argv
-OUT = ROOT / ("build/qa/whole-tree-mesh" if TREE else "build/qa/volume-proof-compact" if COMPACT else
+OUT = ROOT / ("build/qa/whole-tree-mesh-round2" if TREE else "build/qa/volume-proof-compact" if COMPACT else
               "build/qa/volume-proof-baked" if BAKED else "build/qa/volume-proof")
 OUT.mkdir(parents=True, exist_ok=True)
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -61,7 +61,7 @@ control.name = "独立封闭枝段体积"
 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 union = control.modifiers.new("干根分叉体积并集", "REMESH")
 union.mode = 'VOXEL'
-union.voxel_size = .055 if TREE else .045
+union.voxel_size = .035 if TREE else .045
 union.use_smooth_shade = True
 relax = control.modifiers.new("接头表面平滑", "SMOOTH")
 relax.factor = .7
@@ -75,7 +75,7 @@ if COMPACT:
     reference_mesh = bpy.data.meshes.new_from_object(
         control.evaluated_get(bpy.context.evaluated_depsgraph_get()))
     simplify = control.modifiers.new("二维验证资产简化", "DECIMATE")
-    simplify.ratio = .08 if TREE else .15
+    simplify.ratio = .04 if TREE else .15
     bpy.context.view_layer.update()
 evaluated = control.evaluated_get(bpy.context.evaluated_depsgraph_get())
 surface = bpy.data.meshes.new_from_object(evaluated)
@@ -96,17 +96,36 @@ if reference_mesh:
     distances = [high_bvh.find_nearest(p)[3] for p in rest]
     distances += [low_bvh.find_nearest(p)[3] for p in high]
     height = max(p.z for p in high)-min(p.z for p in high)
-    deviation = {"ratio": .08 if TREE else .15, "reference_vertices": len(high),
+    deviation = {"ratio": .04 if TREE else .15, "reference_vertices": len(high),
                  "max_sampled_surface_distance": max(distances),
                  "relative_to_height": max(distances)/height,
                  "method": "两侧顶点到对侧表面的最近距离，不是严格连续Hausdorff上界"}
     bpy.data.meshes.remove(reference_mesh)
+    if TREE:
+        deviation['scope'] = '木脊刻制前的简化对照，不是最终刻制表面的误差'
 
 def nearest(p, a, b):
     tangent = b - a
     t = max(0.0, min(1.0, (p-a).dot(tangent) / tangent.length_squared))
     center = a.lerp(b, t)
     return t, center, (p-center).length_squared
+
+if TREE:
+    # 在同一表面上刻出沿枝的缓慢木脊，保留拓扑和连接关系，不叠加独立装饰条。
+    for vertex in surface.vertices:
+        choices = [(nearest(vertex.co, rest_nodes[a], rest_nodes[b]), a, b) for a, b in edges]
+        (t, center, _), a, b = min(choices, key=lambda item: item[0][2])
+        tangent = (rest_nodes[b]-rest_nodes[a]).normalized()
+        x = tangent.cross(Vector((0, 1, 0))).normalized()
+        y = tangent.cross(x).normalized()
+        offset = vertex.co-center
+        angle = math.atan2(offset.dot(y), offset.dot(x))
+        radius = radii[a]*(1-t)+radii[b]*t
+        ridge = .65*math.sin(angle*9+vertex.co.z*.55+math.sin(vertex.co.z*1.4))
+        ridge += .35*math.sin(angle*17-vertex.co.z*.35)
+        vertex.co += vertex.normal*min(.055, radius*.12)*ridge
+    surface.update()
+    rest = [v.co.copy() for v in surface.vertices]
 
 # 从成熟拓扑绑定连续空间权重；所有树龄共用顶点、面和UV，不按树龄重建网格。
 bindings = []
@@ -275,10 +294,11 @@ if '--export' in sys.argv:
     from export_volume_mesh import export_mesh
     report['mesh_export'] = export_mesh(surface, rest_nodes, edges, bindings,
                                         camera, target, OUT, deform,
-        {"growth": spec['growth'], "leaves": spec['leaves'], "plaques": spec['plaques']} if TREE else None)
+        {"growth": spec['growth'], "leaves": spec['leaves'], "plaques": spec['plaques'],
+         "leafAtlas": spec['leafAtlas']} if TREE else None)
     if TREE:
         import shutil
-        shutil.copyfile(ROOT / 'assets/source/magic_tree/textures_source/pbr/leaf_single.png', OUT / 'leaf.png')
+        shutil.copyfile(ROOT / 'assets/source/magic_tree/textures_source/leaf_matte_atlas_v2.png', OUT / 'leaf.png')
 for name, age in [("young", 0), ("middle", .5), ("mature", 1)]:
     deform(age)
     scene.render.filepath = str(OUT / f"{name}.png")

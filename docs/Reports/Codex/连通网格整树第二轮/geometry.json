@@ -1,0 +1,47 @@
+{
+  "script_sha256": "ece49d16a9f7b74abe3fefa9f02446ad014876a67d6989b5c76d094ef99ae86f",
+  "vertices": 16484,
+  "polygons": 31728,
+  "connected": true,
+  "non_manifold_edges": 0,
+  "components": [
+    {
+      "vertices": 16484,
+      "min": [
+        -4.511658668518066,
+        -1.5153088569641113,
+        -0.27970388531684875
+      ],
+      "max": [
+        4.480135440826416,
+        1.4427448511123657,
+        10.60291862487793
+      ]
+    }
+  ],
+  "uv": "连续沿枝投影混合烘焙至固定2048图集；未凭烘焙完成宣称视觉通过",
+  "baked_material": true,
+  "simplification": {
+    "ratio": 0.04,
+    "reference_vertices": 412312,
+    "max_sampled_surface_distance": 0.007326027378439903,
+    "relative_to_height": 0.0006748658904773417,
+    "method": "两侧顶点到对侧表面的最近距离，不是严格连续Hausdorff上界",
+    "scope": "木脊刻制前的简化对照，不是最终刻制表面的误差"
+  },
+  "deformation": "同一连通网格空间权重形变，非阶段整图、非整体缩放",
+  "production_integrated": false,
+  "material_script_sha256": "5c07488293110b8e724d182de4f26d83943f554b8a764054c469051ab958f5ac",
+  "whole_tree": {
+    "main_branches": 7,
+    "leaves": 1488,
+    "plaques": 2,
+    "rendered_in": "Flutter二维入口"
+  },
+  "mesh_export": {
+    "bytes": 2572080,
+    "vertices": 16484,
+    "triangles": 32984,
+    "referenceSamples": 9
+  }
+}

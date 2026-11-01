@@ -1,0 +1,20 @@
+{
+  "source": "C:\\Users\\Armstrong\\Desktop\\Easy Create\\build\\qa\\whole-tree-mesh-round2",
+  "meshSha256": "b093a1ba044d8854737e8e87aabf508520671e0fc473940b6339a1172988316a",
+  "metadataSha256": "2eb0f27fdae9db95c2264d64eca574d03a8adc39abcfc9a44029c058355c6e5d",
+  "atlasSha256": "b9f2c471e028d7ffa69cdf3e0b669b21755b8c5c057baa0556dc3a89fddd0c44",
+  "atlasWidth": 2048,
+  "atlasHeight": 2048,
+  "triangles": 32984,
+  "uvAreaTexels": {
+    "p10": 0.06564068607985973,
+    "median": 0.1676035039126873,
+    "p90": 0.5936302087502554,
+    "below1": 31985,
+    "below4": 32930,
+    "below16": 32984
+  },
+  "sumTriangleUvAreaFraction": 0.0022159218698624035,
+  "scope": "实际三角形UV面积，不含图表边距；总和不等于去重覆盖率，也不证明图表不重叠或黑片的唯一原因。",
+  "visualAcceptance": "未通过；本检查仅用于定位纹理预算，不是第三轮造型或新的整树方案。"
+}

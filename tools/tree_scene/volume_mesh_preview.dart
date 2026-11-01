@@ -133,20 +133,20 @@ class _Mesh {
         final recipe = growth[i] as Map;
         final kind = recipe['kind'];
         if (kind == 'base') {
-          grown.add([0, 0, .12 + .38 * _smooth(age)]);
+          grown.add([0, 0, .045 + .335 * _smooth(age)]);
         } else if (kind == 'root') {
-          final reach = .30 + .70 * _smooth(age);
+          final reach = .11 + .89 * _smooth(age);
           grown.add([
             p[0] * reach,
             p[1] * reach,
-            p[2] < .05 ? p[2] : p[2] * (.35 + .65 * _smooth(age)),
+            p[2] * (.10 + .90 * _smooth(age)),
           ]);
         } else {
           final parent = recipe['parent'] as int;
           final progress = _smooth(
             (age - (recipe['birth'] as num)) / (recipe['duration'] as num),
           );
-          final minimum = kind == 'trunk' ? .12 : .025;
+          final minimum = kind == 'trunk' ? .21 : .003;
           final reach = minimum + (1 - minimum) * progress;
           grown.add(
             List.generate(
@@ -173,14 +173,14 @@ class _Mesh {
     for (final edge in edges) {
       var radial = growth == null
           ? .5 + .5 * _smooth(age)
-          : .13 + .87 * _smooth(age);
+          : .055 + .945 * _smooth(age);
       if (growth != null) {
         final recipe = growth[edge[1]] as Map;
         if (recipe['kind'] == 'branch' || recipe['kind'] == 'frame') {
           final progress = _smooth(
             (age - (recipe['birth'] as num)) / (recipe['duration'] as num),
           );
-          radial *= .08 + .92 * math.sqrt(progress);
+          radial *= .025 + .975 * math.sqrt(progress);
         }
       }
       radialScales.add(radial);
@@ -251,8 +251,8 @@ class _Mesh {
       depths[i] = x * back[0] + y * back[1] + z * back[2];
       final normalLength = math.sqrt(nx * nx + ny * ny + nz * nz);
       final light =
-          .42 +
-          .58 * math.max(0, (-.45 * nx - .5 * ny + .74 * nz) / normalLength);
+          .25 +
+          .75 * math.max(0, (-.45 * nx - .5 * ny + .74 * nz) / normalLength);
       // 图集以显示空间采样，使用显示空间的明暗调制近似；仍须对照离线光照。
       final channel = (255 * math.pow(light, 1 / 2.2)).round().clamp(0, 255);
       colors[i] = 0xff000000 | (channel << 16) | (channel << 8) | channel;
@@ -317,6 +317,7 @@ class _Mesh {
           projectedLeaf.depth,
           (definition['angle'] as num).toDouble(),
           (definition['length'] as num) * life,
+          definition['variant'] as int? ?? 0,
         ),
       );
     }
@@ -325,16 +326,27 @@ class _Mesh {
       final life = _smooth(
         (age - (definition['birth'] as num)) / (definition['duration'] as num),
       );
-      if (life < .98) continue;
-      final anchor = definition['anchor'] as int;
-      final offset = definition['offset'] as List;
+      final opacity = _smooth((life - .6) / .4);
+      if (opacity <= .001) continue;
+      final indices = (definition['corners'] as List).cast<int>();
       final center = List.generate(
         3,
-        (axis) => grown[anchor][axis] + (offset[axis] as num),
+        (axis) =>
+            indices.fold<double>(0, (sum, index) => sum + grown[index][axis]) /
+            4,
       );
-      plaques.add(
-        _Plaque(project(center).point, definition['title'] as String),
-      );
+      // 纸面四角取自当前木框角点，内缩到框内；成长时不使用固定屏幕矩形。
+      final points = [
+        for (final index in indices)
+          project(
+            List.generate(
+              3,
+              (axis) =>
+                  center[axis] + (grown[index][axis] - center[axis]) * .79,
+            ),
+          ).point,
+      ];
+      plaques.add(_Plaque(points, definition['title'] as String, opacity));
     }
     var error = 0.0;
     for (final sample in meta['samples'] as List) {
@@ -385,15 +397,24 @@ class _Frame {
 }
 
 class _Leaf {
-  _Leaf(this.point, this.anchor, this.depth, this.angle, this.length);
+  _Leaf(
+    this.point,
+    this.anchor,
+    this.depth,
+    this.angle,
+    this.length,
+    this.variant,
+  );
   final Offset point, anchor;
   final double depth, angle, length;
+  final int variant;
 }
 
 class _Plaque {
-  _Plaque(this.point, this.title);
-  final Offset point;
+  _Plaque(this.corners, this.title, this.opacity);
+  final List<Offset> corners;
   final String title;
+  final double opacity;
 }
 
 class _Preview extends StatefulWidget {
@@ -523,6 +544,7 @@ class _Painter extends CustomPainter {
           size.width / (mesh.scale * 600 / 760),
         );
     canvas.save();
+    canvas.clipRect(Offset.zero & size);
     canvas.translate(size.width / 2, size.height / 2);
     canvas.scale(factor);
     if (near) canvas.translate(0, -1.5);
@@ -576,20 +598,41 @@ class _Painter extends CustomPainter {
     }
     for (final plaque in frame.plaques) {
       canvas.save();
-      canvas.translate(plaque.point.dx, plaque.point.dy);
-      final paper = Path()
-        ..moveTo(-.27, -.43)
-        ..lineTo(.26, -.42)
-        ..lineTo(.28, .40)
-        ..lineTo(-.25, .43)
-        ..close();
+      final paper = Path()..addPolygon(plaque.corners, true);
       canvas.drawPath(
         paper,
         Paint()
-          ..shader = const LinearGradient(
-            colors: [Color(0xffead8ad), Color(0xffd4bd8d)],
-          ).createShader(const Rect.fromLTWH(-.3, -.45, .6, .9)),
+          ..shader = LinearGradient(
+            colors: [
+              const Color(0xffead8ad).withValues(alpha: plaque.opacity),
+              const Color(0xffd4bd8d).withValues(alpha: plaque.opacity),
+            ],
+          ).createShader(paper.getBounds()),
       );
+      final top = plaque.corners[0],
+          across = (plaque.corners[1] - top) / .62,
+          down = (plaque.corners[3] - top) / .94;
+      canvas.transform(
+        Float64List.fromList([
+          across.dx,
+          across.dy,
+          0,
+          0,
+          down.dx,
+          down.dy,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          top.dx,
+          top.dy,
+          0,
+          1,
+        ]),
+      );
+      canvas.translate(.31, .47);
       // 排版先使用正常字号，再变换回模型单位，避免小字号行高被取整为零。
       canvas.save();
       canvas.scale(.01);
@@ -598,11 +641,11 @@ class _Painter extends CustomPainter {
         final text = TextPainter(
           text: TextSpan(
             text: characters[index],
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'LXGWWenKai',
               fontSize: 22,
               height: 1,
-              color: Color(0xff30271c),
+              color: const Color(0xff30271c).withValues(alpha: plaque.opacity),
             ),
           ),
           textDirection: TextDirection.ltr,
@@ -629,6 +672,13 @@ class _Painter extends CustomPainter {
   void _foliage(Canvas canvas, List<_Leaf> leaves) {
     final image = mesh.leafImage;
     if (image == null || leaves.isEmpty) return;
+    final atlas = mesh.meta['leafAtlas'] as Map?;
+    final columns = atlas?['columns'] as int? ?? 1,
+        rows = atlas?['rows'] as int? ?? 1;
+    final width = image.width / columns, height = image.height / rows;
+    final anchor =
+        atlas?['anchor'] as List? ?? [256 / image.width, 430 / image.height];
+    final blade = (atlas?['blade'] as num?)?.toDouble() ?? 346 / image.height;
     final stems = Path();
     for (final leaf in leaves) {
       stems.moveTo(leaf.anchor.dx, leaf.anchor.dy);
@@ -647,18 +697,23 @@ class _Painter extends CustomPainter {
         for (final leaf in leaves)
           ui.RSTransform.fromComponents(
             rotation: leaf.angle,
-            scale: leaf.length / 346,
-            anchorX: 256,
-            anchorY: 430,
+            scale: leaf.length / (height * blade),
+            anchorX: width * (anchor[0] as num),
+            anchorY: height * (anchor[1] as num),
             translateX: leaf.point.dx,
             translateY: leaf.point.dy,
           ),
       ],
-      List.filled(
-        leaves.length,
-        Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
-      ),
-      List.filled(leaves.length, const Color(0xffd9dfbc)),
+      [
+        for (final leaf in leaves)
+          Rect.fromLTWH(
+            (leaf.variant % columns) * width,
+            (leaf.variant ~/ columns) * height,
+            width,
+            height,
+          ),
+      ],
+      List.filled(leaves.length, const Color(0xffd0d4af)),
       BlendMode.modulate,
       null,
       Paint()..filterQuality = FilterQuality.medium,

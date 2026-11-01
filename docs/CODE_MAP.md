@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-01 21:01:12　对应提交：ff83c2e 之后的工作区状态
+> 生成时间：2026-11-01 21:18:45　对应提交：75cbe6e 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     215
-  Nodes:     5,712
-  Edges:     23,554
-  DB Size:   27.66 MB
+  Files:     216
+  Nodes:     5,745
+  Edges:     23,592
+  DB Size:   27.73 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,867
-  function        1,637
-  import          780
+  function        1,640
+  import          784
   class           534
-  constant        409
-  variable        227
-  file            207
+  constant        424
+  variable        237
+  file            208
   enum_member     25
   type_alias      18
   enum            6
@@ -34,7 +34,7 @@ Nodes by Kind:
 
 Files by Language:
   dart            116
-  javascript      51
+  javascript      52
   python          20
   kotlin          8
   xml             6
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (215 files):
+Project Structure (216 files):
 
 |-- .agents
 |   `-- skills
@@ -295,14 +295,15 @@ Project Structure (215 files):
 |       |   |-- export_volume_mesh.py (python, 6 symbols)
 |       |   |-- inspect_source.py (python, 9 symbols)
 |       |   |-- scene.mjs (javascript, 42 symbols)
-|       |   |-- volume_proof.py (python, 82 symbols)
+|       |   |-- volume_proof.py (python, 91 symbols)
 |       |   `-- whole_tree_spec.py (python, 7 symbols)
 |       |-- scripts
+|       |   |-- audit-volume-uv.mjs (javascript, 23 symbols)
 |       |   |-- build.mjs (javascript, 10 symbols)
 |       |   |-- canvaskit-path-compat.test.mjs (javascript, 10 symbols)
 |       |   |-- capture-rectification.mjs (javascript, 16 symbols)
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
-|       |   |-- capture-volume-2d.mjs (javascript, 35 symbols)
+|       |   |-- capture-volume-2d.mjs (javascript, 36 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
 |       |   |-- check-illustrated-outline.mjs (javascript, 68 symbols)
 |       |   |-- check-organic-tree.mjs (javascript, 15 symbols)

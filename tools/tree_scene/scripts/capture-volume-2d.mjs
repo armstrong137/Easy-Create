@@ -11,8 +11,8 @@ import { Readable } from 'node:stream';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../..');
 const compact=process.argv.includes('--compact');
 const tree=process.argv.includes('--tree');
-const web=resolve(root,'build/volume-web'), proof=resolve(root,tree?'build/qa/whole-tree-mesh':compact?'build/qa/volume-proof-compact':'build/qa/volume-proof-baked');
-const output=resolve(root,tree?'build/qa/whole-tree-2d':compact?'build/qa/volume-2d-compact':'build/qa/volume-2d',new Date().toISOString().replaceAll(':','-'));
+const web=resolve(root,'build/volume-web'), proof=resolve(root,tree?'build/qa/whole-tree-mesh-round2':compact?'build/qa/volume-proof-compact':'build/qa/volume-proof-baked');
+const output=resolve(root,tree?'build/qa/whole-tree-2d-round2':compact?'build/qa/volume-2d-compact':'build/qa/volume-2d',new Date().toISOString().replaceAll(':','-'));
 await mkdir(output,{recursive:true});
 const mime={'.js':'text/javascript','.mjs':'text/javascript','.html':'text/html',
   '.json':'application/json','.wasm':'application/wasm','.png':'image/png','.css':'text/css'};
@@ -101,7 +101,8 @@ try{
   };
   if(tree){
     result.provenance.wholeSpec=await hash(resolve(root,'tools/tree_scene/rectification/whole_tree_spec.py'));
-    if(states[0].plaques!==0||states.at(-1).plaques!==2||states.at(-1).leaves!==1911)
+    const expected=JSON.parse(await readFile(resolve(proof,'mesh.json'),'utf8'));
+    if(states[0].plaques!==0||states.at(-1).plaques!==expected.plaques.length||states.at(-1).leaves!==expected.leaves.length)
       throw Error('整树出生或牌面数量与本轮样件规格不一致');
     await writeFile(resolve(output,'result.json'),JSON.stringify(result,null,2));
     // 性能统计已结束；另行渲染固定相机的连续成长片，不混入静帧检查。
