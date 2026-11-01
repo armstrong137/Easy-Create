@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -235,6 +236,23 @@ void main() {
         expect(raw!.getUint8(3), 0, reason: '全景画布角落必须透明，不能形成缩放色块');
         final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
         expect(bytes, isNotNull);
+        for (final area in [const Rect.fromLTWH(260, 900, 400, 650),
+          const Rect.fromLTWH(100, 200, 600, 700)]) {
+          Future<Uint8List> clipped(bool cull) async {
+            final clipRecorder = ui.PictureRecorder();
+            final canvas = Canvas(clipRecorder)..clipRect(area);
+            OrganicTreeStudyPainter(age, bark, leaf, visibleRect: cull ? area : null)
+                .paint(canvas, const Size(941, 1672));
+            final clipPicture = clipRecorder.endRecording();
+            final clipImage = await clipPicture.toImage(941, 1672);
+            final data = await clipImage.toByteData(format: ui.ImageByteFormat.png);
+            clipImage.dispose();
+            clipPicture.dispose();
+            return data!.buffer.asUint8List();
+          }
+          expect(await clipped(true), orderedEquals(await clipped(false)),
+              reason: '视野外剔除不能改变可见区域的枝叶、边缘或根颈像素');
+        }
         final nextRecorder = ui.PictureRecorder();
         OrganicTreeStudyPainter(age == 1 ? .2 : 1, bark, leaf)
             .paint(Canvas(nextRecorder), const Size(941, 1672));

@@ -5,6 +5,34 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:novel_app/presentation/outline/tree_scene/illustrated_tree_viewport.dart';
 
 void main() {
+  testWidgets('可见区域与生长扩展及镜头补间中的真实屏幕变换一致', (tester) async {
+    Rect? visible;
+    Future<void> show(double inset, bool overview) => tester.pumpWidget(
+      MaterialApp(home: Center(child: SizedBox(
+        key: const Key('裁剪窗口'), width: 300, height: 500,
+        child: IllustratedTreeViewport(sceneWidth: 600, sceneHeight: 1000 + inset,
+          sceneTopInset: inset, focusX: 370, focusY: 700 + inset,
+          chapterScale: 2, overview: overview,
+          child: Builder(builder: (context) {
+            visible = IllustratedTreeViewportRegion.of(context);
+            return const SizedBox.expand(key: Key('裁剪场景'));
+          }),
+        ),
+      ))),
+    );
+    for (final state in [(0.0, false), (800.0, false), (800.0, true), (0.0, false)]) {
+      await show(state.$1, state.$2);
+      for (final elapsed in [0, 100, 130, 230]) {
+        await tester.pump(Duration(milliseconds: elapsed));
+        final window = tester.getRect(find.byKey(const Key('裁剪窗口')));
+        final scene = tester.renderObject<RenderBox>(find.byKey(const Key('裁剪场景')));
+        expect((visible!.topLeft - scene.globalToLocal(window.topLeft)).distance,
+            lessThan(.001));
+        expect((visible!.bottomRight - scene.globalToLocal(window.bottomRight)).distance,
+            lessThan(.001));
+      }
+    }
+  });
   testWidgets('增长后的全景边缘渐隐不吞掉原始留白内的树冠', (tester) async {
     await tester.pumpWidget(MaterialApp(home: Center(child: RepaintBoundary(
       key: const Key('全景像素验收'),

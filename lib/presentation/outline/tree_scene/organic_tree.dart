@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'organic_tree_study.dart';
+import 'illustrated_tree_viewport.dart';
 
 /// 连续主树的运行时容器；树龄只由创作进度传入，与浏览镜头无关。
 class OrganicTree extends StatefulWidget {
@@ -107,6 +108,7 @@ class _OrganicTreeState extends State<OrganicTree> {
             chapterCount: current.dy,
             geometry: _geometry,
             projectionExtent: OrganicTreeFrame.upperExtentFor(count),
+            visibleRect: IllustratedTreeViewportRegion.of(context),
           );
           final foreground = widget.foregroundBuilder?.call(
             context,

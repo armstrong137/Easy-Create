@@ -591,6 +591,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
     double? chapterCount,
     double? projectionExtent,
     OrganicTreeFrame? geometry,
+    this.visibleRect,
   }) : frame = geometry ?? OrganicTreeFrame(age, chapterCount: chapterCount),
        projectionExtent =
            projectionExtent ??
@@ -602,6 +603,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
   final OrganicTreeFrame frame;
   final ColorFilter barkTint;
   final double projectionExtent;
+  final Rect? visibleRect;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -613,6 +615,19 @@ class OrganicTreeStudyPainter extends CustomPainter {
     );
     canvas.translate(projection.origin.dx, projection.origin.dy);
     canvas.scale(projection.scale);
+    final visible = visibleRect == null ? null : Rect.fromLTRB(
+      (visibleRect!.left - projection.origin.dx) / projection.scale,
+      (visibleRect!.top - projection.origin.dy) / projection.scale,
+      (visibleRect!.right - projection.origin.dx) / projection.scale,
+      (visibleRect!.bottom - projection.origin.dy) / projection.scale,
+    ).inflate(2 / projection.scale);
+    if (visible != null) canvas.clipRect(visible);
+    // 中心线包围盒加最大截面余量，保留跨越视口边缘的整枝，避免边缘跳闪。
+    final limbs = visible == null ? frame.limbs : frame.limbs.where((limb) =>
+      limb.spine.getBounds().inflate(limb.radius * 1.2 + 2).overlaps(visible)).toList();
+    final leaves = visible == null ? frame.leaves : frame.leaves.where((item) =>
+      Rect.fromCircle(center: item.point, radius: leaf.width * item.scale)
+        .overlaps(visible)).toList();
     // 接地阴影跟随真实根幅展开，不随章节镜头单独缩放或使用树龄阶段图。
     final ground = frame.rootBounds;
     final shadowHeight = ground.width * .17;
@@ -651,14 +666,14 @@ class OrganicTreeStudyPainter extends CustomPainter {
     // 每批最多 128×49×9=56448 个顶点，低于 16 位索引上限，保持原枝干顺序。
     for (
       var start = 0;
-      start < frame.limbs.length;
+      start < limbs.length;
       start += _surfaceBatchSize
     ) {
       _surface(
         canvas,
-        frame.limbs.sublist(
+        limbs.sublist(
           start,
-          math.min(start + _surfaceBatchSize, frame.limbs.length),
+          math.min(start + _surfaceBatchSize, limbs.length),
         ),
       );
     }
@@ -678,7 +693,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
     );
     canvas.drawAtlas(
       leaf,
-      frame.leaves
+      leaves
           .map(
             (item) => ui.RSTransform.fromComponents(
               rotation: item.angle,
@@ -691,7 +706,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
           )
           .toList(),
       List.filled(
-        frame.leaves.length,
+        leaves.length,
         leafSource,
       ),
       null,
@@ -810,6 +825,7 @@ class OrganicTreeStudyPainter extends CustomPainter {
       oldDelegate.age != age ||
       oldDelegate.frame.chapterCount != frame.chapterCount ||
       oldDelegate.projectionExtent != projectionExtent ||
+      oldDelegate.visibleRect != visibleRect ||
       oldDelegate.bark != bark ||
       oldDelegate.leaf != leaf;
 }

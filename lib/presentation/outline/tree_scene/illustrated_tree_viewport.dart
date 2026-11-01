@@ -2,6 +2,22 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+/// 当前镜头的实际可见场景坐标，供独立绘制边界内的树体剔除视野外提交。
+class IllustratedTreeViewportRegion extends InheritedWidget {
+  const IllustratedTreeViewportRegion({
+    super.key,
+    required this.visibleRect,
+    required super.child,
+  });
+  final Rect visibleRect;
+  static Rect? of(BuildContext context) => context
+      .dependOnInheritedWidgetOfExactType<IllustratedTreeViewportRegion>()
+      ?.visibleRect;
+  @override
+  bool updateShouldNotify(IllustratedTreeViewportRegion oldWidget) =>
+      visibleRect != oldWidget.visibleRect;
+}
+
 /// 树体、枝牌及热区共用场景；章节浏览平移，全景等比缩放，不作为成长动画。
 class IllustratedTreeViewport extends StatefulWidget {
   const IllustratedTreeViewport({
@@ -78,42 +94,56 @@ class _IllustratedTreeViewportState extends State<IllustratedTreeViewport> {
                 width: width,
                 top: -offset.dy,
                 height: height,
-                child: AnimatedScale(
-                  scale: scale,
-                  alignment: Alignment.topCenter,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: scale, end: scale),
                   duration: const Duration(milliseconds: 460),
                   curve: Curves.easeInOutCubic,
-                  child: Transform.translate(
-                    offset: Offset(0, -widget.sceneTopInset),
-                    child: overview
-                        ? ShaderMask(
-                            blendMode: BlendMode.dstIn,
-                            shaderCallback: (bounds) => LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: const [
-                                Colors.transparent,
-                                Colors.white,
-                                Colors.white,
-                                Colors.transparent,
-                              ],
-                              stops: [0, verticalFade, 1 - verticalFade, 1],
-                            ).createShader(bounds),
-                            child: ShaderMask(
-                              blendMode: BlendMode.dstIn,
-                              shaderCallback: (bounds) => const LinearGradient(
-                                colors: [
-                                  Colors.transparent,
-                                  Colors.white,
-                                  Colors.white,
-                                  Colors.transparent,
-                                ],
-                                stops: [0, 0.06, 0.94, 1],
-                              ).createShader(bounds),
-                              child: scene!,
-                            ),
-                          )
-                        : scene!,
+                  builder: (context, currentScale, _) => Transform.scale(
+                    scale: currentScale,
+                    alignment: Alignment.topCenter,
+                    child: Transform.translate(
+                      offset: Offset(0, -widget.sceneTopInset),
+                      child: IllustratedTreeViewportRegion(
+                        visibleRect: Rect.fromLTWH(
+                          width / 2 +
+                              (offset.dx - constraints.maxWidth / 2) /
+                                  currentScale,
+                          widget.sceneTopInset + offset.dy / currentScale,
+                          constraints.maxWidth / currentScale,
+                          constraints.maxHeight / currentScale,
+                        ),
+                        child: overview
+                            ? ShaderMask(
+                                blendMode: BlendMode.dstIn,
+                                shaderCallback: (bounds) => LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: const [
+                                    Colors.transparent,
+                                    Colors.white,
+                                    Colors.white,
+                                    Colors.transparent,
+                                  ],
+                                  stops: [0, verticalFade, 1 - verticalFade, 1],
+                                ).createShader(bounds),
+                                child: ShaderMask(
+                                  blendMode: BlendMode.dstIn,
+                                  shaderCallback: (bounds) =>
+                                      const LinearGradient(
+                                        colors: [
+                                          Colors.transparent,
+                                          Colors.white,
+                                          Colors.white,
+                                          Colors.transparent,
+                                        ],
+                                        stops: [0, 0.06, 0.94, 1],
+                                      ).createShader(bounds),
+                                  child: scene!,
+                                ),
+                              )
+                            : scene!,
+                      ),
+                    ),
                   ),
                 ),
               ),
