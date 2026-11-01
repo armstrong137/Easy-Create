@@ -239,30 +239,29 @@ class OrganicTreeFrame {
           ),
       );
       join(root, rootGrowth, radius);
-      final rootMetric = _measure(root);
       for (var forkIndex = 0; forkIndex < 2; forkIndex++) {
         final birth = .3 + forkIndex * .3;
         final forkGrowth = ((rootGrowth - birth) / (1 - birth)).clamp(0.0, 1.0);
         if (forkGrowth == 0) continue;
-        final tangent = rootMetric.getTangentForOffset(
-          rootMetric.length * birth,
-        )!;
-        final start = tangent.position;
-        final normal = Offset(-tangent.vector.dy, tangent.vector.dx);
-        final direction =
-            tangent.vector * 35 + normal * (forkIndex.isEven ? 14 : -12);
         final fork = _curve(
           'fork:$index:$forkIndex',
-          () => Path()
-            ..moveTo(start.dx, start.dy)
-            ..cubicTo(
-              start.dx + tangent.vector.dx * 20,
-              start.dy + tangent.vector.dy * 20,
-              start.dx + direction.dx * .7,
-              start.dy + direction.dy * .7,
-              start.dx + direction.dx,
-              start.dy + direction.dy,
-            ),
+          () {
+            final rootMetric = _measure(root);
+            final tangent = rootMetric.getTangentForOffset(rootMetric.length * birth)!;
+            final start = tangent.position;
+            final normal = Offset(-tangent.vector.dy, tangent.vector.dx);
+            final direction = tangent.vector * 35 + normal * (forkIndex.isEven ? 14 : -12);
+            return Path()
+              ..moveTo(start.dx, start.dy)
+              ..cubicTo(
+                start.dx + tangent.vector.dx * 20,
+                start.dy + tangent.vector.dy * 20,
+                start.dx + direction.dx * .7,
+                start.dy + direction.dy * .7,
+                start.dx + direction.dx,
+                start.dy + direction.dy,
+              );
+          },
         );
         final forkRadius = math.min(
           (10 + age * 12) * (1 - forkIndex * .3),
@@ -343,37 +342,35 @@ class OrganicTreeFrame {
       );
       join(branch, growingBranch, branchRadius);
       _foliage(branch, growingBranch, index * 1000 + 900, sparse: true);
-      final branchMetric = _measure(branch);
       for (var twigIndex = 0; twigIndex < 4; twigIndex++) {
         final birth = .12 + twigIndex * .22;
         // 早发细枝先伸展展叶，母枝继续生长；后发细枝仍在母枝末态前长成。
         final twigGrowth = ((growingBranch - birth) / math.min(.4, 1 - birth))
             .clamp(0.0, 1.0);
         if (twigGrowth == 0) continue;
-        final tangent = branchMetric.getTangentForOffset(
-          branchMetric.length * birth,
-        )!;
-        final anchor = tangent.position;
         // 分枝沿母枝交错展开；固定相位只决定形态，不随树龄或浏览改变。
         final phase = index * 2.17 + twigIndex * 1.43;
-        final angle =
-            math.atan2(tangent.vector.dy, tangent.vector.dx) +
-            (twigIndex.isEven ? -.72 : .63) +
-            .28 * math.sin(phase);
-        final direction = Offset(math.cos(angle), math.sin(angle));
-        final length = 95 + 35 * math.sin(phase + .8);
         final twig = _curve(
           'twig:$index:$twigIndex',
-          () => Path()
-            ..moveTo(anchor.dx, anchor.dy)
-            ..cubicTo(
-              anchor.dx + tangent.vector.dx * 35,
-              anchor.dy + tangent.vector.dy * 35,
-              anchor.dx + direction.dx * length * .7,
-              anchor.dy + direction.dy * length * .7,
-              anchor.dx + direction.dx * length,
-              anchor.dy + direction.dy * length,
-            ),
+          () {
+            final branchMetric = _measure(branch);
+            final tangent = branchMetric.getTangentForOffset(branchMetric.length * birth)!;
+            final anchor = tangent.position;
+            final angle = math.atan2(tangent.vector.dy, tangent.vector.dx) +
+                (twigIndex.isEven ? -.72 : .63) + .28 * math.sin(phase);
+            final direction = Offset(math.cos(angle), math.sin(angle));
+            final length = 95 + 35 * math.sin(phase + .8);
+            return Path()
+              ..moveTo(anchor.dx, anchor.dy)
+              ..cubicTo(
+                anchor.dx + tangent.vector.dx * 35,
+                anchor.dy + tangent.vector.dy * 35,
+                anchor.dx + direction.dx * length * .7,
+                anchor.dy + direction.dy * length * .7,
+                anchor.dx + direction.dx * length,
+                anchor.dy + direction.dy * length,
+              );
+          },
         );
         final twigRadius = math.min(
           4 + age * 6,
@@ -392,7 +389,6 @@ class OrganicTreeFrame {
           index * 1000 + twigIndex * 100 + 95,
           sparse: true,
         );
-        final twigMetric = _measure(twig);
         for (var sprayIndex = 0; sprayIndex < 5; sprayIndex++) {
           final birth = .2 + sprayIndex * .16;
           final sprayGrowth = ((twigGrowth - birth) / (1 - birth)).clamp(
@@ -400,28 +396,26 @@ class OrganicTreeFrame {
             1.0,
           );
           if (sprayGrowth == 0) continue;
-          final tangent = twigMetric.getTangentForOffset(
-            twigMetric.length * birth,
-          )!;
-          final start = tangent.position;
-          final angle =
-              math.atan2(tangent.vector.dy, tangent.vector.dx) +
-              const [-1.25, .75, -.7, 1.2, 0.0][sprayIndex] +
-              .3 * math.sin(phase + sprayIndex * 1.71);
-          final end =
-              start +
-              Offset(math.cos(angle), math.sin(angle)) *
-                  (65 + 25 * math.sin(phase * .7 + sprayIndex * 2.13));
           final spray = _curve(
             'spray:$index:$twigIndex:$sprayIndex',
-            () => Path()
-              ..moveTo(start.dx, start.dy)
-              ..quadraticBezierTo(
-                start.dx + tangent.vector.dx * 25,
-                start.dy + tangent.vector.dy * 25,
-                end.dx,
-                end.dy,
-              ),
+            () {
+              final twigMetric = _measure(twig);
+              final tangent = twigMetric.getTangentForOffset(twigMetric.length * birth)!;
+              final start = tangent.position;
+              final angle = math.atan2(tangent.vector.dy, tangent.vector.dx) +
+                  const [-1.25, .75, -.7, 1.2, 0.0][sprayIndex] +
+                  .3 * math.sin(phase + sprayIndex * 1.71);
+              final end = start + Offset(math.cos(angle), math.sin(angle)) *
+                  (65 + 25 * math.sin(phase * .7 + sprayIndex * 2.13));
+              return Path()
+                ..moveTo(start.dx, start.dy)
+                ..quadraticBezierTo(
+                  start.dx + tangent.vector.dx * 25,
+                  start.dy + tangent.vector.dy * 25,
+                  end.dx,
+                  end.dy,
+                );
+            },
           );
           final sprayRadius = math.min(
             2 + age * 2,
