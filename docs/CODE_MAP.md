@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-01 20:12:52　对应提交：acdac02 之后的工作区状态
+> 生成时间：2026-11-01 21:01:12　对应提交：ff83c2e 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     214
-  Nodes:     5,685
-  Edges:     23,478
-  DB Size:   27.51 MB
+  Files:     215
+  Nodes:     5,712
+  Edges:     23,554
+  DB Size:   27.66 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,865
-  function        1,630
-  import          773
-  class           532
-  constant        406
-  variable        222
-  file            206
+  method          1,867
+  function        1,637
+  import          780
+  class           534
+  constant        409
+  variable        227
+  file            207
   enum_member     25
   type_alias      18
   enum            6
@@ -35,7 +35,7 @@ Nodes by Kind:
 Files by Language:
   dart            116
   javascript      51
-  python          19
+  python          20
   kotlin          8
   xml             6
   properties      4
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (214 files):
+Project Structure (215 files):
 
 |-- .agents
 |   `-- skills
@@ -291,17 +291,18 @@ Project Structure (214 files):
 |-- tools
 |   `-- tree_scene
 |       |-- rectification
-|       |   |-- bake_volume_material.py (python, 8 symbols)
+|       |   |-- bake_volume_material.py (python, 10 symbols)
 |       |   |-- export_volume_mesh.py (python, 6 symbols)
 |       |   |-- inspect_source.py (python, 9 symbols)
 |       |   |-- scene.mjs (javascript, 42 symbols)
-|       |   `-- volume_proof.py (python, 77 symbols)
+|       |   |-- volume_proof.py (python, 82 symbols)
+|       |   `-- whole_tree_spec.py (python, 7 symbols)
 |       |-- scripts
 |       |   |-- build.mjs (javascript, 10 symbols)
 |       |   |-- canvaskit-path-compat.test.mjs (javascript, 10 symbols)
 |       |   |-- capture-rectification.mjs (javascript, 16 symbols)
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
-|       |   |-- capture-volume-2d.mjs (javascript, 28 symbols)
+|       |   |-- capture-volume-2d.mjs (javascript, 35 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
 |       |   |-- check-illustrated-outline.mjs (javascript, 68 symbols)
 |       |   |-- check-organic-tree.mjs (javascript, 15 symbols)
@@ -339,7 +340,7 @@ Project Structure (214 files):
 |       |   `-- tree-growth.test.js (javascript, 5 symbols)
 |       |-- organic_tree_preview.dart (dart, 12 symbols)
 |       |-- seeded_outline_preview.dart (dart, 13 symbols)
-|       `-- volume_mesh_preview.dart (dart, 28 symbols)
+|       `-- volume_mesh_preview.dart (dart, 36 symbols)
 |-- web
 |   |-- canvaskit_path_compat.mjs (javascript, 2 symbols)
 |   |-- drift_worker.js (javascript, 666 symbols)

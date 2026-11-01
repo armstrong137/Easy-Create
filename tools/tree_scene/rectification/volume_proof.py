@@ -10,7 +10,8 @@ from mathutils import Vector
 ROOT = Path(__file__).resolve().parents[3]
 BAKED = '--baked' in sys.argv
 COMPACT = '--compact' in sys.argv
-OUT = ROOT / ("build/qa/volume-proof-compact" if COMPACT else
+TREE = '--tree' in sys.argv
+OUT = ROOT / ("build/qa/whole-tree-mesh" if TREE else "build/qa/volume-proof-compact" if COMPACT else
               "build/qa/volume-proof-baked" if BAKED else "build/qa/volume-proof")
 OUT.mkdir(parents=True, exist_ok=True)
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -32,6 +33,12 @@ edges = [(0, 1), (1, 2), (2, 3), (3, 4),
          (0, 15), (15, 16), (0, 17), (17, 18)]
 radii = [.44, .36, .28, .19, .045, .24, .13, .025,
          .20, .11, .025, .28, .04, .29, .04, .26, .035, .24, .035]
+spec = None
+if TREE:
+    sys.path.insert(0, str(Path(__file__).parent))
+    from whole_tree_spec import create_spec, pose, radial as tree_radial
+    spec = create_spec()
+    nodes, edges, radii = spec['nodes'], spec['edges'], spec['radii']
 # 封闭节点球与锥形枝段互相穿入，再做真实体积并集，避免高价Skin节点断开。
 pieces = []
 for p, radius in zip(nodes, radii):
@@ -54,7 +61,7 @@ control.name = "独立封闭枝段体积"
 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 union = control.modifiers.new("干根分叉体积并集", "REMESH")
 union.mode = 'VOXEL'
-union.voxel_size = .045
+union.voxel_size = .055 if TREE else .045
 union.use_smooth_shade = True
 relax = control.modifiers.new("接头表面平滑", "SMOOTH")
 relax.factor = .7
@@ -68,7 +75,7 @@ if COMPACT:
     reference_mesh = bpy.data.meshes.new_from_object(
         control.evaluated_get(bpy.context.evaluated_depsgraph_get()))
     simplify = control.modifiers.new("二维验证资产简化", "DECIMATE")
-    simplify.ratio = .15
+    simplify.ratio = .08 if TREE else .15
     bpy.context.view_layer.update()
 evaluated = control.evaluated_get(bpy.context.evaluated_depsgraph_get())
 surface = bpy.data.meshes.new_from_object(evaluated)
@@ -89,7 +96,7 @@ if reference_mesh:
     distances = [high_bvh.find_nearest(p)[3] for p in rest]
     distances += [low_bvh.find_nearest(p)[3] for p in high]
     height = max(p.z for p in high)-min(p.z for p in high)
-    deviation = {"ratio": .15, "reference_vertices": len(high),
+    deviation = {"ratio": .08 if TREE else .15, "reference_vertices": len(high),
                  "max_sampled_surface_distance": max(distances),
                  "relative_to_height": max(distances)/height,
                  "method": "两侧顶点到对侧表面的最近距离，不是严格连续Hausdorff上界"}
@@ -146,15 +153,16 @@ surface.materials.append(material)
 if BAKED:
     sys.path.insert(0, str(Path(__file__).parent))
     from bake_volume_material import bake_material
-    bake_material(body, rest_nodes, edges, nearest, image.image, OUT)
+    bake_material(body, rest_nodes, edges, nearest, image.image, OUT,
+                  spec['groups'] if TREE else None)
 
 def smooth(t):
     t = max(0, min(1, t))
     return t*t*(3-2*t)
 
 def deform(age):
-    grown = []
-    for index, p in enumerate(rest_nodes):
+    grown = pose(spec, age) if TREE else []
+    for index, p in ([] if TREE else enumerate(rest_nodes)):
         if index >= 11:
             grown.append(Vector((p.x*(.75+.25*age), p.y*(.75+.25*age), p.z)))
         else:
@@ -167,7 +175,8 @@ def deform(age):
         for edge, t, offset, weight in binding:
             a, b = edges[edge]
             rotation = (rest_nodes[b]-rest_nodes[a]).rotation_difference(grown[b]-grown[a])
-            position += (grown[a].lerp(grown[b], t) + rotation @ (offset*radial))*weight
+            factor = tree_radial(spec, edge, age) if TREE else radial
+            position += (grown[a].lerp(grown[b], t) + rotation @ (offset*factor))*weight
         vertex.co = position
     surface.update()
 
@@ -176,12 +185,12 @@ ground_mat = bpy.data.materials.new("接地背景")
 ground_mat.diffuse_color = (.87, .81, .70, 1)
 bpy.ops.mesh.primitive_plane_add(size=200, location=(0, 0, -.02))
 bpy.context.object.data.materials.append(ground_mat)
-bpy.ops.object.camera_add(location=(5, -9, 4.7))
+bpy.ops.object.camera_add(location=spec['camera']['position'] if TREE else (5, -9, 4.7))
 camera = bpy.context.object
-target = Vector((0, 0, 1.85))
+target = Vector(spec['camera']['target'] if TREE else (0, 0, 1.85))
 camera.rotation_euler = (target-camera.location).to_track_quat('-Z', 'Y').to_euler()
 camera.data.type = 'ORTHO'
-camera.data.ortho_scale = 5.4
+camera.data.ortho_scale = spec['camera']['scale'] if TREE else 5.4
 scene = bpy.context.scene
 scene.camera = camera
 for name, location, energy, size in [
@@ -255,6 +264,9 @@ if BAKED:
     report['material_script_sha256'] = hashlib.sha256(
         (Path(__file__).parent / 'bake_volume_material.py').read_bytes()).hexdigest()
     report['uv'] = '连续沿枝投影混合烘焙至固定2048图集；未凭烘焙完成宣称视觉通过'
+if TREE:
+    report['whole_tree'] = {"main_branches": 7, "leaves": len(spec['leaves']),
+                            "plaques": len(spec['plaques']), "rendered_in": "Flutter二维入口"}
 if not report['connected'] or report['non_manifold_edges']:
     raise RuntimeError(json.dumps(report))
 if '--export' in sys.argv:
@@ -262,7 +274,11 @@ if '--export' in sys.argv:
         raise RuntimeError('二维导出必须使用--baked固定图集')
     from export_volume_mesh import export_mesh
     report['mesh_export'] = export_mesh(surface, rest_nodes, edges, bindings,
-                                        camera, target, OUT, deform)
+                                        camera, target, OUT, deform,
+        {"growth": spec['growth'], "leaves": spec['leaves'], "plaques": spec['plaques']} if TREE else None)
+    if TREE:
+        import shutil
+        shutil.copyfile(ROOT / 'assets/source/magic_tree/textures_source/pbr/leaf_single.png', OUT / 'leaf.png')
 for name, age in [("young", 0), ("middle", .5), ("mature", 1)]:
     deform(age)
     scene.render.filepath = str(OUT / f"{name}.png")

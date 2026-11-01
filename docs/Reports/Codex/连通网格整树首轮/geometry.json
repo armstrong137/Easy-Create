@@ -1,0 +1,46 @@
+{
+  "script_sha256": "d31fd4bec3b06d643fc78a9ad669ff980a9ab7bc5f6c2a78ed3a65b7980f962e",
+  "vertices": 9655,
+  "polygons": 18131,
+  "connected": true,
+  "non_manifold_edges": 0,
+  "components": [
+    {
+      "vertices": 9655,
+      "min": [
+        -3.685100793838501,
+        -1.2013158798217773,
+        -0.27402040362358093
+      ],
+      "max": [
+        3.9566688537597656,
+        1.421926498413086,
+        9.447162628173828
+      ]
+    }
+  ],
+  "uv": "连续沿枝投影混合烘焙至固定2048图集；未凭烘焙完成宣称视觉通过",
+  "baked_material": true,
+  "simplification": {
+    "ratio": 0.08,
+    "reference_vertices": 120696,
+    "max_sampled_surface_distance": 0.007980827242136002,
+    "relative_to_height": 0.0008211249295898396,
+    "method": "两侧顶点到对侧表面的最近距离，不是严格连续Hausdorff上界"
+  },
+  "deformation": "同一连通网格空间权重形变，非阶段整图、非整体缩放",
+  "production_integrated": false,
+  "material_script_sha256": "34bbc74d0ade432e6e25a82fca2dc97deb790af349df72dec02c297777930624",
+  "whole_tree": {
+    "main_branches": 7,
+    "leaves": 1911,
+    "plaques": 2,
+    "rendered_in": "Flutter二维入口"
+  },
+  "mesh_export": {
+    "bytes": 1506180,
+    "vertices": 9655,
+    "triangles": 19310,
+    "referenceSamples": 9
+  }
+}

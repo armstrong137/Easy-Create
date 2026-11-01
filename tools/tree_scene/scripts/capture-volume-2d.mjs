@@ -4,12 +4,15 @@ import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve, relative, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { spawn } from 'node:child_process';
+import { Readable } from 'node:stream';
 
 // 独立构建与实验资产分别提供；不覆盖build/web，不打开小说数据库。
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../..');
 const compact=process.argv.includes('--compact');
-const web=resolve(root,'build/volume-web'), proof=resolve(root,compact?'build/qa/volume-proof-compact':'build/qa/volume-proof-baked');
-const output=resolve(root,compact?'build/qa/volume-2d-compact':'build/qa/volume-2d',new Date().toISOString().replaceAll(':','-'));
+const tree=process.argv.includes('--tree');
+const web=resolve(root,'build/volume-web'), proof=resolve(root,tree?'build/qa/whole-tree-mesh':compact?'build/qa/volume-proof-compact':'build/qa/volume-proof-baked');
+const output=resolve(root,tree?'build/qa/whole-tree-2d':compact?'build/qa/volume-2d-compact':'build/qa/volume-2d',new Date().toISOString().replaceAll(':','-'));
 await mkdir(output,{recursive:true});
 const mime={'.js':'text/javascript','.mjs':'text/javascript','.html':'text/html',
   '.json':'application/json','.wasm':'application/wasm','.png':'image/png','.css':'text/css'};
@@ -51,6 +54,12 @@ try{
   await page.setViewportSize({width:430,height:932});
   await page.waitForTimeout(600);
   await page.screenshot({path:resolve(output,'phone.png')});
+  if(tree){
+    await page.getByRole('button',{name:'枝牌近景',exact:true}).click();
+    await page.waitForTimeout(500);
+    await page.screenshot({path:resolve(output,'plaque-close.png')});
+    await page.getByRole('button',{name:'返回全景',exact:true}).click();
+  }
   await page.setViewportSize({width:900,height:1280});
   await page.evaluate(()=>{
     window.volumeFrames=[];window.volumeObserved=[];let previous,lastAge;
@@ -77,7 +86,7 @@ try{
     return {count:sorted.length,p95Ms:sorted[Math.floor(sorted.length*.95)],worstMs:sorted.at(-1)};
   }
   intervals.sort((a,b)=>a-b);
-  const result={states,assetBytes:JSON.parse(await readFile(resolve(proof,'mesh.json'),'utf8')).byteLength,
+  const result={success:false,states,assetBytes:JSON.parse(await readFile(resolve(proof,'mesh.json'),'utf8')).byteLength,
     frameSample:{count:intervals.length,p95Ms:intervals[Math.floor(intervals.length*.95)],worstMs:intervals.at(-1)},
     cpuGeometry:summary(observed.map(frame=>frame.computeMs)),cpuPaintRecording:summary(observed.map(frame=>frame.recordMs)),
     timingScope:'JS RAF探针不是绘制帧率；Dart指标只含几何/排序和绘图记录CPU，不含GPU完成时间',
@@ -90,6 +99,36 @@ try{
     generator:JSON.parse(await readFile(resolve(proof,'result.json'),'utf8')).script_sha256,
     atlasPngBytes:(await readFile(resolve(proof,'baked-bark.png'))).length,
   };
+  if(tree){
+    result.provenance.wholeSpec=await hash(resolve(root,'tools/tree_scene/rectification/whole_tree_spec.py'));
+    if(states[0].plaques!==0||states.at(-1).plaques!==2||states.at(-1).leaves!==1911)
+      throw Error('整树出生或牌面数量与本轮样件规格不一致');
+    await writeFile(resolve(output,'result.json'),JSON.stringify(result,null,2));
+    // 性能统计已结束；另行渲染固定相机的连续成长片，不混入静帧检查。
+    const frames=resolve(output,'motion-frames');await mkdir(frames,{recursive:true});
+    for(let frame=0;frame<=100;frame++){
+      const age=frame/100;
+      await page.evaluate(age=>window.setVolumeProofAge(age),age);
+      await page.waitForFunction(age=>Math.abs(window.volumeProofMetrics.age-age)<1e-9&&
+        Math.abs(window.volumeProofPaint.age-age)<1e-9,age);
+      await page.screenshot({type:'jpeg',quality:95,path:resolve(frames,`${String(frame).padStart(3,'0')}.jpg`)});
+    }
+    let log='';
+    await new Promise((resolvePromise,reject)=>{
+      const ffmpeg=resolve(process.env.LOCALAPPDATA,'ms-playwright/ffmpeg-1011/ffmpeg-win64.exe');
+      const child=spawn(ffmpeg,['-y','-f','image2pipe','-r','10','-c:v','mjpeg','-i','pipe:0',
+        '-c:v','libvpx','-b:v','1400k',resolve(output,'growth.webm')],{windowsHide:true});
+      child.stderr.on('data',data=>log+=data.toString());
+      child.on('error',reject);child.on('close',code=>code===0?resolvePromise():reject(Error(log)));
+      const input=Readable.from((async function*(){for(let frame=0;frame<=100;frame++)
+        yield await readFile(resolve(frames,`${String(frame).padStart(3,'0')}.jpg`));})());
+      input.on('error',reject);child.stdin.on('error',reject);input.pipe(child.stdin);
+    });
+    await writeFile(resolve(output,'motion-encode.log'),log);
+    result.separateMotion={file:'growth.webm',frames:101,fps:10,
+      note:'真实Flutter网格逐帧渲染后编码，不含静帧/转屏切换；编码帧率不代表运行帧率'};
+  }
+  result.success=errors.length===0;
   await writeFile(resolve(output,'result.json'),JSON.stringify(result,null,2));
   if(errors.length)throw Error(JSON.stringify(errors));
   console.log(output);

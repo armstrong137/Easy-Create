@@ -4,7 +4,7 @@ import json
 from mathutils import Vector
 
 
-def export_mesh(mesh, rest_nodes, edges, bindings, camera, target, output, deform):
+def export_mesh(mesh, rest_nodes, edges, bindings, camera, target, output, deform, extra=None):
     mesh.calc_loop_triangles()
     payload = array('f')
     sections = {}
@@ -38,6 +38,8 @@ def export_mesh(mesh, rest_nodes, edges, bindings, camera, target, output, defor
         "samples": samples, "byteLength": len(payload)*4,
         "note": "Float32小端；绑定每顶点三组[边,t,偏移xyz,权重]；角点[顶点索引,u,v]",
     }
+    if extra:
+        metadata.update(extra)
     (output / 'mesh.bin').write_bytes(payload.tobytes())
     (output / 'mesh.json').write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding='utf-8')
     return {"bytes": len(payload)*4, "vertices": metadata['vertexCount'],

@@ -1,12 +1,13 @@
 """沿枝局部坐标的连续投影混合，只在离线烘焙使用复杂材质。"""
 import math
 import bpy
+import numpy as np
 from mathutils import Vector
 
 
-def bake_material(body, rest_nodes, edges, nearest, image_source, output):
+def bake_material(body, rest_nodes, edges, nearest, image_source, output, groups=None):
     mesh = body.data
-    groups = [[0, 1, 2, 3], [4, 5, 6], [7, 8, 9],
+    groups = groups or [[0, 1, 2, 3], [4, 5, 6], [7, 8, 9],
               [10, 11], [12, 13], [14, 15], [16, 17]]
     attributes = [f"枝向权重{i}" for i in range(len(groups))]
     for name in attributes:
@@ -44,9 +45,6 @@ def bake_material(body, rest_nodes, edges, nearest, image_source, output):
         links.new(b, node.inputs[2])
         return node.outputs[0]
 
-    coordinates = nodes.new('ShaderNodeTexCoord').outputs['Object']
-    normal = nodes.new('ShaderNodeNewGeometry').outputs['Normal']
-
     def dot(value, axis):
         node = nodes.new('ShaderNodeVectorMath')
         node.operation = 'DOT_PRODUCT'
@@ -54,35 +52,39 @@ def bake_material(body, rest_nodes, edges, nearest, image_source, output):
         node.inputs[1].default_value = axis
         return node.outputs['Value']
 
-    color_sum = None
-    for index, group in enumerate(groups):
-        start = rest_nodes[edges[group[0]][0]]
-        end = rest_nodes[edges[group[-1]][1]]
-        z = (end-start).normalized()
-        x = z.cross(Vector((0, 1, 0))).normalized()
-        y = z.cross(x).normalized()
-        axes = [x, y, z]
-        normal_weights = [math_node('POWER', math_node('ABSOLUTE', dot(normal, axis)), 4)
-                          for axis in axes]
-        total = math_node('ADD', math_node('ADD', normal_weights[0], normal_weights[1]), normal_weights[2])
-        group_weight = nodes.new('ShaderNodeAttribute')
-        group_weight.attribute_name = attributes[index]
-        for axis_index, (u, v) in enumerate([(y, z), (x, z), (x, y)]):
-            uv = nodes.new('ShaderNodeCombineXYZ')
-            links.new(math_node('MULTIPLY', dot(coordinates, u), .8), uv.inputs[0])
-            links.new(math_node('MULTIPLY', dot(coordinates, v), .8), uv.inputs[1])
-            texture = nodes.new('ShaderNodeTexImage')
-            texture.image = image_source
-            texture.extension = 'REPEAT'
-            links.new(uv.outputs[0], texture.inputs['Vector'])
-            weight = math_node('MULTIPLY', group_weight.outputs['Fac'],
-                               math_node('DIVIDE', normal_weights[axis_index], total))
-            contribution = color_mix('MULTIPLY', texture.outputs['Color'], weight)
-            color_sum = contribution if color_sum is None else color_mix('ADD', color_sum, contribution)
-    emission = nodes.new('ShaderNodeEmission')
-    links.new(color_sum, emission.inputs['Color'])
-    result = nodes.new('ShaderNodeOutputMaterial')
-    links.new(emission.outputs[0], result.inputs['Surface'])
+    def source_batch(first, last):
+        nodes.clear()
+        coordinates = nodes.new('ShaderNodeTexCoord').outputs['Object']
+        normal = nodes.new('ShaderNodeNewGeometry').outputs['Normal']
+        color_sum = None
+        for index in range(first, last):
+            group = groups[index]
+            start = rest_nodes[edges[group[0]][0]]
+            end = rest_nodes[edges[group[-1]][1]]
+            z = (end-start).normalized()
+            x = z.cross(Vector((0, 1, 0))).normalized()
+            y = z.cross(x).normalized()
+            normal_weights = [math_node('POWER', math_node('ABSOLUTE', dot(normal, axis)), 4)
+                              for axis in [x, y, z]]
+            total = math_node('ADD', math_node('ADD', normal_weights[0], normal_weights[1]), normal_weights[2])
+            group_weight = nodes.new('ShaderNodeAttribute')
+            group_weight.attribute_name = attributes[index]
+            for axis_index, (u, v) in enumerate([(y, z), (x, z), (x, y)]):
+                uv = nodes.new('ShaderNodeCombineXYZ')
+                links.new(math_node('MULTIPLY', dot(coordinates, u), .8), uv.inputs[0])
+                links.new(math_node('MULTIPLY', dot(coordinates, v), .8), uv.inputs[1])
+                texture = nodes.new('ShaderNodeTexImage')
+                texture.image = image_source
+                texture.extension = 'REPEAT'
+                links.new(uv.outputs[0], texture.inputs['Vector'])
+                weight = math_node('MULTIPLY', group_weight.outputs['Fac'],
+                                   math_node('DIVIDE', normal_weights[axis_index], total))
+                contribution = color_mix('MULTIPLY', texture.outputs['Color'], weight)
+                color_sum = contribution if color_sum is None else color_mix('ADD', color_sum, contribution)
+        emission = nodes.new('ShaderNodeEmission')
+        links.new(color_sum, emission.inputs['Color'])
+        result = nodes.new('ShaderNodeOutputMaterial')
+        links.new(emission.outputs[0], result.inputs['Surface'])
     mesh.materials.clear()
     mesh.materials.append(material)
     bpy.ops.object.select_all(action='DESELECT')
@@ -93,14 +95,24 @@ def bake_material(body, rest_nodes, edges, nearest, image_source, output):
     bpy.ops.uv.smart_project(angle_limit=math.radians(55), island_margin=.025)
     bpy.ops.object.mode_set(mode='OBJECT')
     atlas = bpy.data.images.new("连通体烘焙基色", width=2048, height=2048, alpha=True)
-    target = nodes.new('ShaderNodeTexImage')
-    target.image = atlas
-    nodes.active = target
     scene = bpy.context.scene
     previous_engine = scene.render.engine
     scene.render.engine = 'CYCLES'
     scene.cycles.samples = 1
-    bpy.ops.object.bake(type='EMIT', margin=16, use_clear=True)
+    accumulated = np.zeros(2048*2048*4, dtype=np.float32)
+    pixels = np.empty_like(accumulated)
+    # 每批最多六组，避免整树投影超出Cycles SVM栈；累加在线性像素空间进行。
+    for first in range(0, len(groups), 6):
+        source_batch(first, min(first+6, len(groups)))
+        target = nodes.new('ShaderNodeTexImage')
+        target.image = atlas
+        nodes.active = target
+        bpy.ops.object.bake(type='EMIT', margin=16, use_clear=True)
+        atlas.pixels.foreach_get(pixels)
+        accumulated += pixels
+    np.clip(accumulated, 0, 1, out=accumulated)
+    atlas.pixels.foreach_set(accumulated)
+    atlas.update()
     atlas.filepath_raw = str(output / "baked-bark.png")
     atlas.file_format = 'PNG'
     atlas.save()
