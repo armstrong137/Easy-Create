@@ -4,11 +4,15 @@ import 'package:flutter/material.dart';
 
 /// 连续树体、枝牌和热区使用同一母版到场景坐标变换。
 class OrganicTreeProjection {
+  // 扩展两侧几何空间，保留原主干与根部坐标，不横向拉伸树体。
+  static const nativeBounds = Rect.fromLTWH(-100, 0, 1200, 1672);
+  static final nativeSize = nativeBounds.size;
   OrganicTreeProjection(Size scene, {double upperExtent = 0}) {
-    scale = math.min(scene.width / 941, scene.height / (1672 + upperExtent));
+    scale = math.min(scene.width / nativeSize.width,
+        scene.height / (nativeSize.height + upperExtent));
     origin = Offset(
-      (scene.width - 941 * scale) / 2,
-      (scene.height - (1672 + upperExtent) * scale) / 2 + upperExtent * scale,
+      (scene.width - nativeSize.width * scale) / 2 - nativeBounds.left * scale,
+      (scene.height - (nativeSize.height + upperExtent) * scale) / 2 + upperExtent * scale,
     );
   }
 

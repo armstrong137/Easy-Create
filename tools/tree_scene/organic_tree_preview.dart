@@ -31,11 +31,11 @@ class _PreviewState extends State<_Preview> {
             builder: (context, constraints) {
               final height = math.max(
                 constraints.maxHeight * 1.6,
-                constraints.maxWidth * 1672 / 941,
+                constraints.maxWidth * OrganicTreeProjection.nativeSize.height / OrganicTreeProjection.nativeSize.width,
               );
               return IllustratedTreeViewport(
                 sceneHeight: height,
-                sceneWidth: height * 941 / 1672,
+                sceneWidth: height * OrganicTreeProjection.nativeSize.width / OrganicTreeProjection.nativeSize.height,
                 focusY: height * .63,
                 chapterScale: 3.5,
                 overview: _overview,
@@ -43,7 +43,7 @@ class _PreviewState extends State<_Preview> {
                   age: _age,
                   foregroundBuilder: (context, frame, bark) {
                     final projection = OrganicTreeProjection(
-                      Size(height * 941 / 1672, height),
+                      Size(height * OrganicTreeProjection.nativeSize.width / OrganicTreeProjection.nativeSize.height, height),
                     );
                     return Stack(
                       fit: StackFit.expand,

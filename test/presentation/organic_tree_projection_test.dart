@@ -9,13 +9,13 @@ void main() {
     for (final size in [
       const Size(430, 932),
       const Size(910, 800),
-      const Size(941, 1672),
+      OrganicTreeProjection.nativeSize,
     ]) {
       final projection = OrganicTreeProjection(size);
       final source =
-          projection.project(Offset.zero) &
-          Size(941 * projection.scale, 1672 * projection.scale);
-      expect(source.width / source.height, closeTo(941 / 1672, .00001));
+          projection.project(OrganicTreeProjection.nativeBounds.topLeft) &
+          OrganicTreeProjection.nativeSize * projection.scale;
+      expect(source.width / source.height, closeTo(OrganicTreeProjection.nativeSize.aspectRatio, .00001));
       expect(source.left, greaterThanOrEqualTo(0));
       expect(source.top, greaterThanOrEqualTo(0));
       for (var index = 0; index < 10; index++) {

@@ -16,14 +16,17 @@ class OrganicTreeCameraLayout extends IllustratedTreeCameraLayout {
   });
 
   final int focusedChapter;
+  double get _baseSceneHeight => math.max(viewport.height * 1.6,
+      viewport.width * OrganicTreeProjection.nativeSize.height / OrganicTreeProjection.nativeSize.width);
   @override
   double get sceneWidth =>
-      math.max(viewport.width, super.sceneHeight * 941 / 1672);
+      math.max(viewport.width, _baseSceneHeight * OrganicTreeProjection.nativeSize.width /
+        OrganicTreeProjection.nativeSize.height);
   double get upperExtent =>
       OrganicTreeFrame.upperExtentFor(chapterCount.toDouble());
-  double get sceneTopInset => upperExtent * sceneWidth / 941;
+  double get sceneTopInset => upperExtent * sceneWidth / OrganicTreeProjection.nativeSize.width;
   @override
-  double get sceneHeight => super.sceneHeight + sceneTopInset;
+  double get sceneHeight => _baseSceneHeight + sceneTopInset;
   OrganicTreeProjection get projection => OrganicTreeProjection(
     Size(sceneWidth, sceneHeight),
     upperExtent: upperExtent,

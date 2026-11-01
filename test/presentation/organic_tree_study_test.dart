@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:novel_app/presentation/outline/tree_scene/organic_branch.dart';
 import 'package:novel_app/presentation/outline/tree_scene/organic_tree_study.dart';
+import 'package:novel_app/presentation/outline/tree_scene/organic_tree_projection.dart';
 
 void main() {
   test('延伸主干连续展叶，已出生叶节不搬动且叶柄留在树干内', () {
@@ -105,8 +106,8 @@ void main() {
     expect(young.chapterAnchor(9, 10), isNull, reason: '不能把成熟树锚点用在幼树尚未长出的部分');
     for (final count in [30, 100, 1000]) {
       final expanded = OrganicTreeFrame(1, chapterCount: count.toDouble());
-      expect(expanded.wood.getBounds().left, greaterThanOrEqualTo(0));
-      expect(expanded.wood.getBounds().right, lessThanOrEqualTo(941));
+      expect(expanded.wood.getBounds().left, greaterThanOrEqualTo(OrganicTreeProjection.nativeBounds.left));
+      expect(expanded.wood.getBounds().right, lessThanOrEqualTo(OrganicTreeProjection.nativeBounds.right));
       Offset? previous;
       for (var index = 0; index < count; index++) {
         final anchor = expanded.chapterAnchor(index, count)!;
@@ -163,8 +164,8 @@ void main() {
       final frame = OrganicTreeFrame(step / 100);
       final bounds = frame.wood.getBounds();
       expect(bounds.isFinite, isTrue, reason: '树龄 $step');
-      expect(bounds.left, greaterThanOrEqualTo(0));
-      expect(bounds.right, lessThanOrEqualTo(941));
+      expect(bounds.left, greaterThanOrEqualTo(OrganicTreeProjection.nativeBounds.left));
+      expect(bounds.right, lessThanOrEqualTo(OrganicTreeProjection.nativeBounds.right));
       for (final limb in frame.limbs) {
         final metric = limb.spine.computeMetrics().first;
         final center = metric
@@ -218,6 +219,9 @@ void main() {
 
       final bark = await load('assets/tree_scene/illustrated/bark_detail.png');
       final leaf = await load('assets/tree_scene/illustrated/leaf_detail.png');
+      final size = OrganicTreeProjection.nativeSize;
+      final width = size.width.toInt();
+      final baseHeight = size.height.toInt();
       const writeFrames = bool.fromEnvironment('WRITE_TREE_STUDY_FRAMES');
       final ages = writeFrames
           ? List.generate(121, (index) => index / 120)
@@ -229,24 +233,24 @@ void main() {
           age,
           bark,
           leaf,
-        ).paint(Canvas(recorder), const Size(941, 1672));
+        ).paint(Canvas(recorder), size);
         final picture = recorder.endRecording();
-        final image = await picture.toImage(941, 1672);
+        final image = await picture.toImage(width, baseHeight);
         final raw = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
         expect(raw!.getUint8(3), 0, reason: '全景画布角落必须透明，不能形成缩放色块');
         final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
         expect(bytes, isNotNull);
         for (final chapterCount in [null, 30.0]) {
-          for (final area in [const Rect.fromLTWH(260, 900, 400, 650),
-            const Rect.fromLTWH(100, 200, 600, 700)]) {
+          for (final area in [const Rect.fromLTWH(300, 900, 600, 650),
+            const Rect.fromLTWH(0, 200, 1200, 700)]) {
             Future<Uint8List> clipped(bool cull) async {
               final clipRecorder = ui.PictureRecorder();
               final canvas = Canvas(clipRecorder)..clipRect(area);
               OrganicTreeStudyPainter(age, bark, leaf, chapterCount: chapterCount,
                 visibleRect: cull ? area : null)
-                  .paint(canvas, const Size(941, 1672));
+                  .paint(canvas, size);
               final clipPicture = clipRecorder.endRecording();
-              final clipImage = await clipPicture.toImage(941, 1672);
+              final clipImage = await clipPicture.toImage(width, baseHeight);
               final data = await clipImage.toByteData(format: ui.ImageByteFormat.png);
               clipImage.dispose();
               clipPicture.dispose();
@@ -258,9 +262,9 @@ void main() {
         }
         final nextRecorder = ui.PictureRecorder();
         OrganicTreeStudyPainter(age == 1 ? .2 : 1, bark, leaf)
-            .paint(Canvas(nextRecorder), const Size(941, 1672));
+            .paint(Canvas(nextRecorder), size);
         nextRecorder.endRecording().dispose();
-        final replay = await picture.toImage(941, 1672);
+        final replay = await picture.toImage(width, baseHeight);
         final replayBytes = await replay.toByteData(format: ui.ImageByteFormat.png);
         expect(replayBytes!.buffer.asUint8List(),
             orderedEquals(bytes!.buffer.asUint8List()),
@@ -283,12 +287,12 @@ void main() {
         picture.dispose();
       }
       if (const bool.fromEnvironment('WRITE_TREE_STUDY')) {
-        final height = (1672 + OrganicTreeFrame.upperExtentFor(30)).ceil();
+        final height = (size.height + OrganicTreeFrame.upperExtentFor(30)).ceil();
         final recorder = ui.PictureRecorder();
         OrganicTreeStudyPainter(1, bark, leaf, chapterCount: 30)
-            .paint(Canvas(recorder), Size(941, height.toDouble()));
+            .paint(Canvas(recorder), Size(size.width, height.toDouble()));
         final picture = recorder.endRecording();
-        final image = await picture.toImage(941, height);
+        final image = await picture.toImage(width, height);
         final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
         await File('build/qa/main-tree-study/chapters_30.png')
             .writeAsBytes(bytes!.buffer.asUint8List());

@@ -309,13 +309,13 @@ class OrganicTreeFrame {
       final side = index.isEven ? -1 : 1;
       final end = index < 7
           ? const [
-              Offset(170, 1030),
-              Offset(760, 930),
-              Offset(170, 790),
-              Offset(760, 650),
-              Offset(220, 510),
-              Offset(680, 420),
-              Offset(450, 300),
+              Offset(100, 780),
+              Offset(900, 760),
+              Offset(100, 500),
+              Offset(900, 500),
+              Offset(220, 320),
+              Offset(780, 320),
+              Offset(500, 350),
             ][index]
           : Offset(
               start.dx + side * (160 + 40 * math.sin(index * 1.73)),
