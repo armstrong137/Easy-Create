@@ -4,6 +4,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:novel_app/presentation/outline/tree_scene/organic_branch.dart';
 
 void main() {
+  test('完整中心线复用后仍按当前粗细收尖，伸展中不沿用完整位置', () {
+    final spine = Path()..moveTo(20, 180)..cubicTo(60, 150, 140, 20, 240, 70);
+    final completed = OrganicBranchPainter.sampleStem(spine, 1, 16, tipRatio: .04);
+    for (final growth in [0.0, .25, .75, 1.0]) {
+      for (final radius in [8.0, 40.0]) {
+        for (final tip in [.04, .48]) {
+          final fresh = OrganicBranchPainter.sampleStem(spine, growth, radius, tipRatio: tip);
+          final reused = OrganicBranchPainter.sampleStem(spine, growth, radius,
+            tipRatio: tip, completedSections: completed);
+          expect(reused, orderedEquals(fresh));
+        }
+      }
+    }
+  });
   testWidgets('枝梢连续延伸且不移动根部，左右镜像保持同样生长量', (tester) async {
     await tester.runAsync(() async {
       Future<({int left, int right, int pixels})> bounds(

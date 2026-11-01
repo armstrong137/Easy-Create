@@ -289,7 +289,20 @@ class OrganicBranchPainter extends CustomPainter {
     double rootRadius, {
     double tipRatio = .48,
     ui.PathMetric? pathMetric,
+    List<OrganicStemSection>? completedSections,
   }) {
+    // 同一中心线完全伸展后，增粗只改变半径；借用上一帧精确位置与法线。
+    if (growth == 1 && completedSections != null) {
+      return [
+        for (var index = 0; index <= stemSamples; index++)
+          (
+            center: completedSections[index].center,
+            normal: completedSections[index].normal,
+            radius: radiusAt(index / stemSamples, growth, rootRadius, tipRatio),
+            distance: completedSections[index].distance,
+          ),
+      ];
+    }
     final metric = pathMetric ?? spine.computeMetrics().first;
     final sections = <OrganicStemSection>[];
     for (var index = 0; index <= stemSamples; index++) {

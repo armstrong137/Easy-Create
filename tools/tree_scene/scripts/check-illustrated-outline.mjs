@@ -6,6 +6,8 @@ import { chromium } from 'playwright';
 const url = process.argv[2] ?? 'http://127.0.0.1:8780/';
 assert.ok(!process.argv.includes('--cpu-profile') || process.argv.includes('--audit-growth'),
   '--cpu-profile 需要同时启用 --audit-growth');
+assert.ok(!process.argv.includes('--allocation-profile') || process.argv.includes('--cpu-profile'),
+  '--allocation-profile 需要同时启用 --cpu-profile，以保存同次源码映射');
 assert.ok(!process.argv.includes('--audit-dense-history') ||
   (process.argv.includes('--audit-dense') && process.argv.includes('--audit-sections') && process.argv.includes('--audit-history')),
   '--audit-dense-history 需要同时启用 --audit-dense、--audit-sections 与 --audit-history');
@@ -179,6 +181,10 @@ try {
       await profiler.send('Profiler.enable');
       await profiler.send('Profiler.setSamplingInterval', { interval: 1000 });
       await profiler.send('Profiler.start');
+      if (process.argv.includes('--allocation-profile')) {
+        await profiler.send('HeapProfiler.startSampling', { samplingInterval: 32768,
+          includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true });
+      }
     }
     await addChapter.click();
     await page.getByRole('button', { name: title, exact: true }).waitFor();
@@ -190,6 +196,10 @@ try {
       if (profiler) {
         const { profile } = await profiler.send('Profiler.stop');
         await writeFile(resolve(output, 'mature-growth.cpuprofile'), JSON.stringify(profile));
+        if (process.argv.includes('--allocation-profile')) {
+          const { profile: allocations } = await profiler.send('HeapProfiler.stopSampling');
+          await writeFile(resolve(output, 'mature-allocations.heapprofile'), JSON.stringify(allocations));
+        }
         const times = new Map();
         for (let index = 0; index < profile.samples.length; index++) {
           const id = profile.samples[index];
@@ -289,6 +299,10 @@ try {
         await profiler.send('Profiler.enable');
         await profiler.send('Profiler.setSamplingInterval', { interval: 1000 });
         await profiler.send('Profiler.start');
+        if (process.argv.includes('--allocation-profile')) {
+          await profiler.send('HeapProfiler.startSampling', { samplingInterval: 32768,
+            includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true });
+        }
       }
       await addChapter.click();
       await page.getByRole('button', { name: `第${numeral}章`, exact: true }).waitFor();
@@ -309,6 +323,10 @@ try {
         if (profiler) {
           const { profile } = await profiler.send('Profiler.stop');
           await writeFile(resolve(output, 'extended-growth.cpuprofile'), JSON.stringify(profile));
+          if (process.argv.includes('--allocation-profile')) {
+            const { profile: allocations } = await profiler.send('HeapProfiler.stopSampling');
+            await writeFile(resolve(output, 'extended-allocations.heapprofile'), JSON.stringify(allocations));
+          }
           await profiler.detach();
         }
         await page.screenshot({ path: resolve(output, 'extended-growth-settled.png') });
@@ -377,6 +395,7 @@ try {
     crossOriginIsolated: await page.evaluate(() => globalThis.crossOriginIsolated),
     graphicsRequest: process.argv.includes('--default-gpu') ? '浏览器默认' : '强制 SwiftShader',
     cpuProfiling: process.argv.includes('--cpu-profile'),
+    allocationProfiling: process.argv.includes('--allocation-profile'),
     checksPassed: ['创建十章和两节', '末态语义窗口只有两章', '浏览器零错误',
       ...(process.argv.includes('--audit-sections') ? [`手机和宽屏小节${sectionPointerChecks.length}次真实指针命中正确页面`,
         '六节右侧历史滑动保持左侧章节窗口'] : []),

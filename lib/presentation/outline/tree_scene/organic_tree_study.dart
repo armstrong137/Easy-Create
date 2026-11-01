@@ -91,6 +91,8 @@ class OrganicTreeFrame {
       14 + age * 78,
       tipRatio: .025,
       pathMetric: metric,
+      completedSections: growth == 1 && previous?._originalGrowth == 1
+          ? previous!.limbs.first.sections : null,
     );
     if (extra > 0) {
       trunkSections = [
@@ -485,6 +487,8 @@ class OrganicTreeFrame {
             radius,
             tipRatio: .04,
             pathMetric: _measure(spine),
+            completedSections: growth == 1 && previous?.growth == 1
+                ? previous!.sections : null,
           );
     final shape = identical(sections, previous?.sections)
         ? previous!.shape : OrganicBranchPainter.sectionPath(sections);
