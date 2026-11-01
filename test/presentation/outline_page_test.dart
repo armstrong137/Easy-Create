@@ -487,7 +487,7 @@ void main() {
     }
   });
 
-  testWidgets('新增第十一章时，移动中的枝牌遮罩仍与真实主干重合', (tester) async {
+  testWidgets('新增冠层章时，转屏与移动中的实体枝根、遮罩共用当前坐标', (tester) async {
     await seedNovel();
     for (var index = 0; index < 10; index++) {
       await database.into(database.chapters).insert(ChaptersCompanion.insert(
@@ -498,6 +498,9 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     await tester.tap(find.byKey(const Key('新增章节入口')));
     await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byKey(const Key('静态章交互_11')), findsNothing,
+        reason: '冠层母枝尚未长到时不得提前显示悬空热区');
+    await tester.pump(const Duration(milliseconds: 1100));
     expect(find.byKey(const Key('静态章交互_11')), findsOneWidget);
     for (var step = 0; step < 4; step++) {
       if (step == 1) tester.view.physicalSize = const Size(480, 800);
@@ -505,19 +508,16 @@ void main() {
       final tree = tester.renderObject<RenderBox>(find.byType(OrganicTree));
       final painter = tester.widgetList<CustomPaint>(find.byType(CustomPaint))
           .map((paint) => paint.painter).whereType<OrganicTreeStudyPainter>().single;
-      final projection = OrganicTreeProjection(tree.size, upperExtent: painter.projectionExtent);
-      final trunk = painter.frame.trunkWood;
-      final expected = tree.localToGlobal(projection.project(trunk.getBounds().topLeft));
-      final previousBranch = tester.renderObject<RenderBox>(find.byKey(const Key('静态章交互_10')));
-      final root = previousBranch.localToGlobal(Offset(previousBranch.size.width * .88,
-        previousBranch.size.height * .7));
-      final anchor = tree.localToGlobal(projection.project(OrganicTreeFrame.trunkPoint(
-        OrganicTreeFrame.chapterFraction(9, 11))));
-      expect((root - anchor).distance, lessThan(.01),
-          reason: '新增顶部画布时，既有章枝根不能随局部矩形补间跳离主干锚点');
+      final projection = OrganicTreeProjection(tree.size);
+      final attachment = painter.frame.chapterAttachment(10)!;
+      final expectedRoot = tree.localToGlobal(projection.project(attachment.point));
+      final expected = tree.localToGlobal(projection.project(attachment.wood.getBounds().topLeft));
       for (final element in find.byType(OrganicBranch).evaluate()) {
         final branch = element.widget as OrganicBranch;
         final box = element.renderObject! as RenderBox;
+        expect((box.localToGlobal(branch.supportRoot!) - expectedRoot).distance,
+            lessThan(.01), reason: '牌面位置补间时，实体木枝必须从真实母枝长出');
+        expect(branch.trunkMask!.contains(branch.supportRoot!), isTrue);
         final actual = box.localToGlobal(branch.trunkMask!.getBounds().topLeft);
         expect((actual - expected).distance, lessThan(.01),
             reason: '动画中遮罩必须从当前枝牌位置反算，不能提前使用目标位置');
@@ -525,6 +525,32 @@ void main() {
     }
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('冠层章节实体枝根对齐且左侧历史可逐章回到树根', (tester) async {
+    await seedNovel();
+    final outline = List.generate(30, (index) => OutlineChapter(
+      chapter: Chapter(id: index + 1, novelId: 1, title: '第${index + 1}章', sortOrder: index),
+      sections: index == 29 ? [
+        Section(id: 101, chapterId: 30, title: '第一节', sortOrder: 0),
+        Section(id: 102, chapterId: 30, title: '第二节', sortOrder: 1),
+      ] : const [],
+    ));
+    await pumpOutline(tester, outline, enableIllustratedCamera: true);
+    await tester.pump(const Duration(seconds: 2));
+    for (final element in find.byType(OrganicBranch).evaluate()) {
+      final branch = element.widget as OrganicBranch;
+      expect(branch.supportRoot != null, isTrue);
+      expect(branch.trunkMask!.contains(branch.supportRoot!), isTrue);
+    }
+    for (var chapter = 29; chapter >= 1; chapter--) {
+      await tester.dragFrom(const Offset(80, 590), const Offset(0, 190));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.byKey(Key('静态章交互_$chapter')), findsOneWidget);
+      expect(tester.widget<OrganicTree>(find.byType(OrganicTree)).age, 1);
+      expect(tester.widget<OrganicTree>(find.byType(OrganicTree)).chapterCount, 30);
+    }
   });
 
   testWidgets('实验大纲从幼树开始使用连续主树和真实章节热区', (tester) async {

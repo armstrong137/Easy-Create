@@ -8,18 +8,18 @@ import 'package:novel_app/presentation/outline/tree_scene/organic_tree_study.dar
 import 'package:novel_app/presentation/outline/tree_scene/organic_tree_projection.dart';
 
 void main() {
-  test('延伸主干连续展叶，已出生叶节不搬动且叶柄留在树干内', () {
+  test('冠层追加连续展叶，已出生叶节不搬动且叶柄留在木质内', () {
     var previous = <(Offset, double), double>{};
     for (var step = 0; step <= 100; step++) {
       final frame = OrganicTreeFrame(1, chapterCount: 10 + step * .2);
       final current = {
         for (final leaf in frame.leaves)
-          if (leaf.point.dy < 410 && frame.trunkWood.contains(leaf.point))
+          if (frame.wood.contains(leaf.point))
             (leaf.point, leaf.angle): leaf.scale,
       };
       for (final entry in previous.entries) {
         expect(current[entry.key], greaterThanOrEqualTo(entry.value),
-            reason: '延伸过程中已展开的主干芽叶不能消失或反向缩小');
+            reason: '冠层追加中已展开的叶片不能消失或反向缩小');
       }
       previous = current;
     }
@@ -57,12 +57,13 @@ void main() {
       }
     }
   });
-  test('成熟后新增章节延伸主干，既有章锚点和叶节不搬动', () {
+  test('成熟后章节进入有限冠层，既有章锚点和叶节不搬动', () {
     final base = OrganicTreeFrame(1);
     final expanded = OrganicTreeFrame(1, chapterCount: 30);
     final middle = OrganicTreeFrame(1, chapterCount: 20);
-    expect(expanded.wood.getBounds().top, lessThan(middle.wood.getBounds().top));
-    expect(middle.wood.getBounds().top, lessThan(base.wood.getBounds().top));
+    expect(expanded.wood.getBounds().top, greaterThanOrEqualTo(0));
+    expect(middle.wood.getBounds().top, greaterThanOrEqualTo(0));
+    expect(OrganicTreeFrame.upperExtentFor(1000), 0);
     expect(expanded.rootBounds.bottom, base.rootBounds.bottom);
     for (var index = 0; index < 10; index++) {
       expect(expanded.chapterAnchor(index, 30), base.chapterAnchor(index, 10));
@@ -108,15 +109,43 @@ void main() {
       final expanded = OrganicTreeFrame(1, chapterCount: count.toDouble());
       expect(expanded.wood.getBounds().left, greaterThanOrEqualTo(OrganicTreeProjection.nativeBounds.left));
       expect(expanded.wood.getBounds().right, lessThanOrEqualTo(OrganicTreeProjection.nativeBounds.right));
-      Offset? previous;
       for (var index = 0; index < count; index++) {
         final anchor = expanded.chapterAnchor(index, count)!;
         expect(expanded.wood.contains(anchor), isTrue,
             reason: '$count 章的第 $index 个锚点 $anchor 不应出现空洞');
-        if (previous != null) expect(anchor.dy, lessThan(previous.dy));
-        previous = anchor;
+        expect(anchor.dy, inInclusiveRange(0, 1672));
+        if (index >= 10) {
+          final attachment = expanded.chapterAttachment(index)!;
+          expect(attachment.wood.contains(anchor), isTrue);
+          expect(attachment.radius, greaterThan(0));
+          expect(anchor, OrganicTreeFrame.chapterPoint(index));
+        }
       }
     }
+  });
+  test('冠层母子枝真实连接，新增只伸展新枝且挂点未长到时隐藏', () {
+    final base = OrganicTreeFrame(1, chapterCount: 30);
+    final next = OrganicTreeFrame(1, chapterCount: 31);
+    for (var index = 10; index < 30; index++) {
+      expect(base.chapterAttachment(index)!.point, next.chapterAttachment(index)!.point);
+      expect(base.chapterAttachment(index)!.radius, next.chapterAttachment(index)!.radius);
+      final branch = OrganicTreeFrame.canopyBranch(index);
+      final start = branch.metric.getTangentForOffset(0)!.position;
+      final parent = branch.parent == null
+          ? OrganicTreeFrame.trunkPoint(.72)
+          : OrganicTreeFrame.chapterPoint(branch.parent! + 10);
+      expect(start, parent);
+      expect(base.wood.contains(start), isTrue);
+    }
+    expect(OrganicTreeFrame(1, chapterCount: 30.79).chapterAttachment(30), isNull);
+    final partial = OrganicTreeFrame(1, chapterCount: 30.9);
+    expect(partial.chapterAttachment(30), isNotNull);
+    final old = base.limbs.map((limb) => limb.spine).toSet();
+    final growing = partial.limbs.where((limb) => !old.contains(limb.spine)).single;
+    expect(growing.growth, closeTo(.9, 1e-10));
+    expect((growing.sections.last.center - OrganicTreeFrame.canopyBranch(30).metric
+        .getTangentForOffset(OrganicTreeFrame.canopyBranch(30).metric.length)!.position).distance,
+        greaterThan(0));
   });
   test('主树由同一根部连续延伸，枝叶随树龄生成', () {
     final young = OrganicTreeFrame(.2);

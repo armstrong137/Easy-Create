@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-01 12:02:18　对应提交：8cc1d52 之后的工作区状态
+> 生成时间：2026-11-01 12:25:57　对应提交：3f86ad9 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,28 +12,28 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     201
-  Nodes:     5,406
-  Edges:     22,776
-  DB Size:   26.43 MB
+  Files:     202
+  Nodes:     5,428
+  Edges:     22,892
+  DB Size:   26.57 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
-  method          1,840
-  function        1,587
-  import          718
-  class           525
-  constant        345
-  file            193
+  method          1,850
+  function        1,588
+  import          723
+  class           526
+  constant        348
+  file            194
   variable        148
   enum_member     25
-  type_alias      17
+  type_alias      18
   enum            6
   namespace       2
 
 Files by Language:
-  dart            113
+  dart            114
   javascript      45
   python          15
   kotlin          8
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (201 files):
+Project Structure (202 files):
 
 |-- .agents
 |   `-- skills
@@ -182,9 +182,10 @@ Project Structure (201 files):
 |   |   |   |   |-- illustrated_tree_viewport.dart (dart, 10 symbols)
 |   |   |   |   |-- organic_bark.dart (dart, 4 symbols)
 |   |   |   |   |-- organic_branch.dart (dart, 23 symbols)
-|   |   |   |   |-- organic_tree_camera_layout.dart (dart, 21 symbols)
+|   |   |   |   |-- organic_tree_camera_layout.dart (dart, 27 symbols)
+|   |   |   |   |-- organic_tree_canopy.dart (dart, 11 symbols)
 |   |   |   |   |-- organic_tree_projection.dart (dart, 8 symbols)
-|   |   |   |   |-- organic_tree_study.dart (dart, 45 symbols)
+|   |   |   |   |-- organic_tree_study.dart (dart, 48 symbols)
 |   |   |   |   |-- organic_tree.dart (dart, 14 symbols)
 |   |   |   |   |-- sapling_plaque.dart (dart, 5 symbols)
 |   |   |   |   |-- tree_scene_controller.dart (dart, 51 symbols)
@@ -293,7 +294,7 @@ Project Structure (201 files):
 |       |   |-- build.mjs (javascript, 10 symbols)
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
-|       |   |-- check-illustrated-outline.mjs (javascript, 49 symbols)
+|       |   |-- check-illustrated-outline.mjs (javascript, 51 symbols)
 |       |   |-- check-organic-tree.mjs (javascript, 15 symbols)
 |       |   |-- check-startup.mjs (javascript, 23 symbols)
 |       |   |-- render-branch-study.mjs (javascript, 21 symbols)

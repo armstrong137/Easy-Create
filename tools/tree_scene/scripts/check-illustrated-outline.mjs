@@ -90,6 +90,18 @@ async function auditChapterPointerHit(name) {
   assert.equal(await page.locator('input').inputValue(), name, '不能误击相邻章节');
   await page.getByText('取消', { exact: true }).click();
 }
+async function dragTree(x) {
+  // 与牌面点击相同，绕开仅用于查询的语义DOM，验证画布本身的手势命中。
+  const style = await page.addStyleTag({ content: 'flt-semantics-host, flt-semantics-host * { pointer-events: none !important; }' });
+  try {
+    await page.mouse.move(x, 590);
+    await page.mouse.down();
+    await page.mouse.move(x, 780, { steps: 16 });
+    await page.mouse.up();
+  } finally {
+    await style.evaluate(element => element.remove());
+  }
+}
 async function capture(name) {
   phase = `截图：${name}`;
   // 等待已有 240ms 延迟和 920ms 生长播放完毕，只记录稳定态。
@@ -241,10 +253,7 @@ try {
     const clip = { x: 200, y: 650, width: 30, height: 160 };
     const before = await page.screenshot({ clip });
     for (let index = 0; index < 9; index += 1) {
-      await page.mouse.move(80, 590);
-      await page.mouse.down();
-      await page.mouse.move(80, 780, { steps: 16 });
-      await page.mouse.up();
+      await dragTree(80);
       await page.waitForTimeout(600);
     }
     await page.getByRole('button', { name: '引子', exact: true }).waitFor();
@@ -268,10 +277,7 @@ try {
     }
     await capture('six-sections-latest-430');
     for (let index = 0; index < 5; index++) {
-      await page.mouse.move(350, 590);
-      await page.mouse.down();
-      await page.mouse.move(350, 780, { steps: 16 });
-      await page.mouse.up();
+      await dragTree(350);
       await page.waitForTimeout(600);
     }
     await page.getByRole('button', { name: '第一节', exact: true }).waitFor();
@@ -335,14 +341,27 @@ try {
       }
     }
     await capture('dense-30-chapters-430');
-    for (const name of ['第二十八章', '第二十九章']) {
+    for (const name of ['第二十九章']) {
       await auditChapterPointerHit(name);
+    }
+    if (process.argv.includes('--audit-sections')) {
+      for (const name of ['第一节', '第二节']) {
+        await addSection.click();
+        await page.getByRole('button', { name, exact: true }).waitFor();
+        await page.waitForTimeout(1300);
+      }
+      await capture('canopy-two-sections-430');
+      for (const name of ['第一节', '第二节']) await auditSectionPointerHit(name, 'canopy');
     }
   }
   await page.setViewportSize({ width: 910, height: 800 });
   await capture('12-mature-910');
   if (process.argv.includes('--audit-dense')) {
-    for (const name of ['第二十八章', '第二十九章']) await auditChapterPointerHit(name);
+    for (const name of ['第二十九章']) await auditChapterPointerHit(name);
+    if (process.argv.includes('--audit-sections')) {
+      await capture('canopy-two-sections-910');
+      for (const name of ['第一节', '第二节']) await auditSectionPointerHit(name, 'canopy');
+    }
   }
   if (process.argv.includes('--audit-overview')) {
     await page.getByRole('button', { name: '全景', exact: true }).click();
@@ -356,18 +375,28 @@ try {
     await page.setViewportSize({ width: 430, height: 932 });
     await page.waitForTimeout(1500);
     for (let chapter = 28; chapter >= 0; chapter--) {
-      await page.mouse.move(80, 590);
-      await page.mouse.down();
-      await page.mouse.move(80, 780, { steps: 16 });
-      await page.mouse.up();
+      await dragTree(80);
       await page.waitForTimeout(600);
-      if (chapter === 15) {
-        await page.getByRole('button', { name: '第十五章', exact: true }).waitFor();
-        await capture('dense-history-middle-430');
-        for (const name of ['第十四章', '第十五章']) await auditChapterPointerHit(name);
+      const historyTitle = chapter === 0 ? '引子' : '第' +
+        (chapter < 10 ? '' : chapter < 20 ? '十' : '二十') +
+        ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'][chapter % 10] + '章';
+      await page.getByRole('button', { name: historyTitle, exact: true }).waitFor();
+      assert.ok(await visibleChapters.count() <= 2, '冠层聚焦与主干历史均不得超过两章');
+      if (chapter === 28) {
+        await auditChapterPointerHit('第二十八章');
         await page.setViewportSize({ width: 910, height: 800 });
-        await capture('dense-history-middle-910');
-        for (const name of ['第十四章', '第十五章']) await auditChapterPointerHit(name);
+        await page.waitForTimeout(1000);
+        await auditChapterPointerHit('第二十八章');
+        await page.setViewportSize({ width: 430, height: 932 });
+        await page.waitForTimeout(1000);
+      }
+      if (chapter === 15 || chapter === 14) {
+        await page.getByRole('button', { name: chapter === 15 ? '第十五章' : '第十四章', exact: true }).waitFor();
+        await capture('dense-history-middle-' + chapter + '-430');
+        for (const name of [chapter === 15 ? '第十五章' : '第十四章']) await auditChapterPointerHit(name);
+        await page.setViewportSize({ width: 910, height: 800 });
+        await capture('dense-history-middle-' + chapter + '-910');
+        for (const name of [chapter === 15 ? '第十五章' : '第十四章']) await auditChapterPointerHit(name);
         await page.setViewportSize({ width: 430, height: 932 });
         await page.waitForTimeout(1000);
       }
@@ -396,10 +425,10 @@ try {
     graphicsRequest: process.argv.includes('--default-gpu') ? '浏览器默认' : '强制 SwiftShader',
     cpuProfiling: process.argv.includes('--cpu-profile'),
     allocationProfiling: process.argv.includes('--allocation-profile'),
-    checksPassed: ['创建十章和两节', '末态语义窗口只有两章', '浏览器零错误',
+    checksPassed: ['创建十章和两节', '前十章语义窗口只有两章', '浏览器零错误',
       ...(process.argv.includes('--audit-sections') ? [`手机和宽屏小节${sectionPointerChecks.length}次真实指针命中正确页面`,
         '六节右侧历史滑动保持左侧章节窗口'] : []),
-      ...(process.argv.includes('--audit-dense') ? ['三十章手机和宽屏双牌真实指针命中正确章节'] : []),
+      ...(process.argv.includes('--audit-dense') ? ['三十章冠层聚焦与相邻历史章手机和宽屏实际牌面命中'] : []),
       ...(process.argv.includes('--audit-dense-history') ? ['三十章历史中段及根部手机与宽屏实际牌面命中'] : [])],
     visualAcceptance: '待人工对照参考图', sectionPointerChecks, captures, errors,
   }, null, 2));

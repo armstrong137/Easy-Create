@@ -25,7 +25,7 @@ void main() {
       for (var index = 0; index < 2; index++) {
         final rect = layout.sectionRectOutsideTrunk(
           layout.branchRect(right: true, index: index),
-          layout.anchorFraction(right: true, index: index), frame);
+          index, frame);
         final title = Rect.fromLTWH(rect.right - rect.width * 394 / 1536,
           rect.top + rect.height * 268 / 1024,
           rect.width * 148 / 1536, rect.height * 400 / 1024);
@@ -59,13 +59,13 @@ void main() {
       expect(bottomRight.dy, lessThanOrEqualTo(size.height));
     }
   });
-  test('连续主树的章牌保持真实主干锚点和完整交互间距', () {
+  test('前十章保持真实主干锚点和完整交互间距', () {
     for (final size in [
       const Size(360, 800),
       const Size(430, 932),
       const Size(910, 800),
     ]) {
-      for (final count in [2, 10, 30, 1000]) {
+      for (final count in [2, 10]) {
         final first = count ~/ 2 - 1;
         final layout = OrganicTreeCameraLayout(
           size,
@@ -111,6 +111,35 @@ void main() {
               lessThanOrEqualTo(size.width),
             );
           }
+        }
+      }
+    }
+  });
+  test('冠层镜头保持有限画幅与可读牌面，实体枝根来自同帧母枝', () {
+    for (final size in [const Size(360, 800), const Size(430, 932), const Size(910, 800)]) {
+      final base = OrganicTreeCameraLayout(size, 10, 8, focusedChapter: 9);
+      for (final count in [30, 1000]) {
+        final frame = OrganicTreeFrame(1, chapterCount: count.toDouble());
+        for (final chapter in [10, 14, count - 1]) {
+          final layout = OrganicTreeCameraLayout(size, count, chapter, focusedChapter: chapter);
+          expect(layout.sceneHeight, base.sceneHeight);
+          expect(layout.sceneTopInset, 0);
+          expect(layout.visibleChapterCount, 1);
+          for (final right in [false, true]) {
+            for (var index = 0; index < (right ? 2 : 1); index++) {
+              final rect = layout.branchRect(right: right, index: index);
+              final root = layout.attachment(right: right, index: index, frame: frame)!;
+              expect(root.point, frame.chapterAnchor(chapter, count));
+              expect(root.wood.contains(root.point), isTrue);
+              final left = size.width / 2 + (rect.left - layout.focusX) * layout.chapterScale;
+              expect(left, greaterThanOrEqualTo(0));
+              expect(left + rect.width * layout.chapterScale, lessThanOrEqualTo(size.width));
+              expect(rect.width * layout.chapterScale, greaterThanOrEqualTo(180 - 1e-8));
+            }
+          }
+          final a = layout.branchRect(right: true, index: 0);
+          final b = layout.branchRect(right: true, index: 1);
+          expect((b.top - a.bottom) * layout.chapterScale, greaterThanOrEqualTo(12));
         }
       }
     }

@@ -411,6 +411,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                 double barkAge = 1,
                 ui.Image? bark,
                 OrganicTreeProjection? treeProjection,
+                Offset? treeAnchor,
               }) {
                 final key = label.chapterId != null
                     ? Key('静态章热区_${label.chapterId}')
@@ -427,7 +428,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                 if (animateIn && staticMode) {
                   _markIllustratedGrowthStarted(revealKey);
                 }
-                Widget plaque(Path? currentTrunkMask) => Semantics(
+                Widget plaque(Path? currentTrunkMask, [Offset? supportRoot]) => Semantics(
                     label: label.text,
                     button: true,
                     child: IllustratedBranchHitRegion(
@@ -472,6 +473,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                                 maxSupportRadius: maxSupportRadius,
                                 treeScale: treeScale,
                                 trunkMask: currentTrunkMask,
+                                supportRoot: supportRoot,
                                 barkAge: barkAge,
                                 bark: bark,
                               ),
@@ -499,7 +501,8 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                       return Positioned.fromRect(
                       rect: currentRect,
                       // 遮罩固定在主干上，不能随着枝牌的位置补间滑动。
-                      child: plaque(trunkMask?.shift(rect.topLeft - currentRect.topLeft)),
+                      child: plaque(trunkMask?.shift(rect.topLeft - currentRect.topLeft),
+                        treeAnchor == null ? null : origin + treeAnchor * scale - currentRect.topLeft),
                     );
                     },
                   );
@@ -530,7 +533,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                       Rect rect,
                       IllustratedBranchSide side,
                       bool selected,
-                      double? nativeFraction,
+                      int? branchIndex,
                     })
                   >[];
               if (outline.isNotEmpty) {
@@ -541,7 +544,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                   (item) => item.chapter.id == focusedChapterId,
                 );
                 if (focusedIndex < 0) focusedIndex = outline.length - 1;
-                final firstChapter = (focusedIndex - 1).clamp(
+                final firstChapter = cameraMode && focusedIndex >= 10 ? focusedIndex : (focusedIndex - 1).clamp(
                   0,
                   (outline.length - 2).clamp(0, outline.length),
                 );
@@ -551,7 +554,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                     : IllustratedTreeCameraLayout(Size(constraints.maxWidth, constraints.maxHeight), outline.length, firstChapter);
                 final chapters = outline
                     .skip(firstChapter)
-                    .take(2)
+                    .take(cameraMode ? (cameraLayout as OrganicTreeCameraLayout).visibleChapterCount : 2)
                     .toList(growable: false);
                 final nodeCount = _illustratedNodeCount(outline);
                 final age = illustratedTreeLayoutAgeForNodeCount(nodeCount);
@@ -578,7 +581,7 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                       branchHeight,
                     ),
                     side: IllustratedBranchSide.left,
-                    nativeFraction: cameraMode ? (cameraLayout as OrganicTreeCameraLayout).anchorFraction(right: false, index: index) : null,
+                    branchIndex: cameraMode ? index : null,
                     selected: chapter.chapter.id == focusedChapterId,
                   ));
                 }
@@ -626,31 +629,33 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                       branchHeight,
                     ),
                     side: IllustratedBranchSide.right,
-                    nativeFraction: cameraMode ? (cameraLayout as OrganicTreeCameraLayout).anchorFraction(right: true, index: index) : null,
+                    branchIndex: cameraMode ? index : null,
                     selected: section.id == selectedSectionId,
                   ));
                 }
               }
 
               Widget organicLabel(PlacedLabel label, Rect rect,
-                  IllustratedBranchSide side, bool selected, double fraction,
+                  IllustratedBranchSide side, bool selected, int index,
                   OrganicTreeFrame frame, ui.Image bark) {
                 final layout = cameraLayout as OrganicTreeCameraLayout;
+                final attachment = layout.attachment(right: side == IllustratedBranchSide.right, index: index, frame: frame)!;
                 final placed = side == IllustratedBranchSide.right
-                    ? layout.sectionRectOutsideTrunk(rect, fraction, frame)
+                    ? layout.sectionRectOutsideTrunk(rect, index, frame)
                     : rect;
                 return staticLabel(label, placed, side: side, selected: selected,
                   treeProjection: layout.projection,
                   treeScale: layout.projection.scale,
                   barkAge: frame.age,
                   bark: bark,
-                  trunkMask: frame.trunkWood
+                  treeAnchor: layout.inCanopy ? attachment.point : null,
+                  trunkMask: attachment.wood
                     .transform(Matrix4.diagonal3Values(layout.projection.scale,
                       layout.projection.scale, 1).storage)
                     .shift(layout.projection.origin - placed.topLeft),
                   maxSupportRadius: math.min(placed.height * organicBranchRootRatio *
                     (.55 + frame.age * .45),
-                    frame.trunkRadiusAt(fraction) * layout.projection.scale * .75));
+                    attachment.radius * layout.projection.scale * .75));
               }
 
               bool awaitsProjection(PlacedLabel label) {
@@ -719,9 +724,10 @@ class _OutlinePageState extends ConsumerState<OutlinePage> {
                               children: [
                                 _creationZones(outline),
                                 for (final item in windowLabels)
-                                  if (frame.anchorAt(item.nativeFraction!) != null)
+                                  if ((cameraLayout as OrganicTreeCameraLayout).attachment(
+                                      right: item.side == IllustratedBranchSide.right, index: item.branchIndex!, frame: frame) != null)
                                     organicLabel(item.label, item.rect, item.side,
-                                      item.selected, item.nativeFraction!, frame, bark),
+                                      item.selected, item.branchIndex!, frame, bark),
                               ],
                             ),
                           ) : Stack(

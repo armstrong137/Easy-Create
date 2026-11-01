@@ -22,6 +22,7 @@ class OrganicBranch extends StatefulWidget {
     this.maxRootRadius,
     this.treeScale = 1,
     this.trunkMask,
+    this.supportRoot,
     this.barkAge = 1,
     this.bark,
   });
@@ -29,6 +30,7 @@ class OrganicBranch extends StatefulWidget {
   // 仅含母版到场景的投影；章节和全景镜头由父层统一应用。
   final double treeScale;
   final Path? trunkMask;
+  final Offset? supportRoot;
   final double barkAge;
   // 借用主树材质，由主树统一释放；独立枝条才自行解码。
   final ui.Image? bark;
@@ -80,6 +82,7 @@ class _OrganicBranchState extends State<OrganicBranch> {
       maxRootRadius: widget.maxRootRadius,
       treeScale: widget.treeScale,
       trunkMask: widget.trunkMask,
+      supportRoot: widget.supportRoot,
       barkAge: widget.barkAge,
     ),
   );
@@ -93,11 +96,13 @@ class OrganicBranchPainter extends CustomPainter {
     this.maxRootRadius,
     this.treeScale = 1,
     this.trunkMask,
+    this.supportRoot,
     this.barkAge = 1,
   });
   final double? maxRootRadius;
   final double treeScale;
   final Path? trunkMask;
+  final Offset? supportRoot;
   final double barkAge;
   final double progress;
   final bool right;
@@ -107,12 +112,14 @@ class OrganicBranchPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (progress <= 0) return;
     canvas.save();
+    final root = supportRoot ?? Offset(size.width * (right ? .12 : .88), size.height * .7);
     // 母干遮住插入内部的枝根，直接露出下层同帧树皮，不另画一块接缝补丁。
     if (trunkMask != null) {
       canvas.clipPath(
         Path.combine(
           PathOperation.difference,
-          Path()..addRect(Offset.zero & size),
+          Path()..addRect(supportRoot == null ? Offset.zero & size
+              : (Offset.zero & size).expandToInclude(Rect.fromPoints(Offset.zero, root)).inflate(size.height * .1)),
           trunkMask!,
         ),
       );
@@ -121,8 +128,9 @@ class OrganicBranchPainter extends CustomPainter {
       canvas.translate(size.width, 0);
       canvas.scale(-1, 1);
     }
+    final localRoot = right ? Offset(size.width - root.dx, root.dy) : root;
     final spine = Path()
-      ..moveTo(size.width * .88, size.height * .7)
+      ..moveTo(localRoot.dx, localRoot.dy)
       ..cubicTo(
         size.width * .68,
         size.height * .86,
@@ -350,6 +358,7 @@ class OrganicBranchPainter extends CustomPainter {
       oldDelegate.maxRootRadius != maxRootRadius ||
       oldDelegate.treeScale != treeScale ||
       oldDelegate.trunkMask != trunkMask ||
+      oldDelegate.supportRoot != supportRoot ||
       oldDelegate.barkAge != barkAge ||
       oldDelegate.right != right ||
       oldDelegate.bark != bark;
