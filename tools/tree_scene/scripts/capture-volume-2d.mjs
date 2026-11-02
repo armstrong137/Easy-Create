@@ -12,8 +12,9 @@ const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../..');
 const compact=process.argv.includes('--compact');
 const tree=process.argv.includes('--tree');
 const surface=process.argv.includes('--surface');
-const web=resolve(root,'build/volume-web'), proof=resolve(root,surface?'build/qa/authored-surface-proof':tree?'build/qa/whole-tree-mesh-round2':compact?'build/qa/volume-proof-compact':'build/qa/volume-proof-baked');
-const output=resolve(root,surface?'build/qa/authored-surface-2d':tree?'build/qa/whole-tree-2d-round2':compact?'build/qa/volume-2d-compact':'build/qa/volume-2d',new Date().toISOString().replaceAll(':','-'));
+const whole=process.argv.includes('--authored-whole');
+const web=resolve(root,'build/volume-web'), proof=resolve(root,whole?'build/qa/authored-whole-control':surface?'build/qa/authored-surface-proof':tree?'build/qa/whole-tree-mesh-round2':compact?'build/qa/volume-proof-compact':'build/qa/volume-proof-baked');
+const output=resolve(root,whole?'build/qa/authored-whole-2d':surface?'build/qa/authored-surface-2d':tree?'build/qa/whole-tree-2d-round2':compact?'build/qa/volume-2d-compact':'build/qa/volume-2d',new Date().toISOString().replaceAll(':','-'));
 await mkdir(output,{recursive:true});
 const mime={'.js':'text/javascript','.mjs':'text/javascript','.html':'text/html',
   '.json':'application/json','.wasm':'application/wasm','.png':'image/png','.css':'text/css'};
@@ -55,7 +56,7 @@ try{
   await page.setViewportSize({width:430,height:932});
   await page.waitForTimeout(600);
   await page.screenshot({path:resolve(output,'phone.png')});
-  if(tree||surface){
+  if(tree||surface||whole){
     await page.getByRole('button',{name:'枝牌近景',exact:true}).click();
     await page.waitForTimeout(500);
     await page.screenshot({path:resolve(output,surface?'junction-close.png':'plaque-close.png')});
@@ -100,13 +101,13 @@ try{
     generator:JSON.parse(await readFile(resolve(proof,'result.json'),'utf8')).script_sha256,
     atlasPngBytes:(await readFile(resolve(proof,'baked-bark.png'))).length,
   };
-  if(tree){
-    result.provenance.wholeSpec=await hash(resolve(root,'tools/tree_scene/rectification/whole_tree_spec.py'));
+  if(tree||whole){
+    result.provenance.wholeSpec=await hash(resolve(root,whole?'tools/tree_scene/rectification/authored_whole_control.py':'tools/tree_scene/rectification/whole_tree_spec.py'));
     const expected=JSON.parse(await readFile(resolve(proof,'mesh.json'),'utf8'));
     if(states[0].plaques!==0||states.at(-1).plaques!==expected.plaques.length||states.at(-1).leaves!==expected.leaves.length)
       throw Error('整树出生或牌面数量与本轮样件规格不一致');
   }
-  if(tree||surface){
+  if(tree||surface||whole){
     await writeFile(resolve(output,'result.json'),JSON.stringify(result,null,2));
     // 性能统计已结束；另行渲染固定相机的连续成长片，不混入静帧检查。
     const frames=resolve(output,'motion-frames');await mkdir(frames,{recursive:true});

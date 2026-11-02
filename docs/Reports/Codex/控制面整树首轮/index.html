@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>控制面整树首轮：视觉拒绝</title>
+<style>
+body{margin:0;background:#f4eee3;color:#302b23;font:16px/1.7 system-ui,sans-serif}main{max-width:1200px;margin:auto;padding:24px}h1{font-size:26px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:20px}figure{margin:0;background:#fff8ed;padding:12px}img,video{display:block;width:100%;height:auto}figcaption{padding-top:8px}a{overflow-wrap:anywhere;color:#624c85}.failed{color:#9d302b;font-weight:bold}
+</style>
+<main>
+<h1>控制面整树首轮：视觉拒绝</h1>
+<p class="failed">材质密度改善，但细枝蹼面、麦穗状叶簇、幼苗裸梢与规则尖根仍未达到参考，A2未通过。</p>
+<div class="grid">
+<figure><img src="../../../../assets/source/magic_tree/references/树形正视图.png" alt="已批准的成熟树参考"><figcaption>参考：自然大分叉、宽冠团块、粗树皮与立体根颈。</figcaption></figure>
+<figure><img src="mature.png" alt="实际Flutter成熟整树"><figcaption>首轮实际成熟树：不以纹理改善代替整体造型。</figcaption></figure>
+<figure><img src="young.png" alt="实际Flutter初龄整树"><figcaption>初龄有叶簇，但侧面裸梢过多，未通过。</figcaption></figure>
+<figure><img src="middle.png" alt="实际Flutter中龄整树"><figcaption>中龄展叶与枝体比例仍需统一处理。</figcaption></figure>
+<figure><img src="plaque-close.png" alt="实际手机枝牌近景"><figcaption>框体接合真实，蹼面及牌框风格仍不合格。</figcaption></figure>
+<figure><img src="phone.png" alt="430宽浏览器手机全景"><figcaption>浏览器视口，不是实体手机验收。</figcaption></figure>
+<figure><img src="control-cage.png" alt="实际控制面线框"><figcaption>可编辑控制面，不用体积并集和自动分图。</figcaption></figure>
+<figure><img src="offline-wood.png" alt="同源离线木体"><figcaption>细枝三角蹼面在源资产中已经存在。</figcaption></figure>
+</div>
+<h2>连续成长</h2>
+<video controls preload="metadata" src="growth.webm"></video>
+<p>101个实际Flutter网格状态，固定相机、约10.1秒，编码10fps不代表运行帧率。</p>
+<p><a href="result.json">实际二维结果与源码哈希</a> · <a href="geometry.json">源结构结果</a> · <a href="uv-audit.json">UV预算</a> · <a href="../2026-11-02-控制面整树首轮审查.md">审查及第二轮出口</a></p>
+</main>
+</html>

@@ -10,7 +10,8 @@ import bmesh
 from mathutils import Vector
 
 ROOT = Path(__file__).resolve().parents[3]
-OUT = ROOT / 'build/qa/authored-surface-proof'
+WHOLE = '--whole' in sys.argv
+OUT = ROOT / ('build/qa/authored-whole-control' if WHOLE else 'build/qa/authored-surface-proof')
 OUT.mkdir(parents=True, exist_ok=True)
 bpy.ops.wm.read_factory_settings(use_empty=True)
 vertices, faces, face_uv = [], [], []
@@ -123,6 +124,13 @@ for i, j, role in slots:
         previous, previous_center, v = current, p, next_v
     face(previous[::-1], [(.5+.02*math.cos(k*math.tau/8), v+.02*math.sin(k*math.tau/8)) for k in range(8)])
 
+whole = None
+if WHOLE:
+    sys.path.insert(0, str(Path(__file__).parent))
+    from authored_whole_control import build
+    whole = build()
+    vertices, faces, face_uv = whole['vertices'], whole['faces'], whole['face_uv']
+    rest_nodes, edges, node_roles = whole['rest_nodes'], whole['edges'], whole['node_roles']
 mesh = bpy.data.meshes.new('解剖控制面网格')
 # 孔口中央控制点已不属于任何面，创建网格时即排除这些未使用点。
 used = sorted({index for polygon in faces for index in polygon})
@@ -144,8 +152,8 @@ mesh.update()
 control = bpy.data.objects.new('可编辑根颈与分叉控制面', mesh)
 bpy.context.collection.objects.link(control)
 modifier = control.modifiers.new('控制面细分', 'SUBSURF')
-modifier.levels = 2
-modifier.render_levels = 2
+modifier.levels = 1 if WHOLE else 2
+modifier.render_levels = modifier.levels
 modifier.uv_smooth = 'PRESERVE_BOUNDARIES'
 bpy.context.view_layer.update()
 surface = bpy.data.meshes.new_from_object(control.evaluated_get(bpy.context.evaluated_depsgraph_get()))
@@ -191,7 +199,7 @@ for age, trunk_reach, branch_reach, root_reach, thickness in [
             posed.append(posed[parent]+(p-rest_nodes[parent])*branch_reach)
     pose_frames.append({"age": age, "nodes": [list(p) for p in posed],
         "radial": [thickness if node_roles[b][0]=='trunk' else thickness*(.45+.55*branch_reach)
-                   if node_roles[b][0] in ('left', 'right') else thickness for a, b in edges]})
+                   if node_roles[b][0] in ('left', 'right', 'branch', 'twig', 'frame') else thickness for a, b in edges]})
 
 
 def sample_pose(age):
@@ -254,12 +262,12 @@ check.free()
 if bad_edges or len(components) != 1:
     raise RuntimeError(f'控制面接头未封闭连通：{bad_edges}, {components}')
 
-target = Vector((0, 0, 3.8))
-bpy.ops.object.camera_add(location=(4.2, -16, 7.0))
+target = Vector((0, 0, 5.0) if WHOLE else (0, 0, 3.8))
+bpy.ops.object.camera_add(location=(0, -20, 8.3) if WHOLE else (4.2, -16, 7.0))
 camera = bpy.context.object
 camera.rotation_euler = (target-camera.location).to_track_quat('-Z', 'Y').to_euler()
 camera.data.type = 'ORTHO'
-camera.data.ortho_scale = 9.3
+camera.data.ortho_scale = 11.8 if WHOLE else 9.3
 scene = bpy.context.scene
 scene.camera = camera
 scene.render.engine = 'BLENDER_EEVEE_NEXT'
@@ -285,9 +293,12 @@ for location, energy, size in [((-5, -7, 10), 1600, 7), ((4, 2, 7), 900, 6)]:
 
 sys.path.insert(0, str(Path(__file__).parent))
 from export_volume_mesh import export_mesh
-exported = export_mesh(surface, rest_nodes, edges, bindings, camera, target, OUT, deform,
-    {"poseFrames": pose_frames, "repeatTexture": True,
-     "scope": "根颈和两处母子分叉控制面验证，不是整树样件"})
+extra = {"poseFrames": pose_frames, "repeatTexture": True,
+         "scope": "控制面整树首轮" if WHOLE else "根颈和两处母子分叉控制面验证，不是整树样件"}
+if WHOLE:
+    extra.update({name:whole[name] for name in ['leaves','plaques','leafAtlas']})
+    shutil.copyfile(ROOT / 'assets/source/magic_tree/textures_source/leaf_matte_atlas_v2.png', OUT / 'leaf.png')
+exported = export_mesh(surface, rest_nodes, edges, bindings, camera, target, OUT, deform, extra)
 for name, age in [('young', 0), ('middle', .5), ('mature', 1)]:
     deform(age)
     scene.render.filepath = str(OUT / f'{name}.png')
@@ -316,7 +327,7 @@ control.modifiers.clear()
 mesh.materials.clear()
 mesh.materials.append(material)
 subdivision = control.modifiers.new('控制面细分', 'SUBSURF')
-subdivision.levels = 2
+subdivision.levels = 1 if WHOLE else 2
 subdivision.uv_smooth = 'PRESERVE_BOUNDARIES'
 control.hide_render = True
 control.hide_set(True)
@@ -327,5 +338,9 @@ report = {"script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest
     "vertices": len(surface.vertices), "components": components, "non_manifold_edges": bad_edges,
     "mesh_export": exported, "uv_method": '按解剖部位手工定义条带，重复采样原1024树皮，无自动分图/烘焙',
     "production_integrated": False, "visualAcceptance": '待实图检查，仅局部方法验证，A2未完成'}
+if WHOLE:
+    report.update({"whole_spec_sha256":hashlib.sha256((Path(__file__).parent/'authored_whole_control.py').read_bytes()).hexdigest(),
+                   "leaves":len(whole['leaves']),"plaques":len(whole['plaques']),
+                   "visualAcceptance":"控制面整树首轮，待四图与短片审查，未集成"})
 (OUT / 'result.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
 print(json.dumps(report, ensure_ascii=False))

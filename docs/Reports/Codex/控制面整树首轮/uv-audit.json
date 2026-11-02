@@ -1,0 +1,21 @@
+{
+  "source": "C:\\Users\\Armstrong\\Desktop\\Easy Create\\build\\qa\\authored-whole-control",
+  "meshSha256": "a40ed0629f6921d9aad184f98712b62d97708d3552ec5f8c7495f60413527f71",
+  "metadataSha256": "ae33e4941895fb854c0b307851298790b37b8fffa137cf9238edbf6c519f99d6",
+  "atlasSha256": "54c435cec730914dc930532b264642df003add0019e2c2400090fb00542acab1",
+  "atlasWidth": 1024,
+  "atlasHeight": 1024,
+  "triangles": 13792,
+  "textureMode": "重复采样材质；UV可超出0至1",
+  "uvAreaTexels": {
+    "p10": 287.001406731084,
+    "median": 569.6472010561265,
+    "p90": 738.0888532651588,
+    "below1": 0,
+    "below4": 0,
+    "below16": 0
+  },
+  "sumTriangleUvAreaFraction": 7.231828303696142,
+  "scope": "实际三角形UV面积，不含图表边距；总和不等于去重覆盖率，也不证明图表不重叠或黑片的唯一原因。",
+  "visualAcceptance": "UV像素面积不证明视觉验收，需检查对应实图与验证范围。"
+}

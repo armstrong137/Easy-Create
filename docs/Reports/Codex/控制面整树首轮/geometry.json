@@ -1,0 +1,22 @@
+{
+  "script_sha256": "b257f856457689ea5804771f2f9dff43a1b8bd725af9d4bf5180dc66fd0589ef",
+  "control_vertices": 1780,
+  "control_faces": 1666,
+  "vertices": 6894,
+  "components": [
+    6894
+  ],
+  "non_manifold_edges": 0,
+  "mesh_export": {
+    "bytes": 1075608,
+    "vertices": 6894,
+    "triangles": 13792,
+    "referenceSamples": 9
+  },
+  "uv_method": "按解剖部位手工定义条带，重复采样原1024树皮，无自动分图/烘焙",
+  "production_integrated": false,
+  "visualAcceptance": "控制面整树首轮，待四图与短片审查，未集成",
+  "whole_spec_sha256": "179ba4d083b435a728763ea209f25503c70f8818e7fb2a8628845634d151abb5",
+  "leaves": 1742,
+  "plaques": 2
+}
