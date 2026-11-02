@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-02 20:00:44　对应提交：6ab3f41 之后的工作区状态
+> 生成时间：2026-11-02 20:24:30　对应提交：c7fd47e 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     218
-  Nodes:     5,852
-  Edges:     23,745
-  DB Size:   27.90 MB
+  Files:     219
+  Nodes:     5,892
+  Edges:     23,802
+  DB Size:   27.98 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,867
-  function        1,658
-  import          797
+  function        1,661
+  import          805
   class           534
-  constant        426
-  variable        309
-  file            210
+  constant        427
+  variable        336
+  file            211
   enum_member     25
   type_alias      18
   enum            6
@@ -35,7 +35,7 @@ Nodes by Kind:
 Files by Language:
   dart            116
   javascript      52
-  python          22
+  python          23
   kotlin          8
   xml             6
   properties      4
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (218 files):
+Project Structure (219 files):
 
 |-- .agents
 |   `-- skills
@@ -291,10 +291,11 @@ Project Structure (218 files):
 |-- tools
 |   `-- tree_scene
 |       |-- rectification
-|       |   |-- authored_surface_proof.py (python, 92 symbols)
-|       |   |-- authored_whole_control.py (python, 13 symbols)
+|       |   |-- authored_surface_proof.py (python, 93 symbols)
+|       |   |-- authored_whole_control.py (python, 15 symbols)
 |       |   |-- bake_volume_material.py (python, 10 symbols)
 |       |   |-- export_volume_mesh.py (python, 6 symbols)
+|       |   |-- illustrated_fork_proof.py (python, 36 symbols)
 |       |   |-- inspect_source.py (python, 9 symbols)
 |       |   |-- scene.mjs (javascript, 42 symbols)
 |       |   |-- volume_proof.py (python, 91 symbols)
@@ -305,7 +306,7 @@ Project Structure (218 files):
 |       |   |-- canvaskit-path-compat.test.mjs (javascript, 10 symbols)
 |       |   |-- capture-rectification.mjs (javascript, 16 symbols)
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
-|       |   |-- capture-volume-2d.mjs (javascript, 38 symbols)
+|       |   |-- capture-volume-2d.mjs (javascript, 39 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
 |       |   |-- check-illustrated-outline.mjs (javascript, 68 symbols)
 |       |   |-- check-organic-tree.mjs (javascript, 15 symbols)

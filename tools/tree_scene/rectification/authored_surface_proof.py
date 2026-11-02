@@ -11,7 +11,7 @@ from mathutils import Vector
 
 ROOT = Path(__file__).resolve().parents[3]
 WHOLE = '--whole' in sys.argv
-OUT = ROOT / ('build/qa/authored-whole-control' if WHOLE else 'build/qa/authored-surface-proof')
+OUT = ROOT / ('build/qa/authored-whole-control-round2' if WHOLE else 'build/qa/authored-surface-proof')
 OUT.mkdir(parents=True, exist_ok=True)
 bpy.ops.wm.read_factory_settings(use_empty=True)
 vertices, faces, face_uv = [], [], []
@@ -186,8 +186,9 @@ for p in rest:
 
 # 三个控制姿态在同一骨架与表面上连续插值，根、主干和子枝各自有长度/粗度变化。
 pose_frames = []
-for age, trunk_reach, branch_reach, root_reach, thickness in [
-    (0, .24, .06, .18, .09), (.5, .66, .52, .58, .48), (1, 1, 1, 1, 1)]:
+growth_poses = [(0,.21,.008,.18,.085),(.5,.60,.38,.58,.40),(1,1,1,1,1)] if WHOLE else [
+    (0,.24,.06,.18,.09),(.5,.66,.52,.58,.48),(1,1,1,1,1)]
+for age, trunk_reach, branch_reach, root_reach, thickness in growth_poses:
     posed = []
     for index, (role, parent) in enumerate(node_roles):
         p = rest_nodes[index]
@@ -294,7 +295,7 @@ for location, energy, size in [((-5, -7, 10), 1600, 7), ((4, 2, 7), 900, 6)]:
 sys.path.insert(0, str(Path(__file__).parent))
 from export_volume_mesh import export_mesh
 extra = {"poseFrames": pose_frames, "repeatTexture": True,
-         "scope": "控制面整树首轮" if WHOLE else "根颈和两处母子分叉控制面验证，不是整树样件"}
+         "scope": "控制面整树第二轮" if WHOLE else "根颈和两处母子分叉控制面验证，不是整树样件"}
 if WHOLE:
     extra.update({name:whole[name] for name in ['leaves','plaques','leafAtlas']})
     shutil.copyfile(ROOT / 'assets/source/magic_tree/textures_source/leaf_matte_atlas_v2.png', OUT / 'leaf.png')
@@ -341,6 +342,6 @@ report = {"script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest
 if WHOLE:
     report.update({"whole_spec_sha256":hashlib.sha256((Path(__file__).parent/'authored_whole_control.py').read_bytes()).hexdigest(),
                    "leaves":len(whole['leaves']),"plaques":len(whole['plaques']),
-                   "visualAcceptance":"控制面整树首轮，待四图与短片审查，未集成"})
+                   "visualAcceptance":"控制面整树第二轮，待四图与短片审查，未集成"})
 (OUT / 'result.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
 print(json.dumps(report, ensure_ascii=False))

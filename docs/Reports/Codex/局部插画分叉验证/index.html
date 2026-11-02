@@ -1,0 +1,15 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>局部插画分叉骨骼网格验证</title>
+<style>body{margin:0;background:#f4eee3;color:#302b23;font:16px/1.7 system-ui,sans-serif}main{max-width:1200px;margin:auto;padding:24px}h1{font-size:26px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:20px}figure{margin:0;background:#fff8ed;padding:12px}img,video{display:block;width:100%;height:auto}figcaption{padding-top:8px}a{overflow-wrap:anywhere;color:#624c85}.pending{color:#9d302b;font-weight:bold}</style>
+<main><h1>局部插画分叉：真实骨骼网格验证</h1>
+<p class="pending">只是局部材质与形变方法验证，不含根或叶冠，不是完整树苗/整树；A2未通过。</p>
+<div class="grid">
+<figure><img src="../../../../assets/source/magic_tree/textures_source/fork_component_source_v1.png" alt="内置imagegen生成的两格局部分叉源"><figcaption>局部图源，原透明通道保留；本轮只使用左格。</figcaption></figure>
+<figure><img src="mature.png" alt="实际Flutter完整局部状态"><figcaption>实际网格绘制，保留插画中的体积和光照。</figcaption></figure>
+<figure><img src="young.png" alt="实际Flutter初始局部姿态"><figcaption>干和侧枝分别改变长度、粗度，仍保留老树皮，不能称为幼苗。</figcaption></figure>
+<figure><img src="middle.png" alt="实际Flutter中间局部姿态"><figcaption>同一UV与图像，真实顶点插值，没有阶段图切换。</figcaption></figure>
+<figure><img src="junction-close.png" alt="实际Flutter局部近景"><figcaption>接合截口、大幅压缩与多段拼接仍需检验。</figcaption></figure>
+<figure><img src="phone.png" alt="430宽浏览器视口"><figcaption>浅色背景未见明显黑底，不代表所有背景或真机通过。</figcaption></figure>
+</div><h2>局部连续形变</h2><video controls preload="metadata" src="growth.webm"></video>
+<p>101个实际Flutter状态，约10.1秒；编码10fps不代表运行帧率。</p>
+<p><a href="result.json">实际结果与源码哈希</a> · <a href="geometry.json">源生成结果</a> · <a href="legacy-regression.json">旧分支回归</a> · <a href="../2026-11-02-局部插画分叉骨骼网格验证.md">局部结论和对接出口</a></p></main></html>

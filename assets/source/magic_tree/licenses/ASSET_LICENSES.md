@@ -24,6 +24,10 @@
 
 无。
 
+## 2026-11-02局部木质分叉源
+
+textures_source/fork_component_source_v1.png由imagegen技能及内置image_gen生成，原透明通道保留；提示词、哈希与使用范围见同名.md。仅作为新的局部骨骼网格实验源，不是整树阶段图，也没有进入正式运行包。
+
 ## 2026-11-01第二轮局部叶材质
 
 textures_source/leaf_matte_atlas_v2.png由Codex内置image_gen按imagegen技能生成，透明背景保留，四种局部单叶用于独立连续网格样件；提示词与用途见同名.md。未引入第三方模型或图库，不覆盖旧资产，也不代表整树视觉验收通过。

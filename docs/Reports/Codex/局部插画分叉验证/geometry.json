@@ -1,0 +1,17 @@
+{
+  "script_sha256": "4e45ffddb1dd48f30506b92eaca16ee6b6d1638406487f4cf3cb05570c6dd39f",
+  "mesh_export": {
+    "bytes": 488724,
+    "vertices": 3185,
+    "triangles": 6144,
+    "referenceSamples": 9
+  },
+  "source_image_sha256": "256585d0fdfe8d3bd5498ece4ada588a52f16a4e054b6e53c4ba0450007929ba",
+  "image_size": [
+    1536,
+    1024
+  ],
+  "used_panel": "左半局部分叉",
+  "production_integrated": false,
+  "visualAcceptance": "待实际形变和透明边缘检查；不代表整树方法通过"
+}

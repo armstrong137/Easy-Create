@@ -287,7 +287,9 @@ class _Mesh {
           .75 * math.max(0, (-.45 * nx - .5 * ny + .74 * nz) / normalLength);
       // 图集以显示空间采样，使用显示空间的明暗调制近似；仍须对照离线光照。
       final channel = (255 * math.pow(light, 1 / 2.2)).round().clamp(0, 255);
-      colors[i] = 0xff000000 | (channel << 16) | (channel << 8) | channel;
+      colors[i] = meta['unlitTexture'] == true
+          ? 0xffffffff
+          : 0xff000000 | (channel << 16) | (channel << 8) | channel;
     }
     final visible = <int>[];
     final triangleDepths = Float32List(corners.length ~/ 9);
@@ -580,23 +582,25 @@ class _Painter extends CustomPainter {
     canvas.translate(size.width / 2, size.height / 2);
     canvas.scale(factor);
     if (near) canvas.translate(0, -1.5);
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(
-          -(mesh.target[0] * mesh.right[0] +
-              mesh.target[1] * mesh.right[1] +
-              mesh.target[2] * mesh.right[2]),
-          mesh.target[0] * mesh.up[0] +
-              mesh.target[1] * mesh.up[1] +
-              mesh.target[2] * mesh.up[2],
+    if (mesh.meta['groundShadow'] != false) {
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(
+            -(mesh.target[0] * mesh.right[0] +
+                mesh.target[1] * mesh.right[1] +
+                mesh.target[2] * mesh.right[2]),
+            mesh.target[0] * mesh.up[0] +
+                mesh.target[1] * mesh.up[1] +
+                mesh.target[2] * mesh.up[2],
+          ),
+          width: 2.9,
+          height: .25,
         ),
-        width: 2.9,
-        height: .25,
-      ),
-      Paint()
-        ..color = const Color(0x284d3d28)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, .1),
-    );
+        Paint()
+          ..color = const Color(0x284d3d28)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, .1),
+      );
+    }
     final paint = Paint()
       ..shader = mesh.shader
       ..filterQuality = FilterQuality.high;

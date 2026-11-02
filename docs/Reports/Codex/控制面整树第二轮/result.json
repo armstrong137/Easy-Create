@@ -1,0 +1,66 @@
+{
+  "success": true,
+  "states": [
+    {
+      "age": 0,
+      "vertices": 10718,
+      "visibleTriangles": 10975,
+      "computeMs": 17.5,
+      "referenceError": 3.725290298461914e-9,
+      "leaves": 28,
+      "plaques": 0
+    },
+    {
+      "age": 0.5,
+      "vertices": 10718,
+      "visibleTriangles": 10806,
+      "computeMs": 18.399,
+      "referenceError": 1.1920928955078125e-7,
+      "leaves": 5538,
+      "plaques": 2
+    },
+    {
+      "age": 1,
+      "vertices": 10718,
+      "visibleTriangles": 10759,
+      "computeMs": 7.7,
+      "referenceError": 2.384185791015625e-7,
+      "leaves": 5538,
+      "plaques": 2
+    }
+  ],
+  "assetBytes": 1672152,
+  "frameSample": {
+    "count": 851,
+    "p95Ms": 29.200000000000728,
+    "worstMs": 37.5
+  },
+  "cpuGeometry": {
+    "count": 445,
+    "p95Ms": 11.601,
+    "worstMs": 14.4
+  },
+  "cpuPaintRecording": {
+    "count": 445,
+    "p95Ms": 14.7,
+    "worstMs": 17.3
+  },
+  "timingScope": "JS RAF探针不是绘制帧率；Dart指标只含几何/排序和绘图记录CPU，不含GPU完成时间",
+  "errors": [],
+  "visualAcceptance": "待人工检查，不以坐标校验代替视觉或真机验收",
+  "provenance": {
+    "dartSource": "ff8fd428bc030daee96804e010a3c2fb984c87399db11889274f8687edd70735",
+    "mesh": "ff78563a10f5d6c20e67bde8dedb8e882d8aef40641940ad52b208a8071340f6",
+    "metadata": "fab26e6b3214cedadca201badc5985ccf88e1b5cffe91cc77cfd62e4ba5cd964",
+    "atlas": "54c435cec730914dc930532b264642df003add0019e2c2400090fb00542acab1",
+    "generator": "ce08ccddd4b9d5bc17514308939a47f22a74e1f6e4bef9e138306e683b4236ed",
+    "atlasPngBytes": 2406920,
+    "wholeSpec": "9c6443cf41eae45552c0dbe90b0a865d2f533cc6837391d8ff1c24156ed8bdde"
+  },
+  "separateMotion": {
+    "file": "growth.webm",
+    "frames": 101,
+    "fps": 10,
+    "note": "真实Flutter网格逐帧渲染后编码，不含静帧/转屏切换；编码帧率不代表运行帧率"
+  }
+}
