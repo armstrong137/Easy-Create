@@ -1,0 +1,143 @@
+{
+  "meshSha256": "f686defc86a46352c6c17bf41c89788c0e845dfa761031fe32c5ee8060bd0008",
+  "metadataSha256": "0ff54eedd849365c085a59aefa085484493711ba76147a4738fac5fdc00edb20",
+  "states": [
+    {
+      "age": 0,
+      "referenceVertices": 3,
+      "referenceError": 1.3620089678312297e-7,
+      "byTexture": [
+        {
+          "triangles": 3420,
+          "flipped": 70,
+          "collapsed": 0
+        },
+        {
+          "triangles": 2708,
+          "flipped": 0,
+          "collapsed": 0
+        },
+        {
+          "triangles": 156,
+          "flipped": 0,
+          "collapsed": 0
+        },
+        {
+          "triangles": 186,
+          "flipped": 0,
+          "collapsed": 0
+        }
+      ]
+    },
+    {
+      "age": 0.25,
+      "referenceVertices": 0,
+      "referenceError": null,
+      "byTexture": [
+        {
+          "triangles": 3420,
+          "flipped": 0,
+          "collapsed": 0
+        },
+        {
+          "triangles": 2708,
+          "flipped": 0,
+          "collapsed": 0
+        },
+        {
+          "triangles": 156,
+          "flipped": 0,
+          "collapsed": 0
+        },
+        {
+          "triangles": 186,
+          "flipped": 0,
+          "collapsed": 0
+        }
+      ]
+    },
+    {
+      "age": 0.5,
+      "referenceVertices": 3,
+      "referenceError": 2.3172176799590716e-7,
+      "byTexture": [
+        {
+          "triangles": 3420,
+          "flipped": 0,
+          "collapsed": 0
+        },
+        {
+          "triangles": 2708,
+          "flipped": 0,
+          "collapsed": 0
+        },
+        {
+          "triangles": 156,
+          "flipped": 0,
+          "collapsed": 0
+        },
+        {
+          "triangles": 186,
+          "flipped": 0,
+          "collapsed": 0
+        }
+      ]
+    },
+    {
+      "age": 0.75,
+      "referenceVertices": 0,
+      "referenceError": null,
+      "byTexture": [
+        {
+          "triangles": 3420,
+          "flipped": 0,
+          "collapsed": 0
+        },
+        {
+          "triangles": 2708,
+          "flipped": 0,
+          "collapsed": 0
+        },
+        {
+          "triangles": 156,
+          "flipped": 0,
+          "collapsed": 0
+        },
+        {
+          "triangles": 186,
+          "flipped": 0,
+          "collapsed": 0
+        }
+      ]
+    },
+    {
+      "age": 1,
+      "referenceVertices": 3,
+      "referenceError": 4.796613950475148e-8,
+      "byTexture": [
+        {
+          "triangles": 3420,
+          "flipped": 0,
+          "collapsed": 0
+        },
+        {
+          "triangles": 2708,
+          "flipped": 0,
+          "collapsed": 0
+        },
+        {
+          "triangles": 156,
+          "flipped": 0,
+          "collapsed": 0
+        },
+        {
+          "triangles": 186,
+          "flipped": 0,
+          "collapsed": 0
+        }
+      ]
+    }
+  ],
+  "scope": "全部网格三角的五状态二维有向面积，不等于逐像素或全部连续时刻；透明像素所在三角也计入，负面积是翻面风险，不能直接当可见洞数量",
+  "productionIntegrated": false
+}

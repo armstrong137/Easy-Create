@@ -1,0 +1,202 @@
+{
+  "script_sha256": "379d403b916ce40db730be4dd47b570d9b730a0dcb2c9b631f2b8ab4d44e37fe",
+  "mesh_export": {
+    "bytes": 554388,
+    "vertices": 3827,
+    "triangles": 6470,
+    "referenceSamples": 9
+  },
+  "parts": [
+    {
+      "name": "连续根颈主干五肩枝",
+      "edges": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "material": 0
+    },
+    {
+      "name": "横展冠层0",
+      "edges": [
+        24,
+        25,
+        26
+      ],
+      "material": 1
+    },
+    {
+      "name": "横展冠层1",
+      "edges": [
+        27,
+        28,
+        29
+      ],
+      "material": 1
+    },
+    {
+      "name": "横展冠层2",
+      "edges": [
+        30,
+        31,
+        32
+      ],
+      "material": 1
+    },
+    {
+      "name": "横展冠层3",
+      "edges": [
+        33,
+        34,
+        35
+      ],
+      "material": 1
+    },
+    {
+      "name": "横展冠层4",
+      "edges": [
+        36,
+        37,
+        38,
+        39
+      ],
+      "material": 1
+    },
+    {
+      "name": "横展冠层5",
+      "edges": [
+        40,
+        41,
+        42
+      ],
+      "material": 1
+    },
+    {
+      "name": "横展冠层6",
+      "edges": [
+        43,
+        44,
+        45
+      ],
+      "material": 1
+    },
+    {
+      "name": "横展冠层7",
+      "edges": [
+        46,
+        47,
+        48,
+        49
+      ],
+      "material": 1
+    },
+    {
+      "name": "横展冠层8",
+      "edges": [
+        50,
+        51,
+        52
+      ],
+      "material": 1
+    },
+    {
+      "name": "横展冠层9",
+      "edges": [
+        53,
+        54,
+        55
+      ],
+      "material": 1
+    },
+    {
+      "name": "早生芽枝0",
+      "edges": [
+        56,
+        57,
+        58
+      ],
+      "material": 1
+    },
+    {
+      "name": "早生芽枝1",
+      "edges": [
+        59,
+        60,
+        61
+      ],
+      "material": 1
+    },
+    {
+      "name": "左章牌",
+      "edges": [
+        62,
+        63,
+        64,
+        65,
+        66,
+        67
+      ],
+      "material": 2
+    },
+    {
+      "name": "右节牌",
+      "edges": [
+        68,
+        69,
+        70,
+        71,
+        72,
+        73
+      ],
+      "material": 3
+    }
+  ],
+  "foliageParts": 12,
+  "plaques": 2,
+  "sourceImages": [
+    {
+      "path": "assets\\source\\magic_tree\\textures_source\\continuous_wood_core_v1.png",
+      "sha256": "45c43d6426c5194ae4992071c08f39b0c9773549d8a17510eabf312cba304f14"
+    },
+    {
+      "path": "assets\\source\\magic_tree\\textures_source\\canopy_boughs_v1.png",
+      "sha256": "ed2bd8b9e1e5fd9e811df8380738ab42b552f7ac01c2f007871e015301567027"
+    },
+    {
+      "path": "assets\\source\\magic_tree\\textures_source\\illustrated_frame_left_v1.png",
+      "sha256": "a9fda874c57f080dc89f32810fe9b84396d57bbca626cfd14ec23c2247bfdd20"
+    },
+    {
+      "path": "assets\\source\\magic_tree\\textures_source\\illustrated_components_v1.png",
+      "sha256": "29858504c9459bc450ff2b6b1088c906329fdb0cb9a4921c346917284e73c4db"
+    }
+  ],
+  "continuousCore": {
+    "nodes": 25,
+    "edges": 24,
+    "separateRootOverlay": false
+  },
+  "production_integrated": false,
+  "visualAcceptance": "第二套完整候选，待实际四图与短片审查；本方案最后一轮"
+}

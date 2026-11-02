@@ -1,0 +1,78 @@
+{
+  "success": true,
+  "states": [
+    {
+      "age": 0,
+      "vertices": 3827,
+      "visibleTriangles": 6400,
+      "computeMs": 7.401,
+      "referenceError": 2.384185791015625e-7,
+      "leaves": 0,
+      "plaques": 0,
+      "foliageParts": 12
+    },
+    {
+      "age": 0.5,
+      "vertices": 3827,
+      "visibleTriangles": 6470,
+      "computeMs": 2.2,
+      "referenceError": 1.862645149230957e-9,
+      "leaves": 0,
+      "plaques": 2,
+      "foliageParts": 12
+    },
+    {
+      "age": 1,
+      "vertices": 3827,
+      "visibleTriangles": 6470,
+      "computeMs": 2,
+      "referenceError": 0,
+      "leaves": 0,
+      "plaques": 2,
+      "foliageParts": 12
+    }
+  ],
+  "assetBytes": 554388,
+  "frameSample": {
+    "count": 1221,
+    "p95Ms": 16.700000000000728,
+    "worstMs": 33.400000000001455
+  },
+  "cpuGeometry": {
+    "count": 755,
+    "p95Ms": 3,
+    "worstMs": 5
+  },
+  "cpuPaintRecording": {
+    "count": 755,
+    "p95Ms": 7.701,
+    "worstMs": 9.5
+  },
+  "timingScope": "JS RAF探针不是绘制帧率；Dart指标只含几何/排序和绘图记录CPU，不含GPU完成时间",
+  "errors": [],
+  "visualAcceptance": "待人工检查，不以坐标校验代替视觉或真机验收",
+  "provenance": {
+    "dartSource": "b9b515761eab4b396def134ff429a4abcd548086d609b6e524874eb137c0313a",
+    "mesh": "f686defc86a46352c6c17bf41c89788c0e845dfa761031fe32c5ee8060bd0008",
+    "metadata": "0ff54eedd849365c085a59aefa085484493711ba76147a4738fac5fdc00edb20",
+    "atlas": "45c43d6426c5194ae4992071c08f39b0c9773549d8a17510eabf312cba304f14",
+    "generator": "379d403b916ce40db730be4dd47b570d9b730a0dcb2c9b631f2b8ab4d44e37fe",
+    "atlasPngBytes": 2041561,
+    "extraTextures": {
+      "canopy.png": "ed2bd8b9e1e5fd9e811df8380738ab42b552f7ac01c2f007871e015301567027",
+      "frame-left.png": "a9fda874c57f080dc89f32810fe9b84396d57bbca626cfd14ec23c2247bfdd20",
+      "frame-right-atlas.png": "29858504c9459bc450ff2b6b1088c906329fdb0cb9a4921c346917284e73c4db"
+    }
+  },
+  "separateMotion": {
+    "file": "growth.webm",
+    "frames": 101,
+    "fps": 10,
+    "checkedSampleAges": [
+      0,
+      0.5,
+      1
+    ],
+    "note": "真实Flutter网格逐帧渲染后编码，不含静帧/转屏切换；编码帧率不代表运行帧率"
+  }
+}

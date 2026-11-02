@@ -9,7 +9,7 @@ import numpy as np
 from mathutils import Vector, Quaternion
 
 ROOT=Path(__file__).resolve().parents[3]
-OUT=ROOT/'build/qa/continuous-core-proof'
+OUT=ROOT/'build/qa/continuous-core-round2-proof'
 OUT.mkdir(parents=True,exist_ok=True)
 bpy.ops.wm.read_factory_settings(use_empty=True)
 source_dir=ROOT/'assets/source/magic_tree/textures_source'
@@ -29,8 +29,8 @@ for image in images:
 # 木体源图只映射一次，根颈、主干和五肩枝不再分层搭接。
 def core_point(pixel):
     x,y=pixel
-    z=float(np.interp(y,[0,120,450,730,1000,1370,1445],[7.5,6.8,4.7,2.8,1.5,0,-.25]))
-    return Vector(((x-548)*.0067,0,z))
+    z=float(np.interp(y,[0,120,450,730,1000,1370,1445],[10.0,9.2,6.3,3.5,1.7,0,-.25]))
+    return Vector(((x-548)*.0057,0,z))
 
 core_pixels=[(548,1370),(548,1090),(548,900),(548,730),(556,463),(550,290),(548,122),
     (350,665),(165,623),(90,530),(773,663),(949,579),(1010,512),
@@ -46,16 +46,18 @@ for age in [0,.5,1]:
     if age==1:
         frames.append({'age':age,'nodes':[list(p) for p in nodes],'radial':[1]*len(edges)})
         continue
-    stem_heights=[0,.20,.55,.95,1.35,1.75,2.08] if age==0 else [0,.65,1.0,1.7,2.8,3.9,4.6]
+    stem_heights=[0,.16,.65,1.05,1.65,2.15,2.6] if age==0 else [0,.65,1.2,2.1,3.8,5.0,6.2]
     posed=[Vector((nodes[i].x*(.12 if age==0 else .6),0,z)) for i,z in enumerate(stem_heights)]
-    reach=.012 if age==0 else .55
     for i in range(7,19):
         parent=next(a for a,b in edges if b==i)
+        # 各肩枝错开发育，避免早中龄出现等长的横层。
+        reach=.012 if age==0 else {7:.66,10:.53,13:.46,16:.61}[(i-7)//3*3+7]
         posed.append(posed[parent]+(nodes[i]-nodes[parent])*reach)
     for i in range(19,25):
         # 根脚固定于接地附近，独立增粗，而非随整棵成年树缩放。
-        posed.append(Vector((nodes[i].x*(.12 if age==0 else .55),0,nodes[i].z*(.16 if age==0 else .6))))
-    radial=[(.075 if age==0 else .5) if e<6 else (.012 if age==0 else .5) if e<18 else (.12 if age==0 else .55) for e in range(len(edges))]
+        posed.append(Vector((nodes[i].x*(.06 if age==0 else .48),0,nodes[i].z*(.13 if age==0 else .55))))
+    radial=[(.16 if age==0 else .5) if e<6 else (.012 if age==0 else .5) if e<18 else (.06 if age==0 else .48) for e in range(len(edges))]
+    radial[0]=.06 if age==0 else .48
     frames.append({'age':age,'nodes':[list(p) for p in posed],'radial':radial})
 
 vertices,owners,faces,uvs,materials=[],[],[],[],[]
@@ -85,19 +87,19 @@ def patch(name,material,mask,point,edge_ids,cols,rows):
 
 patch('连续根颈主干五肩枝',0,masks[0],lambda x,y:core_point((x,y)),list(range(len(edges))),48,64)
 
-def append_piece(name,material,mask,pixels,links,parent,scale,angle=0,early=False,paper=None):
+def append_piece(name,material,mask,pixels,links,parent,scale,angle=0,early=False,paper=None,middle=.55):
     base=Vector(pixels[0]);rotation=Quaternion((0,1,0),angle)
     local=[rotation@Vector(((x-base.x)*scale,0,(base.y-y)*scale)) for x,y in pixels]
     origin=nodes[parent];ids=[parent]
     for p in local[1:]:
         ids.append(len(nodes));nodes.append(origin+p)
         for stage,frame in enumerate(frames):
-            growth=(.8,.95,1)[stage] if early else (.001,.55,1)[stage]
+            growth=(.8,.95,1)[stage] if early else (.001,middle,1)[stage]
             frame['nodes'].append(list(Vector(frame['nodes'][parent])+p*growth))
     edge_ids=[]
     for a,b in links:
         edge_ids.append(len(edges));edges.append((ids[a],ids[b]))
-        for stage,frame in enumerate(frames): frame['radial'].append((.8,.95,1)[stage] if early else (.001,.55,1)[stage])
+        for stage,frame in enumerate(frames): frame['radial'].append((.8,.95,1)[stage] if early else (.001,middle,1)[stage])
     patch(name,material,mask,lambda x,y:origin+rotation@Vector(((x-base.x)*scale,0,(base.y-y)*scale)),edge_ids,12,12)
     if paper:
         plaques.append({'corners':[ids[i] for i in paper],'title':'第九章' if material==2 else '第一节',
@@ -108,14 +110,14 @@ fans={1:[(585,560),(430,470),(255,320),(110,285)],
       2:[(688,570),(850,460),(1000,320),(1160,285)],
       3:[(375,1120),(380,990),(350,860),(160,950),(600,950)],
       4:[(987,1120),(990,1020),(1100,825),(865,935)]}
-placements=[(1,8,.0054,-.06),(2,11,.0054,.06),(1,14,.0052,-.05),(2,17,.0052,.05),
-    (3,5,.0053,0),(1,13,.0043,-.20),(2,16,.0043,.16),
-    (3,4,.0045,-.10),(1,7,.0038,-.15),(2,10,.0038,.15)]
-for i,(component,parent,scale,angle) in enumerate(placements):
+placements=[(1,8,.0039,-.18,.67),(2,11,.0042,.09,.52),(1,14,.0040,-.18,.43),(2,17,.0038,.17,.60),
+    (3,5,.0044,-.10,.56),(1,13,.0033,-.35,.39),(2,16,.0036,.25,.55),
+    (3,4,.0034,.10,.61),(1,7,.0030,-.24,.62),(2,10,.0028,.26,.45)]
+for i,(component,parent,scale,angle,middle) in enumerate(placements):
     points=fans[component]
     links=[(0,1),(1,2),(2,3)] if component<3 else [(0,1),(1,2),(1,3),(1,4)]
-    append_piece(f'横展冠层{i}',1,labels==component,points,links,parent,scale,angle)
-for i,(parent,angle,scale) in enumerate([(6,0,.0028),(4,-.6,.0018)]):
+    append_piece(f'横展冠层{i}',1,labels==component,points,links,parent,scale,angle,middle=middle)
+for i,(parent,angle,scale) in enumerate([(6,0,.0033),(4,-.6,.0021)]):
     append_piece(f'早生芽枝{i}',1,labels==4,fans[4],[(0,1),(1,2),(1,3)],parent,scale,angle,True)
 
 append_piece('左章牌',2,masks[2],[(1160,1070),(820,1030),(540,940),(248,213),(552,213),(552,902),(248,902)],
@@ -166,15 +168,15 @@ sys.path.insert(0,str(Path(__file__).parent));from export_volume_mesh import exp
 exported=export_mesh(mesh,nodes,edges,bindings,camera,target,OUT,deform,{
     'poseFrames':frames,'unlitTexture':True,'triangleTextures':[materials[t.polygon_index] for t in mesh.loop_triangles],
     'extraTextures':['canopy.png','frame-left.png','frame-right-atlas.png'],
-    'textureStyles':['wood','leaf','wood','wood'],'foliageParts':12,'plaques':plaques,'rootWidth':[.12,.55,1],
-    'nearOffset':[target.x,-target.z+2.8],'scope':'连续木体与横展冠层第一套完整候选，尚未验收'})
+    'textureStyles':['wood','leaf','frame','frame'],'foliageParts':12,'plaques':plaques,'rootWidth':[.06,.48,1],
+    'nearOffset':[target.x,-target.z+3.5],'scope':'连续木体与横展冠层第二套完整候选，尚未验收'})
 for source,name in zip(paths,['baked-bark.png','canopy.png','frame-left.png','frame-right-atlas.png']):
     shutil.copyfile(source,OUT/name)
 report={'script_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),'mesh_export':exported,
     'parts':parts,'foliageParts':12,'plaques':2,'sourceImages':[{'path':str(p.relative_to(ROOT)),
         'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in paths],
     'continuousCore':{'nodes':len(core_pixels),'edges':24,'separateRootOverlay':False},
-    'production_integrated':False,'visualAcceptance':'第一套完整候选，待实际四图与短片审查'}
+    'production_integrated':False,'visualAcceptance':'第二套完整候选，待实际四图与短片审查；本方案最后一轮'}
 (OUT/'result.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
 deform(1);bpy.ops.wm.save_as_mainfile(filepath=str(OUT/'editable-candidate.blend'))
 print(json.dumps({'mesh_export':exported,'parts':len(parts),'output':str(OUT)},ensure_ascii=False))
