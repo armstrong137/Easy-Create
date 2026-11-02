@@ -10,7 +10,7 @@ import numpy as np
 from mathutils import Vector, Quaternion
 
 ROOT=Path(__file__).resolve().parents[3]
-OUT=ROOT/'build/qa/illustrated-whole-proof'
+OUT=ROOT/'build/qa/illustrated-whole-round2-proof'
 OUT.mkdir(parents=True,exist_ok=True)
 bpy.ops.wm.read_factory_settings(use_empty=True)
 analysis=json.loads((ROOT/'build/qa/illustrated-components-analysis/components.json').read_text(encoding='utf-8'))
@@ -79,13 +79,16 @@ def add(name,kind,component,points,links,scale,parent=None,align=None,angle=0,
         mask=left_mask
     x0,y0=max(0,x0-3),max(0,y0-3)
     x1,y1=min(mask.shape[1]-1,x1+3),min(mask.shape[0]-1,y1+3)
-    cols,rows=(10,12) if kind=='leaf' else (28,36)
+    # 纹理保留原分辨率；仅缩减近似平面的采样网格，根颈保留较密形变控制。
+    cols,rows=(5,7) if kind=='leaf' else (20,24) if kind=='root' else (14,18)
+    if name=='主干左分叉': y1=min(y1,465)
     start=len(vertices)
     for row in range(rows+1):
         for col in range(cols+1):
             x=x0+(x1-x0)*col/cols;y=y0+(y1-y0)*row/rows
             p=origin+rotations[2]@Vector(((x-base.x)*scale,0,(base.y-y)*scale))
-            p.y=-.002*(piece+1) if kind!='root' else -.25
+            # 根颈上沿在母干后，根脚在母干前；不再把整片截口压在干面上。
+            p.y=-.002*(piece+1) if kind!='root' else .004-.254*max(0,min(1,(y-260)/60))
             vertices.append(tuple(p));owners.append(piece)
     iw,ih=images[material].size
     for row in range(rows):
@@ -103,7 +106,7 @@ def add(name,kind,component,points,links,scale,parent=None,align=None,angle=0,
             uv_faces.append(uv)
     parts.append({'name':name,'kind':kind,'ids':ids,'edge_ids':edge_ids,'component':component,'material':material})
     if paper:
-        plaques.append({'corners':[ids[i] for i in paper],'birth':.18,'duration':.46,
+        plaques.append({'corners':[ids[i] for i in paper],'birth':.18,'duration':.46,'unroll':True,
                         'title':'第九章' if material else '第一节'})
     return parts[-1]
 
@@ -111,7 +114,7 @@ def add(name,kind,component,points,links,scale,parent=None,align=None,angle=0,
 left=[(886,465),(870,250),(875,45),(720,205),(630,98)]
 right=[(1140,465),(1155,250),(1145,45),(1300,205),(1460,98)]
 fork_links=[(0,1),(1,2),(1,3),(3,4)]
-main=add('主干左分叉','fork',1,left,fork_links,.009,reach=(.28,.63,1),
+main=add('主干左分叉','fork',1,left,fork_links,.009,reach=(.40,.68,1),
          branch=(.004,.45,1),thickness=(.16,.55,1))
 low=add('低位右分叉','fork',2,right,fork_links,.009*.72,parent=main['ids'][1],
         reach=(.001,.55,1),branch=(.001,.45,1),thickness=(.001,.5,1))
@@ -135,14 +138,25 @@ add('连通根颈','root',3,[(320,100),(320,280),(100,425),(570,425),(350,455)],
     thickness=(.18,.60,1))
 leaf_points=[(790,960),(765,790),(770,570),(600,740),(940,700)]
 leaf_links=[(0,1),(1,2),(1,3),(1,4)]
-add('幼苗早生冠','leaf',6,leaf_points,leaf_links,.009*.20,parent=main['ids'][2],
-    reach=(.65,.85,1),thickness=(.65,.85,1))
-leaf_count=1
+leaf_count=0
+# 早生叶固定在幼干真实节点；后期仍保留，不用阶段图替换幼冠。
+for i,(node,angle) in enumerate([(2,-.5),(2,.55),(1,-.8)]):
+    add(f'幼苗早生冠{i}','leaf',6,leaf_points,leaf_links,.009*(.34 if i<2 else .24),
+        parent=main['ids'][node],angle=angle,reach=(.9,.95,1),thickness=(.9,.95,1))
+    leaf_count+=1
 for index,part in enumerate(tips):
     for local_node in [2,3,4]:
-        scale=.009*(.20+.035*math.sin(index*1.7+local_node))
+        scale=.009*(.34+.065*math.sin(index*1.7+local_node))
         add(f'叶簇{index}-{local_node}','leaf',6,leaf_points,leaf_links,scale,parent=part['ids'][local_node],
             angle=.38*math.sin(index*2.1+local_node),reach=(.001,.45,1),thickness=(.001,.45,1))
+        leaf_count+=1
+# 冠层内侧沿分叉节点展叶，枝端与内层大小不同，保留枝架之间的负空间。
+for index,part in enumerate(forks):
+    for local_node in [1,2,3,4]:
+        add(f'内冠{index}-{local_node}','leaf',6,leaf_points,leaf_links,
+            .009*(.36+.08*math.sin(index*2.3+local_node)),parent=part['ids'][local_node],
+            angle=(-1 if local_node==3 else 1)*(.55+.22*math.sin(index+local_node)),
+            reach=(.001,.55,1),thickness=(.001,.55,1))
         leaf_count+=1
 # 纸面锚点预留内缩量，交由现有画笔用相同当前骨点绘制。
 add('左侧章牌','frame',0,[(1160,1070),(820,1030),(540,940),
@@ -189,21 +203,27 @@ def deform(age):
         vertex.co=p
     mesh.update()
 
-target=Vector((0,0,4.0));bpy.ops.object.camera_add(location=(0,-20,4.0));camera=bpy.context.object
+# 按同一成熟几何边界拟合固定相机，成长片始终使用这台相机。
+minimum=[min(p[i] for p in rest) for i in range(3)]
+maximum=[max(p[i] for p in rest) for i in range(3)]
+target=Vector(((minimum[0]+maximum[0])/2,0,(minimum[2]+maximum[2])/2))
+bpy.ops.object.camera_add(location=target+Vector((0,-20,0)));camera=bpy.context.object
 camera.rotation_euler=(target-camera.location).to_track_quat('-Z','Y').to_euler()
-camera.data.type='ORTHO';camera.data.ortho_scale=10.8
+camera.data.type='ORTHO';camera.data.ortho_scale=max((maximum[2]-minimum[2])*1.17,(maximum[0]-minimum[0])*760/600*1.14)
 mesh.calc_loop_triangles()
 textures=[face_material[tri.polygon_index] for tri in mesh.loop_triangles]
 sys.path.insert(0,str(Path(__file__).parent));from export_volume_mesh import export_mesh
 exported=export_mesh(mesh,nodes,edges,bindings,camera,target,OUT,deform,
     {'poseFrames':frames,'unlitTexture':True,'triangleTextures':textures,
      'extraTextures':['frame-left.png'],'foliageParts':leaf_count,'plaques':plaques,
-     'nearOffset':[0,-1.4],'scope':'局部插画统一整树首套候选，未集成'})
+     'vertexKinds':[1 if parts[owners[i]]['kind']=='leaf' else 2 if parts[owners[i]]['kind']=='frame' else 0 for i in used],
+     'rootWidth':[.18,.60,1],'mutedIllustration':True,
+     'nearOffset':[target.x,-target.z+2.45],'scope':'局部插画统一整树第二套候选，未集成'})
 shutil.copyfile(sources[0],OUT/'baked-bark.png');shutil.copyfile(sources[1],OUT/'frame-left.png')
 report={'script_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),'mesh_export':exported,
         'parts':len(parts),'foliageParts':leaf_count,'plaques':len(plaques),
         'image_sha256':[hashlib.sha256(p.read_bytes()).hexdigest() for p in sources],
         'source_regions':analysis['components'],'production_integrated':False,
-        'visualAcceptance':'首套统一候选，待实际四图与短片审查'}
+        'visualAcceptance':'第二套统一候选，待实际四图与短片审查；本方法最后一轮'}
 (OUT/'result.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
 print(json.dumps(report,ensure_ascii=False))

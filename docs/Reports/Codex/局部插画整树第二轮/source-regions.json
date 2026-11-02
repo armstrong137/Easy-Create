@@ -1,0 +1,70 @@
+{
+  "source": "C:\\Users\\Armstrong\\Desktop\\Easy Create\\assets\\source\\magic_tree\\textures_source\\illustrated_components_v1.png",
+  "sha256": "29858504c9459bc450ff2b6b1088c906329fdb0cb9a4921c346917284e73c4db",
+  "width": 1536,
+  "height": 1024,
+  "threshold": 128,
+  "components": [
+    {
+      "id": 3,
+      "pixels": 141663,
+      "bounds": [
+        30,
+        48,
+        671,
+        484
+      ]
+    },
+    {
+      "id": 4,
+      "pixels": 84537,
+      "bounds": [
+        1052,
+        518,
+        1479,
+        975
+      ]
+    },
+    {
+      "id": 2,
+      "pixels": 77365,
+      "bounds": [
+        1093,
+        20,
+        1494,
+        490
+      ]
+    },
+    {
+      "id": 6,
+      "pixels": 74240,
+      "bounds": [
+        561,
+        536,
+        990,
+        978
+      ]
+    },
+    {
+      "id": 1,
+      "pixels": 73179,
+      "bounds": [
+        603,
+        20,
+        955,
+        490
+      ]
+    },
+    {
+      "id": 5,
+      "pixels": 37435,
+      "bounds": [
+        114,
+        521,
+        510,
+        990
+      ]
+    }
+  ],
+  "note": "实际连通区域，不假定生成图严格符合六等分网格；标签用于网格UV选区，不改变PNG。"
+}

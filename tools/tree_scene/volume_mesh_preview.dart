@@ -281,6 +281,7 @@ class _Mesh {
     final world = Float32List(count * 3);
     final projected = Float32List(count * 2), depths = Float32List(count);
     final colors = Int32List(count);
+    final kinds = meta['vertexKinds'] as List?;
     for (var i = 0; i < count; i++) {
       var px = 0.0, py = 0.0, pz = 0.0, nx = 0.0, ny = 0.0, nz = 0.0;
       final normalX = normals[i * 3],
@@ -326,6 +327,20 @@ class _Mesh {
       colors[i] = meta['unlitTexture'] == true
           ? 0xffffffff
           : 0xff000000 | (channel << 16) | (channel << 8) | channel;
+      if (kinds != null) {
+        final kind = kinds[i] as int;
+        if (kind == 1) {
+          colors[i] = 0xffb3d5ae;
+        } else if (kind == 0) {
+          colors[i] = Color.lerp(
+            const Color(0xffa2b88a),
+            const Color(0xffcbd7d1),
+            _smooth(age),
+          )!.toARGB32();
+        } else {
+          colors[i] = 0xffcbd7d1;
+        }
+      }
     }
     final visible = <int>[];
     final triangleDepths = Float32List(corners.length ~/ 9);
@@ -416,7 +431,14 @@ class _Mesh {
             ),
           ).point,
       ];
-      plaques.add(_Plaque(points, definition['title'] as String, opacity));
+      plaques.add(
+        _Plaque(
+          points,
+          definition['title'] as String,
+          definition['unroll'] == true ? 1 : opacity,
+          definition['unroll'] == true ? opacity : 1,
+        ),
+      );
     }
     var error = 0.0;
     for (final sample in meta['samples'] as List) {
@@ -481,10 +503,10 @@ class _Leaf {
 }
 
 class _Plaque {
-  _Plaque(this.corners, this.title, this.opacity);
+  _Plaque(this.corners, this.title, this.opacity, this.reveal);
   final List<Offset> corners;
   final String title;
-  final double opacity;
+  final double opacity, reveal;
 }
 
 class _Preview extends StatefulWidget {
@@ -626,6 +648,13 @@ class _Painter extends CustomPainter {
       );
     }
     if (mesh.meta['groundShadow'] != false) {
+      final rootWidth = mesh.meta['rootWidth'] as List?;
+      final half = frame.age <= .5 ? 0 : 1;
+      final rootScale = rootWidth == null
+          ? 1.0
+          : (rootWidth[half] as num) +
+                ((rootWidth[half + 1] as num) - (rootWidth[half] as num)) *
+                    _smooth((frame.age - half * .5) * 2);
       canvas.drawOval(
         Rect.fromCenter(
           center: Offset(
@@ -636,17 +665,46 @@ class _Painter extends CustomPainter {
                 mesh.target[1] * mesh.up[1] +
                 mesh.target[2] * mesh.up[2],
           ),
-          width: 2.9,
-          height: .25,
+          width: 2.9 * rootScale,
+          height: .25 * rootScale,
         ),
         Paint()
           ..color = const Color(0x284d3d28)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, .1),
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, .1 * rootScale),
       );
     }
     final paint = Paint()
       ..shader = mesh.shader
       ..filterQuality = FilterQuality.high;
+    if (mesh.meta['mutedIllustration'] == true) {
+      // 原图像素不变，以统一材质降低金黄色饱和度，保留原始光向和透明度。
+      const s = .62,
+          r = .2126 * (1 - s),
+          g = .7152 * (1 - s),
+          b = .0722 * (1 - s);
+      paint.colorFilter = const ColorFilter.matrix([
+        r + s,
+        g,
+        b,
+        0,
+        0,
+        r,
+        g + s,
+        b,
+        0,
+        0,
+        r,
+        g,
+        b + s,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+      ]);
+    }
     if (frame.leaves.isEmpty) {
       _wood(canvas, paint, frame.order);
     } else {
@@ -677,7 +735,13 @@ class _Painter extends CustomPainter {
     }
     for (final plaque in frame.plaques) {
       canvas.save();
-      final paper = Path()..addPolygon(plaque.corners, true);
+      final paper = Path()
+        ..addPolygon([
+          Offset.lerp(plaque.corners[3], plaque.corners[0], plaque.reveal)!,
+          Offset.lerp(plaque.corners[2], plaque.corners[1], plaque.reveal)!,
+          plaque.corners[2],
+          plaque.corners[3],
+        ], true);
       canvas.drawPath(
         paper,
         Paint()
@@ -688,6 +752,8 @@ class _Painter extends CustomPainter {
             ],
           ).createShader(paper.getBounds()),
       );
+      // 纸面保持不透明；文字在完整框坐标排版，再由展开区域裁剪。
+      canvas.clipPath(paper);
       final top = plaque.corners[0],
           across = (plaque.corners[1] - top) / .62,
           down = (plaque.corners[3] - top) / .94;

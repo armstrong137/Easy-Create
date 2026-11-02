@@ -16,9 +16,10 @@ const whole=process.argv.includes('--authored-whole');
 const fork=process.argv.includes('--fork');
 const lap=process.argv.includes('--pair-lap');
 const pair=process.argv.includes('--pair')||lap;
-const illustrated=process.argv.includes('--illustrated-whole');
-const web=resolve(root,'build/volume-web'), proof=resolve(root,illustrated?'build/qa/illustrated-whole-proof':lap?'build/qa/illustrated-pair-lap-proof':pair?'build/qa/illustrated-pair-proof':fork?'build/qa/illustrated-fork-proof':whole?'build/qa/authored-whole-control-round2':surface?'build/qa/authored-surface-proof':tree?'build/qa/whole-tree-mesh-round2':compact?'build/qa/volume-proof-compact':'build/qa/volume-proof-baked');
-const output=resolve(root,illustrated?'build/qa/illustrated-whole-2d':lap?'build/qa/illustrated-pair-lap-2d':pair?'build/qa/illustrated-pair-2d':fork?'build/qa/illustrated-fork-2d':whole?'build/qa/authored-whole-2d-round2':surface?'build/qa/authored-surface-2d':tree?'build/qa/whole-tree-2d-round2':compact?'build/qa/volume-2d-compact':'build/qa/volume-2d',new Date().toISOString().replaceAll(':','-'));
+const illustratedRound2=process.argv.includes('--illustrated-whole-round2');
+const illustrated=process.argv.includes('--illustrated-whole')||illustratedRound2;
+const web=resolve(root,'build/volume-web'), proof=resolve(root,illustratedRound2?'build/qa/illustrated-whole-round2-proof':illustrated?'build/qa/illustrated-whole-proof':lap?'build/qa/illustrated-pair-lap-proof':pair?'build/qa/illustrated-pair-proof':fork?'build/qa/illustrated-fork-proof':whole?'build/qa/authored-whole-control-round2':surface?'build/qa/authored-surface-proof':tree?'build/qa/whole-tree-mesh-round2':compact?'build/qa/volume-proof-compact':'build/qa/volume-proof-baked');
+const output=resolve(root,illustratedRound2?'build/qa/illustrated-whole-round2-2d':illustrated?'build/qa/illustrated-whole-2d':lap?'build/qa/illustrated-pair-lap-2d':pair?'build/qa/illustrated-pair-2d':fork?'build/qa/illustrated-fork-2d':whole?'build/qa/authored-whole-2d-round2':surface?'build/qa/authored-surface-2d':tree?'build/qa/whole-tree-2d-round2':compact?'build/qa/volume-2d-compact':'build/qa/volume-2d',new Date().toISOString().replaceAll(':','-'));
 await mkdir(output,{recursive:true});
 const mime={'.js':'text/javascript','.mjs':'text/javascript','.html':'text/html',
   '.json':'application/json','.wasm':'application/wasm','.png':'image/png','.css':'text/css'};
