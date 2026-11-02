@@ -24,6 +24,10 @@
 
 无。
 
+## 2026-11-02局部木质构件搭接边
+
+textures_source/fork_component_lap_v2.png通过imagegen技能及内置image_gen编辑已有项目资产，原透明通道保留，旧版本不覆盖；提示词、原始输出、实际改动范围及哈希见同名.md。仅用于局部骨骼网格对接验证，不是整树阶段图。
+
 ## 2026-11-02局部木质分叉源
 
 textures_source/fork_component_source_v1.png由imagegen技能及内置image_gen生成，原透明通道保留；提示词、哈希与使用范围见同名.md。仅作为新的局部骨骼网格实验源，不是整树阶段图，也没有进入正式运行包。

@@ -43,4 +43,5 @@ def export_mesh(mesh, rest_nodes, edges, bindings, camera, target, output, defor
     (output / 'mesh.bin').write_bytes(payload.tobytes())
     (output / 'mesh.json').write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding='utf-8')
     return {"bytes": len(payload)*4, "vertices": metadata['vertexCount'],
-            "triangles": metadata['triangleCount'], "referenceSamples": len(samples)*len(indices)}
+            "triangles": metadata['triangleCount'],
+            "referenceSamples": sum(len(sample['vertices']) for sample in metadata['samples'])}

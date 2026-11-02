@@ -1,0 +1,29 @@
+{
+  "success": true,
+  "sourceAndAssetHashesMatch": true,
+  "sameDartBuild": true,
+  "sharedParentNode": true,
+  "referenceAges": [
+    0,
+    0.25,
+    0.5,
+    0.75,
+    1
+  ],
+  "referencePositions": {
+    "baseline": 50,
+    "lap": 70
+  },
+  "images": 6,
+  "videoDurations": [
+    10.1,
+    10.1
+  ],
+  "decodedAtSeconds": [
+    2.5,
+    5,
+    7.5
+  ],
+  "reviewPagePhoneOverflow": false,
+  "exporterSha256": "e52c249bed35a74f87eb02fec6d4607e6e3718b1c52ccc72fbf8273f52079be7"
+}

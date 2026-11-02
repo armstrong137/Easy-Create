@@ -14,8 +14,10 @@ const tree=process.argv.includes('--tree');
 const surface=process.argv.includes('--surface');
 const whole=process.argv.includes('--authored-whole');
 const fork=process.argv.includes('--fork');
-const web=resolve(root,'build/volume-web'), proof=resolve(root,fork?'build/qa/illustrated-fork-proof':whole?'build/qa/authored-whole-control-round2':surface?'build/qa/authored-surface-proof':tree?'build/qa/whole-tree-mesh-round2':compact?'build/qa/volume-proof-compact':'build/qa/volume-proof-baked');
-const output=resolve(root,fork?'build/qa/illustrated-fork-2d':whole?'build/qa/authored-whole-2d-round2':surface?'build/qa/authored-surface-2d':tree?'build/qa/whole-tree-2d-round2':compact?'build/qa/volume-2d-compact':'build/qa/volume-2d',new Date().toISOString().replaceAll(':','-'));
+const lap=process.argv.includes('--pair-lap');
+const pair=process.argv.includes('--pair')||lap;
+const web=resolve(root,'build/volume-web'), proof=resolve(root,lap?'build/qa/illustrated-pair-lap-proof':pair?'build/qa/illustrated-pair-proof':fork?'build/qa/illustrated-fork-proof':whole?'build/qa/authored-whole-control-round2':surface?'build/qa/authored-surface-proof':tree?'build/qa/whole-tree-mesh-round2':compact?'build/qa/volume-proof-compact':'build/qa/volume-proof-baked');
+const output=resolve(root,lap?'build/qa/illustrated-pair-lap-2d':pair?'build/qa/illustrated-pair-2d':fork?'build/qa/illustrated-fork-2d':whole?'build/qa/authored-whole-2d-round2':surface?'build/qa/authored-surface-2d':tree?'build/qa/whole-tree-2d-round2':compact?'build/qa/volume-2d-compact':'build/qa/volume-2d',new Date().toISOString().replaceAll(':','-'));
 await mkdir(output,{recursive:true});
 const mime={'.js':'text/javascript','.mjs':'text/javascript','.html':'text/html',
   '.json':'application/json','.wasm':'application/wasm','.png':'image/png','.css':'text/css'};
@@ -57,10 +59,10 @@ try{
   await page.setViewportSize({width:430,height:932});
   await page.waitForTimeout(600);
   await page.screenshot({path:resolve(output,'phone.png')});
-  if(tree||surface||whole||fork){
+  if(tree||surface||whole||fork||pair){
     await page.getByRole('button',{name:'枝牌近景',exact:true}).click();
     await page.waitForTimeout(500);
-    await page.screenshot({path:resolve(output,surface||fork?'junction-close.png':'plaque-close.png')});
+    await page.screenshot({path:resolve(output,surface||fork||pair?'junction-close.png':'plaque-close.png')});
     await page.getByRole('button',{name:'返回全景',exact:true}).click();
   }
   await page.setViewportSize({width:900,height:1280});
@@ -108,15 +110,22 @@ try{
     if(states[0].plaques!==0||states.at(-1).plaques!==expected.plaques.length||states.at(-1).leaves!==expected.leaves.length)
       throw Error('整树出生或牌面数量与本轮样件规格不一致');
   }
-  if(tree||surface||whole||fork){
+  if(tree||surface||whole||fork||pair){
     await writeFile(resolve(output,'result.json'),JSON.stringify(result,null,2));
     // 性能统计已结束；另行渲染固定相机的连续成长片，不混入静帧检查。
     const frames=resolve(output,'motion-frames');await mkdir(frames,{recursive:true});
+    const referenceAges=new Set(JSON.parse(await readFile(resolve(proof,'mesh.json'),'utf8')).samples.map(sample=>sample.age));
+    const checkedSampleAges=[];
     for(let frame=0;frame<=100;frame++){
       const age=frame/100;
       await page.evaluate(age=>window.setVolumeProofAge(age),age);
       await page.waitForFunction(age=>Math.abs(window.volumeProofMetrics.age-age)<1e-9&&
         Math.abs(window.volumeProofPaint.age-age)<1e-9,age);
+      if(referenceAges.has(age)){
+        const metrics=await page.evaluate(()=>window.volumeProofMetrics);
+        if(metrics.referenceError>1e-5)throw Error(`连续片源坐标不一致：${JSON.stringify(metrics)}`);
+        checkedSampleAges.push(age);
+      }
       await page.screenshot({type:'jpeg',quality:95,path:resolve(frames,`${String(frame).padStart(3,'0')}.jpg`)});
     }
     let log='';
@@ -131,7 +140,7 @@ try{
       input.on('error',reject);child.stdin.on('error',reject);input.pipe(child.stdin);
     });
     await writeFile(resolve(output,'motion-encode.log'),log);
-    result.separateMotion={file:'growth.webm',frames:101,fps:10,
+    result.separateMotion={file:'growth.webm',frames:101,fps:10,checkedSampleAges,
       note:'真实Flutter网格逐帧渲染后编码，不含静帧/转屏切换；编码帧率不代表运行帧率'};
   }
   result.success=errors.length===0;

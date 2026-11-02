@@ -1,0 +1,16 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>局部插画双构件对接验证</title>
+<style>body{margin:0;background:#f4eee3;color:#302b23;font:16px/1.7 system-ui,sans-serif}main{max-width:1200px;margin:auto;padding:24px}h1{font-size:26px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:20px}figure{margin:0;background:#fff8ed;padding:12px}img,video{display:block;width:100%;height:auto}figcaption{padding-top:8px}a{overflow-wrap:anywhere;color:#624c85}.pending{color:#9d302b;font-weight:bold}</style>
+<main><h1>局部插画双构件：共享骨骼对接与搭接边</h1>
+<p class="pending">共点定位成立，搭接版减轻横向断线，仍有材质差异；不是完整树苗/整树，A2未通过。</p>
+<div class="grid">
+<figure><img src="baseline/junction-close.png" alt="原图对接近景"><figcaption>原图：接点未裂开，横向材质断带明显。</figcaption></figure>
+<figure><img src="lap/junction-close.png" alt="搭接边近景"><figcaption>搭接版：不规则树皮舌片，仍有色差和材质尺度变化。</figcaption></figure>
+<figure><img src="lap/mature.png" alt="搭接版完整局部状态"><figcaption>父段与子段共用节点2，右格未镜像。</figcaption></figure>
+<figure><img src="lap/young.png" alt="搭接版初始局部姿态"><figcaption>初始局部姿态，仍有老树皮与截口，不是完整幼苗。</figcaption></figure>
+<figure><img src="lap/middle.png" alt="搭接版中间局部姿态"><figcaption>同一图像与UV，实际网格连续插值。</figcaption></figure>
+<figure><img src="lap/phone.png" alt="430宽浏览器视口"><figcaption>手机视口不等于实体手机测试。</figcaption></figure>
+</div><h2>原图对接连续片段</h2><video controls preload="metadata" src="baseline/growth.webm"></video>
+<h2>搭接版连续片段</h2><video controls preload="metadata" src="lap/growth.webm"></video>
+<p>各101个实际Flutter状态，约10.1秒；0/0.25/0.5/0.75/1有接头顶点对照。编码10fps不是运行帧率。</p>
+<p><a href="baseline/result.json">原方案结果</a> · <a href="lap/result.json">搭接版结果</a> · <a href="single-regression.json">旧单构件回归</a> · <a href="../2026-11-02-局部插画双构件对接验证.md">范围、结论与下一项</a></p></main></html>

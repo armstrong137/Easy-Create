@@ -581,7 +581,13 @@ class _Painter extends CustomPainter {
     canvas.clipRect(Offset.zero & size);
     canvas.translate(size.width / 2, size.height / 2);
     canvas.scale(factor);
-    if (near) canvas.translate(0, -1.5);
+    if (near) {
+      final offset = mesh.meta['nearOffset'] as List?;
+      canvas.translate(
+        (offset?[0] as num?)?.toDouble() ?? 0,
+        (offset?[1] as num?)?.toDouble() ?? -1.5,
+      );
+    }
     if (mesh.meta['groundShadow'] != false) {
       canvas.drawOval(
         Rect.fromCenter(
