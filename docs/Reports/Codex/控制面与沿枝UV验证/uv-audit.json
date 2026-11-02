@@ -1,0 +1,21 @@
+{
+  "source": "C:\\Users\\Armstrong\\Desktop\\Easy Create\\build\\qa\\authored-surface-proof",
+  "meshSha256": "dc03d066560662991269457aa188127dd39a7371e8deebc095f0b4da2b35dda3",
+  "metadataSha256": "39b0198530b02808b94ecc655678642c60caa08ef28959eeece113cc21ee009a",
+  "atlasSha256": "54c435cec730914dc930532b264642df003add0019e2c2400090fb00542acab1",
+  "atlasWidth": 1024,
+  "atlasHeight": 1024,
+  "triangles": 17792,
+  "textureMode": "重复采样材质；UV可超出0至1",
+  "uvAreaTexels": {
+    "p10": 91.2399813462398,
+    "median": 130.47264169866685,
+    "p90": 273.64994291216135,
+    "below1": 0,
+    "below4": 0,
+    "below16": 256
+  },
+  "sumTriangleUvAreaFraction": 2.480210277962958,
+  "scope": "实际三角形UV面积，不含图表边距；总和不等于去重覆盖率，也不证明图表不重叠或黑片的唯一原因。",
+  "visualAcceptance": "UV像素面积不证明视觉验收，需检查对应实图与验证范围。"
+}

@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-01 21:18:45　对应提交：75cbe6e 之后的工作区状态
+> 生成时间：2026-11-02 19:46:39　对应提交：da21743 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     216
-  Nodes:     5,745
-  Edges:     23,592
-  DB Size:   27.73 MB
+  Files:     217
+  Nodes:     5,833
+  Edges:     23,702
+  DB Size:   27.90 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,867
-  function        1,640
-  import          784
+  function        1,648
+  import          794
   class           534
-  constant        424
-  variable        237
-  file            208
+  constant        425
+  variable        305
+  file            209
   enum_member     25
   type_alias      18
   enum            6
@@ -35,7 +35,7 @@ Nodes by Kind:
 Files by Language:
   dart            116
   javascript      52
-  python          20
+  python          21
   kotlin          8
   xml             6
   properties      4
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (216 files):
+Project Structure (217 files):
 
 |-- .agents
 |   `-- skills
@@ -291,6 +291,7 @@ Project Structure (216 files):
 |-- tools
 |   `-- tree_scene
 |       |-- rectification
+|       |   |-- authored_surface_proof.py (python, 87 symbols)
 |       |   |-- bake_volume_material.py (python, 10 symbols)
 |       |   |-- export_volume_mesh.py (python, 6 symbols)
 |       |   |-- inspect_source.py (python, 9 symbols)
@@ -303,7 +304,7 @@ Project Structure (216 files):
 |       |   |-- canvaskit-path-compat.test.mjs (javascript, 10 symbols)
 |       |   |-- capture-rectification.mjs (javascript, 16 symbols)
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
-|       |   |-- capture-volume-2d.mjs (javascript, 36 symbols)
+|       |   |-- capture-volume-2d.mjs (javascript, 37 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
 |       |   |-- check-illustrated-outline.mjs (javascript, 68 symbols)
 |       |   |-- check-organic-tree.mjs (javascript, 15 symbols)

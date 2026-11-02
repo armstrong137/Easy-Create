@@ -50,8 +50,8 @@ class _Mesh {
     // 本入口仅验证Web；着色器持有独立图像句柄，避免释放借用图集。
     shader = ui.ImageShader(
       image.clone(),
-      TileMode.clamp,
-      TileMode.clamp,
+      meta['repeatTexture'] == true ? TileMode.repeated : TileMode.clamp,
+      meta['repeatTexture'] == true ? TileMode.repeated : TileMode.clamp,
       Matrix4.identity().storage,
       filterQuality: FilterQuality.high,
     );
@@ -127,9 +127,36 @@ class _Mesh {
     final watch = Stopwatch()..start();
     final grown = <List<double>>[];
     final growth = meta['growth'] as List?;
+    final poses = meta['poseFrames'] as List?;
+    Map? firstPose, lastPose;
+    var poseProgress = 0.0;
+    if (poses != null) {
+      var index = 0;
+      while (index < poses.length - 2 &&
+          age > (poses[index + 1]['age'] as num)) {
+        index++;
+      }
+      firstPose = poses[index] as Map;
+      lastPose = poses[index + 1] as Map;
+      poseProgress = _smooth(
+        (age - (firstPose['age'] as num)) /
+            ((lastPose['age'] as num) - (firstPose['age'] as num)),
+      );
+    }
     for (var i = 0; i < nodes.length; i++) {
       final p = nodes[i];
-      if (growth != null) {
+      if (firstPose != null && lastPose != null) {
+        final a = firstPose['nodes'][i] as List,
+            b = lastPose['nodes'][i] as List;
+        grown.add(
+          List.generate(
+            3,
+            (axis) =>
+                (a[axis] as num).toDouble() +
+                ((b[axis] as num) - (a[axis] as num)) * poseProgress,
+          ),
+        );
+      } else if (growth != null) {
         final recipe = growth[i] as Map;
         final kind = recipe['kind'];
         if (kind == 'base') {
@@ -170,11 +197,16 @@ class _Mesh {
     }
     final rotations = <List<double>>[];
     final radialScales = <double>[];
-    for (final edge in edges) {
+    for (var edgeIndex = 0; edgeIndex < edges.length; edgeIndex++) {
+      final edge = edges[edgeIndex];
       var radial = growth == null
           ? .5 + .5 * _smooth(age)
           : .055 + .945 * _smooth(age);
-      if (growth != null) {
+      if (firstPose != null && lastPose != null) {
+        final a = firstPose['radial'][edgeIndex] as num,
+            b = lastPose['radial'][edgeIndex] as num;
+        radial = a.toDouble() + (b - a) * poseProgress;
+      } else if (growth != null) {
         final recipe = growth[edge[1]] as Map;
         if (recipe['kind'] == 'branch' || recipe['kind'] == 'frame') {
           final progress = _smooth(

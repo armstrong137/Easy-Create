@@ -22,11 +22,12 @@ const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const report={
   source:folder,meshSha256:hash(binary),metadataSha256:hash(metaBytes),atlasSha256:hash(atlasBytes),
   atlasWidth:atlas.width,atlasHeight:atlas.height,triangles:areas.length,
+  textureMode:meta.repeatTexture?'重复采样材质；UV可超出0至1':'固定图集',
   uvAreaTexels:{p10:quantile(.1),median:quantile(.5),p90:quantile(.9),
     below1:countBelow(1),below4:countBelow(4),below16:countBelow(16)},
   sumTriangleUvAreaFraction:areas.reduce((sum,area)=>sum+area,0)/(atlas.width*atlas.height),
   scope:'实际三角形UV面积，不含图表边距；总和不等于去重覆盖率，也不证明图表不重叠或黑片的唯一原因。',
-  visualAcceptance:'未通过；本检查仅用于定位纹理预算，不是第三轮造型或新的整树方案。',
+  visualAcceptance:'UV像素面积不证明视觉验收，需检查对应实图与验证范围。',
 };
 await writeFile(resolve(folder,'uv-audit.json'),JSON.stringify(report,null,2)+'\n');
 console.log(JSON.stringify(report,null,2));

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>控制面与沿枝UV方法验证</title>
+<style>
+body{margin:0;background:#f4eee3;color:#302b23;font:16px/1.7 system-ui,sans-serif}main{max-width:1200px;margin:auto;padding:24px}h1{font-size:26px}p{max-width:940px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:20px}figure{margin:0;background:#fff8ed;padding:12px}img,video{display:block;width:100%;height:auto}figcaption{padding-top:8px}a{overflow-wrap:anywhere;color:#624c85}.pending{color:#9d302b;font-weight:bold}
+</style>
+<main>
+<h1>控制面与沿枝UV方法验证</h1>
+<p class="pending">局部根颈与两处分叉，不含叶冠、纸牌；不是完整树苗或成熟整树，A2未通过。前两条自动造型路线的失败结论保留。</p>
+<p>新资产由母干开口与子枝共用控制顶点连接，沿枝条带直接重复采样1024树皮。二维实图来自实际Flutter绘制；离线图仅作源资产对照。</p>
+<div class="grid">
+<figure><img src="control-cage.png" alt="实际低密度控制笼"><figcaption>576个控制顶点、538面，孔口与子枝边界共用。</figcaption></figure>
+<figure><img src="mature.png" alt="Flutter完整局部片段"><figcaption>实际二维片段：材质可读，尚未制作整树。</figcaption></figure>
+<figure><img src="junction-close.png" alt="Flutter接头近景"><figcaption>接头近景有连续体积；暗部、尖根和纹理方向仍需整树审查。</figcaption></figure>
+<figure><img src="offline-wood.png" alt="同一源资产离线木体"><figcaption>离线同源对照，不能替代实际二维或真机。</figcaption></figure>
+<figure><img src="young.png" alt="局部初始控制姿态"><figcaption>初始测试姿态，没有叶冠，不称为完整树苗。</figcaption></figure>
+<figure><img src="middle.png" alt="局部中间控制姿态"><figcaption>同一网格、UV和连续骨架插值。</figcaption></figure>
+<figure><img src="phone.png" alt="430宽浏览器视口"><figcaption>浏览器手机视口，不是真机验收。</figcaption></figure>
+<figure><img src="../连通网格整树第二轮/plaque-close.png" alt="已淘汰路线第二轮纹理失败"><figcaption>旧路线失败近景：自动分图造成模糊黑片。两图形体和相机不同，非定量同条件对照。</figcaption></figure>
+</div>
+<h2>局部片段连续形变</h2>
+<video controls preload="metadata" src="growth.webm"></video>
+<p>101个实际Flutter状态，固定相机、约10.1秒；编码10fps不代表实时绘制速度。</p>
+<p><a href="result.json">二维结果与哈希</a> · <a href="geometry.json">控制面结果</a> · <a href="uv-audit.json">沿枝UV面积</a> · <a href="legacy-regression.json">旧元数据分支回归</a> · <a href="../2026-11-02-控制面与沿枝UV方法验证.md">方法判断和下一项</a></p>
+</main>
+</html>

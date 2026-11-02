@@ -1,0 +1,19 @@
+{
+  "script_sha256": "f12cbe35a3cd60477345b9b956102e90d24abf3889aebe126c6ea02795d05271",
+  "control_vertices": 576,
+  "control_faces": 538,
+  "vertices": 8898,
+  "components": [
+    8898
+  ],
+  "non_manifold_edges": 0,
+  "mesh_export": {
+    "bytes": 1387944,
+    "vertices": 8898,
+    "triangles": 17792,
+    "referenceSamples": 9
+  },
+  "uv_method": "按解剖部位手工定义条带，重复采样原1024树皮，无自动分图/烘焙",
+  "production_integrated": false,
+  "visualAcceptance": "待实图检查，仅局部方法验证，A2未完成"
+}

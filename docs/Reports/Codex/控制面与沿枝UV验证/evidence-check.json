@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "sourceAndAssetHashesMatch": true,
+  "originalBarkTextureMatches": true,
+  "legacySameDartBuild": true,
+  "images": 8,
+  "videoDuration": 10.1,
+  "decodedAtSeconds": [
+    2.5,
+    5,
+    7.5
+  ],
+  "reviewPagePhoneOverflow": false
+}
