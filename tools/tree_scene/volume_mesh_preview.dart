@@ -24,7 +24,12 @@ double _smooth(double value) {
 class _Mesh {
   _Mesh(this.meta, this.data, this.image, this.leafImage, this.extraImages) {
     normals = section('normals');
-    bindings = section('bindings');
+    bindings = (meta['sections'] as Map).containsKey('bindings')
+        ? section('bindings')
+        : Float32List(0);
+    vertexPoses = (meta['vertexPoseSections'] as List?)
+        ?.map((name) => section(name as String))
+        .toList();
     corners = section('corners');
     nodes = (meta['nodes'] as List)
         .map((p) => (p as List).map((v) => (v as num).toDouble()).toList())
@@ -76,6 +81,7 @@ class _Mesh {
   ui.ImageShader textureShader(int index) =>
       index == 0 ? shader : extraShaders[index - 1];
   late final Float32List normals, bindings, corners;
+  late final List<Float32List>? vertexPoses;
   late final List<List<double>> nodes;
   late final List<List<int>> edges;
   late final List<double> target, right, up, back;
@@ -166,6 +172,7 @@ class _Mesh {
     final poses = meta['poseFrames'] as List?;
     Map? firstPose, lastPose;
     var poseProgress = 0.0;
+    var poseIndex = 0;
     if (poses != null) {
       var index = 0;
       while (index < poses.length - 2 &&
@@ -173,6 +180,7 @@ class _Mesh {
         index++;
       }
       firstPose = poses[index] as Map;
+      poseIndex = index;
       lastPose = poses[index + 1] as Map;
       poseProgress = _smooth(
         (age - (firstPose['age'] as num)) /
@@ -282,34 +290,53 @@ class _Mesh {
     final projected = Float32List(count * 2), depths = Float32List(count);
     final colors = Int32List(count);
     final kinds = meta['vertexKinds'] as List?;
+    final firstVertices = vertexPoses?[poseIndex];
+    final lastVertices = vertexPoses?[poseIndex + 1];
     for (var i = 0; i < count; i++) {
       var px = 0.0, py = 0.0, pz = 0.0, nx = 0.0, ny = 0.0, nz = 0.0;
       final normalX = normals[i * 3],
           normalY = normals[i * 3 + 1],
           normalZ = normals[i * 3 + 2];
-      for (var slot = 0; slot < 3; slot++) {
-        final offset = i * 18 + slot * 6;
-        final edge = bindings[offset].round(),
-            t = bindings[offset + 1],
-            weight = bindings[offset + 5];
-        final ox = bindings[offset + 2] * radialScales[edge],
-            oy = bindings[offset + 3] * radialScales[edge],
-            oz = bindings[offset + 4] * radialScales[edge];
-        final a = grown[edges[edge][0]],
-            b = grown[edges[edge][1]],
-            r = rotations[edge];
-        px +=
-            (a[0] + (b[0] - a[0]) * t + r[0] * ox + r[1] * oy + r[2] * oz) *
-            weight;
-        py +=
-            (a[1] + (b[1] - a[1]) * t + r[3] * ox + r[4] * oy + r[5] * oz) *
-            weight;
-        pz +=
-            (a[2] + (b[2] - a[2]) * t + r[6] * ox + r[7] * oy + r[8] * oz) *
-            weight;
-        nx += (r[0] * normalX + r[1] * normalY + r[2] * normalZ) * weight;
-        ny += (r[3] * normalX + r[4] * normalY + r[5] * normalZ) * weight;
-        nz += (r[6] * normalX + r[7] * normalY + r[8] * normalZ) * weight;
+      if (firstVertices != null && lastVertices != null) {
+        // 局部控制笼直接插值同一UV网格，不经过最近邻骨边混合。
+        final k = i * 3;
+        px =
+            firstVertices[k] +
+            (lastVertices[k] - firstVertices[k]) * poseProgress;
+        py =
+            firstVertices[k + 1] +
+            (lastVertices[k + 1] - firstVertices[k + 1]) * poseProgress;
+        pz =
+            firstVertices[k + 2] +
+            (lastVertices[k + 2] - firstVertices[k + 2]) * poseProgress;
+        nx = normalX;
+        ny = normalY;
+        nz = normalZ;
+      } else {
+        for (var slot = 0; slot < 3; slot++) {
+          final offset = i * 18 + slot * 6;
+          final edge = bindings[offset].round(),
+              t = bindings[offset + 1],
+              weight = bindings[offset + 5];
+          final ox = bindings[offset + 2] * radialScales[edge],
+              oy = bindings[offset + 3] * radialScales[edge],
+              oz = bindings[offset + 4] * radialScales[edge];
+          final a = grown[edges[edge][0]],
+              b = grown[edges[edge][1]],
+              r = rotations[edge];
+          px +=
+              (a[0] + (b[0] - a[0]) * t + r[0] * ox + r[1] * oy + r[2] * oz) *
+              weight;
+          py +=
+              (a[1] + (b[1] - a[1]) * t + r[3] * ox + r[4] * oy + r[5] * oz) *
+              weight;
+          pz +=
+              (a[2] + (b[2] - a[2]) * t + r[6] * ox + r[7] * oy + r[8] * oz) *
+              weight;
+          nx += (r[0] * normalX + r[1] * normalY + r[2] * normalZ) * weight;
+          ny += (r[3] * normalX + r[4] * normalY + r[5] * normalZ) * weight;
+          nz += (r[6] * normalX + r[7] * normalY + r[8] * normalZ) * weight;
+        }
       }
       world[i * 3] = px;
       world[i * 3 + 1] = py;

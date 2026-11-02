@@ -1,0 +1,17 @@
+{
+  "success": false,
+  "meshSha256": "e841f1ff91cb7d7d9a9c1bfce3bb66bdf25850db0615da115431f0f0a88057dd",
+  "metadataSha256": "3a8659d1c3e949a775b6e78513f6b244d44ff093dd1309781109845441af9a55",
+  "intervals": [
+    {
+      "from": 0,
+      "to": 1,
+      "triangles": 1,
+      "minimumSignedArea": -0.125,
+      "minimumAreaAfterRoundingBound": -0.12500119209335026,
+      "unsafeTriangles": 1
+    }
+  ],
+  "coordinateRoundingBound": 2.384185791015625e-7,
+  "scope": "X-Z局部顶点姿态的线性插值；smoothstep只重参数化[0,1]，二次面积式覆盖整个区间。保守Float32坐标误差界不代表GPU逐像素、自然造型或整树验收。未含完整树冠、枝牌及业务交互。"
+}

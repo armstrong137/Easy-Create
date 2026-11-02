@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-02 22:49:43　对应提交：f356059 之后的工作区状态
+> 生成时间：2026-11-02 23:08:41　对应提交：0088463 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     223
-  Nodes:     6,107
-  Edges:     24,111
-  DB Size:   28.50 MB
+  Files:     226
+  Nodes:     6,195
+  Edges:     24,229
+  DB Size:   28.67 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,869
-  function        1,670
-  import          831
+  function        1,676
+  import          846
   class           534
-  constant        480
-  variable        457
-  file            215
+  constant        505
+  variable        496
+  file            218
   enum_member     25
   type_alias      18
   enum            6
@@ -34,8 +34,8 @@ Nodes by Kind:
 
 Files by Language:
   dart            116
-  javascript      54
-  python          25
+  javascript      56
+  python          26
   kotlin          8
   xml             6
   properties      4
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (223 files):
+Project Structure (226 files):
 
 |-- .agents
 |   `-- skills
@@ -295,6 +295,7 @@ Project Structure (223 files):
 |       |   |-- authored_whole_control.py (python, 15 symbols)
 |       |   |-- bake_volume_material.py (python, 10 symbols)
 |       |   |-- continuous_core_proof.py (python, 57 symbols)
+|       |   |-- contour_cage_proof.py (python, 44 symbols)
 |       |   |-- export_volume_mesh.py (python, 6 symbols)
 |       |   |-- illustrated_fork_proof.py (python, 55 symbols)
 |       |   |-- illustrated_whole_proof.py (python, 57 symbols)
@@ -303,13 +304,15 @@ Project Structure (223 files):
 |       |   |-- volume_proof.py (python, 91 symbols)
 |       |   `-- whole_tree_spec.py (python, 7 symbols)
 |       |-- scripts
+|       |   |-- audit-cage-intervals.mjs (javascript, 36 symbols)
+|       |   |-- audit-cage-intervals.test.mjs (javascript, 7 symbols)
 |       |   |-- audit-core-deformation.mjs (javascript, 39 symbols)
 |       |   |-- audit-volume-uv.mjs (javascript, 23 symbols)
 |       |   |-- build.mjs (javascript, 10 symbols)
 |       |   |-- canvaskit-path-compat.test.mjs (javascript, 10 symbols)
 |       |   |-- capture-rectification.mjs (javascript, 16 symbols)
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
-|       |   |-- capture-volume-2d.mjs (javascript, 50 symbols)
+|       |   |-- capture-volume-2d.mjs (javascript, 51 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
 |       |   |-- check-illustrated-outline.mjs (javascript, 68 symbols)
 |       |   |-- check-organic-tree.mjs (javascript, 15 symbols)
