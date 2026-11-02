@@ -24,6 +24,10 @@
 
 无。
 
+## 2026-11-02统一局部构件与左章牌
+
+textures_source/illustrated_components_v1.png及illustrated_frame_left_v1.png使用imagegen技能及内置image_gen生成，原透明通道保留，源提示词与范围见各自同名.md。前者是六件局部图集，后者为原光向左牌，没有整树阶段图。实际图集区域由透明连通分析供网格选区，未修改源PNG像素；两图均未进入正式运行包。
+
 ## 2026-11-02局部木质构件搭接边
 
 textures_source/fork_component_lap_v2.png通过imagegen技能及内置image_gen编辑已有项目资产，原透明通道保留，旧版本不覆盖；提示词、原始输出、实际改动范围及哈希见同名.md。仅用于局部骨骼网格对接验证，不是整树阶段图。

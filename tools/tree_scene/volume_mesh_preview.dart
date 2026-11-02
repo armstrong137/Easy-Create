@@ -22,7 +22,7 @@ double _smooth(double value) {
 }
 
 class _Mesh {
-  _Mesh(this.meta, this.data, this.image, this.leafImage) {
+  _Mesh(this.meta, this.data, this.image, this.leafImage, this.extraImages) {
     normals = section('normals');
     bindings = section('bindings');
     corners = section('corners');
@@ -55,11 +55,26 @@ class _Mesh {
       Matrix4.identity().storage,
       filterQuality: FilterQuality.high,
     );
+    extraShaders = [
+      for (final texture in extraImages)
+        ui.ImageShader(
+          texture.clone(),
+          TileMode.clamp,
+          TileMode.clamp,
+          Matrix4.identity().storage,
+          filterQuality: FilterQuality.high,
+        ),
+    ];
   }
   final Map<String, dynamic> meta;
   final ByteData data;
   final ui.Image image;
   final ui.Image? leafImage;
+  final List<ui.Image> extraImages;
+  late final List<ui.ImageShader> extraShaders;
+  ui.Image texture(int index) => index == 0 ? image : extraImages[index - 1];
+  ui.ImageShader textureShader(int index) =>
+      index == 0 ? shader : extraShaders[index - 1];
   late final Float32List normals, bindings, corners;
   late final List<List<double>> nodes;
   late final List<List<int>> edges;
@@ -69,6 +84,12 @@ class _Mesh {
   void dispose() {
     shader.dispose();
     image.dispose();
+    for (final value in extraShaders) {
+      value.dispose();
+    }
+    for (final value in extraImages) {
+      value.dispose();
+    }
     leafImage?.dispose();
   }
 
@@ -116,8 +137,23 @@ class _Mesh {
       leaf = (await leafCodec.getNextFrame()).image;
       leafCodec.dispose();
     }
+    final extra = <ui.Image>[];
+    for (final name in (metadata['extraTextures'] as List? ?? const [])) {
+      final bytes = await read(name as String);
+      final decoder = await ui.instantiateImageCodec(
+        bytes.buffer.asUint8List(),
+      );
+      extra.add((await decoder.getNextFrame()).image);
+      decoder.dispose();
+    }
     try {
-      return _Mesh(metadata, binary, (await codec.getNextFrame()).image, leaf);
+      return _Mesh(
+        metadata,
+        binary,
+        (await codec.getNextFrame()).image,
+        leaf,
+        extra,
+      );
     } finally {
       codec.dispose();
     }
@@ -512,6 +548,7 @@ class _PreviewState extends State<_Preview>
         'referenceError': frame.referenceError,
         'leaves': frame.leaves.length,
         'plaques': frame.plaques.length,
+        'foliageParts': loaded.meta['foliageParts'] ?? 0,
       }.jsify();
     }
     return Scaffold(
@@ -764,8 +801,22 @@ class _Painter extends CustomPainter {
 
   void _wood(Canvas canvas, Paint paint, List<int> order) {
     const batch = 8192;
-    for (var start = 0; start < order.length; start += batch) {
-      final count = math.min(batch, order.length - start) * 3;
+    final textures = mesh.meta['triangleTextures'] as List?;
+    var start = 0;
+    while (start < order.length) {
+      final textureIndex = textures == null ? 0 : textures[order[start]] as int;
+      var end = math.min(order.length, start + batch);
+      if (textures != null) {
+        end = start + 1;
+        while (end < order.length &&
+            end < start + batch &&
+            textures[order[end]] == textureIndex) {
+          end++;
+        }
+      }
+      final texture = mesh.texture(textureIndex);
+      paint.shader = mesh.textureShader(textureIndex);
+      final count = (end - start) * 3;
       final points = Float32List(count * 2), uv = Float32List(count * 2);
       final colors = Int32List(count);
       for (var corner = 0; corner < count; corner++) {
@@ -773,8 +824,8 @@ class _Painter extends CustomPainter {
         final index = mesh.corners[source].round();
         points[corner * 2] = frame.points[index * 2];
         points[corner * 2 + 1] = frame.points[index * 2 + 1];
-        uv[corner * 2] = mesh.corners[source + 1] * mesh.image.width;
-        uv[corner * 2 + 1] = (1 - mesh.corners[source + 2]) * mesh.image.height;
+        uv[corner * 2] = mesh.corners[source + 1] * texture.width;
+        uv[corner * 2 + 1] = (1 - mesh.corners[source + 2]) * texture.height;
         colors[corner] = frame.colors[index];
       }
       final vertices = ui.Vertices.raw(
@@ -785,6 +836,7 @@ class _Painter extends CustomPainter {
       );
       canvas.drawVertices(vertices, BlendMode.modulate, paint);
       vertices.dispose();
+      start = end;
     }
   }
 

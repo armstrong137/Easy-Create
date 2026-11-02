@@ -1,0 +1,17 @@
+# 局部插画源资产 illustrated_components_v1
+
+2026-11-02使用imagegen技能和内置image_gen生成。源PNG原样保存透明通道，旧版本未覆盖；仅用于局部材质与骨骼网格候选，不是完整树或阶段成长图，尚未进入正式应用。
+
+统一六件局部插画图集：根颈、左右Y分叉、细枝、叶簇及右侧空心木框。生成结果不是严格六等分，实际区域由透明连通分析识别，源码不按提示词猜测UV。
+
+完整提示词：
+
+Create a production skeletal-animation SPRITE ASSET SHEET of SIX SEPARATE LOCAL TREE COMPONENTS, 3 columns by 2 rows, six equal square cells in a landscape canvas, genuinely transparent alpha background. The supplied image is STYLE REFERENCE only: warm dark brown sculptural old bark plates, subtle olive moss, soft consistent upper-left illumination, high-end magical storybook miniature realism. Generate a new clean sheet. NO complete tree, NO scenery, NO ground plane, NO text, NO labels, NO cell borders, NO opaque backplates, NO external shadow/halo. Every component fully inside its own cell with about 10% transparent padding and never touching adjacent cells.
+TOP LEFT cell: ONLY a squat ancient root-neck/buttress-root base. A short thick central trunk stub enters at top center (50% x,15% y); its upper docking edge has irregular long overlapping bark tongues, not a ruler-straight cap. Five to seven organically curved substantial roots flow down and outward into a wide low base reaching 90% cell width, ending at about 88% cell height. No skirt, no flat bottom, no radial star of spikes, no thin hooks. Roots have real mass and layered bark.
+TOP MIDDLE: ONLY a local short vertical trunk with a thick upward curving LEFT side branch, a natural Y-fork. Lower trunk docking at 55% x,88% y, upper trunk docking at 55% x,12% y, left branch end at 12% x,35% y. Docking ends have long irregular overlapping bark-plate tongues. No roots, no leaves. Keep it gnarled and organic, not smooth tubes.
+TOP RIGHT: matching local Y-fork with thick upward curving RIGHT branch; lower/upper trunk docks at 45% x,88%/12% y, right branch end at 88% x,35% y. Native upper-left lighting, do not simply mirror the highlight of the left piece.
+BOTTOM LEFT: ONLY one slender curved woody branch extension, entering from lower center at 48% x,88% y and gently curving to upper right at 70% x,18% y, splitting into two very small tapered twig tips. Real bark, gracefully tapering, no chopped top, no leaves. Irregular bark tongues at lower docking only.
+BOTTOM MIDDLE: ONLY one naturally asymmetrical small foliage spray on a tiny branched shoot. Around 24 matte small rounded-oblong olive green leaves, coherent irregular canopy clump with subtle front/back layers, soft upper-left light. No shiny broad specular streaks, no wheat ear, no circular flower ball, no rigid comb. Thin supporting shoot enters at bottom center (50% x,88% y); leaf tips span roughly 15%-85% x and 12%-75% y. No mature trunk or roots.
+BOTTOM RIGHT: ONLY an organically grown wooden branch frame to hold a narrow vertical paper label. Continuous gnarled bark frame around a truly transparent rectangular central hole, hole roughly 38%-72% x,20%-75% y. No paper, no letters. A short thick supporting branch enters from left at 12% x,80% y and joins the lower-left corner with natural woody volume. Irregular silhouette and varied thickness, same bark material as other cells. This is branch-grown support, no rope/chain/hook or manufactured sign mount.
+All six components must share material density, warm low-saturation palette, consistent light direction and orthographic frontal view. Crisp transparent edges, no background. These are local modular materials for continuous geometry animation, never whole-tree stage pictures.
+
