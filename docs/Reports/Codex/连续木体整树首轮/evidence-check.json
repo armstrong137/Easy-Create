@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "sourceAndAssetHashes": true,
+  "sameBuildLegacyRegression": true,
+  "textureStyles": [
+    "wood",
+    "leaf",
+    "wood",
+    "wood"
+  ],
+  "triangleTextures": 6470,
+  "images": 6,
+  "reviewPageWidth": 430,
+  "reviewPageOverflow": false,
+  "videoDuration": 10.1,
+  "videoDecodedAt": [
+    2.5,
+    5,
+    7.5
+  ],
+  "errors": [],
+  "note": "文件、元数据和媒体可复查；不代表视觉、真机或正式集成通过"
+}

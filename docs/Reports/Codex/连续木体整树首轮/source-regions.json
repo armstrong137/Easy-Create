@@ -1,0 +1,50 @@
+{
+  "source": "C:\\Users\\Armstrong\\Desktop\\Easy Create\\assets\\source\\magic_tree\\textures_source\\canopy_boughs_v1.png",
+  "sha256": "ed2bd8b9e1e5fd9e811df8380738ab42b552f7ac01c2f007871e015301567027",
+  "width": 1254,
+  "height": 1254,
+  "threshold": 128,
+  "components": [
+    {
+      "id": 3,
+      "pixels": 149681,
+      "bounds": [
+        17,
+        745,
+        763,
+        1138
+      ]
+    },
+    {
+      "id": 1,
+      "pixels": 147059,
+      "bounds": [
+        18,
+        125,
+        609,
+        579
+      ]
+    },
+    {
+      "id": 2,
+      "pixels": 140019,
+      "bounds": [
+        674,
+        128,
+        1238,
+        591
+      ]
+    },
+    {
+      "id": 4,
+      "pixels": 57139,
+      "bounds": [
+        788,
+        755,
+        1230,
+        1143
+      ]
+    }
+  ],
+  "note": "实际连通区域，不假定生成图严格符合等分网格；标签用于网格UV选区，不改变PNG。"
+}

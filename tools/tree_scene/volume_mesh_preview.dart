@@ -868,6 +868,7 @@ class _Painter extends CustomPainter {
   void _wood(Canvas canvas, Paint paint, List<int> order) {
     const batch = 8192;
     final textures = mesh.meta['triangleTextures'] as List?;
+    final styles = mesh.meta['textureStyles'] as List?;
     var start = 0;
     while (start < order.length) {
       final textureIndex = textures == null ? 0 : textures[order[start]] as int;
@@ -882,6 +883,30 @@ class _Painter extends CustomPainter {
       }
       final texture = mesh.texture(textureIndex);
       paint.shader = mesh.textureShader(textureIndex);
+      if (styles != null) {
+        final wood = styles[textureIndex] == 'wood';
+        // 幼木降低原树皮对比度，保留同一透明材质；不切换整树或树龄图片。
+        final contrast = wood ? .18 + .82 * _smooth(frame.age) : 1.0;
+        final tint = wood ? [.82, .88, .81] : [.72, .83, .67];
+        final juvenile = [103.0, 114.0, 73.0];
+        const saturation = .72;
+        final grey = [.2126, .7152, .0722];
+        paint.colorFilter = ColorFilter.matrix([
+          for (var row = 0; row < 3; row++) ...[
+            for (var col = 0; col < 3; col++)
+              (grey[col] * (1 - saturation) + (row == col ? saturation : 0)) *
+                  tint[row] *
+                  contrast,
+            0,
+            juvenile[row] * (1 - contrast),
+          ],
+          0,
+          0,
+          0,
+          1,
+          0,
+        ]);
+      }
       final count = (end - start) * 3;
       final points = Float32List(count * 2), uv = Float32List(count * 2);
       final colors = Int32List(count);

@@ -17,9 +17,10 @@ const fork=process.argv.includes('--fork');
 const lap=process.argv.includes('--pair-lap');
 const pair=process.argv.includes('--pair')||lap;
 const illustratedRound2=process.argv.includes('--illustrated-whole-round2');
-const illustrated=process.argv.includes('--illustrated-whole')||illustratedRound2;
-const web=resolve(root,'build/volume-web'), proof=resolve(root,illustratedRound2?'build/qa/illustrated-whole-round2-proof':illustrated?'build/qa/illustrated-whole-proof':lap?'build/qa/illustrated-pair-lap-proof':pair?'build/qa/illustrated-pair-proof':fork?'build/qa/illustrated-fork-proof':whole?'build/qa/authored-whole-control-round2':surface?'build/qa/authored-surface-proof':tree?'build/qa/whole-tree-mesh-round2':compact?'build/qa/volume-proof-compact':'build/qa/volume-proof-baked');
-const output=resolve(root,illustratedRound2?'build/qa/illustrated-whole-round2-2d':illustrated?'build/qa/illustrated-whole-2d':lap?'build/qa/illustrated-pair-lap-2d':pair?'build/qa/illustrated-pair-2d':fork?'build/qa/illustrated-fork-2d':whole?'build/qa/authored-whole-2d-round2':surface?'build/qa/authored-surface-2d':tree?'build/qa/whole-tree-2d-round2':compact?'build/qa/volume-2d-compact':'build/qa/volume-2d',new Date().toISOString().replaceAll(':','-'));
+const core=process.argv.includes('--continuous-core');
+const illustrated=process.argv.includes('--illustrated-whole')||illustratedRound2||core;
+const web=resolve(root,'build/volume-web'), proof=resolve(root,core?'build/qa/continuous-core-proof':illustratedRound2?'build/qa/illustrated-whole-round2-proof':illustrated?'build/qa/illustrated-whole-proof':lap?'build/qa/illustrated-pair-lap-proof':pair?'build/qa/illustrated-pair-proof':fork?'build/qa/illustrated-fork-proof':whole?'build/qa/authored-whole-control-round2':surface?'build/qa/authored-surface-proof':tree?'build/qa/whole-tree-mesh-round2':compact?'build/qa/volume-proof-compact':'build/qa/volume-proof-baked');
+const output=resolve(root,core?'build/qa/continuous-core-2d':illustratedRound2?'build/qa/illustrated-whole-round2-2d':illustrated?'build/qa/illustrated-whole-2d':lap?'build/qa/illustrated-pair-lap-2d':pair?'build/qa/illustrated-pair-2d':fork?'build/qa/illustrated-fork-2d':whole?'build/qa/authored-whole-2d-round2':surface?'build/qa/authored-surface-2d':tree?'build/qa/whole-tree-2d-round2':compact?'build/qa/volume-2d-compact':'build/qa/volume-2d',new Date().toISOString().replaceAll(':','-'));
 await mkdir(output,{recursive:true});
 const mime={'.js':'text/javascript','.mjs':'text/javascript','.html':'text/html',
   '.json':'application/json','.wasm':'application/wasm','.png':'image/png','.css':'text/css'};
@@ -115,7 +116,8 @@ try{
   if(illustrated){
     const expected=JSON.parse(await readFile(resolve(proof,'result.json'),'utf8'));
     result.provenance.extraTextures={};
-    result.provenance.extraTextures['frame-left.png']=await hash(resolve(proof,'frame-left.png'));
+    const metadata=JSON.parse(await readFile(resolve(proof,'mesh.json'),'utf8'));
+    for(const name of metadata.extraTextures??[])result.provenance.extraTextures[name]=await hash(resolve(proof,name));
     if(states[0].plaques!==0||states.at(-1).plaques!==2||states.at(-1).foliageParts!==expected.foliageParts)
       throw Error('插画整树构件或牌面数量不一致');
   }

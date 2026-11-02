@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-02 22:11:05　对应提交：e55b88c 之后的工作区状态
+> 生成时间：2026-11-02 22:36:22　对应提交：9362431 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     221
-  Nodes:     6,007
-  Edges:     23,980
-  DB Size:   28.27 MB
+  Files:     222
+  Nodes:     6,067
+  Edges:     24,061
+  DB Size:   28.40 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,869
-  function        1,664
-  import          819
+  function        1,668
+  import          828
   class           534
-  constant        449
-  variable        408
-  file            213
+  constant        452
+  variable        451
+  file            214
   enum_member     25
   type_alias      18
   enum            6
@@ -35,7 +35,7 @@ Nodes by Kind:
 Files by Language:
   dart            116
   javascript      53
-  python          24
+  python          25
   kotlin          8
   xml             6
   properties      4
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (221 files):
+Project Structure (222 files):
 
 |-- .agents
 |   `-- skills
@@ -294,6 +294,7 @@ Project Structure (221 files):
 |       |   |-- authored_surface_proof.py (python, 93 symbols)
 |       |   |-- authored_whole_control.py (python, 15 symbols)
 |       |   |-- bake_volume_material.py (python, 10 symbols)
+|       |   |-- continuous_core_proof.py (python, 57 symbols)
 |       |   |-- export_volume_mesh.py (python, 6 symbols)
 |       |   |-- illustrated_fork_proof.py (python, 55 symbols)
 |       |   |-- illustrated_whole_proof.py (python, 57 symbols)
@@ -307,12 +308,12 @@ Project Structure (221 files):
 |       |   |-- canvaskit-path-compat.test.mjs (javascript, 10 symbols)
 |       |   |-- capture-rectification.mjs (javascript, 16 symbols)
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
-|       |   |-- capture-volume-2d.mjs (javascript, 47 symbols)
+|       |   |-- capture-volume-2d.mjs (javascript, 49 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
 |       |   |-- check-illustrated-outline.mjs (javascript, 68 symbols)
 |       |   |-- check-organic-tree.mjs (javascript, 15 symbols)
 |       |   |-- check-startup.mjs (javascript, 23 symbols)
-|       |   |-- inspect-illustrated-atlas.mjs (javascript, 29 symbols)
+|       |   |-- inspect-illustrated-atlas.mjs (javascript, 30 symbols)
 |       |   |-- render-branch-study.mjs (javascript, 21 symbols)
 |       |   |-- summarize-tree-cpu.mjs (javascript, 19 symbols)
 |       |   |-- validate-gltf.mjs (javascript, 7 symbols)
