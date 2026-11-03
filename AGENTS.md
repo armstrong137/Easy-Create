@@ -26,6 +26,8 @@
 ## 二、软件开发架构
 
 ### 技术栈
+2026-11-03 contour_cage_proof.py --reference及采集--reference-crown把新统一源稿制作成独立完整首套，共三张纹理、九冠簇/两早生叶/两枝牌，左右共用图集。母子基点按实际不透明像素、核心UV三角读取；旧默认/round2导出哈希回归不变。首套四图短片因幼苗裸杆、冠簇分离、根尖和小纸面视觉拒绝，剩一次整体修改；正式页面不引用，A2未通过，见2026-11-03-参考主导整树首轮审查.md。
+
 2026-11-03参考主导源资产已预制作：guides/reference_composition_v1.json可编辑七组枝向和九冠层体块，render-reference-composition.mjs生成独立SVG/PNG；reference_wood/canopy/frames_v1为内置image_gen源稿，无本地像素编辑。inspect-illustrated-atlas.mjs增加三种reference参数，audit-reference-sources.mjs核对实际哈希、连通区及窗内alpha。冠簇不严格九等分，窗内仍有7像素alpha=1；源稿未验收为运行时资产，未有新完整候选。正式页面不引用，A2未通过。见2026-11-03-参考主导构图与统一源资产.md。
 
 2026-11-03 截面控制笼第二套仍整体视觉拒绝，停止当前五肩枝/重复扇形冠簇造型继续调参。实体端口、深度过渡、nearSpan按实际框界取景及juvenileContrast均限独立预览；新audit-cage-attachments.mjs从二进制UV/顶点验证母子实体基点与全程投影误差，旧透明基点反例被拒绝。保留已验证绘制/控制工具，下一项按批准参考制作可编辑枝架与冠层体块引导及统一美术源，未有新候选通过。见2026-11-03-截面控制笼第二轮拒绝与统一资产重评.md，A2未通过，正式页面不引用。

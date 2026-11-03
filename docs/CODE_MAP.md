@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-03 20:07:41　对应提交：b80d4c6 之后的工作区状态
+> 生成时间：2026-11-03 20:13:31　对应提交：c7eab13 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,19 +13,19 @@ Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
   Files:     229
-  Nodes:     6,293
-  Edges:     24,392
-  DB Size:   28.93 MB
+  Nodes:     6,313
+  Edges:     24,430
+  DB Size:   29.00 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,869
-  function        1,683
+  function        1,684
   import          859
-  constant        548
+  constant        549
+  variable        546
   class           534
-  variable        528
   file            221
   enum_member     25
   type_alias      18
@@ -295,7 +295,7 @@ Project Structure (229 files):
 |       |   |-- authored_whole_control.py (python, 15 symbols)
 |       |   |-- bake_volume_material.py (python, 10 symbols)
 |       |   |-- continuous_core_proof.py (python, 57 symbols)
-|       |   |-- contour_cage_proof.py (python, 78 symbols)
+|       |   |-- contour_cage_proof.py (python, 97 symbols)
 |       |   |-- export_volume_mesh.py (python, 6 symbols)
 |       |   |-- illustrated_fork_proof.py (python, 55 symbols)
 |       |   |-- illustrated_whole_proof.py (python, 57 symbols)
@@ -314,7 +314,7 @@ Project Structure (229 files):
 |       |   |-- canvaskit-path-compat.test.mjs (javascript, 10 symbols)
 |       |   |-- capture-rectification.mjs (javascript, 16 symbols)
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
-|       |   |-- capture-volume-2d.mjs (javascript, 53 symbols)
+|       |   |-- capture-volume-2d.mjs (javascript, 54 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
 |       |   |-- check-illustrated-outline.mjs (javascript, 68 symbols)
 |       |   |-- check-organic-tree.mjs (javascript, 15 symbols)
