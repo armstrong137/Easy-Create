@@ -26,11 +26,15 @@ for(let frame=0;frame<poses.length-1;frame++){
     const t=quadratic>0?Math.max(0,Math.min(1,-linear/(2*quadratic))):0;
     const smallest=Math.min(c,q1,c+linear*t+quadratic*t*t);
     // 每个端点/插值位置坐标误差不超过e，边误差不超过2e；包含Float32投影舍入。
-    const edgeBound=Math.max(...[a,b].map(p=>
+    const edgeBounds=[a,b].map(p=>
       Math.abs(p[1][0]-p[0][0])+Math.abs(p[1][1]-p[0][1])+
-      Math.abs(p[2][0]-p[0][0])+Math.abs(p[2][1]-p[0][1])));
-    const bound=2*roundingError*edgeBound+8*roundingError**2;
-    const margin=smallest-bound;
+      Math.abs(p[2][0]-p[0][0])+Math.abs(p[2][1]-p[0][1]));
+    // 绝对边长和是凸函数，上界为两个端点边长和的线性插值；不能拿成年边长扣幼态面积。
+    const marginC=c-2*roundingError*edgeBounds[0]-8*roundingError**2;
+    const marginB=linear-2*roundingError*(edgeBounds[1]-edgeBounds[0]);
+    const marginT=quadratic>0?Math.max(0,Math.min(1,-marginB/(2*quadratic))):0;
+    const margin=Math.min(marginC,marginC+marginB+quadratic,
+      marginC+marginB*marginT+quadratic*marginT*marginT);
     minimum=Math.min(minimum,smallest);minimumMargin=Math.min(minimumMargin,margin);
     if(margin<=0)unsafe++;
   }
@@ -40,7 +44,8 @@ for(let frame=0;frame<poses.length-1;frame++){
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const report={success:intervals.every(v=>v.unsafeTriangles===0),meshSha256:hash(binary),metadataSha256:hash(metadata),
   intervals,coordinateRoundingBound:roundingError,
-  scope:'X-Z局部顶点姿态的线性插值；smoothstep只重参数化[0,1]，二次面积式覆盖整个区间。保守Float32坐标误差界不代表GPU逐像素、自然造型或整树验收。未含完整树冠、枝牌及业务交互。'};
+  candidateScope:meta.scope,
+  scope:'X-Z顶点姿态的线性插值；smoothstep只重参数化[0,1]，二次面积式覆盖整个区间。保守Float32坐标误差界不代表GPU逐像素、自然造型、挂点正确或整树业务验收。'};
 await writeFile(resolve(proof,'interval-audit.json'),JSON.stringify(report,null,2));
 console.log(JSON.stringify(report,null,2));
 if(!report.success)process.exitCode=1;

@@ -24,6 +24,10 @@
 
 无。
 
+## 2026-11-03连续木体自然细梢
+
+textures_source/continuous_wood_tips_v2.png使用imagegen技能及内置image_gen编辑本项目continuous_wood_core_v1.png，旧版保留，原透明通道保留，无本地像素修改。五个粗端口重做为自然收尖细梢，提示词、输出名称、哈希和用途见同名.md及.prompt.txt；仅局部木体源，未进入正式应用，也不是整树阶段图。未引入第三方素材。
+
 ## 2026-11-02连续木体与横展冠层
 
 textures_source/continuous_wood_core_v1.png及canopy_boughs_v1.png使用imagegen技能、内置image_gen生成，批准的项目树形参考仅用于风格/解剖输入，没有直接复制第三方资产。保留源透明通道、旧版本与实际提示词；各同名.md和.prompt.txt登记哈希、范围及约束。前者是无叶的一体根颈/主肩枝局部，后者是四件局部枝叶，不能当整树阶段播放。当前仅独立候选，未进入正式应用。

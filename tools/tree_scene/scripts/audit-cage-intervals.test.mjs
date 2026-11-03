@@ -4,9 +4,9 @@ import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
 
-async function fixture(name,last){
+async function fixture(name,last,first=[0,0,0,1,0,0,0,0,1]){
   const path=resolve('build/qa/cage-audit-tests',name);await mkdir(path,{recursive:true});
-  const values=[0,0,0,1,1,0,2,0,1, 0,0,0,1,0,0,0,0,1, ...last];
+  const values=[0,0,0,1,1,0,2,0,1, ...first, ...last];
   const bytes=Buffer.alloc(values.length*4);values.forEach((v,i)=>bytes.writeFloatLE(v,i*4));
   await writeFile(resolve(path,'mesh.bin'),bytes);
   await writeFile(resolve(path,'mesh.json'),JSON.stringify({
@@ -30,4 +30,11 @@ test('两端面积均为正但中间翻折的三角必须拒绝',async()=>{
   assert.equal(status,1);assert.equal(report.success,false);
   assert.equal(report.intervals[0].unsafeTriangles,1);
   assert(Math.abs(report.intervals[0].minimumSignedArea+.125)<1e-10);
+});
+
+test('极小三角长大时按当前边长扣除误差界',async()=>{
+  const {status,report}=await fixture('tiny-growth',[0,0,0,1,0,0,0,0,1],
+    [0,0,0,.0001,0,0,0,0,.0001]);
+  assert.equal(status,0);assert.equal(report.success,true);
+  assert(report.intervals[0].minimumAreaAfterRoundingBound>0);
 });
