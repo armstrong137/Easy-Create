@@ -1,0 +1,192 @@
+{
+  "scope": "源资产预制作核对，非整树候选或A2通过",
+  "sources": [
+    {
+      "name": "wood",
+      "file": "assets/source/magic_tree/textures_source/reference_wood_v1.png",
+      "bytes": 2009321,
+      "sha256": "8d63eb0beacb94680b9fa037e99ec8430a7357ee0da2e8b03bc0a5a5570f0495",
+      "width": 1089,
+      "height": 1445,
+      "threshold": 128,
+      "major": [
+        {
+          "id": 1,
+          "pixels": 432741,
+          "bounds": [
+            33,
+            65,
+            1057,
+            1384
+          ]
+        }
+      ],
+      "minorComponentCount": 100
+    },
+    {
+      "name": "canopy",
+      "file": "assets/source/magic_tree/textures_source/reference_canopy_v1.png",
+      "bytes": 2016161,
+      "sha256": "58c9cfadc8e07357cc7542095ae0f55f55a59de80a652b3040ae87d21f378c8f",
+      "width": 1254,
+      "height": 1254,
+      "threshold": 128,
+      "major": [
+        {
+          "id": 2,
+          "pixels": 69713,
+          "bounds": [
+            24,
+            61,
+            506,
+            359
+          ]
+        },
+        {
+          "id": 5,
+          "pixels": 59200,
+          "bounds": [
+            44,
+            444,
+            383,
+            761
+          ]
+        },
+        {
+          "id": 3,
+          "pixels": 52388,
+          "bounds": [
+            859,
+            81,
+            1222,
+            360
+          ]
+        },
+        {
+          "id": 6,
+          "pixels": 50369,
+          "bounds": [
+            859,
+            458,
+            1233,
+            746
+          ]
+        },
+        {
+          "id": 7,
+          "pixels": 49079,
+          "bounds": [
+            421,
+            459,
+            797,
+            746
+          ]
+        },
+        {
+          "id": 9,
+          "pixels": 48106,
+          "bounds": [
+            32,
+            877,
+            396,
+            1148
+          ]
+        },
+        {
+          "id": 8,
+          "pixels": 45038,
+          "bounds": [
+            462,
+            874,
+            825,
+            1145
+          ]
+        },
+        {
+          "id": 1,
+          "pixels": 38407,
+          "bounds": [
+            515,
+            57,
+            802,
+            359
+          ]
+        },
+        {
+          "id": 10,
+          "pixels": 33438,
+          "bounds": [
+            872,
+            877,
+            1223,
+            1133
+          ]
+        }
+      ],
+      "minorComponentCount": 1
+    },
+    {
+      "name": "frames",
+      "file": "assets/source/magic_tree/textures_source/reference_frames_v1.png",
+      "bytes": 791254,
+      "sha256": "7c58d5363274857465b41c1271da4351cdd0b623810bfb195f3961ea83e7fcaa",
+      "width": 1774,
+      "height": 887,
+      "threshold": 128,
+      "major": [
+        {
+          "id": 2,
+          "pixels": 128431,
+          "bounds": [
+            168,
+            81,
+            756,
+            802
+          ]
+        },
+        {
+          "id": 1,
+          "pixels": 125961,
+          "bounds": [
+            1018,
+            80,
+            1604,
+            802
+          ]
+        }
+      ],
+      "minorComponentCount": 0,
+      "apertureSamples": [
+        {
+          "rectangle": [
+            280,
+            240,
+            140,
+            340
+          ],
+          "pixels": 47600,
+          "maxAlpha": 1,
+          "nonzero": 4
+        },
+        {
+          "rectangle": [
+            1370,
+            240,
+            120,
+            340
+          ],
+          "pixels": 40800,
+          "maxAlpha": 1,
+          "nonzero": 3
+        }
+      ],
+      "exactTransparentApertures": false,
+      "apertureStatus": "仍有低alpha残留，源稿未达到完全透明要求"
+    }
+  ],
+  "limitations": [
+    "冠簇不严格等分，必须按实际连通区选UV，不能九宫格裁切",
+    "少量脱离主连通区的边缘像素尚未规划UV归属",
+    "木体幼态材质、根尖、真实端口、完整冠层遮挡及连续成长尚未验证"
+  ]
+}

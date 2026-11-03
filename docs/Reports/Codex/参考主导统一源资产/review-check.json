@@ -1,0 +1,32 @@
+{
+  "viewport": [
+    430,
+    932
+  ],
+  "images": [
+    {
+      "src": "../../../../assets/source/magic_tree/references/树形正视图.png",
+      "loaded": true
+    },
+    {
+      "src": "../../../../assets/source/magic_tree/guides/reference_composition_v1.png",
+      "loaded": true
+    },
+    {
+      "src": "../../../../assets/source/magic_tree/textures_source/reference_wood_v1.png",
+      "loaded": true
+    },
+    {
+      "src": "../../../../assets/source/magic_tree/textures_source/reference_canopy_v1.png",
+      "loaded": true
+    },
+    {
+      "src": "../../../../assets/source/magic_tree/textures_source/reference_frames_v1.png",
+      "loaded": true
+    }
+  ],
+  "linksChecked": 12,
+  "pageErrors": [],
+  "horizontalOverflow": false,
+  "scope": "源稿审查页，不是Flutter运行时验收"
+}

@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-03 19:33:20　对应提交：d545fae 之后的工作区状态
+> 生成时间：2026-11-03 20:07:41　对应提交：b80d4c6 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     227
-  Nodes:     6,264
-  Edges:     24,350
-  DB Size:   28.87 MB
+  Files:     229
+  Nodes:     6,293
+  Edges:     24,392
+  DB Size:   28.93 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,869
-  function        1,682
-  import          852
+  function        1,683
+  import          859
+  constant        548
   class           534
-  constant        529
   variable        528
-  file            219
+  file            221
   enum_member     25
   type_alias      18
   enum            6
@@ -34,7 +34,7 @@ Nodes by Kind:
 
 Files by Language:
   dart            116
-  javascript      57
+  javascript      59
   python          26
   kotlin          8
   xml             6
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (227 files):
+Project Structure (229 files):
 
 |-- .agents
 |   `-- skills
@@ -308,6 +308,7 @@ Project Structure (227 files):
 |       |   |-- audit-cage-intervals.mjs (javascript, 38 symbols)
 |       |   |-- audit-cage-intervals.test.mjs (javascript, 7 symbols)
 |       |   |-- audit-core-deformation.mjs (javascript, 39 symbols)
+|       |   |-- audit-reference-sources.mjs (javascript, 15 symbols)
 |       |   |-- audit-volume-uv.mjs (javascript, 23 symbols)
 |       |   |-- build.mjs (javascript, 10 symbols)
 |       |   |-- canvaskit-path-compat.test.mjs (javascript, 10 symbols)
@@ -318,8 +319,9 @@ Project Structure (227 files):
 |       |   |-- check-illustrated-outline.mjs (javascript, 68 symbols)
 |       |   |-- check-organic-tree.mjs (javascript, 15 symbols)
 |       |   |-- check-startup.mjs (javascript, 23 symbols)
-|       |   |-- inspect-illustrated-atlas.mjs (javascript, 30 symbols)
+|       |   |-- inspect-illustrated-atlas.mjs (javascript, 31 symbols)
 |       |   |-- render-branch-study.mjs (javascript, 21 symbols)
+|       |   |-- render-reference-composition.mjs (javascript, 13 symbols)
 |       |   |-- summarize-tree-cpu.mjs (javascript, 19 symbols)
 |       |   |-- validate-gltf.mjs (javascript, 7 symbols)
 |       |   `-- verify-workbench.mjs (javascript, 8 symbols)

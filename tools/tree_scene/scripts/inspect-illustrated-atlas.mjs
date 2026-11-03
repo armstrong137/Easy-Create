@@ -5,8 +5,9 @@ import {PNG} from 'pngjs';
 
 // 只标记透明图中的独立构件，给网格生成器选择对应区域；不修改源图像素。
 const canopy=process.argv.includes('--canopy-boughs');
-const source=resolve(`assets/source/magic_tree/textures_source/${canopy?'canopy_boughs_v1':'illustrated_components_v1'}.png`);
-const output=resolve(`build/qa/${canopy?'canopy-boughs':'illustrated-components'}-analysis`);
+const reference=process.argv.find(value=>/^--reference-(wood|canopy|frames)$/.test(value))?.slice(12);
+const source=resolve(`assets/source/magic_tree/textures_source/${reference?`reference_${reference}_v1`:canopy?'canopy_boughs_v1':'illustrated_components_v1'}.png`);
+const output=resolve(`build/qa/${reference?`reference-${reference}`:canopy?'canopy-boughs':'illustrated-components'}-analysis`);
 await mkdir(output,{recursive:true});
 const bytes=await readFile(source),image=PNG.sync.read(bytes),{width,height,data}=image;
 const labels=new Uint32Array(width*height),queue=new Int32Array(width*height),components=[];

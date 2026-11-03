@@ -24,6 +24,10 @@
 
 无。
 
+## 2026-11-03参考主导统一源稿
+
+guides/reference_composition_v1.json为批准参考的人工结构观察，SVG/PNG由项目独立脚本生成，不是批准PNG的像素改写。textures_source/reference_wood_v1.png、reference_canopy_v1.png、reference_frames_v1.png使用imagegen技能、内置image_gen按项目参考与该引导制作，木框另经内置透明提取；原PNG保留，无本地像素编辑。实际提示词、来源、尺寸和哈希见同名.md/.prompt.txt及参考主导统一源资产/sources.json。木框仍有微量alpha残留、源稿未达到完整运行时验收；未接入正式应用，非阶段整树图，未引入第三方素材。
+
 ## 2026-11-03连续木体自然细梢
 
 textures_source/continuous_wood_tips_v2.png使用imagegen技能及内置image_gen编辑本项目continuous_wood_core_v1.png，旧版保留，原透明通道保留，无本地像素修改。五个粗端口重做为自然收尖细梢，提示词、输出名称、哈希和用途见同名.md及.prompt.txt；仅局部木体源，未进入正式应用，也不是整树阶段图。未引入第三方素材。
