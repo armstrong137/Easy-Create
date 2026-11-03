@@ -1,0 +1,38 @@
+{
+  "success": true,
+  "dartSource": "acb4caccd25a6b98607d658db47199ef0d3ff36d83b53c88a3bd425d4c4e9aa7",
+  "states": [
+    {
+      "age": 0,
+      "vertices": 1913,
+      "visibleTriangles": 3420,
+      "computeMs": 2.3,
+      "referenceError": 1.0217939117040942e-7,
+      "leaves": 0,
+      "plaques": 0,
+      "foliageParts": 0
+    },
+    {
+      "age": 0.5,
+      "vertices": 1913,
+      "visibleTriangles": 3420,
+      "computeMs": 2.9,
+      "referenceError": 2.188760728216721e-7,
+      "leaves": 0,
+      "plaques": 0,
+      "foliageParts": 0
+    },
+    {
+      "age": 1,
+      "vertices": 1913,
+      "visibleTriangles": 3420,
+      "computeMs": 1.1,
+      "referenceError": 2.365112301561112e-7,
+      "leaves": 0,
+      "plaques": 0,
+      "foliageParts": 0
+    }
+  ],
+  "errors": [],
+  "scope": "同一新Dart构建、postTextureLighting缺省的旧局部模式实际浏览器回归"
+}

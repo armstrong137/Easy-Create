@@ -1,0 +1,5 @@
+{
+  "expectedRejection": true,
+  "exitCode": 1,
+  "reason": "Error: 实际母子共享边界与九点接头不符\r"
+}

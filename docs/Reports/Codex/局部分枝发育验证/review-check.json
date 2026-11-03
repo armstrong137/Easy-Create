@@ -1,0 +1,51 @@
+{
+  "images": [
+    {
+      "src": "young-before-lighting.png",
+      "loaded": true
+    },
+    {
+      "src": "young.png",
+      "loaded": true
+    },
+    {
+      "src": "middle.png",
+      "loaded": true
+    },
+    {
+      "src": "mature.png",
+      "loaded": true
+    },
+    {
+      "src": "junction-close.png",
+      "loaded": true
+    },
+    {
+      "src": "junction-initial-uv.png",
+      "loaded": true
+    },
+    {
+      "src": "phone.png",
+      "loaded": true
+    },
+    {
+      "src": "../../../../assets/source/magic_tree/references/树形正视图.png",
+      "loaded": true
+    }
+  ],
+  "linksChecked": 15,
+  "viewport": [
+    430,
+    932
+  ],
+  "horizontalOverflow": false,
+  "duration": 10.1,
+  "seeks": [
+    1.8,
+    2.5,
+    5,
+    7.5
+  ],
+  "sourceHashesMatch": true,
+  "scope": "局部证据及媒体有效性，不代表A2通过"
+}

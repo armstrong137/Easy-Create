@@ -919,6 +919,7 @@ class _Painter extends CustomPainter {
 
   void _wood(Canvas canvas, Paint paint, List<int> order) {
     const batch = 8192;
+    final postLighting = mesh.meta['postTextureLighting'] == true;
     final textures = mesh.meta['triangleTextures'] as List?;
     final styles = mesh.meta['textureStyles'] as List?;
     var start = 0;
@@ -986,7 +987,19 @@ class _Painter extends CustomPainter {
         textureCoordinates: uv,
         colors: colors,
       );
-      canvas.drawVertices(vertices, BlendMode.modulate, paint);
+      canvas.drawVertices(
+        vertices,
+        postLighting ? BlendMode.src : BlendMode.modulate,
+        paint,
+      );
+      if (postLighting) {
+        // 仅供不透明原生表皮：材质降对比后再乘截面明暗，保留幼木体积。
+        canvas.drawVertices(
+          vertices,
+          BlendMode.dst,
+          Paint()..blendMode = BlendMode.modulate,
+        );
+      }
       vertices.dispose();
       start = end;
     }

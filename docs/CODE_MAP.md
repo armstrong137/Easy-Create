@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-03 20:26:05　对应提交：b9b7b0a 之后的工作区状态
+> 生成时间：2026-11-03 20:49:33　对应提交：34e57fa 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     230
-  Nodes:     6,357
-  Edges:     24,499
-  DB Size:   29.14 MB
+  Files:     232
+  Nodes:     6,456
+  Edges:     24,626
+  DB Size:   29.32 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,869
-  function        1,689
-  import          862
-  constant        573
-  variable        557
+  function        1,691
+  import          873
+  variable        615
+  constant        599
   class           534
-  file            222
+  file            224
   enum_member     25
   type_alias      18
   enum            6
@@ -34,8 +34,8 @@ Nodes by Kind:
 
 Files by Language:
   dart            116
-  javascript      60
-  python          26
+  javascript      61
+  python          27
   kotlin          8
   xml             6
   properties      4
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (230 files):
+Project Structure (232 files):
 
 |-- .agents
 |   `-- skills
@@ -294,6 +294,7 @@ Project Structure (230 files):
 |       |   |-- authored_surface_proof.py (python, 93 symbols)
 |       |   |-- authored_whole_control.py (python, 15 symbols)
 |       |   |-- bake_volume_material.py (python, 10 symbols)
+|       |   |-- branch_development_proof.py (python, 66 symbols)
 |       |   |-- continuous_core_proof.py (python, 57 symbols)
 |       |   |-- contour_cage_proof.py (python, 102 symbols)
 |       |   |-- export_volume_mesh.py (python, 6 symbols)
@@ -304,6 +305,7 @@ Project Structure (230 files):
 |       |   |-- volume_proof.py (python, 91 symbols)
 |       |   `-- whole_tree_spec.py (python, 7 symbols)
 |       |-- scripts
+|       |   |-- audit-branch-development.mjs (javascript, 34 symbols)
 |       |   |-- audit-cage-attachments.mjs (javascript, 31 symbols)
 |       |   |-- audit-cage-intervals.mjs (javascript, 38 symbols)
 |       |   |-- audit-cage-intervals.test.mjs (javascript, 7 symbols)
@@ -315,7 +317,7 @@ Project Structure (230 files):
 |       |   |-- canvaskit-path-compat.test.mjs (javascript, 10 symbols)
 |       |   |-- capture-rectification.mjs (javascript, 16 symbols)
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
-|       |   |-- capture-volume-2d.mjs (javascript, 55 symbols)
+|       |   |-- capture-volume-2d.mjs (javascript, 56 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
 |       |   |-- check-illustrated-outline.mjs (javascript, 68 symbols)
 |       |   |-- check-organic-tree.mjs (javascript, 15 symbols)

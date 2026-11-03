@@ -1,0 +1,20 @@
+{
+  "success": true,
+  "meshSha256": "0019530cb225794e214c126dff38a665510510bfa4b4338eda6817f4a1810040",
+  "metadataSha256": "c9c746356d4ec21795b8a1d0518e23e5d68c92f3c04c709b2d9eddbaf448537b",
+  "vertices": 801,
+  "sharedEdges": 8,
+  "sharedVertices": [
+    188,
+    197,
+    206,
+    215,
+    224,
+    233,
+    242,
+    251,
+    260
+  ],
+  "minimumUvDoubleAreaTexels": 304.12890625,
+  "scope": "单个开放前表面的连通性、母子共用索引及UV非退化；不是闭合三维实体，UV分缝不保证材质无缝，不证明自然造型或整树通过"
+}

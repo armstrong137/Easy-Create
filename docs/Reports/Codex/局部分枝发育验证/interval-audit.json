@@ -1,0 +1,34 @@
+{
+  "success": true,
+  "meshSha256": "0019530cb225794e214c126dff38a665510510bfa4b4338eda6817f4a1810040",
+  "metadataSha256": "c9c746356d4ec21795b8a1d0518e23e5d68c92f3c04c709b2d9eddbaf448537b",
+  "intervals": [
+    {
+      "from": 0,
+      "to": 0.18,
+      "triangles": 1408,
+      "minimumSignedArea": 4.076265573971227e-7,
+      "minimumAreaAfterRoundingBound": 3.835740264035915e-7,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.18,
+      "to": 0.5,
+      "triangles": 1408,
+      "minimumSignedArea": 8.241827718080685e-7,
+      "minimumAreaAfterRoundingBound": 7.894369855910417e-7,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.5,
+      "to": 1,
+      "triangles": 1408,
+      "minimumSignedArea": 0.00010041315806574858,
+      "minimumAreaAfterRoundingBound": 0.0000997961980798568,
+      "unsafeTriangles": 0
+    }
+  ],
+  "coordinateRoundingBound": 9.775161629477224e-7,
+  "candidateScope": "仅光滑幼干、真实共享边界及首个子枝发育；没有根冠木牌，不是完整树苗或A2样件",
+  "scope": "X-Z顶点姿态的线性插值；smoothstep只重参数化[0,1]，二次面积式覆盖整个区间。保守Float32坐标误差界不代表GPU逐像素、自然造型、挂点正确或整树业务验收。"
+}
