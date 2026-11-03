@@ -657,12 +657,19 @@ class _Painter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final watch = Stopwatch()..start();
-    final factor =
+    var factor =
         (near ? 2.0 : 1.0) *
         math.min(
           size.height / mesh.scale,
           size.width / (mesh.scale * 600 / 760),
         );
+    final span = mesh.meta['nearSpan'] as List?;
+    if (near && span != null) {
+      factor = math.min(
+        factor,
+        math.min(size.width / (span[0] as num), size.height / (span[1] as num)),
+      );
+    }
     canvas.save();
     canvas.clipRect(Offset.zero & size);
     canvas.translate(size.width / 2, size.height / 2);
@@ -914,7 +921,11 @@ class _Painter extends CustomPainter {
         final style = styles[textureIndex];
         final wood = style == 'wood' || style == 'frame';
         // 幼木降低原树皮对比度，保留同一透明材质；不切换整树或树龄图片。
-        final contrast = wood ? .42 + .58 * _smooth(frame.age) : 1.0;
+        final youngContrast =
+            (mesh.meta['juvenileContrast'] as num?)?.toDouble() ?? .42;
+        final contrast = wood
+            ? youngContrast + (1 - youngContrast) * _smooth(frame.age)
+            : 1.0;
         final tint = style == 'frame'
             ? [.67, .75, .73]
             : wood

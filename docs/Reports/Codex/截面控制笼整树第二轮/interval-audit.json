@@ -1,0 +1,26 @@
+{
+  "success": true,
+  "meshSha256": "01dd133cc8493ed5a7fb00e494e6f3c41273c51b04f75403ab25c3c35a2a1708",
+  "metadataSha256": "0ea656816a6df75116f53f308263a11640f739ee2a7e4afb9c20203fd47019e6",
+  "intervals": [
+    {
+      "from": 0,
+      "to": 0.5,
+      "triangles": 6854,
+      "minimumSignedArea": 9.183339422236259e-9,
+      "minimumAreaAfterRoundingBound": 8.053930149890434e-9,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.5,
+      "to": 1,
+      "triangles": 6854,
+      "minimumSignedArea": 0.0020375214435581768,
+      "minimumAreaAfterRoundingBound": 0.002036980569889418,
+      "unsafeTriangles": 0
+    }
+  ],
+  "coordinateRoundingBound": 0.0000015336464100328374,
+  "candidateScope": "截面控制笼完整第二套，待整套审查；本方案最后一轮",
+  "scope": "X-Z顶点姿态的线性插值；smoothstep只重参数化[0,1]，二次面积式覆盖整个区间。保守Float32坐标误差界不代表GPU逐像素、自然造型、挂点正确或整树业务验收。"
+}

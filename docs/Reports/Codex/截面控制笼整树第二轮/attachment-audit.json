@@ -1,0 +1,207 @@
+{
+  "success": true,
+  "meshSha256": "01dd133cc8493ed5a7fb00e494e6f3c41273c51b04f75403ab25c3c35a2a1708",
+  "metadataSha256": "0ea656816a6df75116f53f308263a11640f739ee2a7e4afb9c20203fd47019e6",
+  "items": [
+    {
+      "name": "冠层0",
+      "motherAlpha": 247,
+      "childAlpha": 251,
+      "keyframeProjectedErrors": [
+        2.0556753449280652e-8,
+        1.2253131224442866e-7,
+        4.7052319890210395e-8
+      ],
+      "maxProjectedError": 1.2253131224442866e-7
+    },
+    {
+      "name": "冠层1",
+      "motherAlpha": 246,
+      "childAlpha": 252,
+      "keyframeProjectedErrors": [
+        7.913977039555832e-8,
+        1.8022538488304832e-7,
+        2.619710856314106e-7
+      ],
+      "maxProjectedError": 2.619710856314106e-7
+    },
+    {
+      "name": "冠层2",
+      "motherAlpha": 241,
+      "childAlpha": 251,
+      "keyframeProjectedErrors": [
+        3.7790888956887934e-8,
+        3.5165476840545387e-8,
+        6.059404264677939e-8
+      ],
+      "maxProjectedError": 6.059404264677939e-8
+    },
+    {
+      "name": "冠层3",
+      "motherAlpha": 243,
+      "childAlpha": 252,
+      "keyframeProjectedErrors": [
+        6.239273215223811e-8,
+        1.342604789649984e-7,
+        1.257753911360884e-7
+      ],
+      "maxProjectedError": 1.342604789649984e-7
+    },
+    {
+      "name": "冠层4",
+      "motherAlpha": 248,
+      "childAlpha": 252,
+      "keyframeProjectedErrors": [
+        2.327448726888442e-7,
+        4.5646158485110236e-8,
+        7.797982630460598e-7
+      ],
+      "maxProjectedError": 7.797982630460598e-7
+    },
+    {
+      "name": "冠层5",
+      "motherAlpha": 231,
+      "childAlpha": 252,
+      "keyframeProjectedErrors": [
+        6.831458290318572e-8,
+        9.545179929732651e-8,
+        1.5793963008104462e-7
+      ],
+      "maxProjectedError": 1.5793963008104462e-7
+    },
+    {
+      "name": "冠层6",
+      "motherAlpha": 227,
+      "childAlpha": 252,
+      "keyframeProjectedErrors": [
+        6.77082191225678e-8,
+        1.5758811149416993e-7,
+        1.2791882411750305e-7
+      ],
+      "maxProjectedError": 1.5758811149416993e-7
+    },
+    {
+      "name": "冠层7",
+      "motherAlpha": 251,
+      "childAlpha": 251,
+      "keyframeProjectedErrors": [
+        2.5005916815336725e-8,
+        1.0273674829098339e-7,
+        2.2723124491686183e-7
+      ],
+      "maxProjectedError": 2.2723124491686183e-7
+    },
+    {
+      "name": "冠层8",
+      "motherAlpha": 252,
+      "childAlpha": 252,
+      "keyframeProjectedErrors": [
+        1.9238378690338365e-8,
+        1.1261402594787106e-7,
+        2.0567710667530142e-7
+      ],
+      "maxProjectedError": 2.0567710667530142e-7
+    },
+    {
+      "name": "冠层9",
+      "motherAlpha": 253,
+      "childAlpha": 252,
+      "keyframeProjectedErrors": [
+        5.533948623623941e-8,
+        1.1014709899269106e-7,
+        6.093346353425424e-8
+      ],
+      "maxProjectedError": 1.1014709899269106e-7
+    },
+    {
+      "name": "冠层10",
+      "motherAlpha": 251,
+      "childAlpha": 252,
+      "keyframeProjectedErrors": [
+        2.436619066413348e-8,
+        6.281731242427763e-8,
+        2.3199266835459265e-7
+      ],
+      "maxProjectedError": 2.3199266835459265e-7
+    },
+    {
+      "name": "冠层11",
+      "motherAlpha": 252,
+      "childAlpha": 252,
+      "keyframeProjectedErrors": [
+        6.704361791922943e-8,
+        7.00491925860375e-8,
+        1.233105280608504e-7
+      ],
+      "maxProjectedError": 1.233105280608504e-7
+    },
+    {
+      "name": "冠层12",
+      "motherAlpha": 253,
+      "childAlpha": 252,
+      "keyframeProjectedErrors": [
+        7.05007590913309e-8,
+        3.3859688878449254e-8,
+        2.1545517852268977e-7
+      ],
+      "maxProjectedError": 2.1545517852268977e-7
+    },
+    {
+      "name": "早生叶0",
+      "motherAlpha": 251,
+      "childAlpha": 252,
+      "keyframeProjectedErrors": [
+        6.042380270094209e-8,
+        1.6218513702323744e-7,
+        1.1473523761695942e-7
+      ],
+      "maxProjectedError": 1.6218513702323744e-7
+    },
+    {
+      "name": "早生叶1",
+      "motherAlpha": 253,
+      "childAlpha": 252,
+      "keyframeProjectedErrors": [
+        5.610054601051585e-8,
+        5.107928819375091e-8,
+        2.259739340925812e-7
+      ],
+      "maxProjectedError": 2.259739340925812e-7
+    },
+    {
+      "name": "早生叶2",
+      "motherAlpha": 253,
+      "childAlpha": 252,
+      "keyframeProjectedErrors": [
+        6.568498457651854e-8,
+        2.1599678875467088e-7,
+        4.9874470773187826e-8
+      ],
+      "maxProjectedError": 2.1599678875467088e-7
+    },
+    {
+      "name": "左章牌",
+      "motherAlpha": 253,
+      "childAlpha": 253,
+      "keyframeProjectedErrors": [
+        2.9058723978624164e-8,
+        4.509030643368169e-8,
+        8.56910371682508e-8
+      ],
+      "maxProjectedError": 8.56910371682508e-8
+    },
+    {
+      "name": "右节牌",
+      "motherAlpha": 253,
+      "childAlpha": 252,
+      "keyframeProjectedErrors": [
+        6.740045973278064e-8,
+        6.844948397663743e-8,
+        2.4642329756852433e-7
+      ],
+      "maxProjectedError": 2.4642329756852433e-7
+    }
+  ],
+  "maxProjectedError": 7.797982630460598e-7,
+  "scope": "源像素实体性及实际UV三角中基点的X-Z投影；三姿态间差值线性，范数不超过端点最大值。Y深度有意分层，不证明木纹、遮挡和整体视觉自然，也不证明正式页面或点击。"
+}

@@ -9,7 +9,8 @@ import { Readable } from 'node:stream';
 
 // 独立构建与实验资产分别提供；不覆盖build/web，不打开小说数据库。
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../..');
-const cageWhole=process.argv.includes('--cage-whole');
+const cageRound2=process.argv.includes('--cage-whole-round2');
+const cageWhole=process.argv.includes('--cage-whole')||cageRound2;
 const cage=process.argv.includes('--cage')||cageWhole;
 const compact=process.argv.includes('--compact');
 const tree=process.argv.includes('--tree');
@@ -22,8 +23,8 @@ const illustratedRound2=process.argv.includes('--illustrated-whole-round2');
 const coreRound2=process.argv.includes('--continuous-core-round2');
 const core=process.argv.includes('--continuous-core')||coreRound2;
 const illustrated=process.argv.includes('--illustrated-whole')||illustratedRound2||core||cageWhole;
-const web=resolve(root,'build/volume-web'), proof=resolve(root,cageWhole?'build/qa/cage-whole-proof':cage?'build/qa/contour-cage-proof':coreRound2?'build/qa/continuous-core-round2-proof':core?'build/qa/continuous-core-proof':illustratedRound2?'build/qa/illustrated-whole-round2-proof':illustrated?'build/qa/illustrated-whole-proof':lap?'build/qa/illustrated-pair-lap-proof':pair?'build/qa/illustrated-pair-proof':fork?'build/qa/illustrated-fork-proof':whole?'build/qa/authored-whole-control-round2':surface?'build/qa/authored-surface-proof':tree?'build/qa/whole-tree-mesh-round2':compact?'build/qa/volume-proof-compact':'build/qa/volume-proof-baked');
-const output=resolve(root,cageWhole?'build/qa/cage-whole-2d':cage?'build/qa/contour-cage-2d':coreRound2?'build/qa/continuous-core-round2-2d':core?'build/qa/continuous-core-2d':illustratedRound2?'build/qa/illustrated-whole-round2-2d':illustrated?'build/qa/illustrated-whole-2d':lap?'build/qa/illustrated-pair-lap-2d':pair?'build/qa/illustrated-pair-2d':fork?'build/qa/illustrated-fork-2d':whole?'build/qa/authored-whole-2d-round2':surface?'build/qa/authored-surface-2d':tree?'build/qa/whole-tree-2d-round2':compact?'build/qa/volume-2d-compact':'build/qa/volume-2d',new Date().toISOString().replaceAll(':','-'));
+const web=resolve(root,'build/volume-web'), proof=resolve(root,cageRound2?'build/qa/cage-whole-round2-proof':cageWhole?'build/qa/cage-whole-proof':cage?'build/qa/contour-cage-proof':coreRound2?'build/qa/continuous-core-round2-proof':core?'build/qa/continuous-core-proof':illustratedRound2?'build/qa/illustrated-whole-round2-proof':illustrated?'build/qa/illustrated-whole-proof':lap?'build/qa/illustrated-pair-lap-proof':pair?'build/qa/illustrated-pair-proof':fork?'build/qa/illustrated-fork-proof':whole?'build/qa/authored-whole-control-round2':surface?'build/qa/authored-surface-proof':tree?'build/qa/whole-tree-mesh-round2':compact?'build/qa/volume-proof-compact':'build/qa/volume-proof-baked');
+const output=resolve(root,cageRound2?'build/qa/cage-whole-round2-2d':cageWhole?'build/qa/cage-whole-2d':cage?'build/qa/contour-cage-2d':coreRound2?'build/qa/continuous-core-round2-2d':core?'build/qa/continuous-core-2d':illustratedRound2?'build/qa/illustrated-whole-round2-2d':illustrated?'build/qa/illustrated-whole-2d':lap?'build/qa/illustrated-pair-lap-2d':pair?'build/qa/illustrated-pair-2d':fork?'build/qa/illustrated-fork-2d':whole?'build/qa/authored-whole-2d-round2':surface?'build/qa/authored-surface-2d':tree?'build/qa/whole-tree-2d-round2':compact?'build/qa/volume-2d-compact':'build/qa/volume-2d',new Date().toISOString().replaceAll(':','-'));
 await mkdir(output,{recursive:true});
 const mime={'.js':'text/javascript','.mjs':'text/javascript','.html':'text/html',
   '.json':'application/json','.wasm':'application/wasm','.png':'image/png','.css':'text/css'};

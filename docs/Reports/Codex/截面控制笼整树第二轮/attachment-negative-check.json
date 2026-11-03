@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "expectedRejectedBase": [
+    1160,
+    1070
+  ],
+  "part": "左章牌",
+  "status": 1,
+  "reason": "实际源PNG透明基点被拒绝；仅修改自有反例元数据，候选和源图未改"
+}

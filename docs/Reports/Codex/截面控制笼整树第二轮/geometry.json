@@ -1,0 +1,635 @@
+{
+  "script_sha256": "5c69968b50f5392e3378d9055c9083064080204baf3b63a87d61c0da06b618a6",
+  "source_sha256": "a5d9d95681d53cade4960a7d14588c313e8718ee3a8317e047fb991c9af0b300",
+  "mesh_export": {
+    "vertices": 4818,
+    "triangles": 6854,
+    "bytes": 478008,
+    "referenceSamples": 14454
+  },
+  "control": {
+    "sourceLevels": [
+      0,
+      122,
+      290,
+      463,
+      730,
+      900,
+      1090,
+      1190,
+      1300,
+      1370,
+      1445
+    ],
+    "heights": [
+      [
+        3.1,
+        2.55,
+        2.1,
+        1.65,
+        1.0,
+        0.65,
+        0.3,
+        0.14,
+        0.05,
+        0,
+        -0.04
+      ],
+      [
+        5.8,
+        5.1,
+        4.2,
+        3.3,
+        2.2,
+        1.55,
+        0.9,
+        0.5,
+        0.14,
+        0,
+        -0.12
+      ],
+      [
+        9.4,
+        8.3,
+        7.0,
+        5.5,
+        3.1,
+        2.1,
+        1.1,
+        0.6,
+        0.2,
+        0,
+        -0.15
+      ]
+    ],
+    "innerRadii": [
+      65,
+      65,
+      75,
+      100,
+      125,
+      100,
+      135,
+      200,
+      420,
+      545,
+      545
+    ],
+    "innerScales": [
+      [
+        0.00085,
+        0.00085,
+        0.00085,
+        0.00085,
+        0.00085,
+        0.00085,
+        0.00075,
+        0.0005,
+        0.00035,
+        0.0003,
+        0.0003
+      ],
+      [
+        0.0032,
+        0.0032,
+        0.0032,
+        0.0032,
+        0.0032,
+        0.0032,
+        0.0032,
+        0.0032,
+        0.0032,
+        0.0032,
+        0.0032
+      ],
+      [
+        0.0052,
+        0.0052,
+        0.0052,
+        0.0052,
+        0.0052,
+        0.0052,
+        0.0052,
+        0.0052,
+        0.0052,
+        0.0052,
+        0.0052
+      ]
+    ],
+    "outerScales": [
+      2e-05,
+      0.0022,
+      0.0052
+    ]
+  },
+  "production_integrated": false,
+  "visualAcceptance": "第二套完整候选，待实际四图短片审查",
+  "parts": [
+    {
+      "name": "冠层0",
+      "anchorSource": [
+        64,
+        420
+      ],
+      "coreTriangle": [
+        389,
+        419,
+        420
+      ],
+      "weights": [
+        0.8941176470588236,
+        0.04087279271173105,
+        0.06500956022944537
+      ],
+      "material": 1,
+      "childBaseSource": [
+        585,
+        560
+      ],
+      "childBaseOpaque": true,
+      "vertexRange": [
+        1776,
+        1945
+      ]
+    },
+    {
+      "name": "冠层1",
+      "anchorSource": [
+        988,
+        420
+      ],
+      "coreTriangle": [
+        412,
+        440,
+        413
+      ],
+      "weights": [
+        0.5334608030592743,
+        0.10588235294117648,
+        0.36065684399954917
+      ],
+      "material": 1,
+      "childBaseSource": [
+        688,
+        570
+      ],
+      "childBaseOpaque": true,
+      "vertexRange": [
+        1945,
+        2114
+      ]
+    },
+    {
+      "name": "冠层2",
+      "anchorSource": [
+        201,
+        200
+      ],
+      "coreTriangle": [
+        105,
+        125,
+        126
+      ],
+      "weights": [
+        0.24705882352941175,
+        0.40112473287594225,
+        0.351816443594646
+      ],
+      "material": 1,
+      "childBaseSource": [
+        585,
+        560
+      ],
+      "childBaseOpaque": true,
+      "vertexRange": [
+        2114,
+        2283
+      ]
+    },
+    {
+      "name": "冠层3",
+      "anchorSource": [
+        946,
+        180
+      ],
+      "coreTriangle": [
+        96,
+        119,
+        120
+      ],
+      "weights": [
+        0.18823529411764708,
+        0.2725677651557746,
+        0.5391969407265784
+      ],
+      "material": 1,
+      "childBaseSource": [
+        688,
+        570
+      ],
+      "childBaseOpaque": true,
+      "vertexRange": [
+        2283,
+        2452
+      ]
+    },
+    {
+      "name": "冠层4",
+      "anchorSource": [
+        606,
+        100
+      ],
+      "coreTriangle": [
+        27,
+        48,
+        28
+      ],
+      "weights": [
+        0.06309751434034429,
+        0.04705882352941177,
+        0.8898436621302439
+      ],
+      "material": 1,
+      "childBaseSource": [
+        375,
+        1120
+      ],
+      "childBaseOpaque": true,
+      "vertexRange": [
+        2452,
+        2621
+      ]
+    },
+    {
+      "name": "冠层5",
+      "anchorSource": [
+        103,
+        350
+      ],
+      "coreTriangle": [
+        248,
+        286,
+        249
+      ],
+      "weights": [
+        0.14531548757170193,
+        0.8117647058823529,
+        0.04291980654594507
+      ],
+      "material": 1,
+      "childBaseSource": [
+        375,
+        1120
+      ],
+      "childBaseOpaque": true,
+      "vertexRange": [
+        2621,
+        2790
+      ]
+    },
+    {
+      "name": "冠层6",
+      "anchorSource": [
+        1002,
+        350
+      ],
+      "coreTriangle": [
+        283,
+        316,
+        317
+      ],
+      "weights": [
+        0.18823529411764708,
+        0.7027780902035764,
+        0.10898661567877654
+      ],
+      "material": 1,
+      "childBaseSource": [
+        375,
+        1120
+      ],
+      "childBaseOpaque": true,
+      "vertexRange": [
+        2790,
+        2959
+      ]
+    },
+    {
+      "name": "冠层7",
+      "anchorSource": [
+        255,
+        300
+      ],
+      "coreTriangle": [
+        199,
+        224,
+        200
+      ],
+      "weights": [
+        0.1701720841300205,
+        0.4588235294117647,
+        0.3710043864582148
+      ],
+      "material": 1,
+      "childBaseSource": [
+        585,
+        560
+      ],
+      "childBaseOpaque": true,
+      "vertexRange": [
+        2959,
+        3128
+      ]
+    },
+    {
+      "name": "冠层8",
+      "anchorSource": [
+        845,
+        300
+      ],
+      "coreTriangle": [
+        216,
+        243,
+        217
+      ],
+      "weights": [
+        0.09560229445506833,
+        0.4588235294117647,
+        0.445574176133167
+      ],
+      "material": 1,
+      "childBaseSource": [
+        688,
+        570
+      ],
+      "childBaseOpaque": true,
+      "vertexRange": [
+        3128,
+        3297
+      ]
+    },
+    {
+      "name": "冠层9",
+      "anchorSource": [
+        560,
+        350
+      ],
+      "coreTriangle": [
+        266,
+        303,
+        267
+      ],
+      "weights": [
+        0.17399617590822036,
+        0.8117647058823529,
+        0.014239118209426693
+      ],
+      "material": 1,
+      "childBaseSource": [
+        375,
+        1120
+      ],
+      "childBaseOpaque": true,
+      "vertexRange": [
+        3297,
+        3466
+      ]
+    },
+    {
+      "name": "冠层10",
+      "anchorSource": [
+        75,
+        500
+      ],
+      "coreTriangle": [
+        471,
+        501,
+        502
+      ],
+      "weights": [
+        0.12941176470588237,
+        0.3007985603419189,
+        0.5697896749521988
+      ],
+      "material": 1,
+      "childBaseSource": [
+        375,
+        1120
+      ],
+      "childBaseOpaque": true,
+      "vertexRange": [
+        3466,
+        3635
+      ]
+    },
+    {
+      "name": "冠层11",
+      "anchorSource": [
+        946,
+        500
+      ],
+      "coreTriangle": [
+        497,
+        527,
+        528
+      ],
+      "weights": [
+        0.12941176470588237,
+        0.3313912945675393,
+        0.5391969407265784
+      ],
+      "material": 1,
+      "childBaseSource": [
+        375,
+        1120
+      ],
+      "childBaseOpaque": true,
+      "vertexRange": [
+        3635,
+        3804
+      ]
+    },
+    {
+      "name": "冠层12",
+      "anchorSource": [
+        565,
+        500
+      ],
+      "coreTriangle": [
+        485,
+        515,
+        516
+      ],
+      "weights": [
+        0.12941176470588237,
+        0.8151389045101773,
+        0.05544933078394032
+      ],
+      "material": 1,
+      "childBaseSource": [
+        375,
+        1120
+      ],
+      "childBaseOpaque": true,
+      "vertexRange": [
+        3804,
+        3973
+      ]
+    },
+    {
+      "name": "早生叶0",
+      "anchorSource": [
+        616,
+        130
+      ],
+      "coreTriangle": [
+        48,
+        72,
+        73
+      ],
+      "weights": [
+        0.5411764705882354,
+        0.0630300303677869,
+        0.39579349904397776
+      ],
+      "material": 1,
+      "childBaseSource": [
+        987,
+        1120
+      ],
+      "childBaseOpaque": true,
+      "vertexRange": [
+        3973,
+        4142
+      ]
+    },
+    {
+      "name": "早生叶1",
+      "anchorSource": [
+        550,
+        500
+      ],
+      "coreTriangle": [
+        484,
+        514,
+        515
+      ],
+      "weights": [
+        0.12941176470588237,
+        0.50347542458666,
+        0.3671128107074577
+      ],
+      "material": 1,
+      "childBaseSource": [
+        987,
+        1120
+      ],
+      "childBaseOpaque": true,
+      "vertexRange": [
+        4142,
+        4311
+      ]
+    },
+    {
+      "name": "早生叶2",
+      "anchorSource": [
+        570,
+        350
+      ],
+      "coreTriangle": [
+        267,
+        303,
+        304
+      ],
+      "weights": [
+        0.18823529411764706,
+        0.5268698684062528,
+        0.2848948374761001
+      ],
+      "material": 1,
+      "childBaseSource": [
+        987,
+        1120
+      ],
+      "childBaseOpaque": true,
+      "vertexRange": [
+        4311,
+        4480
+      ]
+    },
+    {
+      "name": "左章牌",
+      "anchorSource": [
+        400,
+        705
+      ],
+      "coreTriangle": [
+        791,
+        816,
+        817
+      ],
+      "weights": [
+        0.4823529411764706,
+        0.03389944888089031,
+        0.48374760994263905
+      ],
+      "material": 2,
+      "childBaseSource": [
+        1130,
+        1070
+      ],
+      "childBaseOpaque": true,
+      "vertexRange": [
+        4480,
+        4649
+      ]
+    },
+    {
+      "name": "右节牌",
+      "anchorSource": [
+        700,
+        720
+      ],
+      "coreTriangle": [
+        830,
+        855,
+        831
+      ],
+      "weights": [
+        0.7495219885277239,
+        0.2235294117647059,
+        0.026948599707570214
+      ],
+      "material": 3,
+      "childBaseSource": [
+        1070,
+        910
+      ],
+      "childBaseOpaque": true,
+      "vertexRange": [
+        4649,
+        4818
+      ]
+    }
+  ],
+  "foliageParts": 16,
+  "plaques": 2,
+  "sourceImages": [
+    {
+      "path": "assets\\source\\magic_tree\\textures_source\\continuous_wood_tips_v2.png",
+      "sha256": "a5d9d95681d53cade4960a7d14588c313e8718ee3a8317e047fb991c9af0b300"
+    },
+    {
+      "path": "assets\\source\\magic_tree\\textures_source\\canopy_boughs_v1.png",
+      "sha256": "ed2bd8b9e1e5fd9e811df8380738ab42b552f7ac01c2f007871e015301567027"
+    },
+    {
+      "path": "assets\\source\\magic_tree\\textures_source\\illustrated_frame_left_v1.png",
+      "sha256": "a9fda874c57f080dc89f32810fe9b84396d57bbca626cfd14ec23c2247bfdd20"
+    },
+    {
+      "path": "assets\\source\\magic_tree\\textures_source\\illustrated_components_v1.png",
+      "sha256": "29858504c9459bc450ff2b6b1088c906329fdb0cb9a4921c346917284e73c4db"
+    }
+  ]
+}

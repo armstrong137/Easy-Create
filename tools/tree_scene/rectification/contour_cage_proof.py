@@ -10,8 +10,9 @@ import bpy
 import numpy as np
 
 ROOT=Path(__file__).resolve().parents[3]
-WHOLE='--whole' in sys.argv
-OUT=ROOT/('build/qa/cage-whole-proof' if WHOLE else 'build/qa/contour-cage-proof')
+ROUND2='--round2' in sys.argv
+WHOLE='--whole' in sys.argv or ROUND2
+OUT=ROOT/('build/qa/cage-whole-round2-proof' if ROUND2 else 'build/qa/cage-whole-proof' if WHOLE else 'build/qa/contour-cage-proof')
 OUT.mkdir(parents=True,exist_ok=True)
 source=ROOT/'assets/source/magic_tree/textures_source'/('continuous_wood_tips_v2.png' if WHOLE else 'continuous_wood_core_v1.png')
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -57,7 +58,12 @@ def point_at(stage,x,y):
     distance=x-548;radius=float(np.interp(y,levels,radii))
     inside=float(np.interp(y,levels,inner_scales[stage]))
     span=min(abs(distance),radius)*inside+max(0,abs(distance)-radius)*outer_scales[stage]
-    return [span if distance>=0 else -span,0,float(np.interp(y,levels,heights[stage]))]
+    center=0
+    if ROUND2 and stage<2:
+        offsets=[[.03,.07,.02,-.045,.035,.012,-.01,0,0,0,0],
+                 [0,.03,-.03,.04,-.02,.012,0,0,0,0,0]][stage]
+        center=float(np.interp(y,levels,offsets))
+    return [center+(span if distance>=0 else -span),0,float(np.interp(y,levels,heights[stage]))]
 
 poses=[[point_at(i,x,y) for x,y in points] for i in range(3)]
 faces=[[remap[i] for i in quad] for quad in quads]
@@ -96,6 +102,8 @@ if WHOLE:
 
     def append_patch(name,material,selection,base,anchor,scale,angle=0,middle=.55,early=False,paper=None):
         anchors,triangle,weights=anchor_at(anchor)
+        if ROUND2 and not alpha[material][round(base[1]),round(base[0])]:
+            raise RuntimeError(f'子件基点不在实体素材内：{name} {base}')
         ay,ax=np.where(selection);xa,xb=max(0,int(ax.min())-3),min(selection.shape[1]-1,int(ax.max())+3)
         ya,yb=max(0,int(ay.min())-3),min(selection.shape[0]-1,int(ay.max())+3)
         start=len(points);cols,lines=12,12;c,s=math.cos(angle),math.sin(angle)
@@ -103,7 +111,12 @@ if WHOLE:
         depth=-.003*(len(parts)+1)
         def position(stage,x,y):
             dx=(x-base[0])*scale;dz=(base[1]-y)*scale
-            return [anchors[stage][0]+(c*dx+s*dz)*growth[stage],depth,
+            local_depth=depth
+            # 承托枝端口置于母体后，外侧牌框在前，避免整片横压主干。
+            if ROUND2 and material in [2,3]:
+                front=max(0,min(1,(1050-x)/200)) if material==2 else max(0,min(1,(x-1140)/150))
+                local_depth=.01+(-.055-.01)*front
+            return [anchors[stage][0]+(c*dx+s*dz)*growth[stage],local_depth,
                 anchors[stage][2]+(-s*dx+c*dz)*growth[stage]]
         for row in range(lines+1):
             for col in range(cols+1):
@@ -116,7 +129,9 @@ if WHOLE:
                 y=int(ya+(yb-ya)*row/lines);yy=int(ya+(yb-ya)*(row+1)/lines)+1
                 if selection[y:yy,x:xx].any():
                     a=start+row*(cols+1)+col;faces.append((a,a+cols+1,a+cols+2,a+1));face_textures.append(material)
-        parts.append({'name':name,'anchorSource':anchor,'coreTriangle':triangle,'weights':weights,'material':material})
+        parts.append({'name':name,'anchorSource':anchor,'coreTriangle':triangle,'weights':weights,'material':material,
+            'childBaseSource':base,'childBaseOpaque':bool(alpha[material][round(base[1]),round(base[0])]),
+            'vertexRange':[start,len(points)]})
         if paper:
             ids=[]
             for x,y in paper:
@@ -130,14 +145,22 @@ if WHOLE:
         (3,(590,180),.0046,0,.63),(1,(360,370),.0030,-.25,.60),
         (2,(720,350),.0030,.20,.58),(3,(560,350),.0035,-.10,.60),
         (1,(290,625),.0033,-.25,.65),(2,(800,650),.0033,.25,.52)]
+    if ROUND2:
+        placements=[(1,(64,420),.0030,-.20,.60),(2,(988,420),.0030,.16,.52),
+            (1,(201,200),.0033,-.12,.53),(2,(946,180),.0032,.18,.58),
+            (3,(606,100),.0044,-.08,.60),(3,(103,350),.0021,-.15,.57),
+            (3,(1002,350),.0021,.18,.54),(1,(255,300),.0028,-.24,.50),
+            (2,(845,300),.0028,.20,.60),(3,(560,350),.0030,-.10,.55),
+            (3,(75,500),.0028,-.15,.62),(3,(946,500),.0028,.14,.52),
+            (3,(565,500),.0024,.18,.60)]
     for i,(component,anchor,scale,angle,middle) in enumerate(placements):
         append_patch(f'冠层{i}',1,labels==component,fan_bases[component],anchor,scale,angle,middle)
     for i,(anchor,angle,scale) in enumerate([((616,130),0,.0030),((550,500),-.7,.0020),((570,350),.6,.0016)]):
         append_patch(f'早生叶{i}',1,labels==4,fan_bases[4],anchor,scale,angle,early=True)
-    append_patch('左章牌',2,alpha[2],(1160,1070),(548,740),.0022,
+    append_patch('左章牌',2,alpha[2],(1130,1070) if ROUND2 else (1160,1070),(400,705) if ROUND2 else (548,740),.0022,
         paper=[(248,213),(552,213),(552,902),(248,902)])
     right=alpha[3].copy();right[:500,:]=False;right[:,:1030]=False
-    append_patch('右节牌',3,right,(1070,910),(548,740),.0045,
+    append_patch('右节牌',3,right,(1070,910),(700,720) if ROUND2 else (548,740),.0045,
         paper=[(1286,599),(1419,599),(1419,896),(1286,896)])
 mesh=bpy.data.meshes.new('横截面有序控制笼局部木体')
 mesh.from_pydata(poses[2],[],faces);mesh.update()
@@ -174,10 +197,18 @@ meta={'format':'局部截面控制笼-v1','vertexCount':len(points),'triangleCou
     'nearOffset':[target[0],-target[2]+1.9],
     'scope':'仅局部根颈/主肩枝形变，未含叶冠与木牌，不是完整树苗或A2样件'}
 if WHOLE:
+    foliage_count=sum(p['material']==1 for p in parts)
     meta.update({'extraTextures':['canopy.png','frame-left.png','frame-right-atlas.png'],
         'triangleTextures':[face_textures[t.polygon_index] for t in mesh.loop_triangles],
-        'textureStyles':['wood','leaf','frame','frame'],'foliageParts':13,'plaques':plaques,
+        'textureStyles':['wood','leaf','frame','frame'],'foliageParts':foliage_count,'plaques':plaques,
         'nearOffset':[target[0],-target[2]+3.0],'scope':'截面控制笼完整首套，待四图短片整体审查'})
+    if ROUND2:
+        frame_points=[poses[2][i] for p in parts if p['material'] in [2,3] for i in range(*p['vertexRange'])]
+        left=min(p[0] for p in frame_points);right=max(p[0] for p in frame_points)
+        bottom=min(p[2] for p in frame_points);top=max(p[2] for p in frame_points)
+        meta.update({'juvenileContrast':.28,'nearSpan':[(right-left)*1.08,(top-bottom)*1.15],
+            'nearOffset':[target[0]-(left+right)/2,(top+bottom)/2-target[2]],
+            'scope':'截面控制笼完整第二套，待整套审查；本方案最后一轮'})
 (OUT/'mesh.bin').write_bytes(payload.tobytes())
 (OUT/'mesh.json').write_text(json.dumps(meta,ensure_ascii=False,indent=2),encoding='utf-8')
 shutil.copyfile(source,OUT/'baked-bark.png')
@@ -189,9 +220,9 @@ report={'script_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
     'control':{'sourceLevels':levels,'heights':heights,'innerRadii':radii,'innerScales':inner_scales,'outerScales':outer_scales},
     'production_integrated':False,'visualAcceptance':'局部形变待实际浏览器核对，不计完整样件轮次'}
 if WHOLE:
-    report.update({'parts':parts,'foliageParts':13,'plaques':2,'sourceImages':[{'path':str(p.relative_to(ROOT)),
+    report.update({'parts':parts,'foliageParts':foliage_count,'plaques':2,'sourceImages':[{'path':str(p.relative_to(ROOT)),
         'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in [source]+extras],
-        'visualAcceptance':'新完整方案第一套，待实际四图短片审查'})
+        'visualAcceptance':'第二套完整候选，待实际四图短片审查' if ROUND2 else '新完整方案第一套，待实际四图短片审查'})
 (OUT/'result.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
 bpy.ops.wm.save_as_mainfile(filepath=str(OUT/'editable-cage.blend'))
 print(json.dumps(report['mesh_export']))
