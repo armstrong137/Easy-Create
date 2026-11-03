@@ -1,0 +1,38 @@
+{
+  "success": true,
+  "dartSource": "f08fdb223f329ff8788357fb682aaf1a90cb71cf14c7a3d08a4e80788b997641",
+  "states": [
+    {
+      "age": 0,
+      "vertices": 801,
+      "visibleTriangles": 1408,
+      "computeMs": 1.7,
+      "referenceError": 5.7538350528574256e-8,
+      "leaves": 0,
+      "plaques": 0,
+      "foliageParts": 0
+    },
+    {
+      "age": 0.5,
+      "vertices": 801,
+      "visibleTriangles": 1408,
+      "computeMs": 1.399,
+      "referenceError": 1.9582112642524407e-7,
+      "leaves": 0,
+      "plaques": 0,
+      "foliageParts": 0
+    },
+    {
+      "age": 1,
+      "vertices": 801,
+      "visibleTriangles": 1408,
+      "computeMs": 1.7,
+      "referenceError": 2.3523966508065541e-7,
+      "leaves": 0,
+      "plaques": 0,
+      "foliageParts": 0
+    }
+  ],
+  "errors": [],
+  "scope": "同一新Dart构建，旧全局postTextureLighting模式实际浏览器回归"
+}

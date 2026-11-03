@@ -290,6 +290,7 @@ class _Mesh {
     final projected = Float32List(count * 2), depths = Float32List(count);
     final colors = Int32List(count);
     final kinds = meta['vertexKinds'] as List?;
+    final unlitStart = (meta['unlitVertexStart'] as num?)?.toInt();
     final firstVertices = vertexPoses?[poseIndex];
     final lastVertices = vertexPoses?[poseIndex + 1];
     for (var i = 0; i < count; i++) {
@@ -351,7 +352,9 @@ class _Mesh {
           .75 * math.max(0, (-.45 * nx - .5 * ny + .74 * nz) / normalLength);
       // 图集以显示空间采样，使用显示空间的明暗调制近似；仍须对照离线光照。
       final channel = (255 * math.pow(light, 1 / 2.2)).round().clamp(0, 255);
-      colors[i] = meta['unlitTexture'] == true
+      colors[i] =
+          meta['unlitTexture'] == true ||
+              (unlitStart != null && i >= unlitStart)
           ? 0xffffffff
           : 0xff000000 | (channel << 16) | (channel << 8) | channel;
       if (kinds != null) {
@@ -919,12 +922,15 @@ class _Painter extends CustomPainter {
 
   void _wood(Canvas canvas, Paint paint, List<int> order) {
     const batch = 8192;
-    final postLighting = mesh.meta['postTextureLighting'] == true;
+    final allPostLighting = mesh.meta['postTextureLighting'] == true;
+    final postMaterials = mesh.meta['postTextureLightingMaterials'] as List?;
     final textures = mesh.meta['triangleTextures'] as List?;
     final styles = mesh.meta['textureStyles'] as List?;
     var start = 0;
     while (start < order.length) {
       final textureIndex = textures == null ? 0 : textures[order[start]] as int;
+      final postLighting =
+          allPostLighting || (postMaterials?.contains(textureIndex) ?? false);
       var end = math.min(order.length, start + batch);
       if (textures != null) {
         end = start + 1;

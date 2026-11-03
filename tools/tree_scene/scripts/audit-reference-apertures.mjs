@@ -9,13 +9,13 @@ const result=JSON.parse(await readFile(resolve(directory,'result.json'),'utf8'))
 const bytes=await readFile(resolve(directory,'mesh.bin'));
 const png=PNG.sync.read(await readFile(result.sourceImages[2].path));
 function section(name){const s=meta.sections[name];return Array.from({length:s.length},(_,i)=>bytes.readFloatLE(s.offset+i*4));}
-const pose=section(meta.vertexPoseSections[2]),corners=section('corners'),checks=[];
+const pose=section(meta.vertexPoseSections.at(-1)),corners=section('corners'),checks=[];
 function inside(x,y,polygon){let value=false;for(let i=0,j=polygon.length-1;i<polygon.length;j=i++){
   const a=polygon[i],b=polygon[j];
   if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])value=!value;
 }return value;}
 for(const [index,plaque] of meta.plaques.entries()){
-  const part=result.parts.find(p=>p.name===(index===0?'左章牌':'右节牌'));
+  const part=(result.parts??result.patches).find(p=>p.name===(index===0?'左章牌':'右节牌'));
   let basis;
   for(let i=0;i<corners.length;i+=9){
     const ids=[0,3,6].map(k=>Math.round(corners[i+k]));
@@ -30,7 +30,7 @@ for(const [index,plaque] of meta.plaques.entries()){
     const v=((w[1][0]-w[0][0])*dy-dx*(w[1][1]-w[0][1]))/d;
     return [0,1].map(k=>uv[0][k]+u*(uv[1][k]-uv[0][k])+v*(uv[2][k]-uv[0][k]));
   }
-  const nodes=plaque.corners.map(i=>meta.poseFrames[2].nodes[i]);
+  const nodes=plaque.corners.map(i=>meta.poseFrames.at(-1).nodes[i]);
   const center=[0,1,2].map(k=>nodes.reduce((s,p)=>s+p[k]/4,0));
   const paper=nodes.map(p=>p.map((v,k)=>center[k]+(v-center[k])*(plaque.inset??.79)));
   const polygon=plaque.aperture.map(([u,v])=>source([0,1,2].map(k=>

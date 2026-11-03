@@ -24,6 +24,10 @@
 
 无。
 
+## 2026-11-03共享表皮发育树皮色彩图
+
+textures_source/development_bark_v1.png通过imagegen技能、内置image_gen以项目reference_wood_v2.png作风格参考生成，原PNG保留，无本地像素编辑。来源、尺寸、哈希和实际提示词见同名.md/.prompt.txt。仅作为原生发育表皮色彩，体积由网格明暗表达；未证明双向无缝，当前UV在图内，不依赖跨边拼接。未接入正式应用，非整树阶段图片，未引入第三方素材。
+
 ## 2026-11-03参考主导圆钝根趾v2
 
 textures_source/reference_wood_v2.png通过imagegen技能、内置image_gen编辑本项目reference_wood_v1.png并另存，保留原透明通道，无本地像素编辑。实际提示词、输出名称、尺寸和哈希见同名.md/.prompt.txt；上部部分木纹也有变化。仅独立完整第二套源稿，不是整树阶段图，未接入正式应用，未引入第三方素材。
