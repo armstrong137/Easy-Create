@@ -1,0 +1,5 @@
+{
+  "expectedRejection": true,
+  "exitCode": 1,
+  "reason": "Error: 纸面与实际空窗不符：{\"title\":\"第九章\",\"outlinePoints\":1086,\"checked\":7614,\"woodCovered\":0,\"holeMissed\":724}\r"
+}

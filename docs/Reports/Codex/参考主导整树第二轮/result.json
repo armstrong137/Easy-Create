@@ -1,0 +1,77 @@
+{
+  "success": true,
+  "states": [
+    {
+      "age": 0,
+      "vertices": 4530,
+      "visibleTriangles": 6626,
+      "computeMs": 9.2,
+      "referenceError": 7.72312711561085e-8,
+      "leaves": 0,
+      "plaques": 0,
+      "foliageParts": 13
+    },
+    {
+      "age": 0.5,
+      "vertices": 4530,
+      "visibleTriangles": 6626,
+      "computeMs": 7.3,
+      "referenceError": 2.379063195334652e-7,
+      "leaves": 0,
+      "plaques": 2,
+      "foliageParts": 13
+    },
+    {
+      "age": 1,
+      "vertices": 4530,
+      "visibleTriangles": 6626,
+      "computeMs": 2.5,
+      "referenceError": 4.354858393895711e-7,
+      "leaves": 0,
+      "plaques": 2,
+      "foliageParts": 13
+    }
+  ],
+  "assetBytes": 455976,
+  "frameSample": {
+    "count": 1042,
+    "p95Ms": 20.899999999997817,
+    "worstMs": 41.600000000000364
+  },
+  "cpuGeometry": {
+    "count": 606,
+    "p95Ms": 1.8,
+    "worstMs": 3.401
+  },
+  "cpuPaintRecording": {
+    "count": 606,
+    "p95Ms": 11.1,
+    "worstMs": 13.3
+  },
+  "timingScope": "JS RAF探针不是绘制帧率；Dart指标只含几何/排序和绘图记录CPU，不含GPU完成时间",
+  "errors": [],
+  "visualAcceptance": "待人工检查，不以坐标校验代替视觉或真机验收",
+  "provenance": {
+    "dartSource": "bf97e64e182283fb85b980338802d1d82ffa92394d43e996643d06dbcf08edec",
+    "mesh": "597d4b04d583c5b3f741824b2af8a2e126c9bc948b2cf839f7d94b8291f29e43",
+    "metadata": "65e00746424ce94eedc45b0a6426ffedb284d71e5688a26ebfd211920c3cfe53",
+    "atlas": "3ef666c440d53789ec780036da475d3f2327c232a1560250d252530349c53848",
+    "generator": "890a089adeb8324823e40c6339580c9ac085b19f29458bc32dc3fa02d807f225",
+    "atlasPngBytes": 1900002,
+    "extraTextures": {
+      "canopy.png": "58c9cfadc8e07357cc7542095ae0f55f55a59de80a652b3040ae87d21f378c8f",
+      "frame-left.png": "7c58d5363274857465b41c1271da4351cdd0b623810bfb195f3961ea83e7fcaa"
+    }
+  },
+  "separateMotion": {
+    "file": "growth.webm",
+    "frames": 101,
+    "fps": 10,
+    "checkedSampleAges": [
+      0,
+      0.5,
+      1
+    ],
+    "note": "真实Flutter网格逐帧渲染后编码，不含静帧/转屏切换；编码帧率不代表运行帧率"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "images": [
+    {
+      "src": "../../../../assets/source/magic_tree/references/树形正视图.png",
+      "loaded": true
+    },
+    {
+      "src": "young.png",
+      "loaded": true
+    },
+    {
+      "src": "middle.png",
+      "loaded": true
+    },
+    {
+      "src": "mature.png",
+      "loaded": true
+    },
+    {
+      "src": "phone.png",
+      "loaded": true
+    },
+    {
+      "src": "plaque-close.png",
+      "loaded": true
+    }
+  ],
+  "linksChecked": 6,
+  "viewport": [
+    430,
+    932
+  ],
+  "horizontalOverflow": false,
+  "duration": 10.1,
+  "seeks": [
+    2.5,
+    5,
+    7.5
+  ],
+  "sourceHashesMatch": true,
+  "scope": "审查页及媒体文件核对，不代表整体视觉通过"
+}

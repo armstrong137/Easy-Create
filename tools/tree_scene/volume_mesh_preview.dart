@@ -454,7 +454,9 @@ class _Mesh {
             List.generate(
               3,
               (axis) =>
-                  center[axis] + (grown[index][axis] - center[axis]) * .79,
+                  center[axis] +
+                  (grown[index][axis] - center[axis]) *
+                      ((definition['inset'] as num?)?.toDouble() ?? .79),
             ),
           ).point,
       ];
@@ -464,6 +466,16 @@ class _Mesh {
           definition['title'] as String,
           definition['unroll'] == true ? 1 : opacity,
           definition['unroll'] == true ? opacity : 1,
+          (definition['aperture'] as List?)?.map((entry) {
+            final uv = entry as List;
+            final u = (uv[0] as num).toDouble();
+            final v = (uv[1] as num).toDouble();
+            return Offset.lerp(
+              Offset.lerp(points[0], points[1], u)!,
+              Offset.lerp(points[3], points[2], u)!,
+              v,
+            )!;
+          }).toList(),
         ),
       );
     }
@@ -530,8 +542,9 @@ class _Leaf {
 }
 
 class _Plaque {
-  _Plaque(this.corners, this.title, this.opacity, this.reveal);
+  _Plaque(this.corners, this.title, this.opacity, this.reveal, this.aperture);
   final List<Offset> corners;
+  final List<Offset>? aperture;
   final String title;
   final double opacity, reveal;
 }
@@ -769,13 +782,18 @@ class _Painter extends CustomPainter {
     }
     for (final plaque in frame.plaques) {
       canvas.save();
-      final paper = Path()
+      final reveal = Path()
         ..addPolygon([
           Offset.lerp(plaque.corners[3], plaque.corners[0], plaque.reveal)!,
           Offset.lerp(plaque.corners[2], plaque.corners[1], plaque.reveal)!,
           plaque.corners[2],
           plaque.corners[3],
         ], true);
+      // 新框沿实际源图开孔填纸，展开边界和文字仍取同帧框角；旧矩形路径保留。
+      final paper = plaque.aperture == null
+          ? reveal
+          : (Path()..addPolygon(plaque.aperture!, true));
+      if (plaque.aperture != null) canvas.clipPath(reveal);
       canvas.drawPath(
         paper,
         Paint()

@@ -10,12 +10,13 @@ import bpy
 import numpy as np
 
 ROOT=Path(__file__).resolve().parents[3]
-REFERENCE='--reference' in sys.argv
+REFERENCE2='--reference-round2' in sys.argv
+REFERENCE='--reference' in sys.argv or REFERENCE2
 ROUND2='--round2' in sys.argv
 WHOLE='--whole' in sys.argv or ROUND2 or REFERENCE
-OUT=ROOT/('build/qa/reference-crown-proof' if REFERENCE else 'build/qa/cage-whole-round2-proof' if ROUND2 else 'build/qa/cage-whole-proof' if WHOLE else 'build/qa/contour-cage-proof')
+OUT=ROOT/('build/qa/reference-crown-round2-proof' if REFERENCE2 else 'build/qa/reference-crown-proof' if REFERENCE else 'build/qa/cage-whole-round2-proof' if ROUND2 else 'build/qa/cage-whole-proof' if WHOLE else 'build/qa/contour-cage-proof')
 OUT.mkdir(parents=True,exist_ok=True)
-source=ROOT/'assets/source/magic_tree/textures_source'/('reference_wood_v1.png' if REFERENCE else 'continuous_wood_tips_v2.png' if WHOLE else 'continuous_wood_core_v1.png')
+source=ROOT/'assets/source/magic_tree/textures_source'/('reference_wood_v2.png' if REFERENCE2 else 'reference_wood_v1.png' if REFERENCE else 'continuous_wood_tips_v2.png' if WHOLE else 'continuous_wood_core_v1.png')
 bpy.ops.wm.read_factory_settings(use_empty=True)
 image=bpy.data.images.load(str(source));width,height=image.size
 pixels=np.empty(width*height*4,dtype=np.float32);image.pixels.foreach_get(pixels)
@@ -65,6 +66,12 @@ if REFERENCE:
     inner_scales=[[.0007]*len(levels),[.0028]*len(levels),[.006]*len(levels)]
     outer_scales=[.00002,.0028,.006]
 
+if REFERENCE2:
+    heights[0]=[1.9,1.8,1.6,1.35,1.05,.75,.45,.22,.10,.025,-.025]
+    heights[1]=[5.8,5.5,4.9,4.2,3.45,2.7,1.9,1.0,.4,.12,-.08]
+    inner_scales[0]=[.00065]*8+[.00045,.00028,.00028]
+    outer_scales[0]=.00018
+
 def point_at(stage,x,y):
     distance=x-548;radius=float(np.interp(y,levels,radii))
     inside=float(np.interp(y,levels,inner_scales[stage]))
@@ -111,7 +118,7 @@ if WHOLE:
                 return [[sum(poses[s][j][k]*w for j,w in zip(triangle,weights)) for k in range(3)] for s in range(3)],triangle,weights
         raise RuntimeError(f'挂点没有对应的核心三角：{pixel}')
 
-    def append_patch(name,material,selection,base,anchor,scale,angle=0,middle=.55,early=False,paper=None,title=None):
+    def append_patch(name,material,selection,base,anchor,scale,angle=0,middle=.55,early=False,paper=None,title=None,aperture=None):
         anchors,triangle,weights=anchor_at(anchor)
         if (ROUND2 or REFERENCE) and not alpha[material][round(base[1]),round(base[0])]:
             raise RuntimeError(f'子件基点不在实体素材内：{name} {base}')
@@ -149,7 +156,7 @@ if WHOLE:
             for x,y in paper:
                 ids.append(len(frame_nodes[0]))
                 for stage in range(3):frame_nodes[stage].append(position(stage,x,y))
-            plaques.append({'corners':ids,'title':title or ('第九章' if material==2 else '第一节'),'birth':.18,'duration':.46,'unroll':True})
+            plaques.append({'corners':ids,'title':title or ('第九章' if material==2 else '第一节'),'birth':.18,'duration':.46,'unroll':True,**({'inset':1.0,'aperture':aperture} if aperture else {})})
 
     if REFERENCE:
         # 仅在设计点附近选实际实体像素；记录最终坐标，不能把提示词位置当真实端口。
@@ -168,18 +175,45 @@ if WHOLE:
             selection=labels==component
             base=opaque_near(selection,base)
             anchor=opaque_near(alpha[0],anchor)
-            append_patch(f'C{i+1}',1,selection,base,anchor,scale,middle=.70)
-        # 幼苗保留两组局部早生叶；使用同一局部图集，不切换阶段整树。
-        for i,(anchor,angle) in enumerate([((540,115),-.3),((525,340),.45)]):
-            selection=labels==10;base=opaque_near(selection,(897,1120))
-            append_patch(f'早生叶{i}',1,selection,base,opaque_near(alpha[0],anchor),.0014,angle,early=True)
-        for name,base,anchor,paper,title in [
-            ('左章牌',(710,725),(425,830),[(275,230),(420,230),(420,570),(275,570)],'第九章'),
-            ('右节牌',(1060,725),(670,830),[(1365,230),(1500,230),(1500,570),(1365,570)],'第一节')]:
+            append_patch(f'C{i+1}',1,selection,base,anchor,scale*(1.55 if REFERENCE2 else 1),middle=.82 if REFERENCE2 else .70)
+        if REFERENCE2:
+            early_parts=[(9,(370,1135),(420,220),.0018),(3,(880,345),(660,235),.0018),
+                (1,(776,350),(360,420),.0016),(6,(888,730),(770,420),.0016)]
+            for i,(component,base,anchor,scale) in enumerate(early_parts):
+                selection=labels==component
+                append_patch(f'早生叶{i}',1,selection,opaque_near(selection,base),opaque_near(alpha[0],anchor),scale,early=True)
+        else:
+            for i,(anchor,angle) in enumerate([((540,115),-.3),((525,340),.45)]):
+                selection=labels==10;base=opaque_near(selection,(897,1120))
+                append_patch(f'早生叶{i}',1,selection,base,opaque_near(alpha[0],anchor),.0014,angle,early=True)
+
+        def aperture_from_source(seed):
+            # 从真实闭合空窗取逐行边界；不编辑PNG，也不拿任意小矩形冒充整个开孔。
+            from collections import deque
+            queue=deque([seed]);seen={seed};lines={}
+            while queue:
+                x,y=queue.popleft()
+                if x in (0,alpha[2].shape[1]-1) or y in (0,alpha[2].shape[0]-1):
+                    raise RuntimeError('空窗未闭合，不能提取纸面轮廓')
+                lines.setdefault(y,[]).append(x)
+                for neighbor in [(x-1,y),(x+1,y),(x,y-1),(x,y+1)]:
+                    if neighbor not in seen and not alpha[2][neighbor[1],neighbor[0]]:
+                        seen.add(neighbor);queue.append(neighbor)
+            ys=sorted(lines)
+            outline=[(min(lines[y]),y) for y in ys]+[(max(lines[y])+1,y+1) for y in reversed(ys)]
+            xa=min(x for x,y in outline);xb=max(x for x,y in outline)
+            ya=min(y for x,y in outline);yb=max(y for x,y in outline)
+            return [(xa,ya),(xb,ya),(xb,yb),(xa,yb)],[[float((x-xa)/(xb-xa)),float((y-ya)/(yb-ya))] for x,y in outline]
+
+        for name,base,anchor,paper,title,seed in [
+            ('左章牌',(710,725),(425,830),[(275,230),(420,230),(420,570),(275,570)],'第九章',(319,399)),
+            ('右节牌',(1060,725),(670,830),[(1365,230),(1500,230),(1500,570),(1365,570)],'第一节',(1437,399))]:
             selection=alpha[2].copy()
             if base[0]<900:selection[:,887:]=False
             else:selection[:,:887]=False
-            append_patch(name,2,selection,opaque_near(selection,base),opaque_near(alpha[0],anchor),.0032,paper=paper,title=title)
+            aperture=None
+            if REFERENCE2:paper,aperture=aperture_from_source(seed)
+            append_patch(name,2,selection,opaque_near(selection,base),opaque_near(alpha[0],anchor),.0032,paper=paper,title=title,aperture=aperture)
     else:
         fan_bases={1:(585,560),2:(688,570),3:(375,1120),4:(987,1120)}
         placements=[(1,(140,565),.0037,-.15,.65),(2,(954,550),.0037,.10,.55),
@@ -256,9 +290,9 @@ if REFERENCE:
     left=min(p[0] for p in frame_points);right=max(p[0] for p in frame_points)
     bottom=min(p[2] for p in frame_points);top=max(p[2] for p in frame_points)
     meta.update({'extraTextures':['canopy.png','frame-left.png'],'textureStyles':['wood','leaf','frame'],
-        'juvenileContrast':.06,'nearSpan':[(right-left)*1.08,(top-bottom)*1.15],
+        'juvenileContrast':.22 if REFERENCE2 else .06,'nearSpan':[(right-left)*1.08,(top-bottom)*1.15],
         'nearOffset':[target[0]-(left+right)/2,(top+bottom)/2-target[2]],
-        'scope':'批准参考主导统一源稿完整首套，待实际四图短片整体审查'})
+        'scope':'参考主导完整第二套，本方案最后一次整体修改' if REFERENCE2 else '批准参考主导统一源稿完整首套，待实际四图短片整体审查'})
 (OUT/'mesh.bin').write_bytes(payload.tobytes())
 (OUT/'mesh.json').write_text(json.dumps(meta,ensure_ascii=False,indent=2),encoding='utf-8')
 shutil.copyfile(source,OUT/'baked-bark.png')
@@ -272,7 +306,7 @@ report={'script_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
 if WHOLE:
     report.update({'parts':parts,'foliageParts':foliage_count,'plaques':2,'sourceImages':[{'path':str(p.relative_to(ROOT)),
         'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in [source]+extras],
-        'visualAcceptance':'参考主导完整首套，待四图短片审查' if REFERENCE else '第二套完整候选，待实际四图短片审查' if ROUND2 else '新完整方案第一套，待实际四图短片审查'})
+        'visualAcceptance':'参考主导完整第二套，待四图短片整体审查' if REFERENCE2 else '参考主导完整首套，待四图短片审查' if REFERENCE else '第二套完整候选，待实际四图短片审查' if ROUND2 else '新完整方案第一套，待实际四图短片审查'})
 (OUT/'result.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
 bpy.ops.wm.save_as_mainfile(filepath=str(OUT/'editable-cage.blend'))
 print(json.dumps(report['mesh_export']))

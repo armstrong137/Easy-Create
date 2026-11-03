@@ -1,0 +1,38 @@
+{
+  "success": true,
+  "dartSource": "bf97e64e182283fb85b980338802d1d82ffa92394d43e996643d06dbcf08edec",
+  "errors": [],
+  "states": [
+    {
+      "age": 0,
+      "vertices": 4818,
+      "visibleTriangles": 6854,
+      "computeMs": 6.1,
+      "referenceError": 1.191046496984427e-7,
+      "leaves": 0,
+      "plaques": 0,
+      "foliageParts": 16
+    },
+    {
+      "age": 0.5,
+      "vertices": 4818,
+      "visibleTriangles": 6854,
+      "computeMs": 6.9,
+      "referenceError": 2.380190187167841e-7,
+      "leaves": 0,
+      "plaques": 2,
+      "foliageParts": 16
+    },
+    {
+      "age": 1,
+      "vertices": 4818,
+      "visibleTriangles": 6854,
+      "computeMs": 5.5,
+      "referenceError": 4.7516473600239806e-7,
+      "leaves": 0,
+      "plaques": 2,
+      "foliageParts": 16
+    }
+  ],
+  "scope": "同一新Dart构建、无aperture/inset字段旧纸面路径实际浏览器回归；与新样件并行，不用于性能验收"
+}

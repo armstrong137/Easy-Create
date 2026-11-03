@@ -26,6 +26,8 @@
 ## 二、软件开发架构
 
 ### 技术栈
+2026-11-03参考主导第二套完整样件视觉拒绝，停止本套第三轮调参。--reference-round2/--reference-crown-round2使用圆钝根趾v2、九冠簇搭接和四早生叶；Dart实验入口可选aperture/inset从实际开孔同帧填纸，缺省保留旧纸面路径。audit-reference-apertures.mjs以真实子网格UV反解核对实际PNG开孔，旧内缩反例被拒绝。成熟及纸面改善，幼苗碎枝/古木压细仍未过；下一项局部验证年龄驱动的真实分枝生长模型，尚未选型通过。七套两轮淘汰，A2未过，正式页面不引用。见2026-11-03-参考主导第二轮拒绝与幼态生长复盘.md。
+
 2026-11-03 contour_cage_proof.py --reference及采集--reference-crown把新统一源稿制作成独立完整首套，共三张纹理、九冠簇/两早生叶/两枝牌，左右共用图集。母子基点按实际不透明像素、核心UV三角读取；旧默认/round2导出哈希回归不变。首套四图短片因幼苗裸杆、冠簇分离、根尖和小纸面视觉拒绝，剩一次整体修改；正式页面不引用，A2未通过，见2026-11-03-参考主导整树首轮审查.md。
 
 2026-11-03参考主导源资产已预制作：guides/reference_composition_v1.json可编辑七组枝向和九冠层体块，render-reference-composition.mjs生成独立SVG/PNG；reference_wood/canopy/frames_v1为内置image_gen源稿，无本地像素编辑。inspect-illustrated-atlas.mjs增加三种reference参数，audit-reference-sources.mjs核对实际哈希、连通区及窗内alpha。冠簇不严格九等分，窗内仍有7像素alpha=1；源稿未验收为运行时资产，未有新完整候选。正式页面不引用，A2未通过。见2026-11-03-参考主导构图与统一源资产.md。
