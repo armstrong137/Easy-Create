@@ -4,9 +4,10 @@ import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const source = await readFile('assets/source/magic_tree/guides/ancient_tree_form_v1.svg', 'utf8');
-const output = resolve('build/qa/authored-bough-composition');
+const output = resolve('build/qa/authored-unified-material');
 const boughs = await readFile('assets/source/magic_tree/textures_source/canopy_boughs_v1.png');
 await mkdir(output, { recursive: true });
+const bark = await readFile('assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png');
 const browser = await chromium.launch({
   executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
   headless: true,
@@ -14,74 +15,42 @@ const browser = await chromium.launch({
 try {
   const page = await browser.newPage({ viewport: { width: 800, height: 900 } });
   await page.setContent('<body style="margin:0">' + source + '</body>');
-  await page.evaluate(boughSource => {
+  await page.evaluate(([boughSource, barkSource]) => {
     const svg = document.querySelector('svg');
     const wood = Object.fromEntries([...svg.querySelectorAll('#wood-silhouette path')].map(path => [path.id, path]));
     const make = name => document.createElementNS(svg.namespaceURI, name);
-    let seed = 913;
-    const random = () => {
-      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-      return seed / 4294967296;
-    };
-    const dressCanopy = (selector, back, anchors) => [...svg.querySelectorAll(selector)].map((path, index) => {
-      const box = path.getBBox();
-      const group = make('g');
-      path.replaceWith(group);
-      group.append(path);
-      const colors = back ? ['#45543a', '#596745', '#75845a'] : ['#354728', '#4a5c2e', '#647739', '#83934c'];
-      const lobes = [[.19,.60,.19,.27],[.35,.38,.21,.31],[.55,.58,.19,.27],
-        [.68,.34,.19,.26],[.84,.56,.16,.24]];
-      const [ax, ay] = anchors[index];
-      for (const [u, v] of lobes) {
-        const x = box.x + u * box.width, y = box.y + v * box.height;
-        const twig = make('path');
-        twig.setAttribute('d', `M${ax} ${ay}Q${(ax + x) / 2} ${ay - 9} ${x} ${y}`);
-        twig.setAttribute('fill', 'none');
-        twig.setAttribute('stroke', back ? '#626045' : '#544631');
-        twig.setAttribute('stroke-width', back ? '2' : '3.2');
-        group.append(twig);
-      }
-      for (let sample = 0; sample < 1200; sample++) {
-        const x = box.x + random() * box.width;
-        const y = box.y + random() * box.height;
-        if (!path.isPointInFill(new DOMPoint(x, y))) continue;
-        const u = (x - box.x) / box.width, v = (y - box.y) / box.height;
-        if (!lobes.some(([cx, cy, rx, ry]) => ((u-cx)/rx)**2 + ((v-cy)/ry)**2 < .78 + random()*.22)) continue;
-        const angle = random() * 170 - 85;
-        const width = 3.2 + random() * 4.2;
-        const height = 6 + random() * 7;
-        const leaf = make('path');
-        leaf.setAttribute('d', `M0 0Q${width} ${-height * .55} 0 ${-height}Q${-width} ${-height * .55} 0 0Z`);
-        leaf.setAttribute('transform', `translate(${x} ${y}) rotate(${angle})`);
-        leaf.setAttribute('fill', colors[Math.floor(random() * colors.length)]);
-        leaf.setAttribute('stroke', 'none');
-        leaf.setAttribute('opacity', back ? '.78' : '.93');
-        group.append(leaf);
-      }
-      path.remove();
-      return group;
-    });
-    const front = dressCanopy('#front-canopy path', false, [[401,214],[237,268],[392,329],[166,424],[663,378]]);
-    const rear = dressCanopy('#rear-canopy path', true, [[224,355],[597,314],[515,510]]);
-    // 分别用透明图集的左右冠枝，源图枝基对齐发育网格端点。
-    for (const [index, x, width, sourceBase, target] of [
-      [3, 0, 620, [590, 565], [166, 424]],
-      [4, 665, 586, [689, 574], [663, 378]],
+    const front = [...svg.querySelectorAll('#front-canopy path')];
+    const rear = [...svg.querySelectorAll('#rear-canopy path')];
+    const left = [0, 110, 620, 490, 590, 565];
+    const right = [665, 110, 586, 490, 689, 574];
+    const arch = [0, 730, 776, 420, 374, 1134];
+    const sprig = [780, 735, 469, 420, 984, 1136];
+    // 同一图集的局部枝叶沿各自枝基对齐，后冠降低对比度。
+    for (const [layer, entries] of [
+      [front, [[arch, 401, 214, .32], [left, 237, 268, .20], [sprig, 392, 329, .29],
+        [left, 166, 424, .24], [right, 663, 378, .24]]],
+      [rear, [[left, 280, 330, .21], [right, 585, 450, .19], [arch, 515, 510, .22]]],
     ]) {
-      const scale = .24;
-      const view = make('svg');
-      view.setAttribute('viewBox', `${x} 110 ${width} 490`);
-      view.setAttribute('x', target[0] + (x - sourceBase[0]) * scale);
-      view.setAttribute('y', target[1] + (110 - sourceBase[1]) * scale);
-      view.setAttribute('width', width * scale);
-      view.setAttribute('height', 490 * scale);
-      view.setAttribute('overflow', 'hidden');
-      const sprite = make('image');
-      sprite.setAttribute('href', boughSource);
-      sprite.setAttribute('width', '1254');
-      sprite.setAttribute('height', '1254');
-      view.append(sprite);
-      front[index].replaceChildren(view);
+      entries.forEach(([source, tx, ty, scale], index) => {
+        const [x, y, width, height, ax, ay] = source;
+        const group = make('g');
+        const view = make('svg');
+        view.setAttribute('viewBox', [x, y, width, height].join(' '));
+        view.setAttribute('x', tx + (x - ax) * scale);
+        view.setAttribute('y', ty + (y - ay) * scale);
+        view.setAttribute('width', width * scale);
+        view.setAttribute('height', height * scale);
+        view.setAttribute('overflow', 'hidden');
+        if (layer === rear) view.setAttribute('opacity', '.75');
+        const sprite = make('image');
+        sprite.setAttribute('href', boughSource);
+        sprite.setAttribute('width', '1254');
+        sprite.setAttribute('height', '1254');
+        view.append(sprite);
+        group.append(view);
+        layer[index].replaceWith(group);
+        layer[index] = group;
+      });
     }
     const plaque = svg.querySelector('#plaque');
     plaque.querySelector('path').remove();
@@ -108,7 +77,13 @@ try {
     volumeRidges.setAttribute('fill', 'none');
     volumeRidges.setAttribute('stroke-linecap', 'round');
     volumeRidges.setAttribute('stroke-linejoin', 'round');
-    ridgeGroup.before(volumeRidges);
+    const barkLayer = make('image');
+    barkLayer.setAttribute('href', barkSource);
+    barkLayer.setAttribute('width', '800');
+    barkLayer.setAttribute('height', '900');
+    barkLayer.setAttribute('preserveAspectRatio', 'none');
+    barkLayer.setAttribute('clip-path', 'url(#growing-wood-clip)');
+    ridgeGroup.before(barkLayer, volumeRidges);
     const smooth = value => {
       const t = Math.max(0, Math.min(1, value));
       return t * t * (3 - 2 * t);
@@ -214,8 +189,8 @@ try {
       [front[2], [392, 329], 'trunk', .22, .27, .18],
       [front[3], [166, 424], 'left-limb', .25, .38, .10],
       [front[4], [663, 378], 'right-limb', .25, .38, .22],
-      [rear[0], [224, 355], 'upper-fork', .17, .26, .24],
-      [rear[1], [597, 314], 'right-limb', .18, .24, .28],
+      [rear[0], [280, 330], 'upper-fork', .17, .26, .24],
+      [rear[1], [585, 450], 'right-limb', .18, .24, .28],
       [rear[2], [515, 510], 'right-limb', .12, .20, .30],
     ];
     window.renderGrowth = (age, near = false) => {
@@ -268,6 +243,7 @@ try {
       const woodOutline = `M${outline.map(index => vertices[index]).join('L')}Z`;
       wood.trunk.setAttribute('d', woodOutline);
       clipPath.setAttribute('d', woodOutline);
+      barkLayer.setAttribute('opacity', String(.16 + .37 * growth));
       volumeRidges.replaceChildren(...woodAxes.flatMap(([axis, width]) =>
         [['#342b1d', .37, 1.65, 2], ['#d3aa6c', .22, 1.05, -3]].map(([color, opacity, scale, offset]) => {
           const ridge = make('path');
@@ -325,7 +301,7 @@ try {
       return { vertices: vertices.length, triangles: faces.length, sharedEdges: limbs.length + 1,
         plaqueEdges: plaqueBase.length - 1, minimumArea };
     };
-  }, `data:image/png;base64,${boughs.toString('base64')}`);
+  }, [boughs, bark].map(bytes => `data:image/png;base64,${bytes.toString('base64')}`));
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   for (const [name, age, near] of [['young', 0], ['middle', .5], ['mature', 1], ['plaque-close', 1, true]]) {
