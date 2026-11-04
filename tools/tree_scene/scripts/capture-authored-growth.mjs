@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const source = await readFile('assets/source/magic_tree/guides/ancient_tree_form_v1.svg', 'utf8');
-const output = resolve('build/qa/authored-crown-interior');
+const output = resolve('build/qa/authored-bough-flex');
 const boughs = await readFile('assets/source/magic_tree/textures_source/canopy_boughs_v1.png');
 await mkdir(output, { recursive: true });
 const bark = await readFile('assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png');
@@ -15,7 +15,7 @@ const browser = await chromium.launch({
 try {
   const page = await browser.newPage({ viewport: { width: 800, height: 900 } });
   await page.setContent('<body style="margin:0">' + source + '</body>');
-  await page.evaluate(([boughSource, barkSource]) => {
+  await page.evaluate(async ([boughSource, barkSource]) => {
     const svg = document.querySelector('svg');
     const wood = Object.fromEntries([...svg.querySelectorAll('#wood-silhouette path')].map(path => [path.id, path]));
     const make = name => document.createElementNS(svg.namespaceURI, name);
@@ -25,6 +25,10 @@ try {
     const right = [665, 110, 586, 490, 689, 574];
     const arch = [0, 730, 776, 420, 374, 1134];
     const sprig = [780, 735, 469, 420, 984, 1136];
+    const atlas = new Image();
+    atlas.src = boughSource;
+    await atlas.decode();
+    const flexibleBoughs = new Map();
     // 同一图集的局部枝叶沿各自枝基对齐，后冠降低对比度。
     for (const [layer, entries] of [
       [front, [[arch, 401, 214, .32], [left, 237, 268, .20], [sprig, 392, 329, .29],
@@ -48,6 +52,30 @@ try {
         sprite.setAttribute('height', '1254');
         view.append(sprite);
         group.append(view);
+        if (layer === front && index >= 3) {
+          const host = make('foreignObject');
+          const canvas = document.createElement('canvas');
+          const padding = 64;
+          canvas.width = width + 2 * padding;
+          canvas.height = height;
+          host.setAttribute('x', tx + (x - ax - padding) * scale);
+          host.setAttribute('y', ty + (y - ay) * scale);
+          host.setAttribute('width', canvas.width * scale);
+          host.setAttribute('height', height * scale);
+          canvas.style.cssText = 'display:block;width:100%;height:100%';
+          host.append(canvas);
+          group.replaceChildren(host);
+          flexibleBoughs.set(index === 3 ? 'left-limb' : 'right-limb', bend => {
+            const context = canvas.getContext('2d');
+            context.clearRect(0, 0, canvas.width, height);
+            // 位移在枝基处为零，向枝冠逐步增大。
+            for (let row = 0; row < height; row++) {
+              const distance = (y + row - ay) / height;
+              context.drawImage(atlas, x, y + row, width, 1,
+                padding + bend * distance * distance, row, width, 1);
+            }
+          });
+        }
         layer[index].replaceWith(group);
         layer[index] = group;
       });
@@ -208,6 +236,7 @@ try {
         const edge = side > 0 ? columns - 1 : 0;
         const [a, b] = [vertices[row * columns + edge], vertices[(row + 1) * columns + edge]];
         const [dx, dy] = old.map((value, i) => young[i] + (value - young[i]) * growth);
+        flexibleBoughs.get(id)?.(side * 130 * (Math.atan2(-dy, dx) - Math.atan2(-old[1], old[0])));
         const axis = [[(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]];
         const upper = [a], lower = [b];
         for (let step = 1; step <= 4; step++) {
