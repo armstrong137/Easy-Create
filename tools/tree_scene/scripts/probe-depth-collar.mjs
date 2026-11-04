@@ -1,7 +1,9 @@
 import { chromium } from 'playwright';
 import { mkdir, readFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { resolve } from 'node:path';
 
-const output = 'build/qa/depth-collar-canopy';
+const output = 'build/qa/depth-collar-first-review';
 const bark = await readFile('assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png');
 const canopy = await readFile('assets/source/magic_tree/textures_source/canopy_boughs_v1.png');
 await mkdir(output, { recursive: true });
@@ -10,8 +12,8 @@ const browser = await chromium.launch({
   headless: true,
 });
 try {
-  const page = await browser.newPage({ viewport: { width: 1380, height: 480 } });
-  await page.setContent('<body style="margin:0"><canvas width="1380" height="480"></canvas>');
+  const page = await browser.newPage({ viewport: { width: 460, height: 480 } });
+  await page.setContent('<body style="margin:0"><canvas width="460" height="480"></canvas>');
   await page.evaluate(async ([barkSource, canopySource]) => {
     const image = new Image();
     image.src = barkSource;
@@ -24,26 +26,27 @@ try {
     const texels = texture.getImageData(0, 0, 256, 256).data;
     const grain = (u, v) => texels[4 * (((Math.floor(v * 96) & 255) << 8) + (Math.floor(u * 128) & 255))] / 255;
     const ctx = document.querySelector('canvas').getContext('2d');
-    ctx.fillStyle = '#f6efdf';
-    const width = ctx.canvas.width;
-    ctx.fillRect(0, 0, width, 480);
-    const buffer = ctx.getImageData(0, 0, width, 480);
-    const ground = 400;
-    const captions = [];
-    const crowns = [];
-    const ages = [0, .5, 1];
     const smooth = value => {
       const t = Math.max(0, Math.min(1, value));
       return t * t * (3 - 2 * t);
     };
-    for (const [index, age] of ages.entries()) {
-      const center = 230 + index * 460;
+    window.renderTree = (age, near = false) => {
+      const width = ctx.canvas.width;
+      const scale = near ? 145 : 67;
+      const center = near ? 25 : 230;
+      const ground = near ? 605 : 400;
+      const crowns = [];
+      const captions = [];
+      ctx.fillStyle = '#f6efdf';
+      ctx.fillRect(0, 0, width, 480);
+      const buffer = ctx.getImageData(0, 0, width, 480);
       const components = [];
       // 每件冠枝定位到其发育管体末端，同一投影用于木体和冠枝。
       const crown = ([x, y, z], [sx, sy, width, height, ax, ay], scale) => {
-        const size = scale * (.37 + .63 * age);
-        crowns.push([sx, sy, width, height, center + x * 67 - (ax - sx) * size,
-          ground - (z + y * .22) * 67 - (ay - sy) * size, width * size, height * size]);
+        const size = scale * (.37 + .63 * age) * (near ? 145 / 67 : 1);
+        const projection = near ? 145 : 67;
+        crowns.push([sx, sy, width, height, center + x * projection - (ax - sx) * size,
+          ground - (z + y * .22) * projection - (ay - sy) * size, width * size, height * size]);
       };
       const leftLeaves = [0,110,620,490,590,565];
       const rightLeaves = [665,110,586,490,689,574];
@@ -109,10 +112,11 @@ try {
         tube([[0,0,height,.19*thickness], [side*reach*.46,depth*.55,height+.19,.13*thickness], tip]);
         crown(tip, leaf, .127);
       }
-      if (paperReveal === 1) captions.push([center + plaque[0]*67, ground - (plaque[2] + (plaque[1] - .12*frameSize)*.22)*67]);
-      for (let py = 54; py < 440; py++) for (let px = center - 155; px < center + 165; px++) {
-        const x = (px + .5 - center) / 67;
-        const screenZ = (ground - py - .5) / 67;
+      if (paperReveal === 1) captions.push([center + plaque[0]*scale, ground - (plaque[2] + (plaque[1] - .12*frameSize)*.22)*scale]);
+      for (let py = near ? 0 : 54; py < (near ? 480 : 440); py++) {
+        for (let px = near ? 0 : center - 155; px < (near ? width : center + 165); px++) {
+        const x = (px + .5 - center) / scale;
+        const screenZ = (ground - py - .5) / scale;
         for (let y = -2.4, step = 0; y < 2.3 && step < 90; step++) {
           const z = screenZ - y * .22;
           const distance = field(x, y, z);
@@ -140,20 +144,36 @@ try {
           break;
         }
       }
-    }
-    ctx.putImageData(buffer, 0, 0);
-    for (const placement of crowns) ctx.drawImage(leaves, ...placement);
-    ctx.font = '18px Microsoft YaHei';
-    ctx.fillStyle = '#493824';
-    ages.forEach((age, index) => ctx.fillText(`生长姿态 ${age.toFixed(2)}`, 24 + 460 * index, 36));
-    ctx.font = '9px Microsoft YaHei';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    for (const [x, y] of captions) {
-      ['第', '一', '节'].forEach((character, i) => ctx.fillText(character, x, y + (i - 1) * 10));
-    }
+      }
+      ctx.putImageData(buffer, 0, 0);
+      for (const placement of crowns) ctx.drawImage(leaves, ...placement);
+      ctx.font = '15px Microsoft YaHei';
+      ctx.fillStyle = '#493824';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(`树龄 ${age.toFixed(2)} · ${(age*5).toFixed(1)} 秒`, 18, 28);
+      ctx.font = `${near ? 18 : 9}px Microsoft YaHei`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (const [x, y] of captions) {
+        ['第', '一', '节'].forEach((character, i) => ctx.fillText(character, x, y + (i - 1) * scale * .15));
+      }
+    };
   }, [bark, canopy].map(bytes => `data:image/png;base64,${bytes.toString('base64')}`));
-  await page.screenshot({ path: `${output}/comparison.png` });
+  for (const [name, age, near] of [['young', 0], ['middle', .5], ['mature', 1], ['plaque-close', 1, true]]) {
+    await page.evaluate(([age, near]) => window.renderTree(age, near), [age, near]);
+    await page.screenshot({ path: `${output}/${name}.png` });
+  }
+  const frames = [];
+  for (let frame = 0; frame <= 40; frame++) {
+    await page.evaluate(age => window.renderTree(age), frame / 40);
+    frames.push(await page.screenshot({ type: 'jpeg', quality: 90 }));
+  }
+  const ffmpeg = resolve(process.env.LOCALAPPDATA, 'ms-playwright/ffmpeg-1011/ffmpeg-win64.exe');
+  const video = spawnSync(ffmpeg, ['-y', '-f', 'image2pipe', '-r', '8', '-c:v', 'mjpeg', '-i', 'pipe:0',
+    '-c:v', 'libvpx', '-pix_fmt', 'yuv420p', resolve(output, 'growth.webm')],
+  { input: Buffer.concat(frames), encoding: 'utf8' });
+  if (video.status !== 0) throw Error(video.error?.message ?? video.stderr);
 } finally {
   await browser.close();
 }
