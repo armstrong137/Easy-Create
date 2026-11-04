@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 import { mkdir, readFile } from 'node:fs/promises';
 
-const output = 'build/qa/bough-root-collar';
+const output = 'build/qa/bough-grain-transition';
 await mkdir(output, { recursive: true });
 const asset = await readFile('assets/source/magic_tree/textures_source/canopy_boughs_v1.png');
 const bark = await readFile('assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png');
@@ -24,6 +24,16 @@ try {
     ctx.font = '18px Microsoft YaHei';
     const crop = { x: 665, y: 110, width: 586, height: 490 };
     const anchor = { x: 24, y: 464 };
+    const transition = new OffscreenCanvas(40, 52);
+    const grain = transition.getContext('2d');
+    // 只取枝基内部的木纹，沿承托方向延展后渐隐。
+    grain.drawImage(image, 696, 547, 11, 10, 0, 0, 40, 52);
+    grain.globalCompositeOperation = 'destination-in';
+    const fade = grain.createLinearGradient(0, 0, 0, 52);
+    fade.addColorStop(0, '#fff');
+    fade.addColorStop(1, '#fff0');
+    grain.fillStyle = fade;
+    grain.fillRect(0, 0, 40, 52);
     for (const [index, bend] of [0, -54, 54].entries()) {
       const jointX = 84 + index * 300, jointY = 330;
       const scale = .35;
@@ -51,6 +61,12 @@ try {
       ctx.clip(surface);
       ctx.globalAlpha = .39;
       ctx.drawImage(barkImage, -70, -12, 98, 110);
+      ctx.save();
+      ctx.translate(3, -3);
+      ctx.rotate(.48);
+      ctx.globalAlpha = .55;
+      ctx.drawImage(transition, -12, 0, 22, 36);
+      ctx.restore();
       ctx.strokeStyle = '#bc9b6b';
       ctx.globalAlpha = .32;
       ctx.lineWidth = 1.2;
@@ -66,6 +82,8 @@ try {
       }
       ctx.fillStyle = '#493824';
       ctx.fillText(['原形', '向左弯', '向右弯'][index], 22 + index * 300, 42);
+      ctx.drawImage(ctx.canvas, jointX - 18, jointY - 18, 43, 45,
+        106 + index * 300, 58, 86, 90);
     }
   }, [asset, bark].map(bytes => `data:image/png;base64,${bytes.toString('base64')}`));
   await page.screenshot({ path: `${output}/comparison.png` });
