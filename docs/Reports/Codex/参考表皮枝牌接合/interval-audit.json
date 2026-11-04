@@ -1,0 +1,42 @@
+{
+  "success": true,
+  "meshSha256": "a9d287c294a7a9effd99d059cb03d1d7bb1771db18a67b636e01c881a82c84e1",
+  "metadataSha256": "64f996c66862e8b5d6c4a2c27e1a02e9b82c2867693ed0b735a57648ab80faa9",
+  "intervals": [
+    {
+      "from": 0,
+      "to": 0.2,
+      "triangles": 6816,
+      "minimumSignedArea": 1.4243262569380022e-7,
+      "minimumAreaAfterRoundingBound": 1.4041290413047134e-7,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.2,
+      "to": 0.45,
+      "triangles": 6816,
+      "minimumSignedArea": 7.448022358857997e-7,
+      "minimumAreaAfterRoundingBound": 7.401908217730124e-7,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.45,
+      "to": 0.7,
+      "triangles": 6816,
+      "minimumSignedArea": 0.0006656691436148776,
+      "minimumAreaAfterRoundingBound": 0.0006654898995560643,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.7,
+      "to": 1,
+      "triangles": 6816,
+      "minimumSignedArea": 0.0026028948967393717,
+      "minimumAreaAfterRoundingBound": 0.0026026443001769197,
+      "unsafeTriangles": 0
+    }
+  ],
+  "coordinateRoundingBound": 8.553266525268554e-7,
+  "candidateScope": "参考表皮与实体枝牌的局部接合验证",
+  "scope": "X-Z顶点姿态的线性插值；smoothstep只重参数化[0,1]，二次面积式覆盖整个区间。保守Float32坐标误差界不代表GPU逐像素、自然造型、挂点正确或整树业务验收。"
+}

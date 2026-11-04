@@ -94,6 +94,55 @@ const attachments = Object.entries(junctions.attachments).map(([name, [x, y]]) =
   }
   throw Error(`挂点缺少对应三角形：${name}`);
 });
+// 复用已验证开孔的木框局部网格。先扣除旧母枝位置，再接入当前表皮。
+const donor = 'build/qa/development-tree-round2-proof';
+const donorMeta = JSON.parse(await readFile(`${donor}/mesh.json`));
+const donorReport = JSON.parse(await readFile(`${donor}/result.json`));
+const donorBytes = await readFile(`${donor}/mesh.bin`);
+const mature = donorMeta.sections[donorMeta.vertexPoseSections.at(-1)];
+const readPosition = index => [0, 1, 2].map(axis =>
+  donorBytes.readFloatLE(mature.offset + 4 * (index * 3 + axis)));
+const triangleTextures = Array(corners.length / 9).fill(0);
+const frameNodes = ages.map(() => [[0, 0, 0], [0, 0, 5.75]]);
+const plaques = [];
+const framePatches = donorReport.patches.filter(patch => patch.material === 2);
+for (const [i, name] of ['左侧牌候选挂点', '右侧牌候选挂点'].entries()) {
+  const attachment = attachments.find(point => point.name === name);
+  const patch = framePatches[i];
+  const original = readPosition(patch.anchorVertex);
+  const first = poses[0].length;
+  const [start, end] = patch.vertexRange;
+  function place(point, frame) {
+    const t = Math.max(0, Math.min(1, (ages[frame] - .18) / .55));
+    const growth = .003 + .997 * t * t * (3 - 2 * t);
+    return point.map((value, axis) =>
+      attachment.frames[frame].position[axis] +
+      (value - original[axis]) * (axis === 1 ? 1 : growth));
+  }
+  for (let index = start; index < end; index++) {
+    const point = readPosition(index);
+    poses.forEach((pose, frame) => pose.push(place(point, frame)));
+  }
+  const block = donorMeta.sections.corners;
+  for (let offset = 0; offset < block.length; offset += 9) {
+    if (donorMeta.triangleTextures[offset / 9] !== 2) continue;
+    const triangle = [0, 3, 6].map(delta =>
+      donorBytes.readFloatLE(block.offset + (offset + delta) * 4));
+    if (triangle.some(index => index < start || index >= end)) continue;
+    triangle.forEach((index, corner) => {
+      const uvOffset = block.offset + (offset + corner * 3 + 1) * 4;
+      corners.push(first + index - start, donorBytes.readFloatLE(uvOffset), donorBytes.readFloatLE(uvOffset + 4));
+    });
+    triangleTextures.push(1);
+  }
+  const definition = donorMeta.plaques[i];
+  const paperCorners = definition.corners.map(index => {
+    const next = frameNodes[0].length;
+    frameNodes.forEach((nodes, frame) => nodes.push(place(donorMeta.nodes[index], frame)));
+    return next;
+  });
+  plaques.push({ ...definition, corners: paperCorners });
+}
 const sections = {};
 const chunks = [];
 let byteLength = 0;
@@ -104,27 +153,30 @@ function section(name, values) {
   byteLength += buffer.length;
   chunks.push(buffer);
 }
-section('normals', pixels.flatMap(() => [0, -1, 0]));
+section('normals', poses[0].flatMap(() => [0, -1, 0]));
 section('corners', corners);
 poses.forEach((pose, i) => section(`positions${i}`, pose.flat()));
-const nodes = [[0, 0, 0], [0, 0, 5.75]];
+const nodes = frameNodes.at(-1);
 const metadata = {
-  format: '源图轮廓局部表皮-v1', vertexCount: pixels.length, triangleCount: corners.length / 9,
+  format: '参考表皮枝牌接合-v1', vertexCount: poses[0].length, triangleCount: corners.length / 9,
   sections, byteLength, nodes, edges: [[0, 1]],
-  poseFrames: ages.map(age => ({ age, nodes, radial: [1] })),
+  poseFrames: ages.map((age, frame) => ({ age, nodes: frameNodes[frame], radial: [1] })),
   vertexPoseSections: ages.map((_, i) => `positions${i}`),
   samples: ages.map((age, i) => ({ age, vertices: poses[i].map((position, index) => ({ index, position })) })),
   camera: { target: [0, 0, 2.85], right: [1, 0, 0], up: [0, 0, 1], back: [0, -1, 0], scale: 9.8 },
-  unlitTexture: true, textureStyles: ['referenceWood'], juvenileContrast: .24,
-  groundShadow: false, nearOffset: [0, -1.8], nearSpan: [6, 3],
-  scope: '木体下部源纹与空隙的局部形变验证',
+  unlitTexture: true, textureStyles: ['referenceWood', 'frame'], juvenileContrast: .24,
+  extraTextures: ['frames.png'], triangleTextures, plaques,
+  groundShadow: false, nearOffset: [0, .25], nearSpan: [5, 3.6],
+  scope: '参考表皮与实体枝牌的局部接合验证',
 };
 await writeFile(`${out}/mesh.bin`, Buffer.concat(chunks));
 await writeFile(`${out}/mesh.json`, JSON.stringify(metadata));
 await copyFile(source, `${out}/baked-bark.png`);
+await copyFile(`${donor}/frames.png`, `${out}/frames.png`);
 await writeFile(`${out}/attachments.json`, JSON.stringify(attachments, null, 2));
 await writeFile(`${out}/result.json`, JSON.stringify({
   script_sha256: hash(await readFile(new URL(import.meta.url))), source_sha256: guide.sha256,
+  frame_donor_sha256: hash(donorBytes),
   mesh_export: { vertices: metadata.vertexCount, triangles: metadata.triangleCount, bytes: byteLength },
 }, null, 2));
 console.log(metadata.vertexCount, '顶点', metadata.triangleCount, '三角形');
