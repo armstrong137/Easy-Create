@@ -1,0 +1,42 @@
+{
+  "success": true,
+  "meshSha256": "10b9b79f8700fb3d5e7b80d1c7beba23634a1f48190cc36a080c245518750dd2",
+  "metadataSha256": "42d84185e4931ccfdf0a6dac9c49e2846bfd4ab01cf80d2588a04d1d3f69cca6",
+  "intervals": [
+    {
+      "from": 0,
+      "to": 0.2,
+      "triangles": 6506,
+      "minimumSignedArea": 0.00004492595326155424,
+      "minimumAreaAfterRoundingBound": 0.00004477071095941199,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.2,
+      "to": 0.45,
+      "triangles": 6506,
+      "minimumSignedArea": 0.000054626115343126,
+      "minimumAreaAfterRoundingBound": 0.00005446839167227324,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.45,
+      "to": 0.7,
+      "triangles": 6506,
+      "minimumSignedArea": 0.0006656664619413277,
+      "minimumAreaAfterRoundingBound": 0.0006654872179844772,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.7,
+      "to": 1,
+      "triangles": 6506,
+      "minimumSignedArea": 0.0025708450324657406,
+      "minimumAreaAfterRoundingBound": 0.002570509474617637,
+      "unsafeTriangles": 0
+    }
+  ],
+  "coordinateRoundingBound": 8.553266525268554e-7,
+  "candidateScope": "木体下部源纹与空隙的局部形变验证",
+  "scope": "X-Z顶点姿态的线性插值；smoothstep只重参数化[0,1]，二次面积式覆盖整个区间。保守Float32坐标误差界不代表GPU逐像素、自然造型、挂点正确或整树业务验收。"
+}

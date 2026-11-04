@@ -193,3 +193,5 @@ lib/
 3. 开发进度记录在 `DevelopmentPlan.md`，每完成一步立即更新
 4. git 版本管理；**每次 commit 前必须执行 `bash scripts/update_code_map.sh` 更新代码地图**（详见 `.Codex/skills/codegraph-map/SKILL.md`）
 5. 接手项目先读：PROJECT_RULES.md → 本文件 → DevelopmentPlan.md → docs/CODE_MAP.md
+
+2026-11-04 参考表皮左右侧域采用不同发育时序，域边界共享坐标。6506个三角形的四个插值区间通过翻面审计。早态侧枝轮廓收敛，仍有细碎边缘和成熟木纹。当前侧域按横向坐标划分，真正的解剖归属与幼龄材质仍待建立，A2仍待完整实渲。 证据见 docs/Reports/Codex/参考表皮侧域验证。

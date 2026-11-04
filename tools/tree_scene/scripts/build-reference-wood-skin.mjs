@@ -47,13 +47,20 @@ for (let i = 1; i < ys.length; i++) {
   }
 }
 
-const ages = [0, .5, 1];
+const ages = [0, .2, .45, .7, 1];
 const poses = ages.map(age => pixels.map(([x, y]) => {
   const z = (1400 - y) / 120;
   const life = 1 - age;
   // 保持同一UV，根幅和高度分别发育。成熟位置与源图等比例对应。
   const spread = 1 - life * (.45 + .16 * Math.exp(-Math.max(0, z)));
-  return [(x - 520) / 120 * spread + life * .10 * z, 0, z * (1 - .37 * life) + life * .017 * z * z];
+  // 左右侧域各自展开。域边界与主干共用坐标，根颈保留原来的发育曲线。
+  const inner = Math.max(390, Math.min(625, x));
+  const birth = x < 390 ? .2 : .32;
+  const progress = Math.max(0, Math.min(1, (age - birth) / .48));
+  const upper = Math.max(0, Math.min(1, (960 - y) / 110));
+  const sideScale = 1 - upper * .98 * (1 - progress * progress * (3 - 2 * progress));
+  const woodX = inner + (x - inner) * sideScale;
+  return [(woodX - 520) / 120 * spread + life * .10 * z, 0, z * (1 - .37 * life) + life * .017 * z * z];
 }));
 const sections = {};
 const chunks = [];
