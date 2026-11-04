@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
 
-const output = 'build/qa/depth-collar-smooth';
+const output = 'build/qa/depth-collar-fused';
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -15,59 +15,31 @@ try {
     ctx.fillStyle = '#f6efdf';
     ctx.fillRect(0, 0, 920, 480);
     const buffer = ctx.getImageData(0, 0, 920, 480);
-    const depth = new Float32Array(920 * 480).fill(Infinity);
     const ground = 400;
     for (const [index, age] of [.42, 1].entries()) {
       const center = 230 + index * 460;
-      const project = ([x, y, z]) => [center + x * 67, ground - (z + y * .22) * 67, y - z * .22];
-      function paint(face, normals) {
-        const [a, b, c] = face.map(project);
-        const cross = (p, q, x, y) => (q[0] - p[0]) * (y - p[1]) - (q[1] - p[1]) * (x - p[0]);
-        const area = cross(a, b, c[0], c[1]);
-        if (Math.abs(area) < .001) return;
-        const minX = Math.max(index * 460, Math.floor(Math.min(a[0], b[0], c[0])));
-        const maxX = Math.min(index * 460 + 459, Math.ceil(Math.max(a[0], b[0], c[0])));
-        const minY = Math.max(0, Math.floor(Math.min(a[1], b[1], c[1])));
-        const maxY = Math.min(479, Math.ceil(Math.max(a[1], b[1], c[1])));
-        for (let y = minY; y <= maxY; y++) for (let x = minX; x <= maxX; x++) {
-          const u = cross(b, c, x + .5, y + .5) / area;
-          const v = cross(c, a, x + .5, y + .5) / area;
-          const w = 1 - u - v;
-          if (Math.min(u, v, w) < 0) continue;
-          const z = u * a[2] + v * b[2] + w * c[2];
-          const pixel = y * 920 + x;
-          if (z >= depth[pixel]) continue;
-          depth[pixel] = z;
-          const [nx, ny, nz] = normals[0].map((value, axis) =>
-            u * value + v * normals[1][axis] + w * normals[2][axis]);
-          const light = .54 + .52 * Math.max(0,
-            (-.48 * nx - .72 * ny + .49 * nz) / Math.hypot(nx, ny, nz));
-          [145, 105, 69].forEach((channel, i) => { buffer.data[pixel * 4 + i] = channel * light; });
-        }
-      }
-      // 局部管体保留真实深度，同一相机与光向下投影。
+      const components = [];
       function tube(sections) {
-        const sides = 28;
-        const rings = sections.map(([x, y, z, radius], i) => {
-          const before = sections[Math.max(0, i - 1)], after = sections[Math.min(sections.length - 1, i + 1)];
-          const dx = after[0] - before[0], dz = after[2] - before[2];
-          const length = Math.hypot(dx, dz);
-          return Array.from({ length: sides }, (_, side) => {
-            const angle = side * Math.PI * 2 / sides;
-            const across = radius * Math.cos(angle);
-            return {
-              point: [x + dz / length * across, y + radius * Math.sin(angle), z - dx / length * across],
-              normal: [dz / length * Math.cos(angle), Math.sin(angle), -dx / length * Math.cos(angle)],
-            };
-          });
-        });
-        for (let row = 0; row < rings.length - 1; row++) for (let side = 0; side < sides; side++) {
-          const next = (side + 1) % sides;
-          const a = rings[row][side], b = rings[row][next], c = rings[row + 1][side], d = rings[row + 1][next];
-          for (const face of [[a, b, c], [b, d, c]]) {
-            paint(face.map(vertex => vertex.point), face.map(vertex => vertex.normal));
+        components.push(sections.slice(1).map((end, i) => {
+          const [x, y, z, radius] = sections[i];
+          const [dx, dy, dz] = end.slice(0, 3).map((value, axis) => value - sections[i][axis]);
+          return [x, y, z, radius, dx, dy, dz, end[3] - radius, 1 / (dx*dx + dy*dy + dz*dz)];
+        }));
+      }
+      // 各木体的距离场在接头附近融合，投影采样同一连续表面。
+      function field(x, y, z) {
+        let surface = Infinity;
+        for (const segments of components) {
+          let part = Infinity;
+          for (const [px, py, pz, radius, dx, dy, dz, dr, inv] of segments) {
+            const qx = x - px, qy = y - py, qz = z - pz;
+            const t = Math.max(0, Math.min(1, (qx*dx + qy*dy + qz*dz) * inv));
+            part = Math.min(part, Math.hypot(qx - t*dx, qy - t*dy, qz - t*dz) - radius - t*dr);
           }
+          const blend = Math.max(0, .29 - Math.abs(surface - part));
+          surface = Math.min(surface, part) - blend * blend / 1.16;
         }
+        return Math.max(surface, -z);
       }
       const thickness = .38 + .62 * age;
       tube([[0,0,.22,.82*thickness], [.04,0,.72,.56*thickness], [.14,.02,1.4,.42*thickness],
@@ -79,6 +51,28 @@ try {
       }
       tube([[.14,0,1.45,.29*thickness], [.14+.41*age,-.08,1.61,.26*thickness], [1.05*age,-.21,1.94,.21*thickness],
         [1.42*age,-.26,2.35,.16*thickness], [1.93*age,-.24,2.65,.07*thickness]]);
+      for (let py = 54; py < 440; py++) for (let px = center - 155; px < center + 165; px++) {
+        const x = (px + .5 - center) / 67;
+        const screenZ = (ground - py - .5) / 67;
+        for (let y = -2.4, step = 0; y < 2.3 && step < 90; step++) {
+          const z = screenZ - y * .22;
+          const distance = field(x, y, z);
+          if (distance > .003) {
+            y += Math.max(.004, distance * .63);
+            continue;
+          }
+          const epsilon = .004;
+          const nx = field(x+epsilon,y,z)-field(x-epsilon,y,z);
+          const ny = field(x,y+epsilon,z)-field(x,y-epsilon,z);
+          const nz = field(x,y,z+epsilon)-field(x,y,z-epsilon);
+          const light = .54 + .52 * Math.max(0, (-.48*nx-.72*ny+.49*nz) / (Math.hypot(nx,ny,nz) || 1));
+          const pixel = (py * 920 + px) * 4;
+          buffer.data[pixel] = 145 * light;
+          buffer.data[pixel+1] = 105 * light;
+          buffer.data[pixel+2] = 69 * light;
+          break;
+        }
+      }
     }
     ctx.putImageData(buffer, 0, 0);
     ctx.font = '18px Microsoft YaHei';
