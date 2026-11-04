@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 import { mkdir, readFile } from 'node:fs/promises';
 
-const output = 'build/qa/depth-collar-plaque';
+const output = 'build/qa/depth-collar-plaque-growth';
 const bark = await readFile('assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png');
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
@@ -9,8 +9,8 @@ const browser = await chromium.launch({
   headless: true,
 });
 try {
-  const page = await browser.newPage({ viewport: { width: 920, height: 480 } });
-  await page.setContent('<body style="margin:0"><canvas width="920" height="480"></canvas>');
+  const page = await browser.newPage({ viewport: { width: 1380, height: 480 } });
+  await page.setContent('<body style="margin:0"><canvas width="1380" height="480"></canvas>');
   await page.evaluate(async barkSource => {
     const image = new Image();
     image.src = barkSource;
@@ -21,16 +21,23 @@ try {
     const grain = (u, v) => texels[4 * (((Math.floor(v * 96) & 255) << 8) + (Math.floor(u * 128) & 255))] / 255;
     const ctx = document.querySelector('canvas').getContext('2d');
     ctx.fillStyle = '#f6efdf';
-    ctx.fillRect(0, 0, 920, 480);
-    const buffer = ctx.getImageData(0, 0, 920, 480);
+    const width = ctx.canvas.width;
+    ctx.fillRect(0, 0, width, 480);
+    const buffer = ctx.getImageData(0, 0, width, 480);
     const ground = 400;
     const captions = [];
-    for (const [index, age] of [.42, 1].entries()) {
+    const ages = [.42, .79, 1];
+    const smooth = value => {
+      const t = Math.max(0, Math.min(1, value));
+      return t * t * (3 - 2 * t);
+    };
+    for (const [index, age] of ages.entries()) {
       const center = 230 + index * 460;
       const components = [];
       const seat = [1.42 * age, -.26, 2.35];
-      const plaque = [seat[0], seat[1] - .105, seat[2] + .42];
-      const hasPlaque = age >= .7;
+      const frameSize = smooth((age - .57) / .40);
+      const paperReveal = smooth((age - .69) / .28);
+      const plaque = [seat[0], seat[1] - .105 * frameSize, seat[2] + .42 * frameSize];
       const fuse = (a, b, radius) => {
         const blend = Math.max(0, radius - Math.abs(a - b));
         return Math.min(a, b) - blend * blend / (4 * radius);
@@ -54,13 +61,13 @@ try {
           }
           surface = fuse(surface, part, .29);
         }
-        if (hasPlaque) {
-          const dx = Math.abs(x - plaque[0]) - .25;
-          const dy = Math.abs(y - plaque[1]) - .074;
-          const dz = Math.abs(z - plaque[2]) - .32;
+        if (frameSize > 0) {
+          const dx = Math.abs(x - plaque[0]) - .25 * frameSize;
+          const dy = Math.abs(y - plaque[1]) - .074 * frameSize;
+          const dz = Math.abs(z - plaque[2]) - .32 * frameSize;
           const box = Math.hypot(Math.max(dx, 0), Math.max(dy, 0), Math.max(dz, 0))
-            + Math.min(Math.max(dx, dy, dz), 0) - .046;
-          surface = fuse(surface, box, .17);
+            + Math.min(Math.max(dx, dy, dz), 0) - .046 * frameSize;
+          surface = fuse(surface, box, .17 * frameSize);
         }
         return Math.max(surface, -z);
       }
@@ -74,7 +81,7 @@ try {
       }
       tube([[.14,0,1.45,.29*thickness], [.14+.41*age,-.08,1.61,.26*thickness], [1.05*age,-.21,1.94,.21*thickness],
         [...seat,.16*thickness], [1.93*age,-.24,2.65,.07*thickness]]);
-      if (hasPlaque) captions.push([center + plaque[0]*67, ground - (plaque[2] + (plaque[1] - .12)*.22)*67]);
+      if (paperReveal === 1) captions.push([center + plaque[0]*67, ground - (plaque[2] + (plaque[1] - .12*frameSize)*.22)*67]);
       for (let py = 54; py < 440; py++) for (let px = center - 155; px < center + 165; px++) {
         const x = (px + .5 - center) / 67;
         const screenZ = (ground - py - .5) / 67;
@@ -94,9 +101,11 @@ try {
           const wx = nx * nx, wy = ny * ny, wz = nz * nz;
           const wood = (wx * grain(y,z) + wy * grain(x,z) + wz * grain(x,y)) / (wx + wy + wz || 1);
           const tone = light * (.72 + wood * (.33 + .23 * age));
-          const pixel = (py * 920 + px) * 4;
-          const paper = hasPlaque && Math.abs(x - plaque[0]) < .205 && Math.abs(z - plaque[2]) < .262
-            && Math.abs(y - (plaque[1] - .12)) < .013;
+          const pixel = (py * width + px) * 4;
+          const paperHeight = .262 * frameSize;
+          const paper = paperReveal > 0 && Math.abs(x - plaque[0]) < .205 * frameSize
+            && z > plaque[2] - paperHeight && z < plaque[2] - paperHeight + 2 * paperHeight * paperReveal
+            && Math.abs(y - (plaque[1] - .12 * frameSize)) < .013;
           buffer.data[pixel] = paper ? 229 : 159 * tone;
           buffer.data[pixel+1] = paper ? 205 : 121 * tone;
           buffer.data[pixel+2] = paper ? 157 : 80 * tone;
@@ -107,8 +116,7 @@ try {
     ctx.putImageData(buffer, 0, 0);
     ctx.font = '18px Microsoft YaHei';
     ctx.fillStyle = '#493824';
-    ctx.fillText('生长姿态 0.42', 24, 36);
-    ctx.fillText('生长姿态 1.00', 484, 36);
+    ages.forEach((age, index) => ctx.fillText(`生长姿态 ${age.toFixed(2)}`, 24 + 460 * index, 36));
     ctx.font = '9px Microsoft YaHei';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
