@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const source = await readFile('assets/source/magic_tree/guides/ancient_tree_form_v1.svg', 'utf8');
-const output = resolve('build/qa/authored-joined-growth');
+const output = resolve('build/qa/authored-root-fork-growth');
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -52,7 +52,7 @@ try {
     const mature = [
       [172, 400, 404], [234, 410, 425], [305, 376, 411], [372, 367, 411],
       [438, 371, 425], [493, 358, 418], [550, 352, 416], [607, 356, 430],
-      [666, 346, 453], [719, 328, 465], [775, 237, 551], [803, 377, 425],
+      [666, 346, 453], [719, 328, 465], [775, 270, 523], [803, 347, 456],
     ];
     const columns = 5;
     const trunkFaces = [];
@@ -68,6 +68,9 @@ try {
       { id: 'left-limb', row: 6, side: -1, tip: [166, 424], young: [23, -13], old: [184, -143] },
       { id: 'right-limb', row: 5, side: 1, tip: [663, 378], young: [18, -11], old: [243, -143] },
       { id: 'plaque-support', row: 7, side: 1, tip: [520, 550], young: [2, -1], old: [79, -87] },
+      { id: 'upper-fork', row: 3, side: -1, tip: [237, 268], young: [12, -18], old: [130, -137] },
+      { id: 'left-root', row: 9, side: -1, tip: [207, 796], young: [12, 9], old: [63, 47] },
+      { id: 'right-root', row: 9, side: 1, tip: [591, 802], young: [12, 10], old: [68, 51] },
     ];
     const faces = [...trunkFaces];
     let vertexCount = mature.length * columns;
@@ -83,8 +86,18 @@ try {
         a = c;
         b = d;
       }
-      wood[limb.id].remove();
+      wood[limb.id]?.remove();
     }
+    const frontBase = [(mature.length - 1) * columns + 1, (mature.length - 1) * columns + 2];
+    let [frontLeft, frontRight] = frontBase;
+    for (let step = 0; step < 4; step++) {
+      const left = vertexCount++;
+      const right = vertexCount++;
+      faces.push([frontLeft, frontRight, left], [frontRight, right, left]);
+      frontLeft = left;
+      frontRight = right;
+    }
+    wood['near-root'].remove();
     const edgeUses = new Map();
     for (const face of faces) {
       for (let i = 0; i < 3; i++) {
@@ -107,14 +120,11 @@ try {
     }
     if (outline.length !== boundary.size) throw Error('木体存在额外轮廓');
     for (const [path, part] of ridges) {
-      if (limbs.some(limb => limb.id === part)) path.remove();
+      if (part === 'near-root' || limbs.some(limb => limb.id === part)) path.remove();
     }
 
     // 各部位独立发育。母体只提供接点，子部位的长宽使用自己的时序。
     const parts = [
-      ['upper-fork', [371, 444], 'trunk', .18, .25, .08],
-      ['near-root', [382, 651], 'trunk', .19, .28, .18],
-      ['right-root', [432, 699], 'trunk', .17, .25, .23],
       [front[0], [401, 214], 'trunk', .34, .46, .00],
       [front[1], [237, 268], 'upper-fork', .23, .33, .12],
       [front[2], [392, 329], 'trunk', .22, .27, .18],
@@ -145,6 +155,14 @@ try {
         const end = vertices.at(-1).map((value, i) => (value + vertices.at(-2)[i]) / 2);
         limbTransforms.push([id, (x, y) => [end[0] + (x - tip[0]) * dx / old[0],
           end[1] + (y - tip[1]) * dy / old[1]]]);
+      }
+      const [rootLeft, rootRight] = frontBase.map(index => vertices[index]);
+      for (let step = 1; step <= 4; step++) {
+        const t = step / 4;
+        const width = (rootRight[0] - rootLeft[0]) * (1 - .74 * t) / 2;
+        const x = (rootLeft[0] + rootRight[0]) / 2 - (5 + 40 * growth) * t;
+        const y = rootLeft[1] + (6 + 19 * growth) * t;
+        vertices.push([x - width, y], [x + width, y]);
       }
       let minimumArea = Infinity;
       for (const [i, j, k] of faces) {
@@ -193,7 +211,7 @@ try {
       label.setAttribute('y', near ? '386' : '34');
       label.setAttribute('font-size', near ? '9' : '18');
       label.textContent = `树龄 ${age.toFixed(2)} · ${(age * 10).toFixed(1)} 秒`;
-      return { vertices: vertices.length, triangles: faces.length, sharedLimbEdges: limbs.length, minimumArea };
+      return { vertices: vertices.length, triangles: faces.length, sharedEdges: limbs.length + 1, minimumArea };
     };
   });
   const errors = [];
