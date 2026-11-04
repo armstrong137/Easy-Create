@@ -26,6 +26,8 @@
 ## 二、软件开发架构
 
 ### 技术栈
+2026-11-04 extract-reference-wood-sections.mjs从参考主导木体源稿读取分段轮廓和源UV，输出reference_wood_sections.json及叠图，记录源哈希。截面保留根间空隙，建模时需分别确定相邻截面的解剖归属。
+
 2026-11-03 development_tree_proof.py --round2及采集--development-tree-round2交付共享发育完整第二套，紧凑幼冠/曲干/母枝较粗段挂冠/次枝展叶/贴地根趾及下移木牌。audit-development-tree.mjs新增实际成熟主枝正高差语义检查，先复现上扬符号反例再修正第二套并重采；首套保持历史错误和原哈希。五区间、14共边/20图集挂点及开孔通过，成熟层架/扁根/表皮仍视觉拒绝，停止第三轮本造型。八套两轮淘汰，下一项批准木体轮廓约束的资产表皮和解剖UV，尚未实现通过；正式页面不引用，A2未过。见2026-11-03-共享发育第二轮拒绝与资产造型复盘.md。
 
 2026-11-03 development_tree_proof.py及采集--development-tree交付多级共享表皮发育完整首套，15木质域/14九点接头、12冠簇及两枝牌，六姿态同拓扑UV；audit-development-tree.mjs从实际三角/UV验证共边和实体挂点。Dart实验入口支持postTextureLightingMaterials及unlitVertexStart分离原生木质与透明图集，旧全局开关回归；开孔审计自动取最后姿态兼容六年龄。首套因幼冠分散、层架冠、直干和悬臂根形整体拒绝，剩一次整体修改，旧七套淘汰不变；正式页面不引用，A2未过。见2026-11-03-共享发育整树首轮审查.md。
