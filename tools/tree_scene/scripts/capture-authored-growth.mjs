@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const source = await readFile('assets/source/magic_tree/guides/ancient_tree_form_v1.svg', 'utf8');
-const output = resolve('build/qa/authored-root-fork-growth');
+const output = resolve('build/qa/authored-plaque-growth');
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -19,6 +19,7 @@ try {
     const front = [...svg.querySelectorAll('#front-canopy path')];
     const rear = [...svg.querySelectorAll('#rear-canopy path')];
     const plaque = svg.querySelector('#plaque');
+    plaque.querySelector('path').remove();
     const ridgeGroup = svg.querySelector('#lit-ridges');
     const ridgePaths = [...ridgeGroup.querySelectorAll('path')];
     const ridges = [
@@ -67,13 +68,14 @@ try {
     const limbs = [
       { id: 'left-limb', row: 6, side: -1, tip: [166, 424], young: [23, -13], old: [184, -143] },
       { id: 'right-limb', row: 5, side: 1, tip: [663, 378], young: [18, -11], old: [243, -143] },
-      { id: 'plaque-support', row: 7, side: 1, tip: [520, 550], young: [2, -1], old: [79, -87] },
+      { id: 'plaque-support', row: 7, side: 1, tip: [520, 550], young: [2, -1], old: [79, -52] },
       { id: 'upper-fork', row: 3, side: -1, tip: [237, 268], young: [12, -18], old: [130, -137] },
       { id: 'left-root', row: 9, side: -1, tip: [207, 796], young: [12, 9], old: [63, 47] },
       { id: 'right-root', row: 9, side: 1, tip: [591, 802], young: [12, 10], old: [68, 51] },
     ];
     const faces = [...trunkFaces];
     let vertexCount = mature.length * columns;
+    const plaqueBase = [];
     for (const limb of limbs) {
       const edge = limb.side > 0 ? columns - 1 : 0;
       let a = limb.row * columns + edge;
@@ -81,6 +83,7 @@ try {
       for (let step = 0; step < 4; step++) {
         const c = vertexCount++;
         const d = vertexCount++;
+        if (limb.id === 'plaque-support' && step >= 1) plaqueBase.push(c);
         const pair = [[a, c, b], [c, d, b]];
         faces.push(...(limb.side > 0 ? pair : pair.map(face => face.reverse())));
         a = c;
@@ -98,6 +101,11 @@ try {
       frontRight = right;
     }
     wood['near-root'].remove();
+    const plaqueTop = plaqueBase.map(() => vertexCount++);
+    for (let i = 0; i < plaqueBase.length - 1; i++) {
+      faces.push([plaqueBase[i + 1], plaqueBase[i], plaqueTop[i]],
+        [plaqueBase[i + 1], plaqueTop[i], plaqueTop[i + 1]]);
+    }
     const edgeUses = new Map();
     for (const face of faces) {
       for (let i = 0; i < 3; i++) {
@@ -164,6 +172,10 @@ try {
         const y = rootLeft[1] + (6 + 19 * growth) * t;
         vertices.push([x - width, y], [x + width, y]);
       }
+      const seat = plaqueBase.map(index => vertices[index]);
+      const plaqueWidth = seat.at(-1)[0] - seat[0][0];
+      const crownY = Math.min(...seat.map(([, y]) => y)) - (.12 + .88 * smooth((age - .38) / .56)) * plaqueWidth * 1.5;
+      seat.forEach(([x], i) => vertices.push([x, crownY + Math.abs(i - 1) * plaqueWidth * .12]));
       let minimumArea = Infinity;
       for (const [i, j, k] of faces) {
         const [a, b, c] = [vertices[i], vertices[j], vertices[k]];
@@ -202,16 +214,16 @@ try {
         path.setAttribute('stroke-width', String(1 + 4 * growth));
       }
       shadow.setAttribute('rx', String(58 + 239 * smooth(age)));
-      const [px, py] = transforms.get('plaque-support')(520, 550);
-      const size = smooth((age - .43) / .52);
+      const size = plaqueWidth / 54 * smooth((age - .43) / .52);
       plaque.setAttribute('visibility', size > 0 ? 'visible' : 'hidden');
-      plaque.setAttribute('transform', `translate(${px} ${py}) scale(${size}) translate(0 -78)`);
+      plaque.setAttribute('transform', `translate(${seat[1][0]} ${crownY + plaqueWidth * .20}) scale(${size})`);
       svg.setAttribute('viewBox', near ? '315 369 390 439' : '0 0 800 900');
       label.setAttribute('x', near ? '327' : '24');
       label.setAttribute('y', near ? '386' : '34');
       label.setAttribute('font-size', near ? '9' : '18');
       label.textContent = `树龄 ${age.toFixed(2)} · ${(age * 10).toFixed(1)} 秒`;
-      return { vertices: vertices.length, triangles: faces.length, sharedEdges: limbs.length + 1, minimumArea };
+      return { vertices: vertices.length, triangles: faces.length, sharedEdges: limbs.length + 1,
+        plaqueEdges: plaqueBase.length - 1, minimumArea };
     };
   });
   const errors = [];
