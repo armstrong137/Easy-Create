@@ -10,7 +10,13 @@ const smooth = value => {
   const t = Math.max(0, Math.min(1, value));
   return t * t * (3 - 2 * t);
 };
-const stem = (age, t) => [.24 * t * t + .06 * age * t, t * (1.6 + .9 * age)];
+const maturity = age => smooth((age - .25) / .75);
+const juvenile = age => Math.min(1, age * 4);
+const stem = (age, t) => {
+  const adult = maturity(age);
+  return [.24 * t * t + .06 * juvenile(age) * t + adult * (.53 * t - .72 * t * t),
+    t * (1.6 + .9 * juvenile(age) + 2.5 * adult)];
+};
 function addTriangle(ids, uv, material) {
   ids.forEach((id, i) => corners.push(id, ...uv[i]));
   triangleTextures.push(material);
@@ -43,13 +49,16 @@ function strip(path, width) {
 }
 
 // 主干从幼苗尺寸起步，侧枝的基点每次由同一母干曲线求出。
-strip(stem, (age, t) => (.076 + .044 * age) * (1 - .91 * t) * (1 + .65 * Math.exp(-t * 14)));
+strip(stem, (age, t) => (.076 + .044 * juvenile(age) + .23 * maturity(age)) *
+  (1 - .91 * t) * (1 + .65 * Math.exp(-t * 14)));
 const shoots = [-1, 1].map((side, i) => (age, t) => {
   const [x, z] = stem(age, i ? .66 : .51);
-  const reach = .28 + .55 * smooth((age - i * .13) / .75);
-  return [x + side * reach * t, z + reach * (.18 * t + .56 * t * t)];
+  const adult = maturity(age);
+  const reach = .28 + .55 * smooth((juvenile(age) - i * .13) / .75) + adult * (i ? 2.05 : 2.4);
+  return [x + side * reach * t, z + reach * ((.18 - adult * .27) * t + (.56 - adult * .13) * t * t)];
 });
-for (const path of shoots) strip(path, (age, t) => (.029 + .026 * age) * (1 - .9 * t));
+for (const path of shoots) strip(path, (age, t) =>
+  (.029 + .026 * juvenile(age) + .12 * maturity(age)) * (1 - .9 * t));
 // 二级枝以母枝参数定位，向冠层内部填补主枝间的空隙。
 const twigs = [
   [shoots[0], .68, 1, .14, .23],
@@ -58,13 +67,17 @@ const twigs = [
   [stem, .89, 1, .24, .18],
 ].map(([parent, origin, side, reach, rise], i) => (age, t) => {
   const [x, z] = parent(age, origin);
-  const extension = .48 + .68 * smooth((age - i * .08) / .76);
+  const extension = .48 + .68 * smooth((juvenile(age) - i * .08) / .76) + 2.2 * maturity(age);
   return [x + side * reach * extension * t, z + rise * extension * t * (.66 + .34 * t)];
 });
-for (const path of twigs) strip(path, (age, t) => (.013 + .008 * age) * (1 - .91 * t));
+for (const path of twigs) strip(path, (age, t) =>
+  (.013 + .008 * juvenile(age) + .045 * maturity(age)) * (1 - .91 * t));
 for (const [side, reach] of [[-1, .24], [1, .33], [-1, .15]]) {
-  strip((age, t) => [side * reach * (1 + age * .45) * t, .075 - .085 * t + .018 * t * t],
-    (age, t) => (.037 + .022 * age) * (1 - .93 * t));
+  strip((age, t) => {
+    const adult = maturity(age);
+    return [side * reach * (1 + juvenile(age) * .45 + 4.1 * adult) * t,
+      .075 - .085 * t + .018 * t * t + adult * (.21 - (.24 + reach * .4) * t + .08 * t * t)];
+  }, (age, t) => (.037 + .022 * juvenile(age) + .11 * maturity(age)) * (1 - .93 * t));
 }
 
 const woodVertices = poses[0].length;
@@ -73,6 +86,8 @@ const report = JSON.parse(await readFile(`${donor}/result.json`));
 const binary = await readFile(`${donor}/mesh.bin`);
 const mature = meta.sections[meta.vertexPoseSections.at(-1)];
 const position = id => [0, 1, 2].map(axis => binary.readFloatLE(mature.offset + (id * 3 + axis) * 4));
+const nodes = [[0, 0, 0], [0, 0, 5]];
+const frameNodes = ages.map(() => [...nodes]);
 const foliage = [
   ...[...shoots, stem].map((path, i) => ({ path, patchIndex: i, size: 1, depth: -.035 })),
   ...twigs.map((path, i) => ({ path, patchIndex: (i + 1) % 3, size: .59, depth: i % 2 ? -.075 : -.022 })),
@@ -87,8 +102,10 @@ for (const { path, patchIndex, size, depth } of foliage) {
     normals.push(0, -1, 0);
     ages.forEach((age, frame) => {
       const [x, z] = path(age, 1);
-      const scale = size * (.69 + .28 * smooth(age));
-      poses[frame].push([x + (point[0] - base[0]) * scale, depth, z + (point[2] - base[2]) * scale]);
+      const adult = maturity(age);
+      const scale = size * (.69 + .28 * smooth(juvenile(age)) + 2.1 * adult);
+      poses[frame].push([x + (point[0] - base[0]) * scale, depth,
+        z + (point[2] - base[2]) * scale * (1 - .24 * adult)]);
     });
   }
   const block = meta.sections.corners;
@@ -99,6 +116,38 @@ for (const { path, patchIndex, size, depth } of foliage) {
     addTriangle(ids.map(id => first + id - start), [values.slice(1, 3), values.slice(4, 6), values.slice(7, 9)], 1);
   }
 }
+// 框体和纸面使用同一个母枝采样点，缩放时共用同一变换。
+const firstFrameVertex = poses[0].length;
+const plaques = report.patches.filter(patch => patch.material === 2).map((patch, index) => {
+  const plaque = meta.plaques[index];
+  const anchor = position(patch.anchorVertex);
+  const place = (point, age) => {
+    const [x, z] = shoots[index](age, .40);
+    const scale = .012 + .46 * smooth((age - .2) / .65);
+    return [x + (point[0] - anchor[0]) * scale, -.15 + (point[1] - anchor[1]) * scale,
+      z + (point[2] - anchor[2]) * scale];
+  };
+  const first = poses[0].length;
+  const [start, end] = patch.vertexRange;
+  for (let id = start; id < end; id++) {
+    const point = position(id);
+    normals.push(0, -1, 0);
+    ages.forEach((age, frame) => poses[frame].push(place(point, age)));
+  }
+  const block = meta.sections.corners;
+  for (let i = 0; i < block.length; i += 9) {
+    if (meta.triangleTextures[i / 9] !== patch.material) continue;
+    const values = Array.from({ length: 9 }, (_, j) => binary.readFloatLE(block.offset + (i + j) * 4));
+    const ids = [values[0], values[3], values[6]];
+    if (ids.some(id => id < start || id >= end)) continue;
+    addTriangle(ids.map(id => first + id - start), [values.slice(1, 3), values.slice(4, 6), values.slice(7, 9)], 2);
+  }
+  return { ...plaque, corners: plaque.corners.map(id => {
+    const next = frameNodes[0].length;
+    ages.forEach((age, frame) => frameNodes[frame].push(place(meta.nodes[id], age)));
+    return next;
+  }) };
+});
 const sections = {}, chunks = [];
 let byteLength = 0;
 function section(name, values) {
@@ -111,24 +160,26 @@ function section(name, values) {
 section('normals', normals);
 section('corners', corners);
 poses.forEach((pose, i) => section(`positions${i}`, pose.flat()));
-const nodes = [[0, 0, 0], [0, 0, 2.5]];
 const metadata = {
-  format: '独立幼苗实体发育-v2', vertexCount: poses[0].length, triangleCount: corners.length / 9,
-  byteLength, sections, nodes, edges: [[0, 1]],
-  poseFrames: ages.map(age => ({ age, nodes, radial: [1] })),
+  format: '独立魔树实体发育-v3', vertexCount: poses[0].length, triangleCount: corners.length / 9,
+  byteLength, sections, nodes: frameNodes.at(-1), edges: [[0, 1]],
+  poseFrames: ages.map((age, index) => ({ age, nodes: frameNodes[index], radial: [1] })),
   vertexPoseSections: ages.map((_, i) => `positions${i}`),
   samples: ages.map((age, i) => ({ age, vertices: poses[i].map((position, index) => ({ index, position })) })),
-  camera: { target: [0, 0, 1.5], right: [1, 0, 0], up: [0, 0, 1], back: [0, -1, 0], scale: 4.7 },
-  textureStyles: ['wood', 'leaf'], extraTextures: ['canopy.png'], triangleTextures, foliageParts: foliage.length,
+  camera: { target: [0, 0, 2.8], right: [1, 0, 0], up: [0, 0, 1], back: [0, -1, 0], scale: 13 },
+  textureStyles: ['wood', 'leaf', 'frame'], extraTextures: ['canopy.png', 'frames.png'],
+  triangleTextures, foliageParts: foliage.length, plaques,
+  vertexBirthAges: poses[0].map((_, index) => index >= firstFrameVertex ? .18 : -1),
   postTextureLightingMaterials: [0], unlitVertexStart: woodVertices, juvenileContrast: .12,
-  nearSpan: [1.4, 2.3], nearOffset: [0, -.1], groundShadow: false,
-  scope: '独立幼苗的侧枝、二级枝与分层冠簇发育',
+  nearSpan: [3.8, 3.0], nearOffset: [0, .3], groundShadow: false,
+  scope: '从独立幼苗到成熟宽冠的同拓扑发育',
 };
 await mkdir(out, { recursive: true });
 await writeFile(`${out}/mesh.bin`, Buffer.concat(chunks));
 await writeFile(`${out}/mesh.json`, JSON.stringify(metadata));
 await copyFile('assets/source/magic_tree/textures_source/development_bark_v1.png', `${out}/baked-bark.png`);
 await copyFile(`${donor}/canopy.png`, `${out}/canopy.png`);
+await copyFile(`${donor}/frames.png`, `${out}/frames.png`);
 await writeFile(`${out}/result.json`, JSON.stringify({
   script_sha256: createHash('sha256').update(await readFile(new URL(import.meta.url))).digest('hex'),
 }, null, 2));
