@@ -290,6 +290,7 @@ class _Mesh {
     final projected = Float32List(count * 2), depths = Float32List(count);
     final colors = Int32List(count);
     final kinds = meta['vertexKinds'] as List?;
+    final birthAges = meta['vertexBirthAges'] as List?;
     final unlitStart = (meta['unlitVertexStart'] as num?)?.toInt();
     final firstVertices = vertexPoses?[poseIndex];
     final lastVertices = vertexPoses?[poseIndex + 1];
@@ -369,6 +370,13 @@ class _Mesh {
           )!.toARGB32();
         } else {
           colors[i] = 0xffcbd7d1;
+        }
+      }
+      if (birthAges != null) {
+        final birth = (birthAges[i] as num).toDouble();
+        if (birth > 0) {
+          final opacity = (_smooth((age - birth) / .22) * 255).round();
+          colors[i] = (colors[i] & 0x00ffffff) | (opacity << 24);
         }
       }
     }

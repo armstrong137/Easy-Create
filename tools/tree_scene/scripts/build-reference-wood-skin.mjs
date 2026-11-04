@@ -80,6 +80,8 @@ const crownPoints = {
   C4: [330, 310], C5: [740, 310], C6: [299, 420],
   C7: [741, 525], C8: [255, 740], C9: [810, 740],
   早生叶0: [530, 115], 早生叶1: [486, 115], 早生叶2: [530, 115],
+  下左次枝展叶: [150, 685], 下右次枝展叶: [850, 695],
+  中左次枝展叶: [260, 550], 中右次枝展叶: [741, 525],
 };
 const attachments = Object.entries({ ...junctions.attachments, ...crownPoints }).map(([name, [x, y]]) => {
   if (data[(y * width + x) * 4 + 3] < 128) throw Error(`挂点位于透明区：${name}`);
@@ -170,6 +172,14 @@ section('normals', poses[0].flatMap(() => [0, -1, 0]));
 section('corners', corners);
 poses.forEach((pose, i) => section(`positions${i}`, pose.flat()));
 const nodes = frameNodes.at(-1);
+// 幼龄可见域沿主干延伸。外侧根趾和枝梢分批显露，所有年龄共用源图与网格。
+const vertexBirthAges = pixels.map(([x, y]) => {
+  const center = y < 500 ? 511 : 505;
+  const radius = y > 1150 ? 125 : y > 750 ? 108 : 42;
+  const distance = Math.abs(x - center) - radius;
+  return distance <= 0 ? 0 : .10 + .45 * Math.min(1, distance / 240);
+});
+while (vertexBirthAges.length < poses[0].length) vertexBirthAges.push(0);
 const metadata = {
   format: '参考表皮枝牌接合-v1', vertexCount: poses[0].length, triangleCount: corners.length / 9,
   sections, byteLength, nodes, edges: [[0, 1]],
@@ -179,8 +189,9 @@ const metadata = {
   camera: { target: [0, 0, 6.1], right: [1, 0, 0], up: [0, 0, 1], back: [0, -1, 0], scale: 16 },
   unlitTexture: true, textureStyles: ['referenceWood', 'frame', 'leaf'], juvenileContrast: .24,
   extraTextures: ['frames.png', 'canopy.png'], triangleTextures, plaques, foliageParts: Object.keys(crownPoints).length,
+  vertexBirthAges,
   groundShadow: false, nearOffset: [0, -2.8], nearSpan: [5, 3.6],
-  scope: '参考表皮整树首套',
+  scope: '参考表皮整树第二套',
 };
 await writeFile(`${out}/mesh.bin`, Buffer.concat(chunks));
 await writeFile(`${out}/mesh.json`, JSON.stringify(metadata));
