@@ -944,20 +944,23 @@ class _Painter extends CustomPainter {
       paint.shader = mesh.textureShader(textureIndex);
       if (styles != null) {
         final style = styles[textureIndex];
-        final wood = style == 'wood' || style == 'frame';
+        final referenceWood = style == 'referenceWood';
+        final wood = style == 'wood' || style == 'frame' || referenceWood;
         // 幼木降低原树皮对比度，保留同一透明材质；不切换整树或树龄图片。
         final youngContrast =
             (mesh.meta['juvenileContrast'] as num?)?.toDouble() ?? .42;
         final contrast = wood
             ? youngContrast + (1 - youngContrast) * _smooth(frame.age)
             : 1.0;
-        final tint = style == 'frame'
+        final tint = referenceWood
+            ? [1.0, 1.0, 1.0]
+            : style == 'frame'
             ? [.67, .75, .73]
             : wood
             ? [.85, .84, .80]
             : [.72, .83, .67];
         final juvenile = [109.0, 92.0, 63.0];
-        const saturation = .72;
+        final saturation = referenceWood ? 1.0 : .72;
         final grey = [.2126, .7152, .0722];
         paint.colorFilter = ColorFilter.matrix([
           for (var row = 0; row < 3; row++) ...[

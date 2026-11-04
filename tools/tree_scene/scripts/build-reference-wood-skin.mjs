@@ -83,7 +83,8 @@ const metadata = {
   vertexPoseSections: ages.map((_, i) => `positions${i}`),
   samples: ages.map((age, i) => ({ age, vertices: poses[i].map((position, index) => ({ index, position })) })),
   camera: { target: [0, 0, 2.85], right: [1, 0, 0], up: [0, 0, 1], back: [0, -1, 0], scale: 9.8 },
-  unlitTexture: true, groundShadow: false, nearOffset: [0, -1.8], nearSpan: [6, 3],
+  unlitTexture: true, textureStyles: ['referenceWood'], juvenileContrast: .24,
+  groundShadow: false, nearOffset: [0, -1.8], nearSpan: [6, 3],
   scope: '木体下部源纹与空隙的局部形变验证',
 };
 await writeFile(`${out}/mesh.bin`, Buffer.concat(chunks));
