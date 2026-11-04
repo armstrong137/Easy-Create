@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 import { mkdir, readFile } from 'node:fs/promises';
 
-const output = 'build/qa/depth-collar-bark';
+const output = 'build/qa/depth-collar-plaque';
 const bark = await readFile('assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png');
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
@@ -24,9 +24,17 @@ try {
     ctx.fillRect(0, 0, 920, 480);
     const buffer = ctx.getImageData(0, 0, 920, 480);
     const ground = 400;
+    const captions = [];
     for (const [index, age] of [.42, 1].entries()) {
       const center = 230 + index * 460;
       const components = [];
+      const seat = [1.42 * age, -.26, 2.35];
+      const plaque = [seat[0], seat[1] - .105, seat[2] + .42];
+      const hasPlaque = age >= .7;
+      const fuse = (a, b, radius) => {
+        const blend = Math.max(0, radius - Math.abs(a - b));
+        return Math.min(a, b) - blend * blend / (4 * radius);
+      };
       function tube(sections) {
         components.push(sections.slice(1).map((end, i) => {
           const [x, y, z, radius] = sections[i];
@@ -44,8 +52,15 @@ try {
             const t = Math.max(0, Math.min(1, (qx*dx + qy*dy + qz*dz) * inv));
             part = Math.min(part, Math.hypot(qx - t*dx, qy - t*dy, qz - t*dz) - radius - t*dr);
           }
-          const blend = Math.max(0, .29 - Math.abs(surface - part));
-          surface = Math.min(surface, part) - blend * blend / 1.16;
+          surface = fuse(surface, part, .29);
+        }
+        if (hasPlaque) {
+          const dx = Math.abs(x - plaque[0]) - .25;
+          const dy = Math.abs(y - plaque[1]) - .074;
+          const dz = Math.abs(z - plaque[2]) - .32;
+          const box = Math.hypot(Math.max(dx, 0), Math.max(dy, 0), Math.max(dz, 0))
+            + Math.min(Math.max(dx, dy, dz), 0) - .046;
+          surface = fuse(surface, box, .17);
         }
         return Math.max(surface, -z);
       }
@@ -58,7 +73,8 @@ try {
           [x*1.04*size,y*.83,.19,.22*thickness], [x*reach*size,y*1.3,.05,.05*thickness]]);
       }
       tube([[.14,0,1.45,.29*thickness], [.14+.41*age,-.08,1.61,.26*thickness], [1.05*age,-.21,1.94,.21*thickness],
-        [1.42*age,-.26,2.35,.16*thickness], [1.93*age,-.24,2.65,.07*thickness]]);
+        [...seat,.16*thickness], [1.93*age,-.24,2.65,.07*thickness]]);
+      if (hasPlaque) captions.push([center + plaque[0]*67, ground - (plaque[2] + (plaque[1] - .12)*.22)*67]);
       for (let py = 54; py < 440; py++) for (let px = center - 155; px < center + 165; px++) {
         const x = (px + .5 - center) / 67;
         const screenZ = (ground - py - .5) / 67;
@@ -79,9 +95,11 @@ try {
           const wood = (wx * grain(y,z) + wy * grain(x,z) + wz * grain(x,y)) / (wx + wy + wz || 1);
           const tone = light * (.72 + wood * (.33 + .23 * age));
           const pixel = (py * 920 + px) * 4;
-          buffer.data[pixel] = 159 * tone;
-          buffer.data[pixel+1] = 121 * tone;
-          buffer.data[pixel+2] = 80 * tone;
+          const paper = hasPlaque && Math.abs(x - plaque[0]) < .205 && Math.abs(z - plaque[2]) < .262
+            && Math.abs(y - (plaque[1] - .12)) < .013;
+          buffer.data[pixel] = paper ? 229 : 159 * tone;
+          buffer.data[pixel+1] = paper ? 205 : 121 * tone;
+          buffer.data[pixel+2] = paper ? 157 : 80 * tone;
           break;
         }
       }
@@ -91,6 +109,12 @@ try {
     ctx.fillStyle = '#493824';
     ctx.fillText('生长姿态 0.42', 24, 36);
     ctx.fillText('生长姿态 1.00', 484, 36);
+    ctx.font = '9px Microsoft YaHei';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const [x, y] of captions) {
+      ['第', '一', '节'].forEach((character, i) => ctx.fillText(character, x, y + (i - 1) * 10));
+    }
   }, `data:image/png;base64,${bark.toString('base64')}`);
   await page.screenshot({ path: `${output}/comparison.png` });
 } finally {
