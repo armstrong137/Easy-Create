@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const source = await readFile('assets/source/magic_tree/guides/ancient_tree_form_v1.svg', 'utf8');
-const output = resolve('build/qa/authored-growth');
+const output = resolve('build/qa/authored-trunk-growth');
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -43,9 +43,30 @@ try {
     label.setAttribute('font-size', '18');
     svg.append(label);
 
+    // 每行独立定义高度、左缘和右缘，两套源截面使用同一组索引。
+    const seedling = [
+      [581, 404, 406], [599, 401, 406], [620, 396, 405], [646, 393, 405],
+      [670, 391, 403], [692, 393, 405], [715, 397, 409], [738, 398, 412],
+      [760, 395, 415], [781, 389, 422], [797, 377, 433], [801, 381, 430],
+    ];
+    const mature = [
+      [172, 400, 404], [234, 410, 425], [305, 376, 411], [372, 367, 411],
+      [438, 371, 425], [493, 358, 418], [550, 352, 416], [607, 356, 430],
+      [666, 346, 453], [719, 328, 465], [775, 237, 551], [803, 377, 425],
+    ];
+    const columns = 5;
+    const trunkFaces = [];
+    for (let row = 0; row < mature.length - 1; row++) {
+      for (let col = 0; col < columns - 1; col++) {
+        const i = row * columns + col;
+        trunkFaces.push([i, i + 1, i + columns], [i + 1, i + columns + 1, i + columns]);
+      }
+    }
+    const trunkRidges = ridges.filter(([, part]) => part === 'trunk')
+      .map(([path]) => [path, path.getAttribute('d')]);
+
     // 各部位独立发育。母体只提供接点，子部位的长宽使用自己的时序。
     const parts = [
-      ['trunk', [405, 800], null, .18, .34, 0],
       ['left-limb', [387, 559], 'trunk', .17, .20, .10],
       ['right-limb', [421, 570], 'trunk', .14, .17, .18],
       ['upper-fork', [371, 444], 'trunk', .18, .25, .08],
@@ -62,7 +83,30 @@ try {
       [rear[2], [515, 510], 'right-limb', .12, .20, .30],
     ];
     window.renderGrowth = (age, near = false) => {
-      const transforms = new Map();
+      const growth = smooth(age);
+      const sections = mature.map((row, i) => row.map((value, j) =>
+        seedling[i][j] + (value - seedling[i][j]) * growth));
+      const vertices = sections.flatMap(([y, left, right]) =>
+        Array.from({ length: columns }, (_, col) => [left + (right - left) * col / (columns - 1), y]));
+      let minimumArea = Infinity;
+      for (const [i, j, k] of trunkFaces) {
+        const [a, b, c] = [vertices[i], vertices[j], vertices[k]];
+        minimumArea = Math.min(minimumArea, (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]));
+      }
+      if (!(minimumArea > 0)) throw Error('主干截面翻面');
+      const outline = [...sections.map(([y, left]) => [left, y]),
+        ...sections.map(([y, , right]) => [right, y]).reverse()];
+      wood.trunk.setAttribute('d', `M${outline.join('L')}Z`);
+      const mapTrunk = (x, y) => {
+        const last = mature.findIndex(row => row[0] >= y);
+        const i = Math.min(mature.length - 2, Math.max(0, last < 0 ? mature.length - 2 : last - 1));
+        const t = (y - mature[i][0]) / (mature[i + 1][0] - mature[i][0]);
+        const sample = rows => rows[i].map((value, j) => value + (rows[i + 1][j] - value) * t);
+        const [, left, right] = sample(mature);
+        const [py, nextLeft, nextRight] = sample(sections);
+        return [nextLeft + (x - left) * (nextRight - nextLeft) / (right - left), py];
+      };
+      const transforms = new Map([['trunk', mapTrunk]]);
       const matrices = new Map();
       for (const [part, [x, y], parent, initialX, initialY, onset] of parts) {
         const growth = smooth((age - onset) / (1 - onset));
@@ -76,7 +120,13 @@ try {
         matrices.set(part, matrix);
         transforms.set(part, (px, py) => [px * sx + tx, py * sy + ty]);
       }
-      for (const [path, part] of ridges) path.setAttribute('transform', matrices.get(part));
+      for (const [path, part] of ridges) {
+        if (part !== 'trunk') path.setAttribute('transform', matrices.get(part));
+      }
+      for (const [path, d] of trunkRidges) {
+        path.setAttribute('d', d.replace(/(\d+) (\d+)/g, (_, x, y) => mapTrunk(+x, +y).join(' ')));
+        path.setAttribute('stroke-width', String(1 + 4 * growth));
+      }
       shadow.setAttribute('rx', String(58 + 239 * smooth(age)));
       const [px, py] = transforms.get('plaque-support')(520, 550);
       const size = smooth((age - .43) / .52);
@@ -87,6 +137,7 @@ try {
       label.setAttribute('y', near ? '386' : '34');
       label.setAttribute('font-size', near ? '9' : '18');
       label.textContent = `树龄 ${age.toFixed(2)} · ${(age * 10).toFixed(1)} 秒`;
+      return { vertices: vertices.length, triangles: trunkFaces.length, minimumArea };
     };
   });
   const errors = [];
@@ -96,8 +147,9 @@ try {
     await page.screenshot({ path: resolve(output, `${name}.png`) });
   }
   const frames = [];
+  const trunkChecks = [];
   for (let frame = 0; frame <= 100; frame++) {
-    await page.evaluate(age => window.renderGrowth(age), frame / 100);
+    trunkChecks.push(await page.evaluate(age => window.renderGrowth(age), frame / 100));
     frames.push(await page.screenshot({ type: 'jpeg', quality: 88 }));
   }
   if (errors.length) throw Error(errors.join('\n'));
@@ -106,7 +158,10 @@ try {
     '-c:v', 'libvpx', '-pix_fmt', 'yuv420p', resolve(output, 'growth.webm')],
   { input: Buffer.concat(frames), encoding: 'utf8' });
   if (encode.status !== 0) throw Error(encode.error?.message ?? encode.stderr);
-  await writeFile(resolve(output, 'result.json'), JSON.stringify({ frames: 101, fps: 10, errors }, null, 2));
+  await writeFile(resolve(output, 'result.json'), JSON.stringify({
+    frames: frames.length, fps: 10, errors,
+    trunk: { ...trunkChecks[0], minimumArea: Math.min(...trunkChecks.map(check => check.minimumArea)) },
+  }, null, 2));
 } finally {
   await browser.close();
 }

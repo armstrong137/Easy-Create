@@ -1,0 +1,10 @@
+{
+  "frames": 101,
+  "fps": 10,
+  "errors": [],
+  "trunk": {
+    "vertices": 60,
+    "triangles": 88,
+    "minimumArea": 9
+  }
+}
