@@ -4,7 +4,8 @@ import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const source = await readFile('assets/source/magic_tree/guides/ancient_tree_form_v1.svg', 'utf8');
-const output = resolve('build/qa/authored-material-growth-round2');
+const output = resolve('build/qa/authored-bough-composition');
+const boughs = await readFile('assets/source/magic_tree/textures_source/canopy_boughs_v1.png');
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -13,7 +14,7 @@ const browser = await chromium.launch({
 try {
   const page = await browser.newPage({ viewport: { width: 800, height: 900 } });
   await page.setContent('<body style="margin:0">' + source + '</body>');
-  await page.evaluate(() => {
+  await page.evaluate(boughSource => {
     const svg = document.querySelector('svg');
     const wood = Object.fromEntries([...svg.querySelectorAll('#wood-silhouette path')].map(path => [path.id, path]));
     const make = name => document.createElementNS(svg.namespaceURI, name);
@@ -62,6 +63,26 @@ try {
     });
     const front = dressCanopy('#front-canopy path', false, [[401,214],[237,268],[392,329],[166,424],[663,378]]);
     const rear = dressCanopy('#rear-canopy path', true, [[224,355],[597,314],[515,510]]);
+    // 分别用透明图集的左右冠枝，源图枝基对齐发育网格端点。
+    for (const [index, x, width, sourceBase, target] of [
+      [3, 0, 620, [590, 565], [166, 424]],
+      [4, 665, 586, [689, 574], [663, 378]],
+    ]) {
+      const scale = .24;
+      const view = make('svg');
+      view.setAttribute('viewBox', `${x} 110 ${width} 490`);
+      view.setAttribute('x', target[0] + (x - sourceBase[0]) * scale);
+      view.setAttribute('y', target[1] + (110 - sourceBase[1]) * scale);
+      view.setAttribute('width', width * scale);
+      view.setAttribute('height', 490 * scale);
+      view.setAttribute('overflow', 'hidden');
+      const sprite = make('image');
+      sprite.setAttribute('href', boughSource);
+      sprite.setAttribute('width', '1254');
+      sprite.setAttribute('height', '1254');
+      view.append(sprite);
+      front[index].replaceChildren(view);
+    }
     const plaque = svg.querySelector('#plaque');
     plaque.querySelector('path').remove();
     const ridgeGroup = svg.querySelector('#lit-ridges');
@@ -304,7 +325,7 @@ try {
       return { vertices: vertices.length, triangles: faces.length, sharedEdges: limbs.length + 1,
         plaqueEdges: plaqueBase.length - 1, minimumArea };
     };
-  });
+  }, `data:image/png;base64,${boughs.toString('base64')}`);
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   for (const [name, age, near] of [['young', 0], ['middle', .5], ['mature', 1], ['plaque-close', 1, true]]) {
