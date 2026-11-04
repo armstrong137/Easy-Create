@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const source = await readFile('assets/source/magic_tree/guides/ancient_tree_form_v1.svg', 'utf8');
-const output = resolve('build/qa/authored-crown-transitions');
+const output = resolve('build/qa/authored-root-volume');
 const boughs = await readFile('assets/source/magic_tree/textures_source/canopy_boughs_v1.png');
 await mkdir(output, { recursive: true });
 const bark = await readFile('assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png');
@@ -115,7 +115,23 @@ try {
     barkLayer.setAttribute('clip-path', 'url(#growing-wood-clip)');
     const directionalBark = make('g');
     directionalBark.setAttribute('clip-path', 'url(#growing-wood-clip)');
-    ridgeGroup.before(barkLayer, directionalBark, volumeRidges);
+    const rootLight = make('linearGradient');
+    rootLight.id = 'front-root-light';
+    for (const [offset, color, opacity] of [
+      [0, '#32271a', 0], [.26, '#c6a06c', .36], [.52, '#9d784e', .18],
+      [.82, '#2b2118', .61], [1, '#2b2118', 0],
+    ]) {
+      const stop = make('stop');
+      stop.setAttribute('offset', offset);
+      stop.setAttribute('stop-color', color);
+      stop.setAttribute('stop-opacity', opacity);
+      rootLight.append(stop);
+    }
+    svg.querySelector('defs').append(rootLight);
+    const frontRootLight = make('path');
+    frontRootLight.setAttribute('fill', 'url(#front-root-light)');
+    frontRootLight.setAttribute('clip-path', 'url(#growing-wood-clip)');
+    ridgeGroup.before(barkLayer, directionalBark, volumeRidges, frontRootLight);
     const smooth = value => {
       const t = Math.max(0, Math.min(1, value));
       return t * t * (3 - 2 * t);
@@ -276,8 +292,17 @@ try {
         rootLower.push(vertices.at(-1));
         frontAxis.push([x, y]);
       }
-      woodAxes.push([frontAxis, (rootRight[0] - rootLeft[0]) * .62]);
-      barkStrips.push([frontAxis[0], frontAxis.at(-1), [...rootUpper, ...rootLower.reverse()], rootRight[0] - rootLeft[0]]);
+      const frontWidth = rootRight[0] - rootLeft[0];
+      barkStrips.push([frontAxis[0], frontAxis.at(-1), [...rootUpper, ...rootLower.toReversed()], frontWidth]);
+      // 受光面从根颈内部进入前根截面，外沿由同一木体遮罩裁切。
+      const [lx, ly] = rootLeft, [rx, ry] = rootRight;
+      const leftEdge = rootUpper.slice(1).join('L');
+      const rightEdge = rootLower.slice(1).reverse().join('L');
+      const rise = 9 + 56 * growth;
+      frontRootLight.setAttribute('d', `M${lx + frontWidth * .32},${ly - rise}
+        Q${lx - frontWidth * .14},${ly - rise * .46} ${rootLeft}L${leftEdge}
+        L${rightEdge}L${rootRight}Q${rx + frontWidth * .35},${ry - rise * .55}
+        ${rx + frontWidth * .22},${ry - rise}Z`);
       const seat = plaqueBase.map(index => vertices[index]);
       const plaqueWidth = seat.at(-1)[0] - seat[0][0];
       const crownY = Math.min(...seat.map(([, y]) => y)) - (.12 + .88 * smooth((age - .38) / .56)) * plaqueWidth * 1.5;
