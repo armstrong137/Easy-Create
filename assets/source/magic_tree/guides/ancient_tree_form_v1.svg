@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 900" role="img" aria-label="魔树成熟构图稿">
+  <defs>
+    <linearGradient id="wood">
+      <stop stop-color="#aa8152"/><stop offset=".31" stop-color="#795634"/>
+      <stop offset=".68" stop-color="#493923"/><stop offset="1" stop-color="#28291b"/>
+    </linearGradient>
+    <linearGradient id="foliage" x2=".75" y2="1">
+      <stop stop-color="#88904a"/><stop offset=".52" stop-color="#4d6332"/><stop offset="1" stop-color="#293b25"/>
+    </linearGradient>
+    <radialGradient id="ground">
+      <stop stop-color="#6a5434" stop-opacity=".35"/><stop offset="1" stop-color="#6a5434" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="900" fill="#f6efdf"/>
+  <ellipse cx="407" cy="799" rx="297" ry="44" fill="url(#ground)"/>
+  <g id="rear-canopy" fill="#64764b" stroke="#52653f" stroke-width="3">
+    <path d="M84 399Q59 375 90 360Q88 335 135 339Q152 302 192 320Q205 292 249 316Q277 307 287 338Q329 350 300 379Q276 409 236 397Q203 421 162 403Q114 421 84 399Z"/>
+    <path d="M499 329Q469 308 488 283Q509 258 539 266Q543 234 592 246Q619 228 644 260Q693 253 704 284Q734 301 715 326Q703 350 656 343Q627 370 588 351Q540 365 499 329Z"/>
+    <path d="M461 512Q429 489 451 466Q474 443 499 457Q519 426 557 442Q592 424 617 456Q655 450 667 479Q680 503 649 522Q616 540 584 527Q549 554 517 529Q482 543 461 512Z"/>
+  </g>
+  <g id="wood-silhouette" fill="url(#wood)" stroke="#3b3121" stroke-width="2" stroke-linejoin="round">
+    <path id="left-limb" d="M394 603Q346 548 299 519Q254 491 218 454Q187 429 144 428Q128 431 102 420Q130 416 148 413Q193 411 225 432Q276 466 321 482Q364 498 407 539Z"/>
+    <path id="right-limb" d="M411 564Q462 507 493 467Q533 421 591 395Q627 374 667 371Q698 369 730 349Q715 377 683 389Q647 399 614 419Q557 456 520 506Q489 550 432 610Z"/>
+    <path id="upper-fork" d="M355 473Q334 410 316 371Q290 320 237 275Q210 256 184 256Q208 243 246 260Q306 286 339 339Q370 389 393 454Z"/>
+    <path id="trunk" d="M210 787Q245 769 280 759Q317 747 333 706Q361 646 356 585Q347 522 362 467Q374 421 368 372Q359 319 389 267Q413 223 401 172Q425 191 425 234Q425 273 411 305Q397 338 415 391Q431 439 418 493Q405 548 427 599Q454 657 460 700Q472 745 511 758Q551 770 596 796Q561 797 522 789Q486 783 459 771Q433 797 406 808Q374 792 344 777Q297 802 258 795Q233 801 210 787Z"/>
+    <path id="near-root" d="M396 637Q404 688 396 725Q383 771 339 799Q314 818 294 820Q321 799 329 780Q354 741 354 704Q357 662 376 635Z"/>
+    <path id="right-root" d="M429 677Q449 729 483 749Q515 766 551 773Q577 781 591 802Q570 796 548 794Q495 793 467 769Q430 747 414 709Z"/>
+    <path id="plaque-support" d="M404 622Q457 601 482 566Q498 545 517 541Q547 533 567 547Q557 562 530 563Q510 569 498 591Q470 634 420 649Z"/>
+  </g>
+  <g id="lit-ridges" fill="none" stroke="#c99b66" stroke-opacity=".42" stroke-linecap="round">
+    <path stroke-width="7" d="M364 733Q387 677 382 620Q369 552 386 501Q399 459 390 413"/>
+    <path stroke-width="4" d="M390 405Q378 353 396 313Q417 261 412 232M397 585Q357 530 310 508Q268 489 234 460M441 568Q475 530 503 492Q548 439 601 415M331 795Q370 766 379 731"/>
+  </g>
+  <g id="front-canopy" fill="url(#foliage)" stroke="#4b5d30" stroke-width="2.5">
+    <path d="M250 215Q224 193 256 176Q257 152 291 154Q302 124 340 132Q365 104 395 122Q431 105 459 134Q493 130 513 160Q550 177 529 204Q512 224 476 218Q456 243 416 229Q378 254 342 230Q307 239 285 221Q261 228 250 215Z"/>
+    <path d="M119 304Q94 285 119 262Q140 236 174 247Q198 220 230 237Q265 226 283 254Q310 257 317 282Q322 306 290 316Q254 333 225 315Q200 336 161 316Q136 324 119 304Z"/>
+    <path d="M327 342Q300 331 316 305Q331 285 365 290Q382 266 413 281Q433 259 468 278Q495 264 521 292Q556 295 564 319Q569 346 533 353Q510 374 468 354Q436 375 404 355Q356 369 327 342Z"/>
+    <path d="M80 454Q58 432 81 413Q95 391 126 402Q146 377 174 392Q207 380 230 407Q262 401 281 422Q296 452 269 465Q243 485 204 473Q178 495 144 475Q108 485 80 454Z"/>
+    <path d="M551 394Q528 374 550 353Q570 336 598 346Q617 317 655 332Q689 315 716 342Q747 343 756 366Q767 392 733 406Q705 425 670 414Q640 433 608 412Q576 420 551 394Z"/>
+  </g>
+  <g id="plaque" transform="translate(520 472)">
+    <path d="M-19 80Q-28 60-25 25Q-28 4-12-6Q1-13 15-7Q30 2 27 24L29 63Q27 79 13 86Q-6 92-19 80Z" fill="url(#wood)" stroke="#372e21" stroke-width="3"/>
+    <rect x="-17" y="1" width="36" height="74" rx="10" fill="#e7cd9a" stroke="#c49857" stroke-width="2"/>
+    <text x="1" y="22" font-family="serif" text-anchor="middle" font-size="16" fill="#38291b">第<tspan x="1" dy="18">一</tspan><tspan x="1" dy="18">节</tspan></text>
+  </g>
+</svg>
