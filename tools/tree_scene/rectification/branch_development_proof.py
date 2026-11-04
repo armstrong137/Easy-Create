@@ -176,8 +176,8 @@ if ROOT_COLLAR:
                             y-opening*.39*math.sqrt(1-u*u)*math.sin(math.pi*t),
                             middle+(z-middle)*(1-.95*t)+length*.67*t*t])
                     else:
-                        pose.append([x*(1-.79*t)+radius*.12*t,
-                            y-radius*.92*t,z-radius*(.52*t+.13*t*t)])
+                        pose.append([x*(1-.43*t)+radius*.26*t*t,
+                            y-radius*.92*t,z-radius*(.32*t+.06*t*t+.13*t*u*u)])
         vertex_count=len(poses[0])
 additional_face_end=len(faces)
 plaque_uv={}
@@ -187,9 +187,11 @@ if ROOT_COLLAR:
     plaque_base=[branch_start+row*(COLS+1)+COLS for row in range(11,16)]
     top=list(range(vertex_count,vertex_count+len(plaque_base)))
     for pose,(_,_,length,_) in zip(poses,parameters):
-        for index in plaque_base:
+        crown_height=pose[plaque_base[-1]][2]+.26*length
+        for col,index in enumerate(plaque_base):
             x,y,z=pose[index]
-            pose.append([x,y,z+.32*length])
+            u=col/(len(plaque_base)-1)*2-1
+            pose.append([x,y,crown_height-.085*length*u*u])
     for col,(bottom,upper) in enumerate(zip(plaque_base,top)):
         plaque_uv[bottom]=[col*.11,0]
         plaque_uv[upper]=[col*.11,.45]
@@ -219,6 +221,10 @@ if ROOT_COLLAR:
         (left_start+15*(COLS+1)+COLS,1,.87,-.12),
         (48*(COLS+1)+2,2,.86,-.20),
         (54*(COLS+1)+7,1,.89,-.26),
+        (branch_start+9*(COLS+1)+COLS,2,.82,-.22),
+        (left_start+8*(COLS+1)+COLS,0,.94,-.16),
+        (left_start+19*(COLS+1)+COLS,2,.79,-.24),
+        (58*(COLS+1)+2,1,.88,-.17),
     ]
     for anchor,patch_index,size,depth in attachments:
         patch=next(p for p in patches if p['name']==f'早生叶{patch_index}')
@@ -276,6 +282,9 @@ for age,pose in zip(ages,poses):
             a,b=nodes[upper],nodes[lower]
             nodes[upper]=[x*.89+y*.11 for x,y in zip(a,b)]
             nodes[lower]=[x*.11+y*.89 for x,y in zip(a,b)]
+        # 纸面的上、下边分别保持水平，底部留出随枝倾斜的木托。
+        nodes[4][2]=nodes[5][2]=min(nodes[4][2],nodes[5][2])
+        nodes[6][2]=nodes[7][2]=max(nodes[6][2],nodes[7][2])
     frames.append({'age':age,'nodes':nodes,'radial':[1,1]})
 metadata={'format':'共享边界局部分枝发育-v1','vertexCount':vertex_count,'triangleCount':len(faces),
     'sections':sections,'byteLength':len(payload)*4,'nodes':frames[-1]['nodes'],'edges':[[0,1],[2,3]],
@@ -286,7 +295,7 @@ metadata={'format':'共享边界局部分枝发育-v1','vertexCount':vertex_coun
     'groundShadow':False,'nearOffset':[.1,-.05],'nearSpan':[3.4,2.7],
     'scope':'仅光滑幼干、真实共享边界及首个子枝发育；没有根冠木牌，不是完整树苗或A2样件'}
 if ROOT_COLLAR:
-    metadata.update(format='共享枝架整树发育-v1',
+    metadata.update(format='共享枝架整树发育-v2',
         scope='共享双主枝、三粗根、枝牌与分层冠簇整树',
         textureStyles=['wood','leaf'],extraTextures=['canopy.png'],
         triangleTextures=[0]*wood_faces+[1]*(len(faces)-wood_faces),
@@ -294,7 +303,7 @@ if ROOT_COLLAR:
         unlitVertexStart=wood_vertices,foliageParts=len(attachments),
         plaques=[{'corners':[4,5,6,7],'title':'第一节','birth':.34,'duration':.42,'unroll':True}],
         nearOffset=[-1,-.05],nearSpan=[2.1,2.4])
-    metadata['camera'].update(target=[.3,0,3.8],scale=11.5)
+    metadata['camera'].update(target=[.65,0,3.8],scale=13.3)
 (OUT/'mesh.bin').write_bytes(payload.tobytes())
 (OUT/'mesh.json').write_text(json.dumps(metadata,ensure_ascii=False,indent=2),encoding='utf-8')
 source=ROOT/'assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png'

@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-04 19:30:13　对应提交：9f3e465 之后的工作区状态
+> 生成时间：2026-11-04 19:31:54　对应提交：a0d0b16 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,8 +13,8 @@ Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
   Files:     237
-  Nodes:     6,784
-  Edges:     25,206
+  Nodes:     6,786
+  Edges:     25,210
   DB Size:   30.17 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
@@ -23,7 +23,7 @@ Nodes by Kind:
   method          1,869
   function        1,720
   import          897
-  variable        752
+  variable        754
   constant        732
   class           534
   file            229
@@ -294,7 +294,7 @@ Project Structure (237 files):
 |       |   |-- authored_surface_proof.py (python, 93 symbols)
 |       |   |-- authored_whole_control.py (python, 15 symbols)
 |       |   |-- bake_volume_material.py (python, 10 symbols)
-|       |   |-- branch_development_proof.py (python, 130 symbols)
+|       |   |-- branch_development_proof.py (python, 132 symbols)
 |       |   |-- continuous_core_proof.py (python, 57 symbols)
 |       |   |-- contour_cage_proof.py (python, 102 symbols)
 |       |   |-- development_tree_proof.py (python, 79 symbols)
