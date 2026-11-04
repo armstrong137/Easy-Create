@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const source = await readFile('assets/source/magic_tree/guides/ancient_tree_form_v1.svg', 'utf8');
-const output = resolve('build/qa/authored-rounded-roots');
+const output = resolve('build/qa/authored-crown-interior');
 const boughs = await readFile('assets/source/magic_tree/textures_source/canopy_boughs_v1.png');
 await mkdir(output, { recursive: true });
 const bark = await readFile('assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png');
@@ -29,7 +29,7 @@ try {
     for (const [layer, entries] of [
       [front, [[arch, 401, 214, .32], [left, 237, 268, .20], [sprig, 392, 329, .29],
         [left, 166, 424, .24], [right, 663, 378, .24]]],
-      [rear, [[left, 280, 330, .21], [right, 585, 450, .19], [arch, 515, 510, .22]]],
+      [rear, [[right, 280, 330, .23], [left, 585, 450, .25], [arch, 260, 493, .20]]],
     ]) {
       entries.forEach(([source, tx, ty, scale], index) => {
         const [x, y, width, height, ax, ay] = source;
@@ -41,7 +41,7 @@ try {
         view.setAttribute('width', width * scale);
         view.setAttribute('height', height * scale);
         view.setAttribute('overflow', 'hidden');
-        if (layer === rear) view.setAttribute('opacity', '.75');
+        if (layer === rear) view.setAttribute('opacity', '.88');
         const sprite = make('image');
         sprite.setAttribute('href', boughSource);
         sprite.setAttribute('width', '1254');
@@ -191,9 +191,9 @@ try {
       [front[2], [392, 329], 'trunk', .22, .27, .18],
       [front[3], [166, 424], 'left-limb', .25, .38, .10],
       [front[4], [663, 378], 'right-limb', .25, .38, .22],
-      [rear[0], [280, 330], 'upper-fork', .17, .26, .24],
-      [rear[1], [585, 450], 'right-limb', .18, .24, .28],
-      [rear[2], [515, 510], 'right-limb', .12, .20, .30],
+      [rear[0], [280, 330], 'upper-fork-middle', .17, .26, .24],
+      [rear[1], [585, 450], 'right-limb-middle', .18, .24, .28],
+      [rear[2], [260, 493], 'left-limb-middle', .12, .20, .30],
     ];
     window.renderGrowth = (age, near = false) => {
       const growth = smooth(age);
@@ -223,6 +223,9 @@ try {
         woodAxes.push([axis, (b[1] - a[1]) * .24]);
         barkStrips.push([axis[0], axis.at(-1), [...upper, ...lower.reverse()], b[1] - a[1]]);
         const end = vertices.at(-1).map((value, i) => (value + vertices.at(-2)[i]) / 2);
+        // 后冠直接跟随枝条第二截面，避免用枝梢的仿射变换估算接点。
+        const middle = axis[2];
+        limbTransforms.push([`${id}-middle`, () => middle]);
         limbTransforms.push([id, (x, y) => [end[0] + (x - tip[0]) * dx / old[0],
           end[1] + (y - tip[1]) * dy / old[1]]]);
       }
