@@ -1,0 +1,42 @@
+{
+  "success": true,
+  "meshSha256": "2dea8aad4868f641d1acd61eb58d780d95ab36115963410ca4aa7c2110823353",
+  "metadataSha256": "c8fd9e77d2829b7f690acad83351ff3fff093191717f3f66a547821db1d0ef0d",
+  "intervals": [
+    {
+      "from": 0,
+      "to": 0.25,
+      "triangles": 6086,
+      "minimumSignedArea": 3.352806743350811e-8,
+      "minimumAreaAfterRoundingBound": 2.980665473745628e-8,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.25,
+      "to": 0.5,
+      "triangles": 6086,
+      "minimumSignedArea": 3.352806743350811e-8,
+      "minimumAreaAfterRoundingBound": 2.980665473745628e-8,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.5,
+      "to": 0.75,
+      "triangles": 6086,
+      "minimumSignedArea": 0.000005217747286678787,
+      "minimumAreaAfterRoundingBound": 0.000005167300244719989,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.75,
+      "to": 1,
+      "triangles": 6086,
+      "minimumSignedArea": 0.0000382495242092773,
+      "minimumAreaAfterRoundingBound": 0.00003811230081787832,
+      "unsafeTriangles": 0
+    }
+  ],
+  "coordinateRoundingBound": 8.847643357512425e-7,
+  "candidateScope": "从独立幼苗到成熟宽冠的同拓扑发育",
+  "scope": "X-Z顶点姿态的线性插值；smoothstep只重参数化[0,1]，二次面积式覆盖整个区间。保守Float32坐标误差界不代表GPU逐像素、自然造型、挂点正确或整树业务验收。"
+}

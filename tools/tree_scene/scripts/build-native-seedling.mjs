@@ -30,12 +30,12 @@ function strip(path, width) {
       const across = column / columns * 2 - 1;
       normals.push(across * .8, -Math.sqrt(1 - across * across * .64), 0);
       ages.forEach((age, frame) => {
-        const [x, z] = path(age, t);
+        const [x, z, depth = 0] = path(age, t);
         const [ax, az] = path(age, t - .001), [bx, bz] = path(age, t + .001);
         const length = Math.hypot(bx - ax, bz - az);
         const radius = width(age, t);
         poses[frame].push([x + (bz - az) / length * radius * across,
-          -radius * Math.sqrt(1 - across * across), z - (bx - ax) / length * radius * across]);
+          depth - radius * Math.sqrt(1 - across * across), z - (bx - ax) / length * radius * across]);
       });
     }
   }
@@ -49,8 +49,9 @@ function strip(path, width) {
 }
 
 // 主干从幼苗尺寸起步，侧枝的基点每次由同一母干曲线求出。
-strip(stem, (age, t) => (.076 + .044 * juvenile(age) + .23 * maturity(age)) *
-  (1 - .91 * t) * (1 + .65 * Math.exp(-t * 14)));
+strip(stem, (age, t) => (.076 + .044 * juvenile(age) + .43 * maturity(age)) *
+  (1 - .91 * t + .13 * maturity(age) * Math.sin(3 * Math.PI * t) ** 2) *
+  (1 + .65 * Math.exp(-t * 14)));
 const shoots = [-1, 1].map((side, i) => (age, t) => {
   const [x, z] = stem(age, i ? .66 : .51);
   const adult = maturity(age);
@@ -58,26 +59,34 @@ const shoots = [-1, 1].map((side, i) => (age, t) => {
   return [x + side * reach * t, z + reach * ((.18 - adult * .27) * t + (.56 - adult * .13) * t * t)];
 });
 for (const path of shoots) strip(path, (age, t) =>
-  (.029 + .026 * juvenile(age) + .12 * maturity(age)) * (1 - .9 * t));
+  (.029 + .026 * juvenile(age) + .20 * maturity(age)) * (1 - .9 * t));
 // 二级枝以母枝参数定位，向冠层内部填补主枝间的空隙。
 const twigs = [
   [shoots[0], .68, 1, .14, .23],
   [shoots[1], .60, -1, .16, .25],
   [stem, .80, -1, .26, .23],
   [stem, .89, 1, .24, .18],
+  [shoots[0], .43, -1, .20, .35],
+  [shoots[1], .40, 1, .21, .30],
+  [shoots[0], .78, -1, .17, .19],
+  [shoots[1], .76, 1, .12, .18],
+  [stem, .73, -1, .24, .21],
 ].map(([parent, origin, side, reach, rise], i) => (age, t) => {
   const [x, z] = parent(age, origin);
-  const extension = .48 + .68 * smooth((juvenile(age) - i * .08) / .76) + 2.2 * maturity(age);
+  const extension = i < 4
+    ? .48 + .68 * smooth((juvenile(age) - i * .08) / .76) + 2.2 * maturity(age)
+    : .045 + 2.2 * maturity(age);
   return [x + side * reach * extension * t, z + rise * extension * t * (.66 + .34 * t)];
 });
-for (const path of twigs) strip(path, (age, t) =>
-  (.013 + .008 * juvenile(age) + .045 * maturity(age)) * (1 - .91 * t));
-for (const [side, reach] of [[-1, .24], [1, .33], [-1, .15]]) {
+for (const [index, path] of twigs.entries()) strip(path, (age, t) =>
+  ((index < 4 ? .013 + .008 * juvenile(age) : .0015) + .06 * maturity(age)) * (1 - .91 * t));
+for (const [side, reach, forward] of [[-1, .24, .13], [1, .33, -.06], [-1, .15, .48], [1, .17, .62]]) {
   strip((age, t) => {
     const adult = maturity(age);
     return [side * reach * (1 + juvenile(age) * .45 + 4.1 * adult) * t,
-      .075 - .085 * t + .018 * t * t + adult * (.21 - (.24 + reach * .4) * t + .08 * t * t)];
-  }, (age, t) => (.037 + .022 * juvenile(age) + .11 * maturity(age)) * (1 - .93 * t));
+      .075 - .085 * t + .018 * t * t + adult * (.52 - (.57 + forward * .31) * t + .13 * t * t),
+      -adult * forward * (.30 + t)];
+  }, (age, t) => (.037 + .022 * juvenile(age) + .18 * maturity(age)) * (1 - .93 * t));
 }
 
 const woodVertices = poses[0].length;
@@ -90,9 +99,12 @@ const nodes = [[0, 0, 0], [0, 0, 5]];
 const frameNodes = ages.map(() => [...nodes]);
 const foliage = [
   ...[...shoots, stem].map((path, i) => ({ path, patchIndex: i, size: 1, depth: -.035 })),
-  ...twigs.map((path, i) => ({ path, patchIndex: (i + 1) % 3, size: .59, depth: i % 2 ? -.075 : -.022 })),
+  ...twigs.map((path, i) => ({
+    path, patchIndex: (i + 1) % 3, size: i < 4 ? .68 : .82,
+    depth: i % 2 ? -.31 : -.065, late: i >= 4,
+  })),
 ];
-for (const { path, patchIndex, size, depth } of foliage) {
+for (const { path, patchIndex, size, depth, late } of foliage) {
   const patch = report.patches.find(item => item.name === `早生叶${patchIndex}`);
   const base = position(patch.anchorVertex);
   const first = poses[0].length;
@@ -103,8 +115,8 @@ for (const { path, patchIndex, size, depth } of foliage) {
     ages.forEach((age, frame) => {
       const [x, z] = path(age, 1);
       const adult = maturity(age);
-      const scale = size * (.69 + .28 * smooth(juvenile(age)) + 2.1 * adult);
-      poses[frame].push([x + (point[0] - base[0]) * scale, depth,
+      const scale = size * (late ? .025 + 2.9 * adult : .69 + .28 * smooth(juvenile(age)) + 2.1 * adult);
+      poses[frame].push([x + (point[0] - base[0]) * scale, depth * (.15 + .85 * adult),
         z + (point[2] - base[2]) * scale * (1 - .24 * adult)]);
     });
   }
@@ -124,8 +136,8 @@ const plaques = report.patches.filter(patch => patch.material === 2).map((patch,
   const place = (point, age) => {
     const [x, z] = shoots[index](age, .40);
     const scale = .012 + .46 * smooth((age - .2) / .65);
-    return [x + (point[0] - anchor[0]) * scale, -.15 + (point[1] - anchor[1]) * scale,
-      z + (point[2] - anchor[2]) * scale];
+    return [x + (point[0] - anchor[0]) * scale, -.28 * maturity(age) - .08 + (point[1] - anchor[1]) * scale,
+      z + (point[2] - anchor[2]) * scale + .075 * maturity(age)];
   };
   const first = poses[0].length;
   const [start, end] = patch.vertexRange;
@@ -161,13 +173,13 @@ section('normals', normals);
 section('corners', corners);
 poses.forEach((pose, i) => section(`positions${i}`, pose.flat()));
 const metadata = {
-  format: '独立魔树实体发育-v3', vertexCount: poses[0].length, triangleCount: corners.length / 9,
+  format: '独立魔树实体发育-v4', vertexCount: poses[0].length, triangleCount: corners.length / 9,
   byteLength, sections, nodes: frameNodes.at(-1), edges: [[0, 1]],
   poseFrames: ages.map((age, index) => ({ age, nodes: frameNodes[index], radial: [1] })),
   vertexPoseSections: ages.map((_, i) => `positions${i}`),
   samples: ages.map((age, i) => ({ age, vertices: poses[i].map((position, index) => ({ index, position })) })),
   camera: { target: [0, 0, 2.8], right: [1, 0, 0], up: [0, 0, 1], back: [0, -1, 0], scale: 13 },
-  textureStyles: ['wood', 'leaf', 'frame'], extraTextures: ['canopy.png', 'frames.png'],
+  textureStyles: ['wood', 'leaf', 'wood'], extraTextures: ['canopy.png', 'frames.png'],
   triangleTextures, foliageParts: foliage.length, plaques,
   vertexBirthAges: poses[0].map((_, index) => index >= firstFrameVertex ? .18 : -1),
   postTextureLightingMaterials: [0], unlitVertexStart: woodVertices, juvenileContrast: .12,
