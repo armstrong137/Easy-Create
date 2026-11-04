@@ -1,0 +1,42 @@
+{
+  "success": true,
+  "meshSha256": "66aa6ac6f9c2852bf9220da1ecf1fb8378db53f551a421fbfb9af611ee871fcf",
+  "metadataSha256": "d83ae929b3cf1b7b4c99c2dccc9e01afe94b9ceda492e15f2a82676e4d6ff8fc",
+  "intervals": [
+    {
+      "from": 0,
+      "to": 0.25,
+      "triangles": 1828,
+      "minimumSignedArea": 0.000008496643623012723,
+      "minimumAreaAfterRoundingBound": 0.000008473695192037398,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.25,
+      "to": 0.5,
+      "triangles": 1828,
+      "minimumSignedArea": 0.000010754509439367399,
+      "minimumAreaAfterRoundingBound": 0.00001072947317853799,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.5,
+      "to": 0.75,
+      "triangles": 1828,
+      "minimumSignedArea": 0.000013279903493867984,
+      "minimumAreaAfterRoundingBound": 0.000013252774536663165,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.75,
+      "to": 1,
+      "triangles": 1828,
+      "minimumSignedArea": 0.00001607361456681944,
+      "minimumAreaAfterRoundingBound": 0.000016044389432256656,
+      "unsafeTriangles": 0
+    }
+  ],
+  "coordinateRoundingBound": 4.3807742144963413e-7,
+  "candidateScope": "独立幼苗与两根实体侧枝的局部发育",
+  "scope": "X-Z顶点姿态的线性插值；smoothstep只重参数化[0,1]，二次面积式覆盖整个区间。保守Float32坐标误差界不代表GPU逐像素、自然造型、挂点正确或整树业务验收。"
+}
