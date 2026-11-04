@@ -143,6 +143,42 @@ for root_index,boundary in enumerate(root_boundaries):
             uv.append(coordinate)
 
 root_face_end=len(faces)
+additional_uv=[]
+additional_boundaries=[]
+if ROOT_COLLAR:
+    # 左枝与前根分别从母干侧边、下缘生长，接合点沿用母干索引。
+    left_boundary=[row*(COLS+1) for row in range(FIRST,LAST+1)]
+    front_boundary=list(range(2,7))
+    additional_boundaries=[left_boundary,front_boundary]
+    for boundary in additional_boundaries:
+        first=len(poses[0])
+        count=len(boundary)
+        coordinates={index:[col/(count-1)*.5,0] for col,index in enumerate(boundary)}
+        for row in range(1,BRANCH_ROWS+1):
+            t=row/BRANCH_ROWS
+            previous=boundary if row==1 else list(range(first+(row-2)*count,first+(row-1)*count))
+            current=list(range(first+(row-1)*count,first+row*count))
+            for col in range(count-1):
+                pair=[(previous[col],current[col+1],current[col]),
+                      (previous[col],previous[col+1],current[col+1])]
+                faces.extend(face if boundary is left_boundary else face[::-1] for face in pair)
+                additional_uv.extend([coordinates,coordinates])
+            for col,index in enumerate(boundary):
+                u=col/(count-1)*2-1
+                normals.append([-u*.6,-math.sqrt(1-u*u*.36),0])
+                coordinates[current[col]]=[col/(count-1)*.5,t*.72]
+                for pose,(height,radius,length,opening) in zip(poses,parameters):
+                    x,y,z=pose[index]
+                    if boundary is left_boundary:
+                        middle=pose[boundary[count//2]][2]
+                        pose.append([x-length*.81*(.30*t+.70*t*t),
+                            y-opening*.39*math.sqrt(1-u*u)*math.sin(math.pi*t),
+                            middle+(z-middle)*(1-.95*t)+length*.67*t*t])
+                    else:
+                        pose.append([x*(1-.79*t)+radius*.12*t,
+                            y-radius*.92*t,z-radius*(.52*t+.13*t*t)])
+        vertex_count=len(poses[0])
+additional_face_end=len(faces)
 plaque_uv={}
 plaque_base=[]
 if ROOT_COLLAR:
@@ -163,8 +199,10 @@ if ROOT_COLLAR:
     vertex_count=len(poses[0])
 
 def face_uv(number,index):
-    if number>=root_face_end:
+    if number>=additional_face_end:
         return plaque_uv[index]
+    if number>=root_face_end:
+        return additional_uv[number-root_face_end][index]
     if number>=branch_face_end:
         return root_uv[(number-branch_face_end)//(BRANCH_ROWS*COLS*2)][index]
     if number>=ROWS*COLS*2:
@@ -202,10 +240,11 @@ metadata={'format':'共享边界局部分枝发育-v1','vertexCount':vertex_coun
     'groundShadow':False,'nearOffset':[.1,-.05],'nearSpan':[3.4,2.7],
     'scope':'仅光滑幼干、真实共享边界及首个子枝发育；没有根冠木牌，不是完整树苗或A2样件'}
 if ROOT_COLLAR:
-    metadata.update(format='共享根颈与承托枝局部发育-v2',
-        scope='共享根枝及与母枝共边的木牌',
+    metadata.update(format='共享根颈与承托枝局部发育-v3',
+        scope='共享双主枝、三粗根及与母枝共边的木牌',
         plaques=[{'corners':[4,5,6,7],'title':'第一节','birth':.34,'duration':.42,'unroll':True}],
-        nearOffset=[-.3,.55],nearSpan=[2.1,2.4])
+        nearOffset=[-1,.55],nearSpan=[2.1,2.4])
+    metadata['camera']['target'][0]=.3
 (OUT/'mesh.bin').write_bytes(payload.tobytes())
 (OUT/'mesh.json').write_text(json.dumps(metadata,ensure_ascii=False,indent=2),encoding='utf-8')
 source=ROOT/'assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png'
@@ -219,6 +258,7 @@ report={'script_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
     'production_integrated':False,'visualAcceptance':'局部方法待实际浏览器，不计完整候选轮次'}
 if ROOT_COLLAR:
     report['rootBoundaries']=root_boundaries
+    report['additionalBoundaries']=additional_boundaries
     report['plaqueBoundary']=plaque_base
 (OUT/'result.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
 if bpy is not None:

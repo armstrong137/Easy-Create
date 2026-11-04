@@ -26,7 +26,7 @@ for(let i=0;i<corners.length;i+=9){
   }
 }
 const shared=[...edges.entries()].filter(([,e])=>e.parent&&e.child);
-const boundaries=[result.sharedBoundary,...(result.rootBoundaries??[])];
+const boundaries=[result.sharedBoundary,...(result.rootBoundaries??[]),...(result.additionalBoundaries??[])];
 const expected=boundaries.flatMap(boundary=>boundary.slice(1)
   .map((v,i)=>[boundary[i],v].sort((a,b)=>a-b).join(':'))).sort();
 if(JSON.stringify(shared.map(([key])=>key).sort())!==JSON.stringify(expected))throw Error('实际母子共享边界与预期接头不符');
