@@ -1,8 +1,9 @@
 import { chromium } from 'playwright';
 import { mkdir, readFile } from 'node:fs/promises';
 
-const output = 'build/qa/depth-collar-plaque-growth';
+const output = 'build/qa/depth-collar-canopy';
 const bark = await readFile('assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png');
+const canopy = await readFile('assets/source/magic_tree/textures_source/canopy_boughs_v1.png');
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -11,10 +12,13 @@ const browser = await chromium.launch({
 try {
   const page = await browser.newPage({ viewport: { width: 1380, height: 480 } });
   await page.setContent('<body style="margin:0"><canvas width="1380" height="480"></canvas>');
-  await page.evaluate(async barkSource => {
+  await page.evaluate(async ([barkSource, canopySource]) => {
     const image = new Image();
     image.src = barkSource;
     await image.decode();
+    const leaves = new Image();
+    leaves.src = canopySource;
+    await leaves.decode();
     const texture = new OffscreenCanvas(256, 256).getContext('2d');
     texture.drawImage(image, 0, 0, 256, 256);
     const texels = texture.getImageData(0, 0, 256, 256).data;
@@ -26,7 +30,8 @@ try {
     const buffer = ctx.getImageData(0, 0, width, 480);
     const ground = 400;
     const captions = [];
-    const ages = [.42, .79, 1];
+    const crowns = [];
+    const ages = [0, .5, 1];
     const smooth = value => {
       const t = Math.max(0, Math.min(1, value));
       return t * t * (3 - 2 * t);
@@ -34,7 +39,16 @@ try {
     for (const [index, age] of ages.entries()) {
       const center = 230 + index * 460;
       const components = [];
-      const seat = [1.42 * age, -.26, 2.35];
+      // 每件冠枝定位到其发育管体末端，同一投影用于木体和冠枝。
+      const crown = ([x, y, z], [sx, sy, width, height, ax, ay], scale) => {
+        const size = scale * (.37 + .63 * age);
+        crowns.push([sx, sy, width, height, center + x * 67 - (ax - sx) * size,
+          ground - (z + y * .22) * 67 - (ay - sy) * size, width * size, height * size]);
+      };
+      const leftLeaves = [0,110,620,490,590,565];
+      const rightLeaves = [665,110,586,490,689,574];
+      const archLeaves = [0,730,776,420,374,1134];
+      const seat = [.31 + 1.11 * age, -.26, 2.10 + .25 * age];
       const frameSize = smooth((age - .57) / .40);
       const paperReveal = smooth((age - .69) / .28);
       const plaque = [seat[0], seat[1] - .105 * frameSize, seat[2] + .42 * frameSize];
@@ -72,15 +86,29 @@ try {
         return Math.max(surface, -z);
       }
       const thickness = .38 + .62 * age;
+      const leader = [-.25,.12,2.96+1.74*age,.19*thickness];
       tube([[0,0,.22,.82*thickness], [.04,0,.72,.56*thickness], [.14,.02,1.4,.42*thickness],
-        [.08,.06,2.15,.35*thickness], [-.15,.12,3.15,.27*thickness], [-.25,.12,3.7+age,.19*thickness]]);
+        [.08,.06,2.15,.35*thickness], [-.15,.12,2.64+.51*age,.27*thickness], leader]);
+      crown(leader, archLeaves, .153);
       for (const [x, y, reach] of [[-1,-.32,1.7],[1,.22,1.82],[-.42,-1,1.22],[.72,-.8,1.45]]) {
         const size = .55 + .45 * age;
         tube([[x*.18,y*.12,.79,.31*thickness], [x*.67*size,y*.48,.38,.34*thickness],
           [x*1.04*size,y*.83,.19,.22*thickness], [x*reach*size,y*1.3,.05,.05*thickness]]);
       }
-      tube([[.14,0,1.45,.29*thickness], [.14+.41*age,-.08,1.61,.26*thickness], [1.05*age,-.21,1.94,.21*thickness],
-        [...seat,.16*thickness], [1.93*age,-.24,2.65,.07*thickness]]);
+      const rightTip = [.40+1.53*age,-.24,2.45+.20*age,.07*thickness];
+      tube([[.14,0,1.45,.29*thickness], [.14+.41*age,-.08,1.61,.26*thickness], [.23+.82*age,-.21,1.94,.21*thickness],
+        [...seat,.16*thickness], rightTip]);
+      crown(rightTip, rightLeaves, .143);
+      for (const [side, matureHeight, length, depth, leaf] of [
+        [-1,1.68,1.70,-.12,leftLeaves], [-1,2.85,1.19,.13,leftLeaves],
+        [1,2.94,1.10,.14,rightLeaves], [1,2.23,.95,.37,archLeaves],
+      ]) {
+        const height = matureHeight * (.76 + .24 * age);
+        const reach = .25 + length * age;
+        const tip = [side*reach,depth,height+.37+.46*age,.06*thickness];
+        tube([[0,0,height,.19*thickness], [side*reach*.46,depth*.55,height+.19,.13*thickness], tip]);
+        crown(tip, leaf, .127);
+      }
       if (paperReveal === 1) captions.push([center + plaque[0]*67, ground - (plaque[2] + (plaque[1] - .12*frameSize)*.22)*67]);
       for (let py = 54; py < 440; py++) for (let px = center - 155; px < center + 165; px++) {
         const x = (px + .5 - center) / 67;
@@ -114,6 +142,7 @@ try {
       }
     }
     ctx.putImageData(buffer, 0, 0);
+    for (const placement of crowns) ctx.drawImage(leaves, ...placement);
     ctx.font = '18px Microsoft YaHei';
     ctx.fillStyle = '#493824';
     ages.forEach((age, index) => ctx.fillText(`生长姿态 ${age.toFixed(2)}`, 24 + 460 * index, 36));
@@ -123,7 +152,7 @@ try {
     for (const [x, y] of captions) {
       ['第', '一', '节'].forEach((character, i) => ctx.fillText(character, x, y + (i - 1) * 10));
     }
-  }, `data:image/png;base64,${bark.toString('base64')}`);
+  }, [bark, canopy].map(bytes => `data:image/png;base64,${bytes.toString('base64')}`));
   await page.screenshot({ path: `${output}/comparison.png` });
 } finally {
   await browser.close();
