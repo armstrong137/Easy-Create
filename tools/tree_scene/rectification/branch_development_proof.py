@@ -4,6 +4,7 @@ import hashlib
 import json
 import math
 import shutil
+import struct
 import sys
 from pathlib import Path
 try:
@@ -147,7 +148,7 @@ additional_uv=[]
 additional_boundaries=[]
 if ROOT_COLLAR:
     # 左枝与前根分别从母干侧边、下缘生长，接合点沿用母干索引。
-    left_boundary=[row*(COLS+1) for row in range(FIRST,LAST+1)]
+    left_boundary=[row*(COLS+1) for row in range(LAST+2,LAST+COLS+3)]
     front_boundary=list(range(2,7))
     additional_boundaries=[left_boundary,front_boundary]
     for boundary in additional_boundaries:
@@ -198,7 +199,52 @@ if ROOT_COLLAR:
                       (plaque_base[col],top[col+1],top[col])])
     vertex_count=len(poses[0])
 
+wood_vertices=vertex_count
+wood_faces=len(faces)
+leaf_uv={}
+if ROOT_COLLAR:
+    # 图集只提供局部叶簇，各组随同一枝架顶点移动。
+    donor=ROOT/'build/qa/development-tree-round2-proof'
+    donor_meta=json.loads((donor/'mesh.json').read_text(encoding='utf-8'))
+    patches=json.loads((donor/'result.json').read_text(encoding='utf-8'))['patches']
+    donor_bytes=(donor/'mesh.bin').read_bytes()
+    donor_pose=donor_meta['sections'][donor_meta['vertexPoseSections'][-1]]['offset']
+    donor_corners=donor_meta['sections']['corners']
+    left_start=root_start+2*BRANCH_ROWS*(COLS+1)
+    attachments=[
+        (ROWS*(COLS+1)+COLS//2,0,1.3,-.05),
+        (branch_start+23*(COLS+1)+COLS//2,1,1.2,-.05),
+        (left_start+23*(COLS+1)+COLS//2,2,1.15,-.04),
+        (branch_start+17*(COLS+1)+COLS,0,.93,-.16),
+        (left_start+15*(COLS+1)+COLS,1,.87,-.12),
+        (48*(COLS+1)+2,2,.86,-.20),
+        (54*(COLS+1)+7,1,.89,-.26),
+    ]
+    for anchor,patch_index,size,depth in attachments:
+        patch=next(p for p in patches if p['name']==f'早生叶{patch_index}')
+        ox,_,oz=struct.unpack_from('<3f',donor_bytes,donor_pose+12*patch['anchorVertex'])
+        start,end=patch['vertexRange']
+        first=len(poses[0])
+        for index in range(start,end):
+            x,_,z=struct.unpack_from('<3f',donor_bytes,donor_pose+12*index)
+            normals.append([0,-1,0])
+            for pose,age in zip(poses,ages):
+                ax,ay,az=pose[anchor]
+                scale=size*(.38+2.9*age*age)
+                pose.append([ax+(x-ox)*scale,ay+depth,az+(z-oz)*scale*.84])
+        for offset in range(donor_corners['offset'],donor_corners['offset']+4*donor_corners['length'],36):
+            values=struct.unpack_from('<9f',donor_bytes,offset)
+            ids=[int(values[i]) for i in (0,3,6)]
+            if all(start<=index<end for index in ids):
+                face=tuple(first+index-start for index in ids)
+                leaf_uv[len(faces)]={index:values[i*3+1:i*3+3] for i,index in enumerate(face)}
+                faces.append(face)
+    vertex_count=len(poses[0])
+    shutil.copyfile(donor/'canopy.png',OUT/'canopy.png')
+
 def face_uv(number,index):
+    if number>=wood_faces:
+        return leaf_uv[number][index]
     if number>=additional_face_end:
         return plaque_uv[index]
     if number>=root_face_end:
@@ -240,11 +286,15 @@ metadata={'format':'共享边界局部分枝发育-v1','vertexCount':vertex_coun
     'groundShadow':False,'nearOffset':[.1,-.05],'nearSpan':[3.4,2.7],
     'scope':'仅光滑幼干、真实共享边界及首个子枝发育；没有根冠木牌，不是完整树苗或A2样件'}
 if ROOT_COLLAR:
-    metadata.update(format='共享根颈与承托枝局部发育-v3',
-        scope='共享双主枝、三粗根及与母枝共边的木牌',
+    metadata.update(format='共享枝架整树发育-v1',
+        scope='共享双主枝、三粗根、枝牌与分层冠簇整树',
+        textureStyles=['wood','leaf'],extraTextures=['canopy.png'],
+        triangleTextures=[0]*wood_faces+[1]*(len(faces)-wood_faces),
+        postTextureLighting=False,postTextureLightingMaterials=[0],
+        unlitVertexStart=wood_vertices,foliageParts=len(attachments),
         plaques=[{'corners':[4,5,6,7],'title':'第一节','birth':.34,'duration':.42,'unroll':True}],
-        nearOffset=[-1,.55],nearSpan=[2.1,2.4])
-    metadata['camera']['target'][0]=.3
+        nearOffset=[-1,-.05],nearSpan=[2.1,2.4])
+    metadata['camera'].update(target=[.3,0,3.8],scale=11.5)
 (OUT/'mesh.bin').write_bytes(payload.tobytes())
 (OUT/'mesh.json').write_text(json.dumps(metadata,ensure_ascii=False,indent=2),encoding='utf-8')
 source=ROOT/'assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png'
@@ -260,6 +310,8 @@ if ROOT_COLLAR:
     report['rootBoundaries']=root_boundaries
     report['additionalBoundaries']=additional_boundaries
     report['plaqueBoundary']=plaque_base
+    report['woodVertices']=wood_vertices
+    report['woodFaces']=wood_faces
 (OUT/'result.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
 if bpy is not None:
     bpy.ops.wm.read_factory_settings(use_empty=True)

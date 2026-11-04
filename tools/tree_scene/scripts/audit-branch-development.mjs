@@ -11,9 +11,11 @@ const bytes=await readFile(resolve(directory,'mesh.bin'));
 const info=meta.sections.corners;
 const corners=Array.from({length:info.length},(_,i)=>bytes.readFloatLE(info.offset+i*4));
 const edges=new Map(),adjacency=new Map(),used=new Set();let minimumUvArea=Infinity;
-for(let i=0;i<corners.length;i+=9){
+const woodVertices=result.woodVertices??meta.vertexCount;
+const woodFaces=result.woodFaces??meta.triangleCount;
+for(let i=0;i<woodFaces*9;i+=9){
   const ids=[0,3,6].map(k=>Math.round(corners[i+k]));
-  const plaque=result.plaqueBoundary&&ids.some(v=>v>=meta.vertexCount-result.plaqueBoundary.length);
+  const plaque=result.plaqueBoundary&&ids.some(v=>v>=woodVertices-result.plaqueBoundary.length);
   const child=ids.some(v=>v>=result.branchStart);
   const uv=[0,3,6].map(k=>[corners[i+k+1],corners[i+k+2]]);
   const area=Math.abs((uv[1][0]-uv[0][0])*(uv[2][1]-uv[0][1])-(uv[2][0]-uv[0][0])*(uv[1][1]-uv[0][1]));
@@ -40,8 +42,8 @@ for(const edge of edges.values()){
 }
 const visited=new Set(),queue=[used.values().next().value];
 while(queue.length){const v=queue.pop();if(visited.has(v))continue;visited.add(v);queue.push(...adjacency.get(v));}
-if(visited.size!==meta.vertexCount)throw Error('局部表面未完整连通或含未使用顶点');
-if(meta.vertexCount-edges.size+meta.triangleCount!==1)throw Error('局部开表面不满足无孔圆盘拓扑');
+if(visited.size!==woodVertices)throw Error('木质表面未完整连通或含未使用顶点');
+if(woodVertices-edges.size+woodFaces!==1)throw Error('木质开表面不满足无孔圆盘拓扑');
 if(minimumUvArea<=1e-12)throw Error('存在退化UV三角');
 const image=PNG.sync.read(await readFile(resolve(directory,'baked-bark.png')));
 const hash=b=>createHash('sha256').update(b).digest('hex');
