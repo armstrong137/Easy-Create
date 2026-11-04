@@ -3,7 +3,7 @@ import { mkdir, readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
-const output = 'build/qa/depth-collar-first-review';
+const output = 'build/qa/depth-collar-second-review';
 const bark = await readFile('assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png');
 const canopy = await readFile('assets/source/magic_tree/textures_source/canopy_boughs_v1.png');
 await mkdir(output, { recursive: true });
@@ -59,24 +59,25 @@ try {
         const blend = Math.max(0, radius - Math.abs(a - b));
         return Math.min(a, b) - blend * blend / (4 * radius);
       };
-      function tube(sections) {
-        components.push(sections.slice(1).map((end, i) => {
+      function tube(sections, blend = .29) {
+        const segments = sections.slice(1).map((end, i) => {
           const [x, y, z, radius] = sections[i];
           const [dx, dy, dz] = end.slice(0, 3).map((value, axis) => value - sections[i][axis]);
           return [x, y, z, radius, dx, dy, dz, end[3] - radius, 1 / (dx*dx + dy*dy + dz*dz)];
-        }));
+        });
+        components.push({ segments, blend });
       }
       // 各木体的距离场在接头附近融合，投影采样同一连续表面。
       function field(x, y, z) {
         let surface = Infinity;
-        for (const segments of components) {
+        for (const { segments, blend } of components) {
           let part = Infinity;
           for (const [px, py, pz, radius, dx, dy, dz, dr, inv] of segments) {
             const qx = x - px, qy = y - py, qz = z - pz;
             const t = Math.max(0, Math.min(1, (qx*dx + qy*dy + qz*dz) * inv));
             part = Math.min(part, Math.hypot(qx - t*dx, qy - t*dy, qz - t*dz) - radius - t*dr);
           }
-          surface = fuse(surface, part, .29);
+          surface = fuse(surface, part, blend);
         }
         if (frameSize > 0) {
           const dx = Math.abs(x - plaque[0]) - .25 * frameSize;
@@ -90,13 +91,13 @@ try {
       }
       const thickness = .38 + .62 * age;
       const leader = [-.25,.12,2.96+1.74*age,.19*thickness];
-      tube([[0,0,.22,.82*thickness], [.04,0,.72,.56*thickness], [.14,.02,1.4,.42*thickness],
+      tube([[0,0,.27,.65*thickness], [.04,0,.72,.56*thickness], [.14,.02,1.4,.42*thickness],
         [.08,.06,2.15,.35*thickness], [-.15,.12,2.64+.51*age,.27*thickness], leader]);
       crown(leader, archLeaves, .153);
       for (const [x, y, reach] of [[-1,-.32,1.7],[1,.22,1.82],[-.42,-1,1.22],[.72,-.8,1.45]]) {
         const size = .55 + .45 * age;
         tube([[x*.18,y*.12,.79,.31*thickness], [x*.67*size,y*.48,.38,.34*thickness],
-          [x*1.04*size,y*.83,.19,.22*thickness], [x*reach*size,y*1.3,.05,.05*thickness]]);
+          [x*1.04*size,y*.83,.22,.24*thickness], [x*reach*size,y*1.3,.09,.06*thickness]], .16);
       }
       const rightTip = [.40+1.53*age,-.24,2.45+.20*age,.07*thickness];
       tube([[.14,0,1.45,.29*thickness], [.14+.41*age,-.08,1.61,.26*thickness], [.23+.82*age,-.21,1.94,.21*thickness],
@@ -109,8 +110,10 @@ try {
         const height = matureHeight * (.76 + .24 * age);
         const reach = .25 + length * age;
         const tip = [side*reach,depth,height+.37+.46*age,.06*thickness];
-        tube([[0,0,height,.19*thickness], [side*reach*.46,depth*.55,height+.19,.13*thickness], tip]);
-        crown(tip, leaf, .127);
+        const middle = [side*reach*.56,depth*.55,height+.24,.13*thickness];
+        tube([[0,0,height,.19*thickness], middle, tip]);
+        crown(tip, leaf, .139);
+        if (depth < .3) crown(middle, side < 0 ? rightLeaves : leftLeaves, .092 * (.4 + .6 * age));
       }
       if (paperReveal === 1) captions.push([center + plaque[0]*scale, ground - (plaque[2] + (plaque[1] - .12*frameSize)*.22)*scale]);
       for (let py = near ? 0 : 54; py < (near ? 480 : 440); py++) {
@@ -132,15 +135,18 @@ try {
           // 各方向采样按同一表面法线混合，融合接头无需分配纹理边界。
           const wx = nx * nx, wy = ny * ny, wz = nz * nz;
           const wood = (wx * grain(y,z) + wy * grain(x,z) + wz * grain(x,y)) / (wx + wy + wz || 1);
-          const tone = light * (.72 + wood * (.33 + .23 * age));
+          const tone = light * (.66 + wood * (.41 + .23 * age));
           const pixel = (py * width + px) * 4;
           const paperHeight = .262 * frameSize;
           const paper = paperReveal > 0 && Math.abs(x - plaque[0]) < .205 * frameSize
             && z > plaque[2] - paperHeight && z < plaque[2] - paperHeight + 2 * paperHeight * paperReveal
             && Math.abs(y - (plaque[1] - .12 * frameSize)) < .013;
-          buffer.data[pixel] = paper ? 229 : 159 * tone;
-          buffer.data[pixel+1] = paper ? 205 : 121 * tone;
-          buffer.data[pixel+2] = paper ? 157 : 80 * tone;
+          const rim = paper && (Math.abs(x - plaque[0]) > .187 * frameSize
+            || Math.abs(z - plaque[2]) > .241 * frameSize);
+          const parchment = 1 - .08 * Math.abs(z - plaque[2]) / .262;
+          buffer.data[pixel] = paper ? (rim ? 176 : 235 * parchment) : 159 * tone;
+          buffer.data[pixel+1] = paper ? (rim ? 131 : 211 * parchment) : 121 * tone;
+          buffer.data[pixel+2] = paper ? (rim ? 76 : 160 * parchment) : 80 * tone;
           break;
         }
       }
