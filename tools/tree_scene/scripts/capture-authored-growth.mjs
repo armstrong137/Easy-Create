@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const source = await readFile('assets/source/magic_tree/guides/ancient_tree_form_v1.svg', 'utf8');
-const output = resolve('build/qa/authored-directional-bark');
+const output = resolve('build/qa/authored-rounded-roots');
 const boughs = await readFile('assets/source/magic_tree/textures_source/canopy_boughs_v1.png');
 await mkdir(output, { recursive: true });
 const bark = await readFile('assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png');
@@ -228,15 +228,19 @@ try {
       }
       const [rootLeft, rootRight] = frontBase.map(index => vertices[index]);
       const frontAxis = [[(rootLeft[0] + rootRight[0]) / 2, rootLeft[1] - 27 * growth]];
+      const rootUpper = [rootLeft], rootLower = [rootRight];
       for (let step = 1; step <= 4; step++) {
         const t = step / 4;
-        const width = (rootRight[0] - rootLeft[0]) * (1 - .74 * t) / 2;
+        const width = (rootRight[0] - rootLeft[0]) * (1 - .51 * t) / 2;
         const x = (rootLeft[0] + rootRight[0]) / 2 - (5 + 40 * growth) * t;
         const y = rootLeft[1] + (6 + 19 * growth) * t;
         vertices.push([x - width, y], [x + width, y]);
+        rootUpper.push(vertices.at(-2));
+        rootLower.push(vertices.at(-1));
         frontAxis.push([x, y]);
       }
       woodAxes.push([frontAxis, (rootRight[0] - rootLeft[0]) * .62]);
+      barkStrips.push([frontAxis[0], frontAxis.at(-1), [...rootUpper, ...rootLower.reverse()], rootRight[0] - rootLeft[0]]);
       const seat = plaqueBase.map(index => vertices[index]);
       const plaqueWidth = seat.at(-1)[0] - seat[0][0];
       const crownY = Math.min(...seat.map(([, y]) => y)) - (.12 + .88 * smooth((age - .38) / .56)) * plaqueWidth * 1.5;
@@ -247,7 +251,18 @@ try {
         minimumArea = Math.min(minimumArea, (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]));
       }
       if (!(minimumArea > 0)) throw Error('木体截面翻面');
-      const woodOutline = `M${outline.map(index => vertices[index]).join('L')}Z`;
+      // 圆角由同一组边界顶点推导，轮廓与纹理遮罩共用曲线。
+      const boundaryPoints = outline.map(index => vertices[index]);
+      const approach = (point, neighbor) => {
+        const distance = Math.hypot(neighbor[0] - point[0], neighbor[1] - point[1]);
+        const ratio = Math.min(.32, (4 + 12 * growth) / distance);
+        return point.map((value, axis) => value + (neighbor[axis] - value) * ratio);
+      };
+      const woodOutline = boundaryPoints.map((point, i) => {
+        const before = boundaryPoints[(i + boundaryPoints.length - 1) % boundaryPoints.length];
+        const after = boundaryPoints[(i + 1) % boundaryPoints.length];
+        return `${i ? 'L' : 'M'}${approach(point, before)}Q${point} ${approach(point, after)}`;
+      }).join('') + 'Z';
       wood.trunk.setAttribute('d', woodOutline);
       clipPath.setAttribute('d', woodOutline);
       barkLayer.setAttribute('opacity', String(.12 + .26 * growth));
