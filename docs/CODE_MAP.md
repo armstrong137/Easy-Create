@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-04 19:34:01　对应提交：dcc5f7c 之后的工作区状态
+> 生成时间：2026-11-04 19:36:34　对应提交：c4c8008 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,9 +12,9 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     237
-  Nodes:     6,786
-  Edges:     25,210
+  Files:     238
+  Nodes:     6,800
+  Edges:     25,231
   DB Size:   30.17 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
@@ -22,11 +22,11 @@ Index Statistics:
 Nodes by Kind:
   method          1,869
   function        1,720
-  import          897
-  variable        754
-  constant        732
+  import          901
+  variable        755
+  constant        740
   class           534
-  file            229
+  file            230
   enum_member     25
   type_alias      18
   enum            6
@@ -34,7 +34,7 @@ Nodes by Kind:
 
 Files by Language:
   dart            116
-  javascript      65
+  javascript      66
   python          28
   kotlin          8
   xml             6
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (237 files):
+Project Structure (238 files):
 
 |-- .agents
 |   `-- skills
@@ -319,6 +319,7 @@ Project Structure (237 files):
 |       |   |-- build-reference-wood-skin.mjs (javascript, 62 symbols)
 |       |   |-- build.mjs (javascript, 10 symbols)
 |       |   |-- canvaskit-path-compat.test.mjs (javascript, 10 symbols)
+|       |   |-- capture-authored-growth.mjs (javascript, 14 symbols)
 |       |   |-- capture-rectification.mjs (javascript, 16 symbols)
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
 |       |   |-- capture-volume-2d.mjs (javascript, 61 symbols)
