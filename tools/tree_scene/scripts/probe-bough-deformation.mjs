@@ -1,9 +1,12 @@
 import { chromium } from 'playwright';
 import { mkdir, readFile } from 'node:fs/promises';
 
-const output = 'build/qa/bough-grain-transition';
+const layered = process.argv.includes('--layered');
+const output = layered ? 'build/qa/layered-bough-flex' : 'build/qa/bough-grain-transition';
 await mkdir(output, { recursive: true });
 const asset = await readFile('assets/source/magic_tree/textures_source/canopy_boughs_v1.png');
+const layeredAsset = layered
+  ? await readFile('assets/source/magic_tree/textures_source/secondary_bough_layered_v1.png') : asset;
 const bark = await readFile('assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png');
 const browser = await chromium.launch({
   executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -12,18 +15,21 @@ const browser = await chromium.launch({
 try {
   const page = await browser.newPage({ viewport: { width: 900, height: 460 } });
   await page.setContent('<body style="margin:0"><canvas width="900" height="460"></canvas>');
-  await page.evaluate(async ([url, barkUrl]) => {
+  await page.evaluate(async ([url, barkUrl, layerUrl, layered]) => {
     const image = new Image();
     image.src = url;
     const barkImage = new Image();
     barkImage.src = barkUrl;
-    await Promise.all([image.decode(), barkImage.decode()]);
+    const leafImage = new Image();
+    leafImage.src = layerUrl;
+    await Promise.all([image.decode(), barkImage.decode(), leafImage.decode()]);
     const ctx = document.querySelector('canvas').getContext('2d');
     ctx.fillStyle = '#f6efdf';
     ctx.fillRect(0, 0, 900, 460);
     ctx.font = '18px Microsoft YaHei';
-    const crop = { x: 665, y: 110, width: 586, height: 490 };
-    const anchor = { x: 24, y: 464 };
+    const crop = layered ? { x: 0, y: 0, width: 1774, height: 887 }
+      : { x: 665, y: 110, width: 586, height: 490 };
+    const anchor = layered ? { x: 1040, y: 863 } : { x: 24, y: 464 };
     const transition = new OffscreenCanvas(40, 52);
     const grain = transition.getContext('2d');
     // 只取枝基内部的木纹，沿承托方向延展后渐隐。
@@ -34,9 +40,9 @@ try {
     fade.addColorStop(1, '#fff0');
     grain.fillStyle = fade;
     grain.fillRect(0, 0, 40, 52);
-    for (const [index, bend] of [0, -54, 54].entries()) {
-      const jointX = 84 + index * 300, jointY = 330;
-      const scale = .35;
+    for (const [index, bend] of (layered ? [0, -165, 165] : [0, -54, 54]).entries()) {
+      const jointX = (layered ? 162 : 84) + index * 300, jointY = 330;
+      const scale = layered ? .132 : .35;
       ctx.save();
       ctx.translate(jointX, jointY);
       const spread = bend / 9;
@@ -73,10 +79,17 @@ try {
       ctx.stroke(new Path2D('M -27 78 C -19 50 -19 25 1 0 M -21 79 C -14 48 -14 29 6 1'));
       ctx.restore();
       // 沿源图高度改变横向位移，连接点位移恒为零。
-      const shift = y => bend * ((y - anchor.y) / anchor.y) ** 2;
+      const sections = [0, .22, .48, .73, 1].map(t => ({ y: anchor.y * t, x: bend * (1 - t) ** 2 }));
+      const shift = y => {
+        if (!layered) return bend * ((y - anchor.y) / anchor.y) ** 2;
+        if (y >= anchor.y) return 0;
+        const index = sections.findIndex(section => section.y > y) - 1;
+        const [a, b] = sections.slice(index, index + 2);
+        return a.x + (b.x - a.x) * (y - a.y) / (b.y - a.y);
+      };
       for (let row = 0; row < Math.floor(crop.height * scale); row++) {
         const y = row / scale;
-        ctx.drawImage(image, crop.x, crop.y + y, crop.width, 1 / scale,
+        ctx.drawImage(leafImage, crop.x, crop.y + y, crop.width, 1 / scale,
           jointX + (shift(y) - anchor.x) * scale, Math.round(jointY - anchor.y * scale) + row,
           crop.width * scale, 1);
       }
@@ -85,7 +98,7 @@ try {
       ctx.drawImage(ctx.canvas, jointX - 18, jointY - 18, 43, 45,
         106 + index * 300, 58, 86, 90);
     }
-  }, [asset, bark].map(bytes => `data:image/png;base64,${bytes.toString('base64')}`));
+  }, [...[asset, bark, layeredAsset].map(bytes => `data:image/png;base64,${bytes.toString('base64')}`), layered]);
   await page.screenshot({ path: `${output}/comparison.png` });
 } finally {
   await browser.close();
