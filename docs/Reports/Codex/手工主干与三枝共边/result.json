@@ -1,0 +1,11 @@
+{
+  "frames": 101,
+  "fps": 10,
+  "errors": [],
+  "wood": {
+    "vertices": 84,
+    "triangles": 112,
+    "sharedLimbEdges": 3,
+    "minimumArea": 0.8799999999999955
+  }
+}

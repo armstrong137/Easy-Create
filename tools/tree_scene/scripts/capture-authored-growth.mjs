@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const source = await readFile('assets/source/magic_tree/guides/ancient_tree_form_v1.svg', 'utf8');
-const output = resolve('build/qa/authored-trunk-growth');
+const output = resolve('build/qa/authored-joined-growth');
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -64,15 +64,57 @@ try {
     }
     const trunkRidges = ridges.filter(([, part]) => part === 'trunk')
       .map(([path]) => [path, path.getAttribute('d')]);
+    const limbs = [
+      { id: 'left-limb', row: 6, side: -1, tip: [166, 424], young: [23, -13], old: [184, -143] },
+      { id: 'right-limb', row: 5, side: 1, tip: [663, 378], young: [18, -11], old: [243, -143] },
+      { id: 'plaque-support', row: 7, side: 1, tip: [520, 550], young: [2, -1], old: [79, -87] },
+    ];
+    const faces = [...trunkFaces];
+    let vertexCount = mature.length * columns;
+    for (const limb of limbs) {
+      const edge = limb.side > 0 ? columns - 1 : 0;
+      let a = limb.row * columns + edge;
+      let b = a + columns;
+      for (let step = 0; step < 4; step++) {
+        const c = vertexCount++;
+        const d = vertexCount++;
+        const pair = [[a, c, b], [c, d, b]];
+        faces.push(...(limb.side > 0 ? pair : pair.map(face => face.reverse())));
+        a = c;
+        b = d;
+      }
+      wood[limb.id].remove();
+    }
+    const edgeUses = new Map();
+    for (const face of faces) {
+      for (let i = 0; i < 3; i++) {
+        const a = face[i], b = face[(i + 1) % 3];
+        const key = a < b ? `${a}:${b}` : `${b}:${a}`;
+        const uses = edgeUses.get(key) ?? [];
+        uses.push([a, b]);
+        edgeUses.set(key, uses);
+      }
+    }
+    const boundary = new Map();
+    for (const uses of edgeUses.values()) {
+      if (uses.length === 1) boundary.set(...uses[0]);
+      else if (uses.length !== 2 || uses[0][0] !== uses[1][1]) throw Error('木体存在不一致的共边');
+    }
+    const outline = [0];
+    for (let next = boundary.get(0); next !== 0; next = boundary.get(next)) {
+      if (next === undefined || outline.length >= boundary.size) throw Error('木体外轮廓未闭合');
+      outline.push(next);
+    }
+    if (outline.length !== boundary.size) throw Error('木体存在额外轮廓');
+    for (const [path, part] of ridges) {
+      if (limbs.some(limb => limb.id === part)) path.remove();
+    }
 
     // 各部位独立发育。母体只提供接点，子部位的长宽使用自己的时序。
     const parts = [
-      ['left-limb', [387, 559], 'trunk', .17, .20, .10],
-      ['right-limb', [421, 570], 'trunk', .14, .17, .18],
       ['upper-fork', [371, 444], 'trunk', .18, .25, .08],
       ['near-root', [382, 651], 'trunk', .19, .28, .18],
       ['right-root', [432, 699], 'trunk', .17, .25, .23],
-      ['plaque-support', [415, 635], 'trunk', .02, .02, .35],
       [front[0], [401, 214], 'trunk', .34, .46, .00],
       [front[1], [237, 268], 'upper-fork', .23, .33, .12],
       [front[2], [392, 329], 'trunk', .22, .27, .18],
@@ -88,15 +130,29 @@ try {
         seedling[i][j] + (value - seedling[i][j]) * growth));
       const vertices = sections.flatMap(([y, left, right]) =>
         Array.from({ length: columns }, (_, col) => [left + (right - left) * col / (columns - 1), y]));
+      const limbTransforms = [];
+      for (const { id, row, side, tip, young, old } of limbs) {
+        const edge = side > 0 ? columns - 1 : 0;
+        const [a, b] = [vertices[row * columns + edge], vertices[(row + 1) * columns + edge]];
+        const [dx, dy] = old.map((value, i) => young[i] + (value - young[i]) * growth);
+        for (let step = 1; step <= 4; step++) {
+          const t = step / 4;
+          const width = (b[1] - a[1]) * (1 - .92 * t) / 2;
+          const x = side * (Math.max(side * a[0], side * b[0]) + dx * t);
+          const y = (a[1] + b[1]) / 2 + dy * (.25 * t + .75 * t * t);
+          vertices.push([x, y - width], [x, y + width]);
+        }
+        const end = vertices.at(-1).map((value, i) => (value + vertices.at(-2)[i]) / 2);
+        limbTransforms.push([id, (x, y) => [end[0] + (x - tip[0]) * dx / old[0],
+          end[1] + (y - tip[1]) * dy / old[1]]]);
+      }
       let minimumArea = Infinity;
-      for (const [i, j, k] of trunkFaces) {
+      for (const [i, j, k] of faces) {
         const [a, b, c] = [vertices[i], vertices[j], vertices[k]];
         minimumArea = Math.min(minimumArea, (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]));
       }
-      if (!(minimumArea > 0)) throw Error('主干截面翻面');
-      const outline = [...sections.map(([y, left]) => [left, y]),
-        ...sections.map(([y, , right]) => [right, y]).reverse()];
-      wood.trunk.setAttribute('d', `M${outline.join('L')}Z`);
+      if (!(minimumArea > 0)) throw Error('木体截面翻面');
+      wood.trunk.setAttribute('d', `M${outline.map(index => vertices[index]).join('L')}Z`);
       const mapTrunk = (x, y) => {
         const last = mature.findIndex(row => row[0] >= y);
         const i = Math.min(mature.length - 2, Math.max(0, last < 0 ? mature.length - 2 : last - 1));
@@ -106,7 +162,7 @@ try {
         const [py, nextLeft, nextRight] = sample(sections);
         return [nextLeft + (x - left) * (nextRight - nextLeft) / (right - left), py];
       };
-      const transforms = new Map([['trunk', mapTrunk]]);
+      const transforms = new Map([['trunk', mapTrunk], ...limbTransforms]);
       const matrices = new Map();
       for (const [part, [x, y], parent, initialX, initialY, onset] of parts) {
         const growth = smooth((age - onset) / (1 - onset));
@@ -121,7 +177,7 @@ try {
         transforms.set(part, (px, py) => [px * sx + tx, py * sy + ty]);
       }
       for (const [path, part] of ridges) {
-        if (part !== 'trunk') path.setAttribute('transform', matrices.get(part));
+        if (matrices.has(part)) path.setAttribute('transform', matrices.get(part));
       }
       for (const [path, d] of trunkRidges) {
         path.setAttribute('d', d.replace(/(\d+) (\d+)/g, (_, x, y) => mapTrunk(+x, +y).join(' ')));
@@ -137,7 +193,7 @@ try {
       label.setAttribute('y', near ? '386' : '34');
       label.setAttribute('font-size', near ? '9' : '18');
       label.textContent = `树龄 ${age.toFixed(2)} · ${(age * 10).toFixed(1)} 秒`;
-      return { vertices: vertices.length, triangles: trunkFaces.length, minimumArea };
+      return { vertices: vertices.length, triangles: faces.length, sharedLimbEdges: limbs.length, minimumArea };
     };
   });
   const errors = [];
@@ -160,7 +216,7 @@ try {
   if (encode.status !== 0) throw Error(encode.error?.message ?? encode.stderr);
   await writeFile(resolve(output, 'result.json'), JSON.stringify({
     frames: frames.length, fps: 10, errors,
-    trunk: { ...trunkChecks[0], minimumArea: Math.min(...trunkChecks.map(check => check.minimumArea)) },
+    wood: { ...trunkChecks[0], minimumArea: Math.min(...trunkChecks.map(check => check.minimumArea)) },
   }, null, 2));
 } finally {
   await browser.close();
