@@ -14,7 +14,7 @@ const out = 'build/qa/reference-wood-skin-proof';
 await mkdir(out, { recursive: true });
 
 // 加密采样行并读取实际覆盖范围，源图透明度保留根间空隙。
-const rows = [710, ...guide.sections.map(row => row.y), height];
+const rows = [0, ...guide.sections.map(row => row.y), height];
 const ys = rows.flatMap((y, i) => i ? Array.from(
   { length: Math.ceil((y - rows[i - 1]) / 12) },
   (_, j) => Math.min(y, rows[i - 1] + (j + 1) * 12),
@@ -69,10 +69,19 @@ const poses = ages.map(age => pixels.map(([x, y]) => {
   const upper = Math.max(0, Math.min(1, (960 - y) / 110));
   const sideScale = 1 - upper * .98 * (1 - progress * progress * (3 - 2 * progress));
   const woodX = inner + (x - inner) * sideScale;
-  return [(woodX - 520) / 120 * spread + life * .10 * z, 0, z * (1 - .37 * life) + life * .017 * z * z];
+  const rootHeight = Math.min(z, 2);
+  const stemHeight = Math.max(0, z - 2);
+  return [(woodX - 520) / 120 * spread * (1 - .55 * life) + life * .04 * z, 0,
+    rootHeight * (1 - .78 * life) + stemHeight * (1 - .86 * life)];
 }));
 // 用实际消费的三角网格追踪源图点，避免用独立曲线推算挂点。
-const attachments = Object.entries(junctions.attachments).map(([name, [x, y]]) => {
+const crownPoints = {
+  C1: [530, 115], C2: [397, 220], C3: [607, 220],
+  C4: [330, 310], C5: [740, 310], C6: [299, 420],
+  C7: [741, 525], C8: [255, 740], C9: [810, 740],
+  早生叶0: [530, 115], 早生叶1: [486, 115], 早生叶2: [530, 115],
+};
+const attachments = Object.entries({ ...junctions.attachments, ...crownPoints }).map(([name, [x, y]]) => {
   if (data[(y * width + x) * 4 + 3] < 128) throw Error(`挂点位于透明区：${name}`);
   for (let i = 0; i < corners.length; i += 9) {
     const triangle = [corners[i], corners[i + 3], corners[i + 6]];
@@ -106,18 +115,22 @@ const triangleTextures = Array(corners.length / 9).fill(0);
 const frameNodes = ages.map(() => [[0, 0, 0], [0, 0, 5.75]]);
 const plaques = [];
 const framePatches = donorReport.patches.filter(patch => patch.material === 2);
-for (const [i, name] of ['左侧牌候选挂点', '右侧牌候选挂点'].entries()) {
+const components = [
+  ...['左侧牌候选挂点', '右侧牌候选挂点'].map((name, i) => ({ name, patch: framePatches[i], plaque: donorMeta.plaques[i] })),
+  ...Object.keys(crownPoints).map(name => ({ name, patch: donorReport.patches.find(p => p.name === name) })),
+];
+for (const { name, patch, plaque } of components) {
   const attachment = attachments.find(point => point.name === name);
-  const patch = framePatches[i];
   const original = readPosition(patch.anchorVertex);
   const first = poses[0].length;
   const [start, end] = patch.vertexRange;
   function place(point, frame) {
-    const t = Math.max(0, Math.min(1, (ages[frame] - .18) / .55));
-    const growth = .003 + .997 * t * t * (3 - 2 * t);
+    const early = name.startsWith('早生叶');
+    const t = Math.max(0, Math.min(1, (ages[frame] - (plaque ? .18 : .06)) / .72));
+    const growth = early ? .8 + .2 * ages[frame] : .003 + .997 * t * t * (3 - 2 * t);
     return point.map((value, axis) =>
       attachment.frames[frame].position[axis] +
-      (value - original[axis]) * (axis === 1 ? 1 : growth));
+      (value - original[axis]) * (axis === 1 ? 1 : growth) - (axis === 1 && !plaque ? .08 : 0));
   }
   for (let index = start; index < end; index++) {
     const point = readPosition(index);
@@ -125,7 +138,7 @@ for (const [i, name] of ['左侧牌候选挂点', '右侧牌候选挂点'].entri
   }
   const block = donorMeta.sections.corners;
   for (let offset = 0; offset < block.length; offset += 9) {
-    if (donorMeta.triangleTextures[offset / 9] !== 2) continue;
+    if (donorMeta.triangleTextures[offset / 9] !== patch.material) continue;
     const triangle = [0, 3, 6].map(delta =>
       donorBytes.readFloatLE(block.offset + (offset + delta) * 4));
     if (triangle.some(index => index < start || index >= end)) continue;
@@ -133,15 +146,15 @@ for (const [i, name] of ['左侧牌候选挂点', '右侧牌候选挂点'].entri
       const uvOffset = block.offset + (offset + corner * 3 + 1) * 4;
       corners.push(first + index - start, donorBytes.readFloatLE(uvOffset), donorBytes.readFloatLE(uvOffset + 4));
     });
-    triangleTextures.push(1);
+    triangleTextures.push(plaque ? 1 : 2);
   }
-  const definition = donorMeta.plaques[i];
-  const paperCorners = definition.corners.map(index => {
+  if (!plaque) continue;
+  const paperCorners = plaque.corners.map(index => {
     const next = frameNodes[0].length;
     frameNodes.forEach((nodes, frame) => nodes.push(place(donorMeta.nodes[index], frame)));
     return next;
   });
-  plaques.push({ ...definition, corners: paperCorners });
+  plaques.push({ ...plaque, corners: paperCorners });
 }
 const sections = {};
 const chunks = [];
@@ -163,16 +176,17 @@ const metadata = {
   poseFrames: ages.map((age, frame) => ({ age, nodes: frameNodes[frame], radial: [1] })),
   vertexPoseSections: ages.map((_, i) => `positions${i}`),
   samples: ages.map((age, i) => ({ age, vertices: poses[i].map((position, index) => ({ index, position })) })),
-  camera: { target: [0, 0, 2.85], right: [1, 0, 0], up: [0, 0, 1], back: [0, -1, 0], scale: 9.8 },
-  unlitTexture: true, textureStyles: ['referenceWood', 'frame'], juvenileContrast: .24,
-  extraTextures: ['frames.png'], triangleTextures, plaques,
-  groundShadow: false, nearOffset: [0, .25], nearSpan: [5, 3.6],
-  scope: '参考表皮与实体枝牌的局部接合验证',
+  camera: { target: [0, 0, 6.1], right: [1, 0, 0], up: [0, 0, 1], back: [0, -1, 0], scale: 16 },
+  unlitTexture: true, textureStyles: ['referenceWood', 'frame', 'leaf'], juvenileContrast: .24,
+  extraTextures: ['frames.png', 'canopy.png'], triangleTextures, plaques, foliageParts: Object.keys(crownPoints).length,
+  groundShadow: false, nearOffset: [0, -2.8], nearSpan: [5, 3.6],
+  scope: '参考表皮整树首套',
 };
 await writeFile(`${out}/mesh.bin`, Buffer.concat(chunks));
 await writeFile(`${out}/mesh.json`, JSON.stringify(metadata));
 await copyFile(source, `${out}/baked-bark.png`);
 await copyFile(`${donor}/frames.png`, `${out}/frames.png`);
+await copyFile(`${donor}/canopy.png`, `${out}/canopy.png`);
 await writeFile(`${out}/attachments.json`, JSON.stringify(attachments, null, 2));
 await writeFile(`${out}/result.json`, JSON.stringify({
   script_sha256: hash(await readFile(new URL(import.meta.url))), source_sha256: guide.sha256,

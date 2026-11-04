@@ -1,0 +1,42 @@
+{
+  "success": true,
+  "meshSha256": "9ba981a2194d7e7c972cfe7533d5d494995fc5fad9403339f85e875300bd195a",
+  "metadataSha256": "89e4a661895ed18c1c5042aadbf76c0d851c92103dcce86d5dc9ea1a14b76f5f",
+  "intervals": [
+    {
+      "from": 0,
+      "to": 0.2,
+      "triangles": 15282,
+      "minimumSignedArea": 1.183743236765622e-7,
+      "minimumAreaAfterRoundingBound": 1.1428670741484121e-7,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.2,
+      "to": 0.45,
+      "triangles": 15282,
+      "minimumSignedArea": 4.388434575730571e-7,
+      "minimumAreaAfterRoundingBound": 4.31174095927246e-7,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.45,
+      "to": 0.7,
+      "triangles": 15282,
+      "minimumSignedArea": 0.00036234830986359157,
+      "minimumAreaAfterRoundingBound": 0.00036197831444511767,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.7,
+      "to": 1,
+      "triangles": 15282,
+      "minimumSignedArea": 0.001414976399473744,
+      "minimumAreaAfterRoundingBound": 0.0014145344789711085,
+      "unsafeTriangles": 0
+    }
+  ],
+  "coordinateRoundingBound": 0.0000018489758758732933,
+  "candidateScope": "参考表皮整树首套",
+  "scope": "X-Z顶点姿态的线性插值；smoothstep只重参数化[0,1]，二次面积式覆盖整个区间。保守Float32坐标误差界不代表GPU逐像素、自然造型、挂点正确或整树业务验收。"
+}
