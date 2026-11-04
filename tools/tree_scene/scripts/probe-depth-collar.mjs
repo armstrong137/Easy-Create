@@ -2,8 +2,10 @@ import { chromium } from 'playwright';
 import { mkdir, readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
+import { createRootSurface } from './root-section-surface.mjs';
 
-const output = 'build/qa/depth-collar-second-review';
+const sectionRoots = process.argv.includes('--section-roots');
+const output = sectionRoots ? 'build/qa/section-root-tree' : 'build/qa/depth-collar-second-review';
 const bark = await readFile('assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png');
 const canopy = await readFile('assets/source/magic_tree/textures_source/canopy_boughs_v1.png');
 await mkdir(output, { recursive: true });
@@ -14,7 +16,8 @@ const browser = await chromium.launch({
 try {
   const page = await browser.newPage({ viewport: { width: 460, height: 480 } });
   await page.setContent('<body style="margin:0"><canvas width="460" height="480"></canvas>');
-  await page.evaluate(async ([barkSource, canopySource]) => {
+  await page.addScriptTag({ content: createRootSurface.toString() });
+  await page.evaluate(async ([barkSource, canopySource, sectionRoots]) => {
     const image = new Image();
     image.src = barkSource;
     await image.decode();
@@ -41,6 +44,7 @@ try {
       ctx.fillRect(0, 0, width, 480);
       const buffer = ctx.getImageData(0, 0, width, 480);
       const components = [];
+      const rootSurface = window.createRootSurface(age);
       // 每件冠枝定位到其发育管体末端，同一投影用于木体和冠枝。
       const crown = ([x, y, z], [sx, sy, width, height, ax, ay], scale) => {
         const size = scale * (.37 + .63 * age) * (near ? 145 / 67 : 1);
@@ -87,6 +91,11 @@ try {
             + Math.min(Math.max(dx, dy, dz), 0) - .046 * frameSize;
           surface = fuse(surface, box, .17 * frameSize);
         }
+        if (sectionRoots && z < 1.35) {
+          // 上段逐渐接回同一主干距离场，低处保留显式根间空腔。
+          const stemWeight = smooth((z - .54) / .81);
+          surface = rootSurface(x, y, z) * (1 - stemWeight) + surface * stemWeight;
+        }
         return Math.max(surface, -z);
       }
       const thickness = .38 + .62 * age;
@@ -94,7 +103,7 @@ try {
       tube([[0,0,.27,.65*thickness], [.04,0,.72,.56*thickness], [.14,.02,1.4,.42*thickness],
         [.08,.06,2.15,.35*thickness], [-.15,.12,2.64+.51*age,.27*thickness], leader]);
       crown(leader, archLeaves, .153);
-      for (const [x, y, reach] of [[-1,-.32,1.7],[1,.22,1.82],[-.42,-1,1.22],[.72,-.8,1.45]]) {
+      if (!sectionRoots) for (const [x, y, reach] of [[-1,-.32,1.7],[1,.22,1.82],[-.42,-1,1.22],[.72,-.8,1.45]]) {
         const size = .55 + .45 * age;
         tube([[x*.18,y*.12,.79,.31*thickness], [x*.67*size,y*.48,.38,.34*thickness],
           [x*1.04*size,y*.83,.22,.24*thickness], [x*reach*size,y*1.3,.09,.06*thickness]], .16);
@@ -120,11 +129,13 @@ try {
         for (let px = near ? 0 : center - 155; px < (near ? width : center + 165); px++) {
         const x = (px + .5 - center) / scale;
         const screenZ = (ground - py - .5) / scale;
-        for (let y = -2.4, step = 0; y < 2.3 && step < 90; step++) {
+        const rootRay = sectionRoots && screenZ < 1.85;
+        for (let y = -2.4, step = 0; y < 2.3 && step < (rootRay ? 280 : 90); step++) {
           const z = screenZ - y * .22;
           const distance = field(x, y, z);
-          if (distance > .003) {
-            y += Math.max(.004, distance * .63);
+          if (distance > (rootRay ? .001 : .003)) {
+            const stride = Math.max(.004, distance * .63);
+            y += rootRay ? Math.min(.022, stride) : stride;
             continue;
           }
           const epsilon = .004;
@@ -165,7 +176,7 @@ try {
         ['第', '一', '节'].forEach((character, i) => ctx.fillText(character, x, y + (i - 1) * scale * .15));
       }
     };
-  }, [bark, canopy].map(bytes => `data:image/png;base64,${bytes.toString('base64')}`));
+  }, [...[bark, canopy].map(bytes => `data:image/png;base64,${bytes.toString('base64')}`), sectionRoots]);
   for (const [name, age, near] of [['young', 0], ['middle', .5], ['mature', 1], ['plaque-close', 1, true]]) {
     await page.evaluate(([age, near]) => window.renderTree(age, near), [age, near]);
     await page.screenshot({ path: `${output}/${name}.png` });
