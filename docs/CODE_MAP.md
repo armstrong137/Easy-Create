@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-04 18:39:47　对应提交：f39f11a 之后的工作区状态
+> 生成时间：2026-11-04 18:43:45　对应提交：c799a76 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     235
-  Nodes:     6,604
-  Edges:     24,878
-  DB Size:   29.72 MB
+  Files:     236
+  Nodes:     6,641
+  Edges:     24,929
+  DB Size:   29.79 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,869
-  function        1,705
-  import          890
-  variable        680
-  constant        648
+  function        1,708
+  import          893
+  variable        686
+  constant        672
   class           534
-  file            227
+  file            228
   enum_member     25
   type_alias      18
   enum            6
@@ -34,7 +34,7 @@ Nodes by Kind:
 
 Files by Language:
   dart            116
-  javascript      63
+  javascript      64
   python          28
   kotlin          8
   xml             6
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (235 files):
+Project Structure (236 files):
 
 |-- .agents
 |   `-- skills
@@ -315,11 +315,12 @@ Project Structure (235 files):
 |       |   |-- audit-reference-apertures.mjs (javascript, 38 symbols)
 |       |   |-- audit-reference-sources.mjs (javascript, 15 symbols)
 |       |   |-- audit-volume-uv.mjs (javascript, 23 symbols)
+|       |   |-- build-reference-wood-skin.mjs (javascript, 36 symbols)
 |       |   |-- build.mjs (javascript, 10 symbols)
 |       |   |-- canvaskit-path-compat.test.mjs (javascript, 10 symbols)
 |       |   |-- capture-rectification.mjs (javascript, 16 symbols)
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
-|       |   |-- capture-volume-2d.mjs (javascript, 58 symbols)
+|       |   |-- capture-volume-2d.mjs (javascript, 59 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
 |       |   |-- check-illustrated-outline.mjs (javascript, 68 symbols)
 |       |   |-- check-organic-tree.mjs (javascript, 15 symbols)
