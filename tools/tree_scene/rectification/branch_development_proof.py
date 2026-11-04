@@ -48,7 +48,8 @@ for height,radius,length,opening in parameters:
             width*=1+.46*math.exp(-z/(radius*1.75))
         for column in range(COLS+1):
             u=column/COLS*2-1
-            positions.append([center+width*u,-width*math.sqrt(max(0,1-u*u)),z])
+            ground_curve=radius*.22*(1-u*u)*math.exp(-z/(radius*.46)) if ROOT_COLLAR else 0
+            positions.append([center+width*u,-width*math.sqrt(max(0,1-u*u)),z-ground_curve])
     base_ids=[row*(COLS+1)+COLS for row in range(FIRST,LAST+1)]
     base=[sum(positions[i][k] for i in base_ids)/len(base_ids) for k in range(3)]
     for row in range(1,BRANCH_ROWS+1):
@@ -141,7 +142,29 @@ for root_index,boundary in enumerate(root_boundaries):
             coordinates[current[col]]=coordinate
             uv.append(coordinate)
 
+root_face_end=len(faces)
+plaque_uv={}
+plaque_base=[]
+if ROOT_COLLAR:
+    # 牌底直接复用侧枝上缘的五点，木框与承托枝共用四条边。
+    plaque_base=[branch_start+row*(COLS+1)+COLS for row in range(11,16)]
+    top=list(range(vertex_count,vertex_count+len(plaque_base)))
+    for pose,(_,_,length,_) in zip(poses,parameters):
+        for index in plaque_base:
+            x,y,z=pose[index]
+            pose.append([x,y,z+.32*length])
+    for col,(bottom,upper) in enumerate(zip(plaque_base,top)):
+        plaque_uv[bottom]=[col*.11,0]
+        plaque_uv[upper]=[col*.11,.45]
+        normals.append([0,-1,0])
+    for col in range(len(plaque_base)-1):
+        faces.extend([(plaque_base[col],plaque_base[col+1],top[col+1]),
+                      (plaque_base[col],top[col+1],top[col])])
+    vertex_count=len(poses[0])
+
 def face_uv(number,index):
+    if number>=root_face_end:
+        return plaque_uv[index]
     if number>=branch_face_end:
         return root_uv[(number-branch_face_end)//(BRANCH_ROWS*COLS*2)][index]
     if number>=ROWS*COLS*2:
@@ -160,7 +183,16 @@ frames=[]
 for age,pose in zip(ages,poses):
     connection=[sum(pose[i][k] for i in base_ids)/len(base_ids) for k in range(3)]
     tip=pose[branch_start+(BRANCH_ROWS-1)*(COLS+1)+COLS//2]
-    frames.append({'age':age,'nodes':[[0,0,0],pose[ROWS*(COLS+1)+COLS//2],connection,tip],'radial':[1,1]})
+    nodes=[[0,0,0],pose[ROWS*(COLS+1)+COLS//2],connection,tip]
+    if ROOT_COLLAR:
+        for a,b in [(top[0],top[-1]),(top[-1],top[0]),
+                    (plaque_base[-1],plaque_base[0]),(plaque_base[0],plaque_base[-1])]:
+            nodes.append([pose[a][axis]*.86+pose[b][axis]*.14 for axis in range(3)])
+        for upper,lower in [(4,7),(5,6)]:
+            a,b=nodes[upper],nodes[lower]
+            nodes[upper]=[x*.89+y*.11 for x,y in zip(a,b)]
+            nodes[lower]=[x*.11+y*.89 for x,y in zip(a,b)]
+    frames.append({'age':age,'nodes':nodes,'radial':[1,1]})
 metadata={'format':'共享边界局部分枝发育-v1','vertexCount':vertex_count,'triangleCount':len(faces),
     'sections':sections,'byteLength':len(payload)*4,'nodes':frames[-1]['nodes'],'edges':[[0,1],[2,3]],
     'poseFrames':frames,'vertexPoseSections':[f'positions{i}' for i in range(len(poses))],
@@ -170,9 +202,10 @@ metadata={'format':'共享边界局部分枝发育-v1','vertexCount':vertex_coun
     'groundShadow':False,'nearOffset':[.1,-.05],'nearSpan':[3.4,2.7],
     'scope':'仅光滑幼干、真实共享边界及首个子枝发育；没有根冠木牌，不是完整树苗或A2样件'}
 if ROOT_COLLAR:
-    metadata.update(format='共享根颈与承托枝局部发育-v1',
-        scope='左右粗根和承托枝共用母干顶点的局部预览',
-        nearOffset=[.1,-1.6],nearSpan=[3.4,2.7])
+    metadata.update(format='共享根颈与承托枝局部发育-v2',
+        scope='共享根枝及与母枝共边的木牌',
+        plaques=[{'corners':[4,5,6,7],'title':'第一节','birth':.34,'duration':.42,'unroll':True}],
+        nearOffset=[-.3,.55],nearSpan=[2.1,2.4])
 (OUT/'mesh.bin').write_bytes(payload.tobytes())
 (OUT/'mesh.json').write_text(json.dumps(metadata,ensure_ascii=False,indent=2),encoding='utf-8')
 source=ROOT/'assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png'
@@ -186,6 +219,7 @@ report={'script_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
     'production_integrated':False,'visualAcceptance':'局部方法待实际浏览器，不计完整候选轮次'}
 if ROOT_COLLAR:
     report['rootBoundaries']=root_boundaries
+    report['plaqueBoundary']=plaque_base
 (OUT/'result.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
 if bpy is not None:
     bpy.ops.wm.read_factory_settings(use_empty=True)

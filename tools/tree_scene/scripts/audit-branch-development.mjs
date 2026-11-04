@@ -13,14 +13,15 @@ const corners=Array.from({length:info.length},(_,i)=>bytes.readFloatLE(info.offs
 const edges=new Map(),adjacency=new Map(),used=new Set();let minimumUvArea=Infinity;
 for(let i=0;i<corners.length;i+=9){
   const ids=[0,3,6].map(k=>Math.round(corners[i+k]));
+  const plaque=result.plaqueBoundary&&ids.some(v=>v>=meta.vertexCount-result.plaqueBoundary.length);
   const child=ids.some(v=>v>=result.branchStart);
   const uv=[0,3,6].map(k=>[corners[i+k+1],corners[i+k+2]]);
   const area=Math.abs((uv[1][0]-uv[0][0])*(uv[2][1]-uv[0][1])-(uv[2][0]-uv[0][0])*(uv[1][1]-uv[0][1]));
   minimumUvArea=Math.min(minimumUvArea,area);
   for(let k=0;k<3;k++){
     const a=ids[k],b=ids[(k+1)%3],key=[Math.min(a,b),Math.max(a,b)].join(':');
-    const edge=edges.get(key)??{vertices:[a,b],parent:0,child:0,direction:0};
-    edge[child?'child':'parent']++;edge.direction+=a<b?1:-1;edges.set(key,edge);
+    const edge=edges.get(key)??{vertices:[a,b],parent:0,child:0,plaque:0,direction:0};
+    edge[plaque?'plaque':child?'child':'parent']++;edge.direction+=a<b?1:-1;edges.set(key,edge);
     for(const [from,to] of [[a,b],[b,a]]){used.add(from);if(!adjacency.has(from))adjacency.set(from,new Set());adjacency.get(from).add(to);}
   }
 }
@@ -29,8 +30,14 @@ const boundaries=[result.sharedBoundary,...(result.rootBoundaries??[])];
 const expected=boundaries.flatMap(boundary=>boundary.slice(1)
   .map((v,i)=>[boundary[i],v].sort((a,b)=>a-b).join(':'))).sort();
 if(JSON.stringify(shared.map(([key])=>key).sort())!==JSON.stringify(expected))throw Error('实际母子共享边界与预期接头不符');
-for(const edge of edges.values())if(edge.parent+edge.child>2||
-    (edge.parent+edge.child===2&&edge.direction!==0))throw Error('重复面、非流形边或朝向不一致');
+const plaqueEdges=[...edges.entries()].filter(([,e])=>e.plaque&&e.child).map(([key])=>key).sort();
+const plaqueBoundary=result.plaqueBoundary??[];
+const expectedPlaque=plaqueBoundary.slice(1).map((v,i)=>[plaqueBoundary[i],v].sort((a,b)=>a-b).join(':')).sort();
+if(JSON.stringify(plaqueEdges)!==JSON.stringify(expectedPlaque))throw Error('木牌与承托枝共边不符');
+for(const edge of edges.values()){
+  const count=edge.parent+edge.child+edge.plaque;
+  if(count>2||(count===2&&edge.direction!==0))throw Error('重复面、非流形边或朝向不一致');
+}
 const visited=new Set(),queue=[used.values().next().value];
 while(queue.length){const v=queue.pop();if(visited.has(v))continue;visited.add(v);queue.push(...adjacency.get(v));}
 if(visited.size!==meta.vertexCount)throw Error('局部表面未完整连通或含未使用顶点');
@@ -41,6 +48,7 @@ const hash=b=>createHash('sha256').update(b).digest('hex');
 const report={success:true,meshSha256:hash(bytes),metadataSha256:hash(metaBytes),
   vertices:visited.size,sharedEdges:shared.length,sharedVertices:result.sharedBoundary,
   ...(result.rootBoundaries?{rootBoundaries:result.rootBoundaries}:{}),
+  ...(result.plaqueBoundary?{plaqueEdges:plaqueEdges.length}:{}),
   minimumUvDoubleAreaTexels:minimumUvArea*image.width*image.height,
   scope:'单个开放前表面的连通性、母子共用索引及UV非退化；不是闭合三维实体，UV分缝不保证材质无缝，不证明自然造型或整树通过'};
 await writeFile(resolve(directory,'development-audit.json'),JSON.stringify(report,null,2)+'\n');

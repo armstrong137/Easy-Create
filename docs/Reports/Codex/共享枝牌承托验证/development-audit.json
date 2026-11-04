@@ -1,0 +1,45 @@
+{
+  "success": true,
+  "meshSha256": "8497c9ffc3da963da763064abed5aea9ba2afe6bd8e82f09ce39304d8fcfc352",
+  "metadataSha256": "5251f13fc7bdc705a337aba4e510411a5f49d93b3413bc3a15f161e149337058",
+  "vertices": 1238,
+  "sharedEdges": 24,
+  "sharedVertices": [
+    188,
+    197,
+    206,
+    215,
+    224,
+    233,
+    242,
+    251,
+    260
+  ],
+  "rootBoundaries": [
+    [
+      0,
+      9,
+      18,
+      27,
+      36,
+      45,
+      54,
+      63,
+      72
+    ],
+    [
+      8,
+      17,
+      26,
+      35,
+      44,
+      53,
+      62,
+      71,
+      80
+    ]
+  ],
+  "plaqueEdges": 4,
+  "minimumUvDoubleAreaTexels": 304.12890625,
+  "scope": "单个开放前表面的连通性、母子共用索引及UV非退化；不是闭合三维实体，UV分缝不保证材质无缝，不证明自然造型或整树通过"
+}

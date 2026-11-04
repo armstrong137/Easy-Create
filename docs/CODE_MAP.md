@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-04 19:22:35　对应提交：f591eaa 之后的工作区状态
+> 生成时间：2026-11-04 19:25:11　对应提交：85fb1f7 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,9 +13,9 @@ Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
   Files:     237
-  Nodes:     6,734
-  Edges:     25,132
-  DB Size:   30.03 MB
+  Nodes:     6,747
+  Edges:     25,155
+  DB Size:   30.17 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
@@ -23,8 +23,8 @@ Nodes by Kind:
   method          1,869
   function        1,720
   import          896
-  constant        725
-  variable        710
+  constant        730
+  variable        718
   class           534
   file            229
   enum_member     25
@@ -294,7 +294,7 @@ Project Structure (237 files):
 |       |   |-- authored_surface_proof.py (python, 93 symbols)
 |       |   |-- authored_whole_control.py (python, 15 symbols)
 |       |   |-- bake_volume_material.py (python, 10 symbols)
-|       |   |-- branch_development_proof.py (python, 87 symbols)
+|       |   |-- branch_development_proof.py (python, 95 symbols)
 |       |   |-- continuous_core_proof.py (python, 57 symbols)
 |       |   |-- contour_cage_proof.py (python, 102 symbols)
 |       |   |-- development_tree_proof.py (python, 79 symbols)
@@ -306,7 +306,7 @@ Project Structure (237 files):
 |       |   |-- volume_proof.py (python, 91 symbols)
 |       |   `-- whole_tree_spec.py (python, 7 symbols)
 |       |-- scripts
-|       |   |-- audit-branch-development.mjs (javascript, 35 symbols)
+|       |   |-- audit-branch-development.mjs (javascript, 40 symbols)
 |       |   |-- audit-cage-attachments.mjs (javascript, 31 symbols)
 |       |   |-- audit-cage-intervals.mjs (javascript, 38 symbols)
 |       |   |-- audit-cage-intervals.test.mjs (javascript, 7 symbols)
