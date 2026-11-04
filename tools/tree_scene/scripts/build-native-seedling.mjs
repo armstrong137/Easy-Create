@@ -50,6 +50,18 @@ const shoots = [-1, 1].map((side, i) => (age, t) => {
   return [x + side * reach * t, z + reach * (.18 * t + .56 * t * t)];
 });
 for (const path of shoots) strip(path, (age, t) => (.029 + .026 * age) * (1 - .9 * t));
+// 二级枝以母枝参数定位，向冠层内部填补主枝间的空隙。
+const twigs = [
+  [shoots[0], .68, 1, .14, .23],
+  [shoots[1], .60, -1, .16, .25],
+  [stem, .80, -1, .26, .23],
+  [stem, .89, 1, .24, .18],
+].map(([parent, origin, side, reach, rise], i) => (age, t) => {
+  const [x, z] = parent(age, origin);
+  const extension = .48 + .68 * smooth((age - i * .08) / .76);
+  return [x + side * reach * extension * t, z + rise * extension * t * (.66 + .34 * t)];
+});
+for (const path of twigs) strip(path, (age, t) => (.013 + .008 * age) * (1 - .91 * t));
 for (const [side, reach] of [[-1, .24], [1, .33], [-1, .15]]) {
   strip((age, t) => [side * reach * (1 + age * .45) * t, .075 - .085 * t + .018 * t * t],
     (age, t) => (.037 + .022 * age) * (1 - .93 * t));
@@ -61,8 +73,12 @@ const report = JSON.parse(await readFile(`${donor}/result.json`));
 const binary = await readFile(`${donor}/mesh.bin`);
 const mature = meta.sections[meta.vertexPoseSections.at(-1)];
 const position = id => [0, 1, 2].map(axis => binary.readFloatLE(mature.offset + (id * 3 + axis) * 4));
-for (const [i, path] of [...shoots, stem].entries()) {
-  const patch = report.patches.find(item => item.name === `早生叶${i}`);
+const foliage = [
+  ...[...shoots, stem].map((path, i) => ({ path, patchIndex: i, size: 1, depth: -.035 })),
+  ...twigs.map((path, i) => ({ path, patchIndex: (i + 1) % 3, size: .59, depth: i % 2 ? -.075 : -.022 })),
+];
+for (const { path, patchIndex, size, depth } of foliage) {
+  const patch = report.patches.find(item => item.name === `早生叶${patchIndex}`);
   const base = position(patch.anchorVertex);
   const first = poses[0].length;
   const [start, end] = patch.vertexRange;
@@ -71,8 +87,8 @@ for (const [i, path] of [...shoots, stem].entries()) {
     normals.push(0, -1, 0);
     ages.forEach((age, frame) => {
       const [x, z] = path(age, 1);
-      const scale = .69 + .28 * smooth(age);
-      poses[frame].push([x + (point[0] - base[0]) * scale, -.035, z + (point[2] - base[2]) * scale]);
+      const scale = size * (.69 + .28 * smooth(age));
+      poses[frame].push([x + (point[0] - base[0]) * scale, depth, z + (point[2] - base[2]) * scale]);
     });
   }
   const block = meta.sections.corners;
@@ -97,16 +113,16 @@ section('corners', corners);
 poses.forEach((pose, i) => section(`positions${i}`, pose.flat()));
 const nodes = [[0, 0, 0], [0, 0, 2.5]];
 const metadata = {
-  format: '独立幼苗实体发育-v1', vertexCount: poses[0].length, triangleCount: corners.length / 9,
+  format: '独立幼苗实体发育-v2', vertexCount: poses[0].length, triangleCount: corners.length / 9,
   byteLength, sections, nodes, edges: [[0, 1]],
   poseFrames: ages.map(age => ({ age, nodes, radial: [1] })),
   vertexPoseSections: ages.map((_, i) => `positions${i}`),
   samples: ages.map((age, i) => ({ age, vertices: poses[i].map((position, index) => ({ index, position })) })),
   camera: { target: [0, 0, 1.5], right: [1, 0, 0], up: [0, 0, 1], back: [0, -1, 0], scale: 4.7 },
-  textureStyles: ['wood', 'leaf'], extraTextures: ['canopy.png'], triangleTextures, foliageParts: 3,
+  textureStyles: ['wood', 'leaf'], extraTextures: ['canopy.png'], triangleTextures, foliageParts: foliage.length,
   postTextureLightingMaterials: [0], unlitVertexStart: woodVertices, juvenileContrast: .12,
   nearSpan: [1.4, 2.3], nearOffset: [0, -.1], groundShadow: false,
-  scope: '独立幼苗与两根实体侧枝的局部发育',
+  scope: '独立幼苗的侧枝、二级枝与分层冠簇发育',
 };
 await mkdir(out, { recursive: true });
 await writeFile(`${out}/mesh.bin`, Buffer.concat(chunks));
