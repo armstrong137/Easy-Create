@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
 
-const output = 'build/qa/depth-collar';
+const output = 'build/qa/depth-collar-smooth';
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -20,7 +20,7 @@ try {
     for (const [index, age] of [.42, 1].entries()) {
       const center = 230 + index * 460;
       const project = ([x, y, z]) => [center + x * 67, ground - (z + y * .22) * 67, y - z * .22];
-      function paint(face, light) {
+      function paint(face, normals) {
         const [a, b, c] = face.map(project);
         const cross = (p, q, x, y) => (q[0] - p[0]) * (y - p[1]) - (q[1] - p[1]) * (x - p[0]);
         const area = cross(a, b, c[0], c[1]);
@@ -38,6 +38,10 @@ try {
           const pixel = y * 920 + x;
           if (z >= depth[pixel]) continue;
           depth[pixel] = z;
+          const [nx, ny, nz] = normals[0].map((value, axis) =>
+            u * value + v * normals[1][axis] + w * normals[2][axis]);
+          const light = .54 + .52 * Math.max(0,
+            (-.48 * nx - .72 * ny + .49 * nz) / Math.hypot(nx, ny, nz));
           [145, 105, 69].forEach((channel, i) => { buffer.data[pixel * 4 + i] = channel * light; });
         }
       }
@@ -51,21 +55,17 @@ try {
           return Array.from({ length: sides }, (_, side) => {
             const angle = side * Math.PI * 2 / sides;
             const across = radius * Math.cos(angle);
-            return [x + dz / length * across, y + radius * Math.sin(angle), z - dx / length * across];
+            return {
+              point: [x + dz / length * across, y + radius * Math.sin(angle), z - dx / length * across],
+              normal: [dz / length * Math.cos(angle), Math.sin(angle), -dx / length * Math.cos(angle)],
+            };
           });
         });
         for (let row = 0; row < rings.length - 1; row++) for (let side = 0; side < sides; side++) {
           const next = (side + 1) % sides;
           const a = rings[row][side], b = rings[row][next], c = rings[row + 1][side], d = rings[row + 1][next];
           for (const face of [[a, b, c], [b, d, c]]) {
-            const [p, q, r] = face;
-            const u = q.map((value, axis) => value - p[axis]);
-            const v = r.map((value, axis) => value - p[axis]);
-            const normal = [u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0]];
-            const magnitude = Math.hypot(...normal);
-            if (magnitude === 0) continue;
-            const light = .54 + .52 * Math.max(0, (-.48 * normal[0] - .72 * normal[1] + .49 * normal[2]) / magnitude);
-            paint(face, light);
+            paint(face.map(vertex => vertex.point), face.map(vertex => vertex.normal));
           }
         }
       }
