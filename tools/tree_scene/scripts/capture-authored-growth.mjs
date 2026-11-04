@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const source = await readFile('assets/source/magic_tree/guides/ancient_tree_form_v1.svg', 'utf8');
-const output = resolve('build/qa/authored-material-growth');
+const output = resolve('build/qa/authored-material-growth-round2');
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -22,31 +22,46 @@ try {
       seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
       return seed / 4294967296;
     };
-    const dressCanopy = (selector, back) => [...svg.querySelectorAll(selector)].map(path => {
+    const dressCanopy = (selector, back, anchors) => [...svg.querySelectorAll(selector)].map((path, index) => {
       const box = path.getBBox();
       const group = make('g');
       path.replaceWith(group);
       group.append(path);
-      const colors = back ? ['#59653b', '#66754a', '#778051'] : ['#384b29', '#647438', '#788646'];
-      for (let sample = 0; sample < 560; sample++) {
+      const colors = back ? ['#45543a', '#596745', '#75845a'] : ['#354728', '#4a5c2e', '#647739', '#83934c'];
+      const lobes = [[.19,.60,.19,.27],[.35,.38,.21,.31],[.55,.58,.19,.27],
+        [.68,.34,.19,.26],[.84,.56,.16,.24]];
+      const [ax, ay] = anchors[index];
+      for (const [u, v] of lobes) {
+        const x = box.x + u * box.width, y = box.y + v * box.height;
+        const twig = make('path');
+        twig.setAttribute('d', `M${ax} ${ay}Q${(ax + x) / 2} ${ay - 9} ${x} ${y}`);
+        twig.setAttribute('fill', 'none');
+        twig.setAttribute('stroke', back ? '#626045' : '#544631');
+        twig.setAttribute('stroke-width', back ? '2' : '3.2');
+        group.append(twig);
+      }
+      for (let sample = 0; sample < 1200; sample++) {
         const x = box.x + random() * box.width;
         const y = box.y + random() * box.height;
         if (!path.isPointInFill(new DOMPoint(x, y))) continue;
+        const u = (x - box.x) / box.width, v = (y - box.y) / box.height;
+        if (!lobes.some(([cx, cy, rx, ry]) => ((u-cx)/rx)**2 + ((v-cy)/ry)**2 < .78 + random()*.22)) continue;
         const angle = random() * 170 - 85;
-        const width = 2 + random() * 3.4;
-        const height = 4 + random() * 5;
+        const width = 3.2 + random() * 4.2;
+        const height = 6 + random() * 7;
         const leaf = make('path');
         leaf.setAttribute('d', `M0 0Q${width} ${-height * .55} 0 ${-height}Q${-width} ${-height * .55} 0 0Z`);
         leaf.setAttribute('transform', `translate(${x} ${y}) rotate(${angle})`);
         leaf.setAttribute('fill', colors[Math.floor(random() * colors.length)]);
         leaf.setAttribute('stroke', 'none');
-        leaf.setAttribute('opacity', back ? '.55' : '.75');
+        leaf.setAttribute('opacity', back ? '.78' : '.93');
         group.append(leaf);
       }
+      path.remove();
       return group;
     });
-    const front = dressCanopy('#front-canopy path', false);
-    const rear = dressCanopy('#rear-canopy path', true);
+    const front = dressCanopy('#front-canopy path', false, [[401,214],[237,268],[392,329],[166,424],[663,378]]);
+    const rear = dressCanopy('#rear-canopy path', true, [[224,355],[597,314],[515,510]]);
     const plaque = svg.querySelector('#plaque');
     plaque.querySelector('path').remove();
     const ridgeGroup = svg.querySelector('#lit-ridges');
@@ -233,12 +248,18 @@ try {
       wood.trunk.setAttribute('d', woodOutline);
       clipPath.setAttribute('d', woodOutline);
       volumeRidges.replaceChildren(...woodAxes.flatMap(([axis, width]) =>
-        [['#342b1d', .55, 1, 3], ['#c49b64', .28, .43, -2]].map(([color, opacity, scale, offset]) => {
+        [['#342b1d', .37, 1.65, 2], ['#d3aa6c', .22, 1.05, -3]].map(([color, opacity, scale, offset]) => {
           const ridge = make('path');
-          ridge.setAttribute('d', `M${axis.map(([x, y]) => [x + offset * growth, y]).join('L')}`);
-          ridge.setAttribute('stroke', color);
-          ridge.setAttribute('stroke-opacity', opacity);
-          ridge.setAttribute('stroke-width', String(width * scale));
+          const sides = [-1, 1].map(side => axis.map(([x, y], i) => {
+            const before = axis[Math.max(0, i - 1)], after = axis[Math.min(axis.length - 1, i + 1)];
+            const dx = after[0] - before[0], dy = after[1] - before[1];
+            const distance = Math.hypot(dx, dy) || 1;
+            const spread = side * width * scale * Math.sin(Math.PI * i / (axis.length - 1));
+            return [x + offset * growth - dy * spread / distance, y + dx * spread / distance];
+          }));
+          ridge.setAttribute('d', `M${[...sides[0], ...sides[1].reverse()].join('L')}Z`);
+          ridge.setAttribute('fill', color);
+          ridge.setAttribute('opacity', opacity);
           return ridge;
         })));
       const mapTrunk = (x, y) => {
