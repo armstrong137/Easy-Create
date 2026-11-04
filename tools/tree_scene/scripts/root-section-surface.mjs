@@ -1,4 +1,4 @@
-export function createRootSurface(age, top = Infinity) {
+export function createRootSurface(age, top = Infinity, thickerRoots = false) {
   const roots = [[-2.89, 1.31], [-2.16, 1.45], [-1.21, 1.28], [-.31, 1.54], [1.36, .75]];
   const extent = .58 + .42 * age;
   // 截面由中心宽度及定向根脊定义，根之间直接留出凹部。
@@ -15,7 +15,8 @@ export function createRootSurface(age, top = Infinity) {
       ridge = Math.max(ridge, length * alignment ** 22);
     }
     const profile = (.35 + .20 * Math.exp(-height * 2.6)) * extent;
-    const perimeter = profile + ridge * Math.exp(-height * 3.2) * extent;
+    const falloff = thickerRoots ? 2.35 : 3.2;
+    const perimeter = profile + ridge * Math.exp(-height * falloff) * extent;
     // 入口随深度错开并收窄，两个空腔不共用同一拱高。
     const front = Math.max(0, -y);
     const leftCavity = Math.hypot((x + .46 * extent + .14 * y) / (.16 + .08 * front),

@@ -5,7 +5,9 @@ import { resolve } from 'node:path';
 import { createRootSurface } from './root-section-surface.mjs';
 
 const sectionRoots = process.argv.includes('--section-roots');
-const output = sectionRoots ? 'build/qa/section-root-tree' : 'build/qa/depth-collar-second-review';
+const sectionRound2 = sectionRoots && process.argv.includes('--round-two');
+const output = sectionRound2 ? 'build/qa/section-root-tree-round2'
+  : sectionRoots ? 'build/qa/section-root-tree' : 'build/qa/depth-collar-second-review';
 const bark = await readFile('assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png');
 const canopy = await readFile('assets/source/magic_tree/textures_source/canopy_boughs_v1.png');
 await mkdir(output, { recursive: true });
@@ -17,7 +19,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 460, height: 480 } });
   await page.setContent('<body style="margin:0"><canvas width="460" height="480"></canvas>');
   await page.addScriptTag({ content: createRootSurface.toString() });
-  await page.evaluate(async ([barkSource, canopySource, sectionRoots]) => {
+  await page.evaluate(async ([barkSource, canopySource, sectionRoots, sectionRound2]) => {
     const image = new Image();
     image.src = barkSource;
     await image.decode();
@@ -44,7 +46,7 @@ try {
       ctx.fillRect(0, 0, width, 480);
       const buffer = ctx.getImageData(0, 0, width, 480);
       const components = [];
-      const rootSurface = window.createRootSurface(age);
+      const rootSurface = window.createRootSurface(age, Infinity, sectionRound2);
       // 每件冠枝定位到其发育管体末端，同一投影用于木体和冠枝。
       const crown = ([x, y, z], [sx, sy, width, height, ax, ay], scale) => {
         const size = scale * (.37 + .63 * age) * (near ? 145 / 67 : 1);
@@ -122,7 +124,14 @@ try {
         const middle = [side*reach*.56,depth*.55,height+.24,.13*thickness];
         tube([[0,0,height,.19*thickness], middle, tip]);
         crown(tip, leaf, .139);
-        if (depth < .3) crown(middle, side < 0 ? rightLeaves : leftLeaves, .092 * (.4 + .6 * age));
+        if (depth < .3) crown(middle, side < 0 ? rightLeaves : leftLeaves,
+          (sectionRound2 ? .14 : .092) * (.4 + .6 * age));
+      }
+      if (sectionRound2) {
+        const innerTip = [-.27 - .29 * age, -.21, 2.85 + .66 * age];
+        tube([[-.08, .02, 2.67, .15 * thickness], [-.34, -.13, 3.01, .10 * thickness],
+          [...innerTip, .055 * thickness]], .17);
+        crown(innerTip, archLeaves, .134 * (.42 + .58 * age));
       }
       if (paperReveal === 1) captions.push([center + plaque[0]*scale, ground - (plaque[2] + (plaque[1] - .12*frameSize)*.22)*scale]);
       for (let py = near ? 0 : 54; py < (near ? 480 : 440); py++) {
@@ -155,9 +164,13 @@ try {
           const rim = paper && (Math.abs(x - plaque[0]) > .187 * frameSize
             || Math.abs(z - plaque[2]) > .241 * frameSize);
           const parchment = 1 - .08 * Math.abs(z - plaque[2]) / .262;
-          buffer.data[pixel] = paper ? (rim ? 176 : 235 * parchment) : 159 * tone;
-          buffer.data[pixel+1] = paper ? (rim ? 131 : 211 * parchment) : 121 * tone;
-          buffer.data[pixel+2] = paper ? (rim ? 76 : 160 * parchment) : 80 * tone;
+          const frameGroove = sectionRound2 && frameSize > 0
+            && Math.abs(y - (plaque[1] - .12 * frameSize)) < .016
+            && Math.abs(x - plaque[0]) < .235 * frameSize && Math.abs(z - plaque[2]) < .30 * frameSize;
+          const woodTone = tone * (frameGroove ? .76 : 1);
+          buffer.data[pixel] = paper ? (rim ? 176 : 235 * parchment) : 159 * woodTone;
+          buffer.data[pixel+1] = paper ? (rim ? 131 : 211 * parchment) : 121 * woodTone;
+          buffer.data[pixel+2] = paper ? (rim ? 76 : 160 * parchment) : 80 * woodTone;
           break;
         }
       }
@@ -176,7 +189,7 @@ try {
         ['第', '一', '节'].forEach((character, i) => ctx.fillText(character, x, y + (i - 1) * scale * .15));
       }
     };
-  }, [...[bark, canopy].map(bytes => `data:image/png;base64,${bytes.toString('base64')}`), sectionRoots]);
+  }, [...[bark, canopy].map(bytes => `data:image/png;base64,${bytes.toString('base64')}`), sectionRoots, sectionRound2]);
   for (const [name, age, near] of [['young', 0], ['middle', .5], ['mature', 1], ['plaque-close', 1, true]]) {
     await page.evaluate(([age, near]) => window.renderTree(age, near), [age, near]);
     await page.screenshot({ path: `${output}/${name}.png` });
