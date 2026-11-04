@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const source = await readFile('assets/source/magic_tree/guides/ancient_tree_form_v1.svg', 'utf8');
-const output = resolve('build/qa/authored-unified-material');
+const output = resolve('build/qa/authored-directional-bark');
 const boughs = await readFile('assets/source/magic_tree/textures_source/canopy_boughs_v1.png');
 await mkdir(output, { recursive: true });
 const bark = await readFile('assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png');
@@ -83,7 +83,9 @@ try {
     barkLayer.setAttribute('height', '900');
     barkLayer.setAttribute('preserveAspectRatio', 'none');
     barkLayer.setAttribute('clip-path', 'url(#growing-wood-clip)');
-    ridgeGroup.before(barkLayer, volumeRidges);
+    const directionalBark = make('g');
+    directionalBark.setAttribute('clip-path', 'url(#growing-wood-clip)');
+    ridgeGroup.before(barkLayer, directionalBark, volumeRidges);
     const smooth = value => {
       const t = Math.max(0, Math.min(1, value));
       return t * t * (3 - 2 * t);
@@ -201,20 +203,25 @@ try {
         Array.from({ length: columns }, (_, col) => [left + (right - left) * col / (columns - 1), y]));
       const limbTransforms = [];
       const woodAxes = [];
+      const barkStrips = [];
       for (const { id, row, side, tip, young, old } of limbs) {
         const edge = side > 0 ? columns - 1 : 0;
         const [a, b] = [vertices[row * columns + edge], vertices[(row + 1) * columns + edge]];
         const [dx, dy] = old.map((value, i) => young[i] + (value - young[i]) * growth);
         const axis = [[(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]];
+        const upper = [a], lower = [b];
         for (let step = 1; step <= 4; step++) {
           const t = step / 4;
           const width = (b[1] - a[1]) * (1 - .92 * t) / 2;
           const x = side * (Math.max(side * a[0], side * b[0]) + dx * t);
           const y = (a[1] + b[1]) / 2 + dy * (.25 * t + .75 * t * t);
           vertices.push([x, y - width], [x, y + width]);
+          upper.push(vertices.at(-2));
+          lower.push(vertices.at(-1));
           axis.push([x, y - width * .24]);
         }
         woodAxes.push([axis, (b[1] - a[1]) * .24]);
+        barkStrips.push([axis[0], axis.at(-1), [...upper, ...lower.reverse()], b[1] - a[1]]);
         const end = vertices.at(-1).map((value, i) => (value + vertices.at(-2)[i]) / 2);
         limbTransforms.push([id, (x, y) => [end[0] + (x - tip[0]) * dx / old[0],
           end[1] + (y - tip[1]) * dy / old[1]]]);
@@ -243,7 +250,56 @@ try {
       const woodOutline = `M${outline.map(index => vertices[index]).join('L')}Z`;
       wood.trunk.setAttribute('d', woodOutline);
       clipPath.setAttribute('d', woodOutline);
-      barkLayer.setAttribute('opacity', String(.16 + .37 * growth));
+      barkLayer.setAttribute('opacity', String(.12 + .26 * growth));
+      // 纹理沿每条网格轴旋转，并在根枝基部逐渐融入干纹。
+      directionalBark.replaceChildren(...barkStrips.map(([start, end, polygon, width], index) => {
+        const [x, y] = start;
+        const dx = end[0] - x, dy = end[1] - y;
+        const length = Math.hypot(dx, dy);
+        const group = make('g');
+        const boundary = make('clipPath');
+        boundary.id = `bark-strip-${index}`;
+        const edge = make('path');
+        edge.setAttribute('d', `M${polygon.join('L')}Z`);
+        boundary.append(edge);
+        const mask = make('mask');
+        mask.id = `bark-fade-${index}`;
+        mask.setAttribute('maskUnits', 'userSpaceOnUse');
+        mask.setAttribute('width', '800');
+        mask.setAttribute('height', '900');
+        const fade = make('linearGradient');
+        fade.id = `bark-gradient-${index}`;
+        fade.setAttribute('gradientUnits', 'userSpaceOnUse');
+        for (const [key, value] of Object.entries({ x1:x, y1:y, x2:end[0], y2:end[1] })) {
+          fade.setAttribute(key, value);
+        }
+        for (const [offset, color] of [[0, '#000'], [.36, '#fff'], [1, '#fff']]) {
+          const stop = make('stop');
+          stop.setAttribute('offset', offset);
+          stop.setAttribute('stop-color', color);
+          fade.append(stop);
+        }
+        const fill = make('rect');
+        fill.setAttribute('width', '800');
+        fill.setAttribute('height', '900');
+        fill.setAttribute('fill', `url(#${fade.id})`);
+        mask.append(fill);
+        const texture = make('image');
+        texture.setAttribute('href', barkSource);
+        texture.setAttribute('x', -width);
+        texture.setAttribute('y', -length * .22);
+        texture.setAttribute('width', 2 * width);
+        texture.setAttribute('height', 1.7 * length);
+        texture.setAttribute('preserveAspectRatio', 'none');
+        texture.setAttribute('opacity', String(.14 + .44 * growth));
+        texture.setAttribute('transform', `translate(${x} ${y}) rotate(${Math.atan2(-dx, dy) * 180 / Math.PI})`);
+        const painted = make('g');
+        painted.setAttribute('clip-path', `url(#${boundary.id})`);
+        painted.setAttribute('mask', `url(#${mask.id})`);
+        painted.append(texture);
+        group.append(boundary, fade, mask, painted);
+        return group;
+      }));
       volumeRidges.replaceChildren(...woodAxes.flatMap(([axis, width]) =>
         [['#342b1d', .37, 1.65, 2], ['#d3aa6c', .22, 1.05, -3]].map(([color, opacity, scale, offset]) => {
           const ridge = make('path');
