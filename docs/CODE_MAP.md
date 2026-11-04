@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-04 18:50:24　对应提交：0648cc3 之后的工作区状态
+> 生成时间：2026-11-04 18:53:48　对应提交：b5ed2a2 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,18 +13,18 @@ Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
   Files:     236
-  Nodes:     6,641
-  Edges:     24,929
+  Nodes:     6,644
+  Edges:     24,936
   DB Size:   29.80 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,869
-  function        1,708
+  function        1,709
   import          893
   variable        686
-  constant        672
+  constant        674
   class           534
   file            228
   enum_member     25
@@ -315,7 +315,7 @@ Project Structure (236 files):
 |       |   |-- audit-reference-apertures.mjs (javascript, 38 symbols)
 |       |   |-- audit-reference-sources.mjs (javascript, 15 symbols)
 |       |   |-- audit-volume-uv.mjs (javascript, 23 symbols)
-|       |   |-- build-reference-wood-skin.mjs (javascript, 36 symbols)
+|       |   |-- build-reference-wood-skin.mjs (javascript, 39 symbols)
 |       |   |-- build.mjs (javascript, 10 symbols)
 |       |   |-- canvaskit-path-compat.test.mjs (javascript, 10 symbols)
 |       |   |-- capture-rectification.mjs (javascript, 16 symbols)
