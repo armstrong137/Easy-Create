@@ -1,0 +1,12 @@
+{
+  "frames": 101,
+  "fps": 10,
+  "errors": [],
+  "wood": {
+    "vertices": 127,
+    "triangles": 156,
+    "sharedEdges": 8,
+    "plaqueEdges": 2,
+    "minimumArea": 0.029999999999972715
+  }
+}

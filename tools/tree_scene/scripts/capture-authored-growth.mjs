@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const source = await readFile('assets/source/magic_tree/guides/ancient_tree_form_v1.svg', 'utf8');
-const output = resolve('build/qa/authored-root-volume');
+const output = resolve('build/qa/authored-offset-front-roots');
 const boughs = await readFile('assets/source/magic_tree/textures_source/canopy_boughs_v1.png');
 await mkdir(output, { recursive: true });
 const bark = await readFile('assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png');
@@ -191,13 +191,16 @@ try {
       wood[limb.id]?.remove();
     }
     const frontBase = [(mature.length - 1) * columns + 1, (mature.length - 1) * columns + 2];
-    let [frontLeft, frontRight] = frontBase;
-    for (let step = 0; step < 4; step++) {
-      const left = vertexCount++;
-      const right = vertexCount++;
-      faces.push([frontLeft, frontRight, left], [frontRight, right, left]);
-      frontLeft = left;
-      frontRight = right;
+    const shortRootBase = frontBase.map(index => index + 2);
+    for (const base of [frontBase, shortRootBase]) {
+      let [frontLeft, frontRight] = base;
+      for (let step = 0; step < 4; step++) {
+        const left = vertexCount++;
+        const right = vertexCount++;
+        faces.push([frontLeft, frontRight, left], [frontRight, right, left]);
+        frontLeft = left;
+        frontRight = right;
+      }
     }
     wood['near-root'].remove();
     const plaqueTop = plaqueBase.map(() => vertexCount++);
@@ -294,6 +297,23 @@ try {
       }
       const frontWidth = rootRight[0] - rootLeft[0];
       barkStrips.push([frontAxis[0], frontAxis.at(-1), [...rootUpper, ...rootLower.toReversed()], frontWidth]);
+      const [shortLeft, shortRight] = shortRootBase.map(index => vertices[index]);
+      const shortWidth = shortRight[0] - shortLeft[0];
+      const shortUpper = [shortLeft], shortLower = [shortRight];
+      const shortStart = [(shortLeft[0] + shortRight[0]) / 2, shortLeft[1]];
+      const shortAxis = [shortStart];
+      for (let step = 1; step <= 4; step++) {
+        const t = step / 4;
+        const x = shortStart[0] + (4 + 35 * growth) * t * t;
+        const y = shortStart[1] + (4 + 17 * growth) * t;
+        const width = shortWidth * (1 - .78 * t) / 2;
+        shortUpper.push([x - width, y]);
+        shortLower.push([x + width, y]);
+        vertices.push(shortUpper.at(-1), shortLower.at(-1));
+        shortAxis.push([x, y]);
+      }
+      barkStrips.push([shortStart, shortAxis.at(-1), [...shortUpper, ...shortLower.reverse()], shortWidth]);
+      woodAxes.push([shortAxis, shortWidth * .43]);
       // 受光面从根颈内部进入前根截面，外沿由同一木体遮罩裁切。
       const [lx, ly] = rootLeft, [rx, ry] = rootRight;
       const leftEdge = rootUpper.slice(1).join('L');
@@ -431,7 +451,7 @@ try {
       label.setAttribute('y', near ? '386' : '34');
       label.setAttribute('font-size', near ? '9' : '18');
       label.textContent = `树龄 ${age.toFixed(2)} · ${(age * 10).toFixed(1)} 秒`;
-      return { vertices: vertices.length, triangles: faces.length, sharedEdges: limbs.length + 1,
+      return { vertices: vertices.length, triangles: faces.length, sharedEdges: limbs.length + 2,
         plaqueEdges: plaqueBase.length - 1, minimumArea };
     };
   }, [boughs, bark].map(bytes => `data:image/png;base64,${bytes.toString('base64')}`));
