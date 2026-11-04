@@ -1,7 +1,8 @@
 import { chromium } from 'playwright';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 
-const output = 'build/qa/depth-collar-fused';
+const output = 'build/qa/depth-collar-bark';
+const bark = await readFile('assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png');
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -10,7 +11,14 @@ const browser = await chromium.launch({
 try {
   const page = await browser.newPage({ viewport: { width: 920, height: 480 } });
   await page.setContent('<body style="margin:0"><canvas width="920" height="480"></canvas>');
-  await page.evaluate(() => {
+  await page.evaluate(async barkSource => {
+    const image = new Image();
+    image.src = barkSource;
+    await image.decode();
+    const texture = new OffscreenCanvas(256, 256).getContext('2d');
+    texture.drawImage(image, 0, 0, 256, 256);
+    const texels = texture.getImageData(0, 0, 256, 256).data;
+    const grain = (u, v) => texels[4 * (((Math.floor(v * 96) & 255) << 8) + (Math.floor(u * 128) & 255))] / 255;
     const ctx = document.querySelector('canvas').getContext('2d');
     ctx.fillStyle = '#f6efdf';
     ctx.fillRect(0, 0, 920, 480);
@@ -66,10 +74,14 @@ try {
           const ny = field(x,y+epsilon,z)-field(x,y-epsilon,z);
           const nz = field(x,y,z+epsilon)-field(x,y,z-epsilon);
           const light = .54 + .52 * Math.max(0, (-.48*nx-.72*ny+.49*nz) / (Math.hypot(nx,ny,nz) || 1));
+          // 各方向采样按同一表面法线混合，融合接头无需分配纹理边界。
+          const wx = nx * nx, wy = ny * ny, wz = nz * nz;
+          const wood = (wx * grain(y,z) + wy * grain(x,z) + wz * grain(x,y)) / (wx + wy + wz || 1);
+          const tone = light * (.72 + wood * (.33 + .23 * age));
           const pixel = (py * 920 + px) * 4;
-          buffer.data[pixel] = 145 * light;
-          buffer.data[pixel+1] = 105 * light;
-          buffer.data[pixel+2] = 69 * light;
+          buffer.data[pixel] = 159 * tone;
+          buffer.data[pixel+1] = 121 * tone;
+          buffer.data[pixel+2] = 80 * tone;
           break;
         }
       }
@@ -79,7 +91,7 @@ try {
     ctx.fillStyle = '#493824';
     ctx.fillText('生长姿态 0.42', 24, 36);
     ctx.fillText('生长姿态 1.00', 484, 36);
-  });
+  }, `data:image/png;base64,${bark.toString('base64')}`);
   await page.screenshot({ path: `${output}/comparison.png` });
 } finally {
   await browser.close();
