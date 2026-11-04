@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
 
-const output = 'build/qa/root-sections';
+const output = 'build/qa/root-sections-asymmetric';
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -36,8 +36,12 @@ try {
         }
         const profile = (.35 + .20 * Math.exp(-height * 2.6)) * extent;
         const perimeter = profile + ridge * Math.exp(-height * 3.2) * extent;
-        const leftCavity = Math.hypot((x + .49 * extent) / .24, (y + .70 * extent) / .48, (z - .02) / .20) - 1;
-        const rightCavity = Math.hypot((x - .52 * extent) / .23, (y + .62 * extent) / .46, (z - .015) / .18) - 1;
+        // 入口随深度错开并收窄，两个空腔不共用同一拱高。
+        const front = Math.max(0, -y);
+        const leftCavity = Math.hypot((x + .46 * extent + .14 * y) / (.16 + .08 * front),
+          (y + .68 * extent) / .49, (z - .015) / (.12 + .085 * front)) - 1;
+        const rightCavity = Math.hypot((x - .51 * extent - .22 * y) / (.13 + .10 * front),
+          (y + .56 * extent) / .43, (z - .025) / (.10 + .05 * front)) - 1;
         return Math.max(radial - perimeter, -z, z - (1.65 + .56 * age),
           -.23 * Math.min(leftCavity, rightCavity));
       }
@@ -64,7 +68,10 @@ try {
           ];
           const diffuse = normal.reduce((sum, value, axis) => sum + value * lightDirection[axis], 0)
             / (Math.hypot(...normal) || 1);
-          const tone = .40 + .57 * Math.max(0, diffuse);
+          // 对根间低处测量局部遮蔽，避免凹部与迎光根脊同亮。
+          const clearance = surface(x, y - .075, z + .09);
+          const occlusion = .72 + .28 * Math.max(0, Math.min(1, clearance / .08));
+          const tone = (.40 + .57 * Math.max(0, diffuse)) * occlusion;
           const pixel = (py * 900 + px) * 4;
           [159, 116, 74].forEach((value, axis) => { pixels.data[pixel + axis] = value * tone; });
           break;
