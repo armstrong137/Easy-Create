@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-03 21:23:13　对应提交：eed3bc2 之后的工作区状态
+> 生成时间：2026-11-04 18:35:57　对应提交：ff8c329 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,18 +13,18 @@ Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
   Files:     234
-  Nodes:     6,582
-  Edges:     24,839
-  DB Size:   29.61 MB
+  Nodes:     6,593
+  Edges:     24,867
+  DB Size:   29.70 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,869
   function        1,705
-  import          886
-  variable        676
-  constant        635
+  import          887
+  variable        680
+  constant        641
   class           534
   file            226
   enum_member     25
@@ -297,7 +297,7 @@ Project Structure (234 files):
 |       |   |-- branch_development_proof.py (python, 66 symbols)
 |       |   |-- continuous_core_proof.py (python, 57 symbols)
 |       |   |-- contour_cage_proof.py (python, 102 symbols)
-|       |   |-- development_tree_proof.py (python, 74 symbols)
+|       |   |-- development_tree_proof.py (python, 79 symbols)
 |       |   |-- export_volume_mesh.py (python, 6 symbols)
 |       |   |-- illustrated_fork_proof.py (python, 55 symbols)
 |       |   |-- illustrated_whole_proof.py (python, 57 symbols)
@@ -311,7 +311,7 @@ Project Structure (234 files):
 |       |   |-- audit-cage-intervals.mjs (javascript, 38 symbols)
 |       |   |-- audit-cage-intervals.test.mjs (javascript, 7 symbols)
 |       |   |-- audit-core-deformation.mjs (javascript, 39 symbols)
-|       |   |-- audit-development-tree.mjs (javascript, 51 symbols)
+|       |   |-- audit-development-tree.mjs (javascript, 56 symbols)
 |       |   |-- audit-reference-apertures.mjs (javascript, 38 symbols)
 |       |   |-- audit-reference-sources.mjs (javascript, 15 symbols)
 |       |   |-- audit-volume-uv.mjs (javascript, 23 symbols)
@@ -319,7 +319,7 @@ Project Structure (234 files):
 |       |   |-- canvaskit-path-compat.test.mjs (javascript, 10 symbols)
 |       |   |-- capture-rectification.mjs (javascript, 16 symbols)
 |       |   |-- capture-state.mjs (javascript, 14 symbols)
-|       |   |-- capture-volume-2d.mjs (javascript, 57 symbols)
+|       |   |-- capture-volume-2d.mjs (javascript, 58 symbols)
 |       |   |-- check-browser.mjs (javascript, 22 symbols)
 |       |   |-- check-illustrated-outline.mjs (javascript, 68 symbols)
 |       |   |-- check-organic-tree.mjs (javascript, 15 symbols)

@@ -1,0 +1,229 @@
+{
+  "success": true,
+  "meshSha256": "93c92a5b8f10bef50ac5f8fbe16ac67bc1cb96f16e4b9c4f4543184ea95e4e04",
+  "metadataSha256": "2138766175ce7c1a1ff94781bd30cddb09f0b9ba08f8ddd201e459bb89034ce4",
+  "woodVertices": 5337,
+  "woodTriangles": 9472,
+  "junctions": [
+    {
+      "name": "根左",
+      "parent": "主干",
+      "sharedEdges": 8
+    },
+    {
+      "name": "根右",
+      "parent": "主干",
+      "sharedEdges": 8
+    },
+    {
+      "name": "下左",
+      "parent": "主干",
+      "sharedEdges": 8
+    },
+    {
+      "name": "下右",
+      "parent": "主干",
+      "sharedEdges": 8
+    },
+    {
+      "name": "中左",
+      "parent": "主干",
+      "sharedEdges": 8
+    },
+    {
+      "name": "中右",
+      "parent": "主干",
+      "sharedEdges": 8
+    },
+    {
+      "name": "上左",
+      "parent": "主干",
+      "sharedEdges": 8
+    },
+    {
+      "name": "上右",
+      "parent": "主干",
+      "sharedEdges": 8
+    },
+    {
+      "name": "下左次枝",
+      "parent": "下左",
+      "sharedEdges": 8
+    },
+    {
+      "name": "下右次枝",
+      "parent": "下右",
+      "sharedEdges": 8
+    },
+    {
+      "name": "中左次枝",
+      "parent": "中左",
+      "sharedEdges": 8
+    },
+    {
+      "name": "中右次枝",
+      "parent": "中右",
+      "sharedEdges": 8
+    },
+    {
+      "name": "上左次枝",
+      "parent": "上左",
+      "sharedEdges": 8
+    },
+    {
+      "name": "上右次枝",
+      "parent": "上右",
+      "sharedEdges": 8
+    }
+  ],
+  "attachments": [
+    {
+      "name": "C1",
+      "alpha": 158,
+      "anchorVertex": 1102,
+      "maxProjectedError": 5.493330966649855e-7
+    },
+    {
+      "name": "C2",
+      "alpha": 249,
+      "anchorVertex": 3550,
+      "maxProjectedError": 1.4578104631063706e-7
+    },
+    {
+      "name": "C3",
+      "alpha": 248,
+      "anchorVertex": 3910,
+      "maxProjectedError": 1.730568800779312e-7
+    },
+    {
+      "name": "C4",
+      "alpha": 251,
+      "anchorVertex": 796,
+      "maxProjectedError": 3.4088996950354025e-7
+    },
+    {
+      "name": "C5",
+      "alpha": 250,
+      "anchorVertex": 2830,
+      "maxProjectedError": 1.5958374031551778e-7
+    },
+    {
+      "name": "C6",
+      "alpha": 251,
+      "anchorVertex": 3190,
+      "maxProjectedError": 6.491424268679172e-8
+    },
+    {
+      "name": "C7",
+      "alpha": 249,
+      "anchorVertex": 2110,
+      "maxProjectedError": 8.595325188839411e-8
+    },
+    {
+      "name": "C8",
+      "alpha": 163,
+      "anchorVertex": 2470,
+      "maxProjectedError": 1.53398961697734e-7
+    },
+    {
+      "name": "C9",
+      "alpha": 251,
+      "anchorVertex": 4855,
+      "maxProjectedError": 2.7494926658452065e-7
+    },
+    {
+      "name": "下左次枝展叶",
+      "alpha": 249,
+      "anchorVertex": 4207,
+      "maxProjectedError": 8.980240691101153e-8
+    },
+    {
+      "name": "下右次枝展叶",
+      "alpha": 248,
+      "anchorVertex": 4423,
+      "maxProjectedError": 6.062284148239838e-8
+    },
+    {
+      "name": "中左次枝展叶",
+      "alpha": 249,
+      "anchorVertex": 4639,
+      "maxProjectedError": 3.003194343305258e-7
+    },
+    {
+      "name": "中右次枝展叶",
+      "alpha": 248,
+      "anchorVertex": 4855,
+      "maxProjectedError": 3.474379991777348e-7
+    },
+    {
+      "name": "上左次枝展叶",
+      "alpha": 249,
+      "anchorVertex": 5071,
+      "maxProjectedError": 3.2364952987147154e-7
+    },
+    {
+      "name": "上右次枝展叶",
+      "alpha": 248,
+      "anchorVertex": 5287,
+      "maxProjectedError": 3.4957389438441634e-7
+    },
+    {
+      "name": "早生叶0",
+      "alpha": 249,
+      "anchorVertex": 3676,
+      "maxProjectedError": 1.3114247864519168e-7
+    },
+    {
+      "name": "早生叶1",
+      "alpha": 248,
+      "anchorVertex": 4036,
+      "maxProjectedError": 2.970526575104335e-7
+    },
+    {
+      "name": "早生叶2",
+      "alpha": 158,
+      "anchorVertex": 1156,
+      "maxProjectedError": 4.320232863264685e-7
+    },
+    {
+      "name": "左章牌",
+      "alpha": 253,
+      "anchorVertex": 243,
+      "maxProjectedError": 6.515073604380318e-8
+    },
+    {
+      "name": "右节牌",
+      "alpha": 253,
+      "anchorVertex": 260,
+      "maxProjectedError": 5.8543380230801085e-8
+    }
+  ],
+  "primaryRises": [
+    {
+      "name": "下左",
+      "rise": 0.42887017461988597
+    },
+    {
+      "name": "下右",
+      "rise": 1.0213011370764837
+    },
+    {
+      "name": "中左",
+      "rise": 0.6733256445990667
+    },
+    {
+      "name": "中右",
+      "rise": 1.0466794967651358
+    },
+    {
+      "name": "上左",
+      "rise": 0.34944401846991546
+    },
+    {
+      "name": "上右",
+      "rise": 0.34459638595580966
+    }
+  ],
+  "minimumWoodUvDoubleAreaTexels": 105.9147933293134,
+  "scope": "实际多级开放前表面共边/连通及图集构件基点的X-Z投影；姿态间差值线性，范数不超过端点最大值。不是闭合三维焊接、自然造型或正式业务验收"
+}

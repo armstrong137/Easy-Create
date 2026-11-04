@@ -1,0 +1,5 @@
+{
+  "expectedRejection": true,
+  "exitCode": 1,
+  "reason": "Error: 主枝上扬方向错误：下左 高差-1.0345740583207879\r"
+}

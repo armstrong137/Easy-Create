@@ -5,12 +5,14 @@ import hashlib
 import json
 import math
 import shutil
+import sys
 from pathlib import Path
 import bpy
 import numpy as np
 
 ROOT=Path(__file__).resolve().parents[3]
-OUT=ROOT/'build/qa/development-tree-proof'
+ROUND2='--round2' in sys.argv
+OUT=ROOT/('build/qa/development-tree-round2-proof' if ROUND2 else 'build/qa/development-tree-proof')
 OUT.mkdir(parents=True,exist_ok=True)
 bpy.ops.wm.read_factory_settings(use_empty=True)
 AGES=[0,.12,.25,.5,.75,1]
@@ -59,7 +61,7 @@ def state(age,slot):
 
 all_points=[]
 for age in AGES:
-    g=smooth(age);height=1.8+6.4*g
+    g=smooth(age);height=(1.2+7.0*g) if ROUND2 else (1.8+6.4*g)
     knots=[(0,0),(128,height)]
     for slot in slots:
         _,row,z,_,_,_,_=slot;_,opening=state(age,slot)
@@ -72,7 +74,9 @@ for age in AGES:
         t=z/height
         width=float(np.interp(t,[0,.045,.18,.45,.75,1],[.52,.70,.49,.34,.17,.012]))*(.10+.90*g)
         center=(.10*math.sin(t*math.tau)-.20*math.sin(t*math.pi)+.06*t)*(.15+.85*g)
-        rows.append([[center+width*u,-width*math.sqrt(max(0,1-u*u)),float(z)] for u in np.linspace(-1,1,COLS+1)])
+        if ROUND2:center=(.32*math.sin(t*math.tau)-.25*math.sin(t*math.pi)+.18*math.sin(t*math.pi*4))*(.08+.92*g)
+        rows.append([[center+width*u,-width*math.sqrt(max(0,1-u*u)),
+            float(z)+(.05*g*(.3+.7*math.cos(math.pi*u)**2)*math.exp(-z/.4) if ROUND2 else 0)] for u in np.linspace(-1,1,COLS+1)])
     all_points.append(rows)
 normal_rows=[[[float(u),-math.sqrt(max(0,1-u*u)),0] for u in np.linspace(-1,1,COLS+1)] for _ in range(129)]
 uv=[[[.18+col/COLS*.5,all_points[-1][row][col][2]*.105] for col in range(COLS+1)] for row in range(129)]
@@ -105,6 +109,17 @@ def branch(name,parent,first,col,lengths,rises,rows=40,has_child=False,root=Fals
                 p=base+out*length*reach+d*rise*t*t*t+normal*width*u+correction
                 p[1]=base[1]-width*math.sqrt(max(0,1-u*u))
                 if root and t==1:p+=(out+d*slope)/factor*width*.55*math.sqrt(max(0,1-u*u))
+                if root and ROUND2:
+                    # 下沿较早接地，上沿形成宽厚根趾，末端保持圆钝，不把侧根作为悬臂。
+                    g=smooth(AGES[stage]);low=float(original[:,2].min());high=float(original[:,2].max())
+                    lower=.003+.002*g+(low-.003-.002*g)*(1-t)**4
+                    upper=.014+.031*g+(high-.014-.031*g)*(1-t)**1.5
+                    v=column/COLS if d[2]>0 else 1-column/COLS
+                    residual_z=original[column][2]-(low+(high-low)*v)
+                    p[0]=base[0]+out[0]*length*t+(original[column][0]-base[0])*(1-blend)
+                    p[2]=lower+(upper-lower)*v+residual_z*(1-blend)
+                    p[1]=base[1]-(upper-lower)*.5*math.sqrt(max(0,1-u*u))
+                    if t==1:p[0]+=out[0]*(upper-lower)*.28*math.sqrt(max(0,1-u*u))
                 line.append(p.tolist())
             points.append(line)
         all_points.append(points);last_basis=(d,out,opening,rise/length)
@@ -113,7 +128,9 @@ def branch(name,parent,first,col,lengths,rises,rows=40,has_child=False,root=Fals
     for t in fractions[1:]:
         blend=smooth(t*5);n=(-out*2*k*t*t+d)/math.sqrt(1+(2*k*t*t)**2);line=[]
         for column,u in enumerate(np.linspace(-1,1,COLS+1)):
-            target=n*u;target[1]=-math.sqrt(max(0,1-u*u))
+            target=n*u
+            if root and ROUND2:target=np.array([0,0,float(np.sign(d[2]))])*u
+            target[1]=-math.sqrt(max(0,1-u*u))
             line.append((np.array(normals[boundary[column]])*(1-blend)+target*blend).tolist())
         normal_rows.append(line)
     phase=(len(wood_parts)%4)*.06
@@ -122,7 +139,7 @@ def branch(name,parent,first,col,lengths,rises,rows=40,has_child=False,root=Fals
 
 for slot in slots:
     name,row,_,_,side,_,_=slot
-    branch(name,'主干',row,0 if side<0 else COLS,[state(a,slot)[0] for a in AGES],[-side*.36]*len(AGES),root=name.startswith('根'),has_child=not name.startswith('根'))
+    branch(name,'主干',row,0 if side<0 else COLS,[state(a,slot)[0] for a in AGES],[(side if ROUND2 else -side)*.36]*len(AGES),root=name.startswith('根'),has_child=not name.startswith('根'))
 for name in ['下左','下右','中左','中右','上左','上右']:
     side=-1 if name.endswith('左') else 1
     length=.80 if name.startswith('上') else 1.05
@@ -150,7 +167,7 @@ def patch(name,material,selection,base,anchor,scale,birth=.10,early=False,paper=
     yy,xx=np.where(selection);xa=max(0,int(xx.min())-3);xb=min(selection.shape[1]-1,int(xx.max())+3)
     ya=max(0,int(yy.min())-3);yb=min(selection.shape[0]-1,int(yy.max())+3)
     first=len(normals);rows=12
-    growth=[.8+.2*smooth(a) if early else .003+.997*smooth((a-birth)/.65) for a in AGES]
+    growth=[.8+.2*smooth(a) if early else .003+.997*smooth((a-birth)/(.45 if ROUND2 else .65)) for a in AGES]
     def position(stage,x,y):
         p=poses[stage][anchor];front=.0
         if material==2:front=min(1,abs(x-base[0])/240)
@@ -188,10 +205,22 @@ canopies=[(2,(275,351),tip('主干'),.006),
     (7,(749,735),tip('中左'),.006),(6,(888,730),tip('中右'),.006),
     (9,(370,1135),tip('下左'),.006),(8,(480,1127),tip('下右'),.006),
     (10,(897,1120),tip('中右次枝'),.0045)]
+if ROUND2:
+    canopies=[(2,(275,351),grids['主干'][122][COLS//2],.006),
+        (1,(776,350),grids['上左'][26][COLS//2],.006),(3,(880,345),grids['上右'][26][COLS//2],.006),
+        (5,(220,750),grids['主干'][88][COLS//2],.006),
+        (7,(749,735),grids['中左'][26][COLS//2],.006),(6,(888,730),grids['中右'][26][COLS//2],.006),
+        (9,(370,1135),grids['下左'][26][COLS//2],.006),(8,(480,1127),grids['下右'][26][COLS//2],.006),
+        (10,(897,1120),grids['中右次枝'][19][COLS//2],.0045)]
 for i,(component,base,anchor,scale) in enumerate(canopies):
     selection=labels==component
     patch(f'C{i+1}',1,selection,opaque_near(selection,base),anchor,scale,birth=.10+.025*(i%3))
-for i,(component,base,anchor) in enumerate([(9,(370,1135),tip('下左')),(3,(880,345),tip('下右')),(2,(275,351),tip('主干'))]):
+if ROUND2:
+    for name in ['下左','下右','中左','中右','上左','上右']:
+        component,base=(1,(776,350)) if name.endswith('左') else (3,(880,345))
+        selection=labels==component
+        patch(name+'次枝展叶',1,selection,opaque_near(selection,base),grids[name+'次枝'][19][COLS//2],.0035,birth=.12)
+for i,(component,base,anchor) in enumerate([(9,(370,1135),tip('上左') if ROUND2 else tip('下左')),(3,(880,345),tip('上右') if ROUND2 else tip('下右')),(2,(275,351),tip('主干'))]):
     selection=labels==component
     patch(f'早生叶{i}',1,selection,opaque_near(selection,base),anchor,.0015,early=True)
 
@@ -206,7 +235,7 @@ def aperture(seed):
     ys=sorted(lines);outline=[(min(lines[y]),y) for y in ys]+[(max(lines[y])+1,y+1) for y in reversed(ys)]
     xa=min(x for x,y in outline);xb=max(x for x,y in outline);ya=min(y for x,y in outline);yb=max(y for x,y in outline)
     return [(xa,ya),(xb,ya),(xb,yb),(xa,yb)],[[(x-xa)/(xb-xa),(y-ya)/(yb-ya)] for x,y in outline]
-for name,base,seed,anchor in [('左章牌',(710,725),(319,399),grids['主干'][31][0]),('右节牌',(1060,725),(1437,399),grids['主干'][32][COLS])]:
+for name,base,seed,anchor in [('左章牌',(710,725),(319,399),grids['主干'][27 if ROUND2 else 31][0]),('右节牌',(1060,725),(1437,399),grids['主干'][28 if ROUND2 else 32][COLS])]:
     selection=alpha[2].copy()
     if name=='左章牌':selection[:,887:]=False
     else:selection[:,:887]=False
@@ -230,14 +259,14 @@ metadata={'format':'多级共享表皮发育整树-v1','vertexCount':len(normals
     'postTextureLightingMaterials':[0],'unlitVertexStart':wood_count,'juvenileContrast':.04,
     'groundShadow':True,'rootWidth':[.10,.55,1],'foliageParts':sum(p['material']==1 for p in patches),'plaques':plaques,
     'nearSpan':[(right-left)*1.08,(top-bottom)*1.15],'nearOffset':[-(left+right)/2,(top+bottom)/2-4.8],
-    'scope':'多级共享表皮发育完整首套，待四图短片整体审查'}
+    'scope':'多级共享表皮发育完整第二套，最后一次整体修改' if ROUND2 else '多级共享表皮发育完整首套，待四图短片整体审查'}
 (OUT/'mesh.bin').write_bytes(payload.tobytes());(OUT/'mesh.json').write_text(json.dumps(metadata,ensure_ascii=False,indent=2),encoding='utf-8')
 for source,name in zip(source_paths,['baked-bark.png','canopy.png','frames.png']):shutil.copyfile(source,OUT/name)
 report={'script_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
     'sourceImages':[{'path':str(p.relative_to(ROOT)),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in source_paths],
     'mesh_export':{'vertices':len(normals),'triangles':len(faces),'bytes':len(payload)*4,'referenceSamples':len(normals)*len(AGES)},
     'woodVertexCount':wood_count,'woodParts':wood_parts,'triangleDomains':domains,'patches':patches,'foliageParts':metadata['foliageParts'],
-    'production_integrated':False,'visualAcceptance':'新完整造型首套，待实际四图短片整体审查'}
+    'production_integrated':False,'visualAcceptance':'完整第二套，待实际四图短片整体审查' if ROUND2 else '新完整造型首套，待实际四图短片整体审查'}
 (OUT/'result.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
 mesh=bpy.data.meshes.new('多级共享表皮发育整树');mesh.from_pydata(poses[-1],[],faces);mesh.update()
 obj=bpy.data.objects.new('独立发育整树首套',mesh);bpy.context.collection.objects.link(obj)

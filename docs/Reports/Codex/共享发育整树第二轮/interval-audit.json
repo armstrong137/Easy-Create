@@ -1,0 +1,50 @@
+{
+  "success": true,
+  "meshSha256": "93c92a5b8f10bef50ac5f8fbe16ac67bc1cb96f16e4b9c4f4543184ea95e4e04",
+  "metadataSha256": "2138766175ce7c1a1ff94781bd30cddb09f0b9ba08f8ddd201e459bb89034ce4",
+  "intervals": [
+    {
+      "from": 0,
+      "to": 0.12,
+      "triangles": 13752,
+      "minimumSignedArea": 6.907061589345176e-8,
+      "minimumAreaAfterRoundingBound": 4.33565144380905e-8,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.12,
+      "to": 0.25,
+      "triangles": 13752,
+      "minimumSignedArea": 6.907061589345176e-8,
+      "minimumAreaAfterRoundingBound": 4.336443710663685e-8,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.25,
+      "to": 0.5,
+      "triangles": 13752,
+      "minimumSignedArea": 1.062388674810677e-7,
+      "minimumAreaAfterRoundingBound": 4.957365950202832e-8,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.5,
+      "to": 0.75,
+      "triangles": 13752,
+      "minimumSignedArea": 0.0000025753089913926885,
+      "minimumAreaAfterRoundingBound": 0.0000023149406288149393,
+      "unsafeTriangles": 0
+    },
+    {
+      "from": 0.75,
+      "to": 1,
+      "triangles": 13752,
+      "minimumSignedArea": 0.000021393336226083193,
+      "minimumAreaAfterRoundingBound": 0.000020707804820463925,
+      "unsafeTriangles": 0
+    }
+  ],
+  "coordinateRoundingBound": 0.0000014165299717205926,
+  "candidateScope": "多级共享表皮发育完整第二套，最后一次整体修改",
+  "scope": "X-Z顶点姿态的线性插值；smoothstep只重参数化[0,1]，二次面积式覆盖整个区间。保守Float32坐标误差界不代表GPU逐像素、自然造型、挂点正确或整树业务验收。"
+}

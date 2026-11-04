@@ -11,6 +11,15 @@ const bytes=await readFile(resolve(directory,'mesh.bin'));
 const hash=b=>createHash('sha256').update(b).digest('hex');
 function section(name){const s=meta.sections[name];return Array.from({length:s.length},(_,i)=>bytes.readFloatLE(s.offset+i*4));}
 const poses=meta.vertexPoseSections.map(section),corners=section('corners');
+const primaryRises=[];
+for(const part of source.woodParts.filter(p=>/^(下|中|上)(左|右)$/.test(p.name))){
+  // 当前原生表皮每圈九点，末圈中点由实际顶点范围定位。
+  const mature=poses.at(-1),tip=part.vertexRange[1]-5;
+  const baseHeight=part.boundary.reduce((sum,v)=>sum+mature[v*3+2]/part.boundary.length,0);
+  const rise=mature[tip*3+2]-baseHeight;
+  if(rise<=0)throw Error(`主枝上扬方向错误：${part.name} 高差${rise}`);
+  primaryRises.push({name:part.name,rise});
+}
 const images=await Promise.all(source.sourceImages.map(async item=>{
   const b=await readFile(item.path);if(hash(b)!==item.sha256)throw Error('源PNG哈希不符');return PNG.sync.read(b);
 }));
@@ -63,7 +72,7 @@ for(const part of source.patches){
   if(Math.max(...errors)>1e-5)throw Error('母子实际投影接合偏移');
   attachments.push({name:part.name,alpha,anchorVertex:part.anchorVertex,maxProjectedError:Math.max(...errors)});
 }
-const report={success:true,meshSha256:hash(bytes),metadataSha256:hash(metaBytes),woodVertices:visited.size,woodTriangles,junctions,attachments,
+const report={success:true,meshSha256:hash(bytes),metadataSha256:hash(metaBytes),woodVertices:visited.size,woodTriangles,junctions,attachments,primaryRises,
   minimumWoodUvDoubleAreaTexels:minimumUvArea*images[0].width*images[0].height,
   scope:'实际多级开放前表面共边/连通及图集构件基点的X-Z投影；姿态间差值线性，范数不超过端点最大值。不是闭合三维焊接、自然造型或正式业务验收'};
 await writeFile(resolve(directory,'development-audit.json'),JSON.stringify(report,null,2)+'\n');

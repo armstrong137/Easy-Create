@@ -1,0 +1,12 @@
+{
+  "success": true,
+  "before": {
+    "mesh.bin": "6a9858fc675a11e07368ae8423975b04eabde4ff8b43f8b586b7cd8835db71e5",
+    "mesh.json": "42c1b5253158fece4551ab8fdf658f19156e12c46d45b14c47edfd0e9606dd92"
+  },
+  "after": {
+    "mesh.bin": "6a9858fc675a11e07368ae8423975b04eabde4ff8b43f8b586b7cd8835db71e5",
+    "mesh.json": "42c1b5253158fece4551ab8fdf658f19156e12c46d45b14c47edfd0e9606dd92"
+  },
+  "scope": "历史首套网格与元数据保持原样，包含已记录的方向错误，不能当正确造型"
+}

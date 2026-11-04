@@ -1,0 +1,19 @@
+{
+  "checks": [
+    {
+      "title": "第九章",
+      "outlinePoints": 1086,
+      "checked": 12240,
+      "woodCovered": 0,
+      "holeMissed": 0
+    },
+    {
+      "title": "第一节",
+      "outlinePoints": 1096,
+      "checked": 12489,
+      "woodCovered": 0,
+      "holeMissed": 0
+    }
+  ],
+  "scope": "成熟姿态实际子网格UV反解，3像素间隔采样，2像素边界容差；展开中间帧另看实际短片，不证明整体视觉通过"
+}
