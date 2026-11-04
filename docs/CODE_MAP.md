@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-04 21:47:50　对应提交：ed9efc5 之后的工作区状态
+> 生成时间：2026-11-04 21:50:48　对应提交：fe0bd61 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     240
-  Nodes:     6,827
-  Edges:     25,297
-  DB Size:   30.40 MB
+  Files:     241
+  Nodes:     6,834
+  Edges:     25,312
+  DB Size:   30.42 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,869
-  function        1,722
-  import          907
-  constant        756
+  function        1,723
+  import          909
+  constant        759
   variable        756
   class           534
-  file            232
+  file            233
   enum_member     25
   type_alias      18
   enum            6
@@ -34,7 +34,7 @@ Nodes by Kind:
 
 Files by Language:
   dart            116
-  javascript      68
+  javascript      69
   python          28
   kotlin          8
   xml             6
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (240 files):
+Project Structure (241 files):
 
 |-- .agents
 |   `-- skills
@@ -331,6 +331,7 @@ Project Structure (240 files):
 |       |   |-- inspect-illustrated-atlas.mjs (javascript, 31 symbols)
 |       |   |-- probe-bough-deformation.mjs (javascript, 8 symbols)
 |       |   |-- probe-depth-collar.mjs (javascript, 16 symbols)
+|       |   |-- probe-root-sections.mjs (javascript, 7 symbols)
 |       |   |-- render-branch-study.mjs (javascript, 21 symbols)
 |       |   |-- render-reference-composition.mjs (javascript, 13 symbols)
 |       |   |-- summarize-tree-cpu.mjs (javascript, 19 symbols)
