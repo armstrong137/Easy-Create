@@ -25,8 +25,10 @@ for(let i=0;i<corners.length;i+=9){
   }
 }
 const shared=[...edges.entries()].filter(([,e])=>e.parent&&e.child);
-const expected=result.sharedBoundary.slice(1).map((v,i)=>[result.sharedBoundary[i],v].sort((a,b)=>a-b).join(':')).sort();
-if(JSON.stringify(shared.map(([key])=>key).sort())!==JSON.stringify(expected))throw Error('实际母子共享边界与九点接头不符');
+const boundaries=[result.sharedBoundary,...(result.rootBoundaries??[])];
+const expected=boundaries.flatMap(boundary=>boundary.slice(1)
+  .map((v,i)=>[boundary[i],v].sort((a,b)=>a-b).join(':'))).sort();
+if(JSON.stringify(shared.map(([key])=>key).sort())!==JSON.stringify(expected))throw Error('实际母子共享边界与预期接头不符');
 for(const edge of edges.values())if(edge.parent+edge.child>2||
     (edge.parent+edge.child===2&&edge.direction!==0))throw Error('重复面、非流形边或朝向不一致');
 const visited=new Set(),queue=[used.values().next().value];
@@ -38,6 +40,7 @@ const image=PNG.sync.read(await readFile(resolve(directory,'baked-bark.png')));
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const report={success:true,meshSha256:hash(bytes),metadataSha256:hash(metaBytes),
   vertices:visited.size,sharedEdges:shared.length,sharedVertices:result.sharedBoundary,
+  ...(result.rootBoundaries?{rootBoundaries:result.rootBoundaries}:{}),
   minimumUvDoubleAreaTexels:minimumUvArea*image.width*image.height,
   scope:'单个开放前表面的连通性、母子共用索引及UV非退化；不是闭合三维实体，UV分缝不保证材质无缝，不证明自然造型或整树通过'};
 await writeFile(resolve(directory,'development-audit.json'),JSON.stringify(report,null,2)+'\n');

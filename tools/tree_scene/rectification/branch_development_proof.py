@@ -4,16 +4,24 @@ import hashlib
 import json
 import math
 import shutil
+import sys
 from pathlib import Path
-import bpy
+try:
+    import bpy
+except ModuleNotFoundError:
+    bpy=None
 
 ROOT=Path(__file__).resolve().parents[3]
-OUT=ROOT/'build/qa/branch-development-proof'
+ROOT_COLLAR='--root-collar' in sys.argv
+OUT=ROOT/'build/qa'/('shared-root-collar-proof' if ROOT_COLLAR else 'branch-development-proof')
 OUT.mkdir(parents=True,exist_ok=True)
-bpy.ops.wm.read_factory_settings(use_empty=True)
 ROWS,COLS,BRANCH_ROWS=64,8,24
 FIRST,LAST=20,28
 ages=[0,.18,.5,1]
+root_boundaries=[
+    [row*(COLS+1)+column for row in range(COLS+1)]
+    for column in (0,COLS)
+] if ROOT_COLLAR else []
 # 幼芽阶段保持短芽，随后沿同一真实母干边界伸出；干长、芽长和粗度独立。
 parameters=[(1.8,.052,.045,.025),(2.2,.07,.065,.035),
             (4.3,.19,1.15,.24),(6.6,.38,2.7,.48)]
@@ -26,11 +34,18 @@ for height,radius,length,opening in parameters:
         elif row<=LAST:z=junction-opening/2+opening*(row-FIRST)/(LAST-FIRST)
         else:z=junction+opening/2+(height-junction-opening/2)*(row-LAST)/(ROWS-LAST)
         z_levels.append(z)
+    if ROOT_COLLAR:
+        for row in range(FIRST+1):
+            collar=radius*1.85
+            z_levels[row]=(collar*row/COLS if row<=COLS else
+                collar+(junction-opening/2-collar)*(row-COLS)/(FIRST-COLS))
     positions=[]
     for row,z in enumerate(z_levels):
         t=z/height
         center=radius*(.30*math.sin(t*math.pi*1.4)-.12*t)
         width=radius*(1-.78*t**1.3)
+        if ROOT_COLLAR:
+            width*=1+.46*math.exp(-z/(radius*1.75))
         for column in range(COLS+1):
             u=column/COLS*2-1
             positions.append([center+width*u,-width*math.sqrt(max(0,1-u*u)),z])
@@ -54,6 +69,19 @@ for height,radius,length,opening in parameters:
             initial_x=initial[0]-base[0]
             positions.append([x+nx*width*u+initial_x*(1-blend),
                 -width*math.sqrt(max(0,1-u*u)),z+nz*width*u])
+    for side,boundary in zip((-1,1),root_boundaries):
+        base=positions[boundary[COLS//2]]
+        for row in range(1,BRANCH_ROWS+1):
+            t=row/BRANCH_ROWS
+            for column,index in enumerate(boundary):
+                u=column/COLS*2-1
+                width=radius*.925*(1-.93*t)
+                start=positions[index]
+                positions.append([
+                    base[0]+side*(height*.11+radius*.32)*t+(start[0]-base[0])*(1-t),
+                    -width*math.sqrt(1-u*u)*math.sin(t*math.pi/2),
+                    base[2]*(1-t)**2-radius*.15*t+width*u,
+                ])
     poses.append(positions)
 
 vertex_count=len(poses[0])
@@ -92,13 +120,41 @@ for row in range(1,BRANCH_ROWS+1):
         child_uv[branch_start+(row-1)*(COLS+1)+column]=coordinate
         uv.append(coordinate)
 
+root_start=branch_start+BRANCH_ROWS*(COLS+1)
+branch_face_end=len(faces)
+root_uv=[]
+for root_index,boundary in enumerate(root_boundaries):
+    coordinates={index:[col/COLS*.5,0] for col,index in enumerate(boundary)}
+    root_uv.append(coordinates)
+    first=root_start+root_index*BRANCH_ROWS*(COLS+1)
+    for row in range(BRANCH_ROWS):
+        current=list(range(first+row*(COLS+1),first+(row+1)*(COLS+1)))
+        previous=boundary if row==0 else [index-COLS-1 for index in current]
+        for col in range(COLS):
+            pair=[(previous[col],current[col],current[col+1]),
+                  (previous[col],current[col+1],previous[col+1])]
+            faces.extend(face if root_index else face[::-1] for face in pair)
+        for col in range(COLS+1):
+            u=col/COLS*2-1
+            normals.append([0,-math.sqrt(1-u*u),u])
+            coordinate=[col/COLS*.5,(row+1)/BRANCH_ROWS*.55]
+            coordinates[current[col]]=coordinate
+            uv.append(coordinate)
+
+def face_uv(number,index):
+    if number>=branch_face_end:
+        return root_uv[(number-branch_face_end)//(BRANCH_ROWS*COLS*2)][index]
+    if number>=ROWS*COLS*2:
+        return child_uv[index]
+    return uv[index]
+
 payload=array('f');sections={}
 def section(name,values):
     start=len(payload);payload.extend(values)
     sections[name]={'offset':start*4,'length':len(payload)-start}
 section('normals',(v for p in normals for v in p))
 section('corners',(v for number,face in enumerate(faces) for i in face
-    for v in [i,*(child_uv[i] if number>=ROWS*COLS*2 else uv[i])]))
+    for v in [i,*face_uv(number,i)]))
 for index,pose in enumerate(poses):section(f'positions{index}',(v for p in pose for v in p))
 frames=[]
 for age,pose in zip(ages,poses):
@@ -113,6 +169,10 @@ metadata={'format':'共享边界局部分枝发育-v1','vertexCount':vertex_coun
     'repeatTexture':True,'textureStyles':['wood'],'juvenileContrast':.025,'postTextureLighting':True,
     'groundShadow':False,'nearOffset':[.1,-.05],'nearSpan':[3.4,2.7],
     'scope':'仅光滑幼干、真实共享边界及首个子枝发育；没有根冠木牌，不是完整树苗或A2样件'}
+if ROOT_COLLAR:
+    metadata.update(format='共享根颈与承托枝局部发育-v1',
+        scope='左右粗根和承托枝共用母干顶点的局部预览',
+        nearOffset=[.1,-1.6],nearSpan=[3.4,2.7])
 (OUT/'mesh.bin').write_bytes(payload.tobytes())
 (OUT/'mesh.json').write_text(json.dumps(metadata,ensure_ascii=False,indent=2),encoding='utf-8')
 source=ROOT/'assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png'
@@ -124,8 +184,12 @@ report={'script_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
     'sharedBoundary':base_ids,'branchStart':branch_start,'ages':ages,'parameters':parameters,
     'uvSeam':'母子沿枝UV在共享几何边界分开，接头材质仍需美术验证',
     'production_integrated':False,'visualAcceptance':'局部方法待实际浏览器，不计完整候选轮次'}
+if ROOT_COLLAR:
+    report['rootBoundaries']=root_boundaries
 (OUT/'result.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
-mesh=bpy.data.meshes.new('母干共享边界与发育枝条');mesh.from_pydata(poses[-1],[],faces);mesh.update()
-obj=bpy.data.objects.new('局部分枝发育控制网格',mesh);bpy.context.collection.objects.link(obj)
-bpy.ops.wm.save_as_mainfile(filepath=str(OUT/'editable-branch.blend'))
+if bpy is not None:
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    mesh=bpy.data.meshes.new('母干共享边界与发育枝条');mesh.from_pydata(poses[-1],[],faces);mesh.update()
+    obj=bpy.data.objects.new('局部分枝发育控制网格',mesh);bpy.context.collection.objects.link(obj)
+    bpy.ops.wm.save_as_mainfile(filepath=str(OUT/'editable-branch.blend'))
 print(json.dumps(report['mesh_export']))
