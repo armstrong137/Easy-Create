@@ -1,8 +1,12 @@
 import { chromium } from 'playwright';
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { resolve } from 'node:path';
 
 const assembly = process.argv.includes('--assembly');
-const output = assembly ? 'build/qa/layered-tree-assembly' : 'build/qa/root-collar-stem-transition';
+const capture = assembly && process.argv.includes('--capture');
+const output = capture ? 'build/qa/layered-tree-first-review'
+  : assembly ? 'build/qa/layered-tree-assembly' : 'build/qa/root-collar-stem-transition';
 await mkdir(output, { recursive: true });
 const root = await readFile('assets/source/magic_tree/textures_source/root_collar_buttress_v1.png');
 const crown = assembly ? await readFile('assets/source/magic_tree/textures_source/secondary_bough_layered_v1.png') : root;
@@ -11,21 +15,27 @@ const browser = await chromium.launch({
   headless: true,
 });
 try {
-  const page = await browser.newPage({ viewport: { width: 1140, height: assembly ? 600 : 380 } });
-  await page.setContent(`<body style="margin:0"><canvas width="1140" height="${assembly ? 600 : 380}"></canvas>`);
-  await page.evaluate(async ([source, crownSource, assembly]) => {
+  const width = capture ? 380 : 1140;
+  const page = await browser.newPage({ viewport: { width, height: assembly ? 600 : 380 } });
+  await page.setContent(`<body style="margin:0"><canvas width="${width}" height="${assembly ? 600 : 380}"></canvas>`);
+  await page.evaluate(async ([source, crownSource, assembly, capture]) => {
     const image = new Image();
     image.src = source;
     const leaves = new Image();
     leaves.src = crownSource;
     await Promise.all([image.decode(), leaves.decode()]);
     const ctx = document.querySelector('canvas').getContext('2d');
-    ctx.fillStyle = '#f6efdf';
-    ctx.fillRect(0, 0, 1140, ctx.canvas.height);
     // 横向控制线分别经过侧根、前根与根颈，各区随高度独立展宽。
     const columns = [0, 370, 640, 887, 1150, 1440, 1774];
     const youngOffsets = [350, 235, 123, 0, -105, -202, -320];
-    const ages = [0, .5, 1];
+    window.renderAssembly = (selectedAge, near = false) => {
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.fillStyle = '#f6efdf';
+    ctx.fillRect(0,0,ctx.canvas.width,ctx.canvas.height);
+    if (near) ctx.setTransform(2,0,0,2,-310,-320);
+    let triangles = 0;
+    let minimumArea = Infinity;
+    const ages = capture ? [selectedAge] : [0, .5, 1];
     for (const [index, age] of ages.entries()) {
       const center = 190 + index * 380;
       const scale = assembly ? .07 + .04 * age : .12 + .06 * age;
@@ -88,6 +98,9 @@ try {
             const determinant = (b[0]-a[0])*(c[1]-a[1])-(c[0]-a[0])*(b[1]-a[1]);
             const area = (q[0]-p[0])*(r[1]-p[1])-(r[0]-p[0])*(q[1]-p[1]);
             if (Math.abs(area) < .0001 || Math.abs(determinant) < .0001) throw Error('母枝纹理三角退化');
+            if (area * side <= 0) throw Error('母枝三角朝向错误');
+            triangles++;
+            minimumArea = Math.min(minimumArea, Math.abs(area));
             const m11=((q[0]-p[0])*(c[1]-a[1])-(r[0]-p[0])*(b[1]-a[1]))/determinant;
             const m21=((r[0]-p[0])*(b[0]-a[0])-(q[0]-p[0])*(c[0]-a[0]))/determinant;
             const m12=((q[1]-p[1])*(c[1]-a[1])-(r[1]-p[1])*(b[1]-a[1]))/determinant;
@@ -132,8 +145,27 @@ try {
       ctx.font = '17px Microsoft YaHei';
       ctx.fillText(`根颈发育 ${age.toFixed(2)}`, 20 + index * 380, 32);
     }
-  }, [...[root,crown].map(bytes => `data:image/png;base64,${bytes.toString('base64')}`), assembly]);
-  await page.screenshot({ path: `${output}/comparison.png` });
+    return { triangles, minimumArea };
+    };
+    window.renderAssembly(0);
+  }, [...[root,crown].map(bytes => `data:image/png;base64,${bytes.toString('base64')}`), assembly, capture]);
+  if (capture) {
+    for (const [name, age, near] of [['young',0],['middle',.5],['mature',1],['plaque-close',1,true]]) {
+      await page.evaluate(([age,near]) => window.renderAssembly(age,near), [age,near]);
+      await page.screenshot({path:`${output}/${name}.png`});
+    }
+    const frames = [], checks = [];
+    for (let frame=0; frame<=40; frame++) {
+      checks.push(await page.evaluate(age=>window.renderAssembly(age),frame/40));
+      frames.push(await page.screenshot({type:'jpeg',quality:90}));
+    }
+    const ffmpeg=resolve(process.env.LOCALAPPDATA,'ms-playwright/ffmpeg-1011/ffmpeg-win64.exe');
+    const encode=spawnSync(ffmpeg,['-y','-f','image2pipe','-r','8','-c:v','mjpeg','-i','pipe:0',
+      '-c:v','libvpx','-pix_fmt','yuv420p',resolve(output,'growth.webm')],{input:Buffer.concat(frames),encoding:'utf8'});
+    if(encode.status!==0) throw Error(encode.error?.message??encode.stderr);
+    await writeFile(`${output}/result.json`,JSON.stringify({frames:frames.length,fps:8,
+      triangles:checks[0].triangles,minimumArea:Math.min(...checks.map(check=>check.minimumArea))},null,2));
+  } else await page.screenshot({ path: `${output}/comparison.png` });
 } finally {
   await browser.close();
 }

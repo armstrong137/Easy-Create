@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-05 18:46:36　对应提交：c5acf9b 之后的工作区状态
+> 生成时间：2026-11-05 18:48:58　对应提交：257dfc2 之后的工作区状态
 
 ## 一、索引状态
 
@@ -13,18 +13,18 @@ Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
   Files:     243
-  Nodes:     6,851
-  Edges:     25,343
-  DB Size:   30.52 MB
+  Nodes:     6,860
+  Edges:     25,352
+  DB Size:   30.54 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,869
   function        1,724
-  import          913
-  constant        769
-  variable        756
+  import          915
+  constant        775
+  variable        757
   class           534
   file            235
   enum_member     25
@@ -331,7 +331,7 @@ Project Structure (243 files):
 |       |   |-- inspect-illustrated-atlas.mjs (javascript, 31 symbols)
 |       |   |-- probe-bough-deformation.mjs (javascript, 10 symbols)
 |       |   |-- probe-depth-collar.mjs (javascript, 19 symbols)
-|       |   |-- probe-root-collar-asset.mjs (javascript, 9 symbols)
+|       |   |-- probe-root-collar-asset.mjs (javascript, 18 symbols)
 |       |   |-- probe-root-sections.mjs (javascript, 7 symbols)
 |       |   |-- render-branch-study.mjs (javascript, 21 symbols)
 |       |   |-- render-reference-composition.mjs (javascript, 13 symbols)
