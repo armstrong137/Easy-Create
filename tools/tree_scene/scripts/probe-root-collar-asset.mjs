@@ -2,11 +2,13 @@ import { chromium } from 'playwright';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
+import { rasterTexturedTriangle } from './raster-textured-triangle.mjs';
 
 const assembly = process.argv.includes('--assembly');
 const capture = assembly && process.argv.includes('--capture');
+const raster = process.argv.includes('--raster');
 const roundTwo = capture && process.argv.includes('--round-two');
-const output = roundTwo ? 'build/qa/layered-tree-second-review' : capture ? 'build/qa/layered-tree-first-review'
+const output = raster ? 'build/qa/layered-tree-raster' : roundTwo ? 'build/qa/layered-tree-second-review' : capture ? 'build/qa/layered-tree-first-review'
   : assembly ? 'build/qa/layered-tree-assembly' : 'build/qa/root-collar-stem-transition';
 await mkdir(output, { recursive: true });
 const root = await readFile('assets/source/magic_tree/textures_source/root_collar_buttress_v1.png');
@@ -19,12 +21,17 @@ try {
   const width = capture ? 380 : 1140;
   const page = await browser.newPage({ viewport: { width, height: assembly ? 600 : 380 } });
   await page.setContent(`<body style="margin:0"><canvas width="${width}" height="${assembly ? 600 : 380}"></canvas>`);
-  await page.evaluate(async ([source, crownSource, assembly, capture, roundTwo]) => {
+  await page.addScriptTag({content:rasterTexturedTriangle.toString()});
+  await page.evaluate(async ([source, crownSource, assembly, capture, roundTwo, raster]) => {
     const image = new Image();
     image.src = source;
     const leaves = new Image();
     leaves.src = crownSource;
     await Promise.all([image.decode(), leaves.decode()]);
+    const textureCanvas = new OffscreenCanvas(image.width,image.height);
+    const textureContext = textureCanvas.getContext('2d');
+    textureContext.drawImage(image,0,0);
+    const sourceTexture = textureContext.getImageData(0,0,image.width,image.height);
     const ctx = document.querySelector('canvas').getContext('2d');
     // 横向控制线分别经过侧根、前根与根颈，各区随高度独立展宽。
     const columns = [0, 370, 640, 887, 1150, 1440, 1774];
@@ -94,6 +101,9 @@ try {
             const half = radius * (1 - (roundTwo ? .72 : .86) * t);
             rings.push([[x, z - half], [x, z + half]]);
           }
+          const paintedCanvas = new OffscreenCanvas(ctx.canvas.width,ctx.canvas.height);
+          const paintedContext = paintedCanvas.getContext('2d');
+          const painted = paintedContext.createImageData(ctx.canvas.width,ctx.canvas.height);
           const drawTriangle = (destination, source) => {
             const [a,b,c] = source, [p,q,r] = destination;
             const determinant = (b[0]-a[0])*(c[1]-a[1])-(c[0]-a[0])*(b[1]-a[1]);
@@ -102,6 +112,7 @@ try {
             if (area * side <= 0) throw Error('母枝三角朝向错误');
             triangles++;
             minimumArea = Math.min(minimumArea, Math.abs(area));
+            if(raster){window.rasterTexturedTriangle(painted,sourceTexture,destination,source);return;}
             const m11=((q[0]-p[0])*(c[1]-a[1])-(r[0]-p[0])*(b[1]-a[1]))/determinant;
             const m21=((r[0]-p[0])*(b[0]-a[0])-(q[0]-p[0])*(c[0]-a[0]))/determinant;
             const m12=((q[1]-p[1])*(c[1]-a[1])-(r[1]-p[1])*(b[1]-a[1]))/determinant;
@@ -126,6 +137,7 @@ try {
               drawTriangle(ids.map(i=>points[i]),ids.map(i=>source[i]));
             }
           }
+          if(raster){paintedContext.putImageData(painted,0,0);ctx.drawImage(paintedCanvas,0,0);}
           ctx.restore();
           crownAt(endX, endY, leafScale * .83, side > 0);
           if (side > 0 && age > .65) {
@@ -157,7 +169,7 @@ try {
     return { triangles, minimumArea };
     };
     window.renderAssembly(0);
-  }, [...[root,crown].map(bytes => `data:image/png;base64,${bytes.toString('base64')}`), assembly, capture, roundTwo]);
+  }, [...[root,crown].map(bytes => `data:image/png;base64,${bytes.toString('base64')}`), assembly, capture, roundTwo, raster]);
   if (capture) {
     for (const [name, age, near] of [['young',0],['middle',.5],['mature',1],['plaque-close',1,true]]) {
       await page.evaluate(([age,near]) => window.renderAssembly(age,near), [age,near]);
