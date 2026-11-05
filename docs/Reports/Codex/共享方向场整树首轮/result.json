@@ -1,0 +1,41 @@
+{
+  "stills": [
+    {
+      "age": 0,
+      "sourceCovered": 49964,
+      "covered": 1933,
+      "finite": true,
+      "minimumArea": null,
+      "triangles": 0
+    },
+    {
+      "age": 0.5,
+      "sourceCovered": 49964,
+      "covered": 16287,
+      "finite": true,
+      "minimumArea": null,
+      "triangles": 0
+    },
+    {
+      "age": 1,
+      "sourceCovered": 49964,
+      "covered": 49964,
+      "finite": true,
+      "minimumArea": null,
+      "triangles": 0
+    },
+    {
+      "age": 1,
+      "sourceCovered": 49964,
+      "covered": 49964,
+      "finite": true,
+      "minimumArea": null,
+      "triangles": 0
+    }
+  ],
+  "frames": 41,
+  "minimumArea": null,
+  "textureBakes": 1,
+  "fixedUV": false,
+  "materialMapping": "按当前枝截面反查同一源木质域；接头混合，附着仍待独立验证"
+}

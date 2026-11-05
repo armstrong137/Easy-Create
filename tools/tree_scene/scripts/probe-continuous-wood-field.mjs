@@ -3,19 +3,22 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { rasterTexturedTriangle } from './raster-textured-triangle.mjs';
+import { continuousTreeCurves } from './continuous-tree-layout.mjs';
 
 // 独立二维分叉验证：轮廓、体积明暗和木纹共用连续场，不叠贴侧枝。
-const bark = process.argv.includes('--bark');
-const output = bark ? 'build/qa/continuous-wood-bark' : 'build/qa/continuous-wood-field';
+const whole = process.argv.includes('--whole');
+const bark = whole || process.argv.includes('--bark');
+const output = whole ? 'build/qa/continuous-field-first-review' : bark ? 'build/qa/continuous-wood-bark' : 'build/qa/continuous-wood-field';
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true,
 });
 try {
-  const page = await browser.newPage({ viewport: { width: 560, height: 520 } });
-  await page.setContent('<body style="margin:0"><canvas width="560" height="520"></canvas>');
+  const page = await browser.newPage({ viewport: { width: 560, height: whole ? 700 : 520 } });
+  await page.setContent(`<body style="margin:0"><canvas width="560" height="${whole ? 700 : 520}"></canvas>`);
   await page.addScriptTag({content:rasterTexturedTriangle.toString()});
-  await page.evaluate(bark => {
+  await page.addScriptTag({content:continuousTreeCurves.toString()});
+  await page.evaluate(([bark,whole]) => {
     const canvas = document.querySelector('canvas');
     const ctx = canvas.getContext('2d');
     const width = canvas.width, height = canvas.height, count = width * height;
@@ -33,10 +36,11 @@ try {
       return (data[i] * (1-u) + data[i+1] * u) * (1-v)
         + (data[i+width] * (1-u) + data[i+width+1] * u) * v;
     };
-    const bakeWoodField = age => {
+    let referenceSegments;
+    const bakeWoodField = (age,material=null) => {
       const segments = [];
       const branchLength = 65 + 115 * age;
-      const curves = [
+      const curves = whole ? window.continuousTreeCurves(age) : [
         { p: [[280, 510], [257, 330], [290, 160], [275, 15]], r: [43+17*age, 26+11*age] },
         { p: [[273, 344], [317, 326], [320+branchLength*.5, 277], [290+branchLength, 232-35*age]], r: [24+13*age, 6+4*age] },
       ];
@@ -52,32 +56,64 @@ try {
           segments.push({a, dx, dy, length, curve, t:k/28});
         }
       }
+      if(!material) referenceSegments=segments;
+      const bounds=curves.map(curve=>({left:Math.min(...curve.p.map(p=>p[0]))-Math.max(...curve.r)-32,
+        right:Math.max(...curve.p.map(p=>p[0]))+Math.max(...curve.r)+32,
+        top:Math.min(...curve.p.map(p=>p[1]))-Math.max(...curve.r)-32,
+        bottom:Math.max(...curve.p.map(p=>p[1]))+Math.max(...curve.r)+32}));
       const depth = new Float32Array(count), flowX = new Float32Array(count), flowY = new Float32Array(count);
+      const uvX=material ? new Float32Array(count) : null,uvY=material ? new Float32Array(count) : null;
       for (let y=0; y<height; y++) for (let x=0; x<width; x++) {
+        if(material && !bounds.some(b=>x>=b.left && x<=b.right && y>=b.top && y<=b.bottom)) {
+          depth[y*width+x]=-100;flowY[y*width+x]=-1;
+          continue;
+        }
         const nearest = [];
-        for (let group=0; group<2; group++) {
+        for (let group=0; group<curves.length; group++) {
           let best = {d:-Infinity};
-          for (const s of segments.slice(group*28,group*28+28)) {
+          for (let k=0;k<28;k++) {
+            const s=segments[group*28+k];
             const t = Math.max(0,Math.min(1,((x-s.a[0])*s.dx+(y-s.a[1])*s.dy)/(s.length*s.length)));
             const radius = s.curve.r[0] + (s.curve.r[1]-s.curve.r[0])*(s.t+t/28);
             const d = radius-Math.hypot(x-s.a[0]-t*s.dx,y-s.a[1]-t*s.dy);
-            if (d>best.d) best = {d, vx:s.dx/s.length, vy:s.dy/s.length};
+            const sign=whole && s.dy>0 ? -1 : 1;
+            if (d>best.d) best = {d, vx:sign*s.dx/s.length, vy:sign*s.dy/s.length,s,t,radius,group,k};
           }
           nearest.push(best);
         }
-        const [a,b] = nearest;
+        let a=nearest[0];
         // 光滑并集只作用于接头，木纹沿同一个混合方向场延伸。
-        const blend = Math.max(0,Math.min(1,.5+.5*(a.d-b.d)/18));
+        for(const b of nearest.slice(1)) {
+        const join=whole ? 8 : 18;
+        const blend = Math.max(0,Math.min(1,.5+.5*(a.d-b.d)/join));
+        a={d:b.d*(1-blend)+a.d*blend+join*blend*(1-blend),
+          vx:a.vx*blend+b.vx*(1-blend),vy:a.vy*blend+b.vy*(1-blend)};
+        }
         const i = y*width+x;
-        depth[i] = b.d*(1-blend)+a.d*blend+18*blend*(1-blend);
-        const vx=a.vx*blend+b.vx*(1-blend), vy=a.vy*blend+b.vy*(1-blend);
+        if(material && a.d>=-.5) {
+          const maxDistance=Math.max(...nearest.map(b=>b.d));
+          let sum=0,sx=0,sy=0;
+          for(const b of nearest) {
+            const weight=Math.exp((b.d-maxDistance)/4),s=b.s,source=referenceSegments[b.group*28+b.k];
+            const px=s.a[0]+s.dx*b.t,py=s.a[1]+s.dy*b.t;
+            const along=((x-px)*s.dx+(y-py)*s.dy)/s.length;
+            const across=((y-py)*s.dx-(x-px)*s.dy)/s.length;
+            const radius=source.curve.r[0]+(source.curve.r[1]-source.curve.r[0])*(source.t+b.t/28);
+            sx+=(source.a[0]+source.dx*b.t+along*source.dx/s.length-across*source.dy/source.length*radius/b.radius)*weight;
+            sy+=(source.a[1]+source.dy*b.t+along*source.dy/s.length+across*source.dx/source.length*radius/b.radius)*weight;
+            sum+=weight;
+          }
+          uvX[i]=sx/sum;uvY[i]=sy/sum;
+        }
+        depth[i] = a.d;
+        const vx=a.vx, vy=a.vy;
         const length=Math.hypot(vx,vy);
         flowX[i]=vx/length; flowY[i]=vy/length;
       }
       const image = ctx.createImageData(width,height);
       const youngImage = ctx.createImageData(width,height);
       const relief = new Float32Array(count), plateTone = new Float32Array(count);
-      if(bark) {
+      if(bark && !material) {
         // 块面种子只分布一次，方向取自同一木质场，分叉不另起贴图。
         const cells=[],cellColumns=Math.ceil(width/16)+2;
         const hash=(x,y)=>{
@@ -115,6 +151,14 @@ try {
       for (let y=0; y<height; y++) for (let x=0; x<width; x++) {
         const i=y*width+x, pixel=i*4;
         if(depth[i]<-.5) continue;
+        if(material) {
+          const maturity=age**1.5;
+          for(let c=0;c<3;c++) image.data[pixel+c]=sample(material.youngChannels[c],uvX[i],uvY[i])*(1-maturity)
+            +sample(material.channels[c],uvX[i],uvY[i])*maturity;
+          image.data[pixel+3]=255*Math.max(0,Math.min(1,depth[i]+.5));
+          covered++;
+          continue;
+        }
         let grain=0, weights=0;
         // 对固定噪声做双向流线卷积，避免每条枝独立UV造成横向断带。
         for (const sign of [-1,1]) {
@@ -152,12 +196,17 @@ try {
         }
         covered++;
       }
-      return {image,youngImage,covered,finite:[...depth,...flowX,...flowY].every(Number.isFinite)};
+      return {image,youngImage,covered,finite:[...depth,...flowX,...flowY].every(Number.isFinite)
+        && (!material || (uvX.every(Number.isFinite) && uvY.every(Number.isFinite)))};
     };
-    // 只生成一次成熟材质；局部发育只改变网格位置，不重新计算木纹。
+    // 只生成一次源材质；局部用固定网格UV，整树按当前枝截面反查。
     const baked = bakeWoodField(1);
+    if(whole) {
+      baked.channels=[0,1,2].map(c=>Float32Array.from({length:count},(_,i)=>baked.image.data[i*4+c]));
+      baked.youngChannels=[0,1,2].map(c=>Float32Array.from({length:count},(_,i)=>baked.youngImage.data[i*4+c]));
+    }
     const vertices=[];
-    for(let y=0;y<=height;y+=4) for(let x=0;x<=width;x+=4) {
+    if(!whole) for(let y=0;y<=height;y+=4) for(let x=0;x<=width;x+=4) {
       // 枝内逐渐转为侧枝长度控制；主干及接合处使用同一组顶点。
       const reach=Math.max(0,Math.min(1,(x-290)/80));
       const branchWeight=reach*reach*(3-2*reach);
@@ -165,20 +214,25 @@ try {
     }
     const columns=width/4+1;
     const triangles=[];
-    for(let row=0;row<height/4;row++) for(let col=0;col<width/4;col++) {
+    if(!whole) for(let row=0;row<height/4;row++) for(let col=0;col<width/4;col++) {
       const a=row*columns+col,b=a+1,c=a+columns,d=c+1;
       triangles.push([a,b,c],[b,d,c]);
     }
-    window.renderWoodField = age => {
+    window.renderWoodField = (age,near=false) => {
       const trunkScale=(43+17*age)/60;
       const branchScale=(65+115*age)/180;
+      const current=whole ? window.continuousTreeCurves(age) : null;
+      const point=(p,t)=>[0,1].map(axis=>(1-t)**3*p[0][axis]+3*(1-t)**2*t*p[1][axis]
+        +3*(1-t)*t*t*p[2][axis]+t**3*p[3][axis]);
+      const frame=current?.[10];
       const positions=vertices.map(({uv:[x,y],branchWeight:w})=>[
         275+(x-275)*trunkScale+w*(x-290)*(branchScale-trunkScale),
         y+w*(344-y)*.16*(1-age),
       ]);
-      const image=ctx.createImageData(width,height);
+      const surface=whole ? bakeWoodField(age,baked) : null;
+      const image=surface?.image ?? ctx.createImageData(width,height);
       let texture=baked.image;
-      if(bark) {
+      if(bark && !whole) {
         // 仅改变同一UV处裂纹的可见强度，纹理位置及随机种子保持不变。
         texture=ctx.createImageData(width,height);
         const maturity=age**1.5;
@@ -186,27 +240,83 @@ try {
           +(baked.image.data[i]-baked.youngImage.data[i])*maturity;
       }
       let minimumArea=Infinity;
-      for(const ids of triangles) {
+      for(const ids of whole ? [] : triangles) {
         const points=ids.map(i=>positions[i]);
         const [a,b,c]=points;
         const area=(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
-        if(area<=0) throw Error('共享木质网格发生翻转');
+        if(area<=0) throw Error(`共享木质网格发生翻转 ${JSON.stringify({age,area,source:ids.map(i=>vertices[i].uv),points})}`);
         minimumArea=Math.min(minimumArea,area);
         window.rasterTexturedTriangle(image,texture,points,ids.map(i=>vertices[i].uv));
       }
+      ctx.setTransform(1,0,0,1,0,0);
       ctx.clearRect(0,0,width,height);
-      ctx.putImageData(image,0,0);
+      if(whole) {
+        const woodCanvas=new OffscreenCanvas(width,height);
+        woodCanvas.getContext('2d').putImageData(image,0,0);
+        if(near) ctx.setTransform(2.5,0,0,2.5,width/2-frame.p[0][0]*2.5,height/2-(frame.p[0][1]-25)*2.5);
+        ctx.drawImage(woodCanvas,0,0);
+      } else ctx.putImageData(image,0,0);
+      const drawCrown=front=>{
+        if(!whole) return;
+        let seed=59231;
+        const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+        for(const [index,branch] of current.entries()) {
+          if(branch.kind!=='branch') continue;
+          const growth=branch.growth;
+          for(const level of [.45,.72,1]) {
+            const base=point(branch.p,level);
+            const spread=4+35*growth;
+            const side=index%2 ? 1 : -1;
+            const center=[base[0]+side*spread*.2,base[1]-spread*.5];
+            ctx.strokeStyle='#5c4d2d';ctx.lineWidth=.5+growth;
+            ctx.beginPath();ctx.moveTo(...base);ctx.lineTo(...center);ctx.stroke();
+            for(let n=0;n<190;n++) {
+              const radius=Math.sqrt(random()),angle=random()*Math.PI*2;
+              const x=center[0]+Math.cos(angle)*radius*spread*1.15;
+              const y=center[1]+Math.sin(angle)*radius*spread*.72;
+              const turn=random()*Math.PI,light=random(),layer=random()>.45;
+              const leafLength=1.1+(1.1+random()*2.2)*growth;
+              if(layer!==front || n>24+166*growth) continue;
+              ctx.strokeStyle='rgba(61,54,28,.4)';ctx.lineWidth=.4;
+              ctx.beginPath();ctx.moveTo(...center);ctx.lineTo(x,y);ctx.stroke();
+              ctx.save();ctx.translate(x,y);ctx.rotate(turn);
+              ctx.fillStyle=`rgb(${68+Math.round(light*61)},${67+Math.round(light*48)},${29+Math.round(light*20)})`;
+              ctx.beginPath();ctx.ellipse(0,0,leafLength,leafLength*.43,0,0,Math.PI*2);ctx.fill();
+              ctx.strokeStyle='rgba(208,182,95,.28)';ctx.lineWidth=.35;
+              ctx.beginPath();ctx.moveTo(-leafLength*.6,0);ctx.lineTo(leafLength*.8,0);ctx.stroke();ctx.restore();
+            }
+          }
+        }
+      };
       ctx.globalCompositeOperation='destination-over';
+      drawCrown(false);
       ctx.fillStyle='#f6efdf';ctx.fillRect(0,0,width,height);
       ctx.globalCompositeOperation='source-over';
+      drawCrown(true);
+      if(whole && frame.growth>.08) {
+        const foot=frame.p[0],high=.6+53*frame.growth,half=.3+17*frame.growth;
+        ctx.fillStyle='#ead3a3';
+        ctx.beginPath();ctx.ellipse(foot[0],foot[1]-high*.5,half*.9,high*.40,0,0,Math.PI*2);ctx.fill();
+        if(frame.growth>.85) {
+          ctx.fillStyle='#372a1b';ctx.font='10px Microsoft YaHei';ctx.textAlign='center';
+          ['第','一','节'].forEach((text,i)=>ctx.fillText(text,foot[0],foot[1]-high*.7+i*11));
+          ctx.textAlign='left';
+        }
+      }
+      ctx.setTransform(1,0,0,1,0,0);
       ctx.fillStyle='#493824'; ctx.font='16px Microsoft YaHei';
-      ctx.fillText(`共享木质域 · 年龄 ${age.toFixed(2)}`,20,30);
-      return {age,sourceCovered:baked.covered,finite:baked.finite,minimumArea,triangles:triangles.length};
+      if(whole) {
+        ctx.fillStyle='rgba(246,239,223,.94)';ctx.fillRect(0,0,width,42);ctx.fillStyle='#493824';
+      }
+      ctx.fillText(whole ? `树龄 ${age.toFixed(2)} · 演示时间 ${(age*5).toFixed(2)} 秒` : `共享木质域 · 年龄 ${age.toFixed(2)}`,20,30);
+      return {age,sourceCovered:baked.covered,covered:surface?.covered,finite:surface?.finite ?? baked.finite,
+        minimumArea:whole ? null : minimumArea,triangles:whole ? 0 : triangles.length};
     };
-  },bark);
+  },[bark,whole]);
   const results=[];
-  for (const [name,age] of [['young',0],['middle',.5],['mature',1]]) {
-    const check=await page.evaluate(age=>window.renderWoodField(age),age);
+  const poses=[['young',0],['middle',.5],['mature',1],...(whole ? [['plaque-close',1,true]] : [])];
+  for (const [name,age,near=false] of poses) {
+    const check=await page.evaluate(([age,near])=>window.renderWoodField(age,near),[age,near]);
     if(!check.finite) throw Error('木质场含非有限数值');
     results.push(check);
     await page.screenshot({path:`${output}/${name}.png`});
@@ -221,5 +331,6 @@ try {
     {input:Buffer.concat(frames),encoding:'utf8'});
   if(encode.status!==0) throw Error(encode.error?.message??encode.stderr);
   await writeFile(`${output}/result.json`,JSON.stringify({stills:results,frames:intervals.length,
-    minimumArea:Math.min(...intervals.map(x=>x.minimumArea)),textureBakes:1,fixedUV:true},null,2));
+    minimumArea:whole ? null : Math.min(...intervals.map(x=>x.minimumArea)),textureBakes:1,fixedUV:!whole,
+    materialMapping:whole ? '按当前枝截面反查同一源木质域；接头混合，附着仍待独立验证' : '固定网格UV'},null,2));
 } finally { await browser.close(); }

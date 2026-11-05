@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-05 19:17:27　对应提交：1298a32 之后的工作区状态
+> 生成时间：2026-11-05 19:31:03　对应提交：f0109b3 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     245
-  Nodes:     6,881
-  Edges:     25,405
-  DB Size:   30.66 MB
+  Files:     246
+  Nodes:     6,886
+  Edges:     25,431
+  DB Size:   30.68 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,869
-  function        1,725
-  import          921
-  constant        786
+  function        1,726
+  import          922
+  constant        788
   variable        758
   class           534
-  file            237
+  file            238
   enum_member     25
   type_alias      18
   enum            6
@@ -34,7 +34,7 @@ Nodes by Kind:
 
 Files by Language:
   dart            116
-  javascript      73
+  javascript      74
   python          28
   kotlin          8
   xml             6
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (245 files):
+Project Structure (246 files):
 
 |-- .agents
 |   `-- skills
@@ -327,10 +327,11 @@ Project Structure (245 files):
 |       |   |-- check-illustrated-outline.mjs (javascript, 68 symbols)
 |       |   |-- check-organic-tree.mjs (javascript, 15 symbols)
 |       |   |-- check-startup.mjs (javascript, 23 symbols)
+|       |   |-- continuous-tree-layout.mjs (javascript, 2 symbols)
 |       |   |-- extract-reference-wood-sections.mjs (javascript, 11 symbols)
 |       |   |-- inspect-illustrated-atlas.mjs (javascript, 31 symbols)
 |       |   |-- probe-bough-deformation.mjs (javascript, 10 symbols)
-|       |   |-- probe-continuous-wood-field.mjs (javascript, 16 symbols)
+|       |   |-- probe-continuous-wood-field.mjs (javascript, 19 symbols)
 |       |   |-- probe-depth-collar.mjs (javascript, 19 symbols)
 |       |   |-- probe-root-collar-asset.mjs (javascript, 21 symbols)
 |       |   |-- probe-root-sections.mjs (javascript, 7 symbols)
