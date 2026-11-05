@@ -6,12 +6,13 @@ import { resolve } from 'node:path';
 import { rasterTexturedTriangle } from './raster-textured-triangle.mjs';
 
 // 复用已验证的局部分枝几何，只验证连续材质图集，不恢复退役整树。
-const painted=process.argv.includes('--painted');
-const directory='build/qa/branch-development-proof';
-const output=painted ? 'build/qa/painted-shared-bark' : 'build/qa/transported-bark';
+const hierarchical=process.argv.includes('--hierarchical');
+const painted=hierarchical || process.argv.includes('--painted');
+const directory=hierarchical ? 'build/qa/hierarchical-bark-proof' : 'build/qa/branch-development-proof';
+const output=hierarchical ? 'build/qa/hierarchical-painted-bark' : painted ? 'build/qa/painted-shared-bark' : 'build/qa/transported-bark';
 await mkdir(output,{recursive:true});
 const metadata=JSON.parse(await readFile(`${directory}/mesh.json`));
-if(metadata.vertexCount!==801 || metadata.triangleCount!==1408) throw Error('本验证需要原生单分叉801顶点版本');
+if(metadata.vertexCount!==(hierarchical ? 1023 : 801) || metadata.triangleCount!==(hierarchical ? 1798 : 1408)) throw Error('分叉网格版本不匹配');
 const binary=await readFile(`${directory}/mesh.bin`);
 const values=name=>{
   const section=metadata.sections[name];
@@ -19,7 +20,8 @@ const values=name=>{
 };
 const corners=values('corners');
 const faces=Array.from({length:corners.length/9},(_,i)=>[corners[i*9],corners[i*9+3],corners[i*9+6]]);
-const sourcePath=painted ? 'assets/source/magic_tree/textures_source/shared_fork_bark_field_v1.png'
+const sourcePath=hierarchical ? 'assets/source/magic_tree/textures_source/hierarchical_fork_bark_field_v1.png'
+  : painted ? 'assets/source/magic_tree/textures_source/shared_fork_bark_field_v1.png'
   : 'assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png';
 const source=await readFile(sourcePath);
 const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
@@ -27,7 +29,7 @@ try {
   const page=await browser.newPage({viewport:{width:560,height:700}});
   await page.setContent('<body style="margin:0"><canvas width="560" height="700"></canvas>');
   await page.addScriptTag({content:rasterTexturedTriangle.toString()});
-  const bake=await page.evaluate(async ({poses,faces,normals,ages,photo,painted})=>{
+  const bake=await page.evaluate(async ({poses,faces,normals,ages,photo,painted,hierarchical})=>{
     const resolution=painted ? 2 : 1,width=400*resolution,height=720*resolution,count=width*height;
     const ctx=document.querySelector('canvas').getContext('2d');
     const source=new Image();source.src=photo;await source.decode();
@@ -148,12 +150,12 @@ try {
       ctx.putImageData(image,0,0);ctx.globalCompositeOperation='destination-over';
       ctx.fillStyle='#f6efdf';ctx.fillRect(0,0,560,700);ctx.globalCompositeOperation='source-over';
       ctx.fillStyle='rgba(246,239,223,.94)';ctx.fillRect(0,0,560,42);
-      ctx.fillStyle='#493824';ctx.font='16px Microsoft YaHei';ctx.fillText(`局部分叉 · 树龄 ${age.toFixed(2)}`,20,30);
+      ctx.fillStyle='#493824';ctx.font='16px Microsoft YaHei';ctx.fillText(`${hierarchical ? '局部两级分叉' : '局部分叉'} · 树龄 ${age.toFixed(2)}`,20,30);
       return {age,minimumArea,triangles:faces.length};
     };
     return {covered,unfinished,sourceEmptySamples,sourceSize:[source.width,source.height],atlasSize:[width,height],vertices:uv.length,triangles:faces.length,
       fixedUV:true,sourceOpaque:true,scope:'共享局部分叉材质；不含根冠枝牌，不是完整A2样件'};
-  },{poses:metadata.vertexPoseSections.map(values),faces,normals:values('normals'),ages:metadata.poseFrames.map(p=>p.age),photo:`data:image/png;base64,${source.toString('base64')}`,painted});
+  },{poses:metadata.vertexPoseSections.map(values),faces,normals:values('normals'),ages:metadata.poseFrames.map(p=>p.age),photo:`data:image/png;base64,${source.toString('base64')}`,painted,hierarchical});
   const checks=[];
   for(const [name,age,near=false] of [['young',0],['middle',.5],['mature',1],['close',1,true]]) {
     checks.push(await page.evaluate(([age,near])=>window.renderTransported(age,near),[age,near]));
