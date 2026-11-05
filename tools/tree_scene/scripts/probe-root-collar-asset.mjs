@@ -73,13 +73,44 @@ try {
           const endX = center + side * (23 + 65 * age) * reach;
           const endY = y - (13 + 28 * age);
           ctx.save();
-          const path = new Path2D();
-          path.moveTo(center, y);
-          path.quadraticCurveTo(center + (endX-center)*.52, y - 3, endX, endY);
-          ctx.lineWidth = (501 * scale * (1 - .81 * level)) * .43;
-          ctx.lineCap = 'round';
-          ctx.strokeStyle = '#6e4930';
-          ctx.stroke(path);
+          // 同一截面数组驱动木枝轮廓、纹理映射与枝端接点。
+          const rings = [];
+          const radius = 501 * scale * (1 - .81 * level) * .23;
+          for (let step = 0; step <= 12; step++) {
+            const t = step / 12;
+            const x = center + (endX - center) * t;
+            const z = y + (endY - y) * t * t;
+            const half = radius * (1 - .86 * t);
+            rings.push([[x, z - half], [x, z + half]]);
+          }
+          const drawTriangle = (destination, source) => {
+            const [a,b,c] = source, [p,q,r] = destination;
+            const determinant = (b[0]-a[0])*(c[1]-a[1])-(c[0]-a[0])*(b[1]-a[1]);
+            const area = (q[0]-p[0])*(r[1]-p[1])-(r[0]-p[0])*(q[1]-p[1]);
+            if (Math.abs(area) < .0001 || Math.abs(determinant) < .0001) throw Error('母枝纹理三角退化');
+            const m11=((q[0]-p[0])*(c[1]-a[1])-(r[0]-p[0])*(b[1]-a[1]))/determinant;
+            const m21=((r[0]-p[0])*(b[0]-a[0])-(q[0]-p[0])*(c[0]-a[0]))/determinant;
+            const m12=((q[1]-p[1])*(c[1]-a[1])-(r[1]-p[1])*(b[1]-a[1]))/determinant;
+            const m22=((r[1]-p[1])*(b[0]-a[0])-(q[1]-p[1])*(c[0]-a[0]))/determinant;
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(...p);
+            ctx.lineTo(...q);
+            ctx.lineTo(...r);
+            ctx.closePath();
+            ctx.clip();
+            ctx.transform(m11,m12,m21,m22,p[0]-m11*a[0]-m21*a[1],p[1]-m12*a[0]-m22*a[1]);
+            ctx.drawImage(image,0,0);
+            ctx.restore();
+          };
+          for (let row = 0; row < rings.length - 1; row++) {
+            const v0 = 76 + row * 12, v1 = v0 + 12;
+            const source = [[636,v0],[1137,v0],[636,v1],[1137,v1]];
+            const points = [...rings[row], ...rings[row+1]];
+            for (const ids of [[0,2,1],[1,2,3]]) {
+              drawTriangle(ids.map(i=>points[i]),ids.map(i=>source[i]));
+            }
+          }
           ctx.restore();
           crownAt(endX, endY, leafScale * .83, side > 0);
           if (side > 0 && age > .65) {
