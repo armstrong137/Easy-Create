@@ -5,7 +5,8 @@ import { resolve } from 'node:path';
 
 const assembly = process.argv.includes('--assembly');
 const capture = assembly && process.argv.includes('--capture');
-const output = capture ? 'build/qa/layered-tree-first-review'
+const roundTwo = capture && process.argv.includes('--round-two');
+const output = roundTwo ? 'build/qa/layered-tree-second-review' : capture ? 'build/qa/layered-tree-first-review'
   : assembly ? 'build/qa/layered-tree-assembly' : 'build/qa/root-collar-stem-transition';
 await mkdir(output, { recursive: true });
 const root = await readFile('assets/source/magic_tree/textures_source/root_collar_buttress_v1.png');
@@ -18,7 +19,7 @@ try {
   const width = capture ? 380 : 1140;
   const page = await browser.newPage({ viewport: { width, height: assembly ? 600 : 380 } });
   await page.setContent(`<body style="margin:0"><canvas width="${width}" height="${assembly ? 600 : 380}"></canvas>`);
-  await page.evaluate(async ([source, crownSource, assembly, capture]) => {
+  await page.evaluate(async ([source, crownSource, assembly, capture, roundTwo]) => {
     const image = new Image();
     image.src = source;
     const leaves = new Image();
@@ -44,12 +45,12 @@ try {
       const top = (assembly ? 520 : 295) - Math.round((833 - anchorY) * scale * height);
       // 上段从接缝同一采样行开始，往上保持木纹纵向比例。
       ctx.filter = 'saturate(.83) brightness(.94)';
-      const stemHeight = Math.round(assembly ? 105 + 140 * age : 51 + 20 * age);
+      const stemHeight = Math.round(assembly ? 105 + (roundTwo ? 110 : 140) * age : 51 + 20 * age);
       for (let distance = stemHeight; distance > 0; distance--) {
         const travel = distance / (scale * height);
         const repeat = travel % 284;
         const sourceY = 76 + Math.min(repeat, 284 - repeat);
-        const taper = 1 - (assembly ? .81 : .21) * distance / stemHeight;
+        const taper = 1 - (assembly ? (roundTwo ? .62 : .81) : .21) * distance / stemHeight;
         const width = 501 * scale * taper;
         ctx.drawImage(image, 636, sourceY, 501, 1 / (scale * height),
           center + (636 + 250.5 - 887) * scale - width / 2, top - distance, width, 1);
@@ -76,7 +77,7 @@ try {
           ctx.drawImage(leaves, -1040, -863);
           ctx.restore();
         };
-        const leafScale = .045 + .041 * age;
+        const leafScale = .045 + (roundTwo ? .049 : .041) * age;
         crownAt(center, top - stemHeight, leafScale);
         for (const [side, level, reach] of [[-1,.38,1], [1,.55,1.1], [-1,.75,.78]]) {
           const y = top - stemHeight * level;
@@ -85,12 +86,12 @@ try {
           ctx.save();
           // 同一截面数组驱动木枝轮廓、纹理映射与枝端接点。
           const rings = [];
-          const radius = 501 * scale * (1 - .81 * level) * .23;
+          const radius = 501 * scale * (1 - (roundTwo ? .62 : .81) * level) * (roundTwo ? .32 : .23);
           for (let step = 0; step <= 12; step++) {
             const t = step / 12;
             const x = center + (endX - center) * t;
             const z = y + (endY - y) * t * t;
-            const half = radius * (1 - .86 * t);
+            const half = radius * (1 - (roundTwo ? .72 : .86) * t);
             rings.push([[x, z - half], [x, z + half]]);
           }
           const drawTriangle = (destination, source) => {
@@ -118,7 +119,8 @@ try {
           };
           for (let row = 0; row < rings.length - 1; row++) {
             const v0 = 76 + row * 12, v1 = v0 + 12;
-            const source = [[636,v0],[1137,v0],[636,v1],[1137,v1]];
+            const uvLeft = roundTwo ? 795 : 636, uvRight = roundTwo ? 978 : 1137;
+            const source = [[uvLeft,v0],[uvRight,v0],[uvLeft,v1],[uvRight,v1]];
             const points = [...rings[row], ...rings[row+1]];
             for (const ids of [[0,2,1],[1,2,3]]) {
               drawTriangle(ids.map(i=>points[i]),ids.map(i=>source[i]));
@@ -130,7 +132,14 @@ try {
             const px = center + (endX-center)*.72;
             const py = y + (endY-y)*.55;
             ctx.fillStyle = '#65432c';
-            ctx.fillRect(px - 13, py - 44, 26, 46);
+            if (roundTwo) {
+              ctx.beginPath();
+              ctx.roundRect(px - 15, py - 46, 30, 48, [8,7,5,8]);
+              ctx.fill();
+              ctx.strokeStyle = '#a27c46';
+              ctx.lineWidth = 1.3;
+              ctx.stroke();
+            } else ctx.fillRect(px - 13, py - 44, 26, 46);
             ctx.fillStyle = '#e9d09c';
             ctx.fillRect(px - 9, py - 40, 18, 35);
             ctx.fillStyle = '#38291c';
@@ -148,7 +157,7 @@ try {
     return { triangles, minimumArea };
     };
     window.renderAssembly(0);
-  }, [...[root,crown].map(bytes => `data:image/png;base64,${bytes.toString('base64')}`), assembly, capture]);
+  }, [...[root,crown].map(bytes => `data:image/png;base64,${bytes.toString('base64')}`), assembly, capture, roundTwo]);
   if (capture) {
     for (const [name, age, near] of [['young',0],['middle',.5],['mature',1],['plaque-close',1,true]]) {
       await page.evaluate(([age,near]) => window.renderAssembly(age,near), [age,near]);
