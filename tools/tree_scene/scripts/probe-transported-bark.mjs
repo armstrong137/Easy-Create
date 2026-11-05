@@ -6,13 +6,14 @@ import { resolve } from 'node:path';
 import { rasterTexturedTriangle } from './raster-textured-triangle.mjs';
 
 // 复用已验证的局部分枝几何，只验证连续材质图集，不恢复退役整树。
-const hierarchical=process.argv.includes('--hierarchical');
+const rooted=process.argv.includes('--rooted');
+const hierarchical=rooted || process.argv.includes('--hierarchical');
 const painted=hierarchical || process.argv.includes('--painted');
-const directory=hierarchical ? 'build/qa/hierarchical-bark-proof' : 'build/qa/branch-development-proof';
-const output=hierarchical ? 'build/qa/hierarchical-painted-bark' : painted ? 'build/qa/painted-shared-bark' : 'build/qa/transported-bark';
+const directory=rooted ? 'build/qa/rooted-bark-proof' : hierarchical ? 'build/qa/hierarchical-bark-proof' : 'build/qa/branch-development-proof';
+const output=rooted ? 'build/qa/rooted-painted-bark' : hierarchical ? 'build/qa/hierarchical-painted-bark' : painted ? 'build/qa/painted-shared-bark' : 'build/qa/transported-bark';
 await mkdir(output,{recursive:true});
 const metadata=JSON.parse(await readFile(`${directory}/mesh.json`));
-if(metadata.vertexCount!==(hierarchical ? 1023 : 801) || metadata.triangleCount!==(hierarchical ? 1798 : 1408)) throw Error('分叉网格版本不匹配');
+if(metadata.vertexCount!==(rooted ? 1704 : hierarchical ? 1023 : 801) || metadata.triangleCount!==(rooted ? 3004 : hierarchical ? 1798 : 1408)) throw Error('分叉网格版本不匹配');
 const binary=await readFile(`${directory}/mesh.bin`);
 const values=name=>{
   const section=metadata.sections[name];
@@ -20,7 +21,8 @@ const values=name=>{
 };
 const corners=values('corners');
 const faces=Array.from({length:corners.length/9},(_,i)=>[corners[i*9],corners[i*9+3],corners[i*9+6]]);
-const sourcePath=hierarchical ? 'assets/source/magic_tree/textures_source/hierarchical_fork_bark_field_v1.png'
+const sourcePath=rooted ? 'assets/source/magic_tree/textures_source/rooted_bark_field_v1.png'
+  : hierarchical ? 'assets/source/magic_tree/textures_source/hierarchical_fork_bark_field_v1.png'
   : painted ? 'assets/source/magic_tree/textures_source/shared_fork_bark_field_v1.png'
   : 'assets/source/magic_tree/textures_source/pbr/bark_old_basecolor.png';
 const source=await readFile(sourcePath);
@@ -29,8 +31,8 @@ try {
   const page=await browser.newPage({viewport:{width:560,height:700}});
   await page.setContent('<body style="margin:0"><canvas width="560" height="700"></canvas>');
   await page.addScriptTag({content:rasterTexturedTriangle.toString()});
-  const bake=await page.evaluate(async ({poses,faces,normals,ages,photo,painted,hierarchical})=>{
-    const resolution=painted ? 2 : 1,width=400*resolution,height=720*resolution,count=width*height;
+  const bake=await page.evaluate(async ({poses,faces,normals,ages,photo,painted,hierarchical,rooted,contacts})=>{
+    const resolution=painted ? 2 : 1,width=(rooted ? 600 : 400)*resolution,height=720*resolution,count=width*height;
     const ctx=document.querySelector('canvas').getContext('2d');
     const source=new Image();source.src=photo;await source.decode();
     const photoCanvas=new OffscreenCanvas(source.width,source.height),photoContext=photoCanvas.getContext('2d');
@@ -38,7 +40,7 @@ try {
     const pixels=photoContext.getImageData(0,0,source.width,source.height);
     for(let i=3;i<pixels.data.length;i+=4) if(pixels.data[i]!==255) throw Error('树皮材质源包含透明像素');
     const rest=poses.at(-1);
-    const uv=Array.from({length:rest.length/3},(_,i)=>[((rest[i*3]+.5)*95+20)*resolution,((6.9-rest[i*3+2])*95+20)*resolution]);
+    const uv=Array.from({length:rest.length/3},(_,i)=>[((rest[i*3]+(rooted ? 1.5 : .5))*95+20)*resolution,((6.9-rest[i*3+2])*95+20)*resolution]);
     const atlas=new ImageData(width,height);
     const white={width:1,height:1,data:new Uint8ClampedArray([255,255,255,255])};
     if(!painted) for(const face of faces) window.rasterTexturedTriangle(atlas,white,face.map(i=>uv[i]),[[.5,.5],[.5,.5],[.5,.5]]);
@@ -135,7 +137,7 @@ try {
       const positions=Array.from({length:uv.length},(_,i)=>{
         const x=poses[segment][i*3]*(1-t)+poses[segment+1][i*3]*t;
         const z=poses[segment][i*3+2]*(1-t)+poses[segment+1][i*3+2]*t;
-        return near ? [280+(x-1)*160,350-(z-3.2)*160] : [170+x*95,660-z*90];
+        return near ? (rooted ? [280+x*150,350-(z-.1)*190] : [280+(x-1)*160,350-(z-3.2)*160]) : [170+x*95,660-z*90];
       });
       const image=ctx.createImageData(560,700),detail=.07+.93*age;
       for(let i=0;i<atlas.data.length;i+=4) for(let c=0;c<3;c++) atlas.data[i+c]=[112,95,65][c]*lighting[i/4]*(1-detail)+original[i+c]*detail;
@@ -148,14 +150,22 @@ try {
         window.rasterTexturedTriangle(image,atlas,current,source);
       }
       ctx.putImageData(image,0,0);ctx.globalCompositeOperation='destination-over';
+      if(rooted) for(const contact of contacts) {
+        const points=[contact.tip,...contact.width].map(i=>positions[i]);
+        const x=positions[contact.tip][0],y=Math.max(...points.map(p=>p[1]))+1;
+        const radius=Math.max(3,(Math.max(...points.map(p=>p[0]))-Math.min(...points.map(p=>p[0])))*.7);
+        ctx.save();ctx.translate(x,y);ctx.scale(radius,Math.max(1,radius*.16));
+        const shadow=ctx.createRadialGradient(0,0,0,0,0,1);shadow.addColorStop(0,'rgba(58,43,26,.3)');shadow.addColorStop(1,'rgba(58,43,26,0)');
+        ctx.fillStyle=shadow;ctx.fillRect(-1,-1,2,2);ctx.restore();
+      }
       ctx.fillStyle='#f6efdf';ctx.fillRect(0,0,560,700);ctx.globalCompositeOperation='source-over';
       ctx.fillStyle='rgba(246,239,223,.94)';ctx.fillRect(0,0,560,42);
-      ctx.fillStyle='#493824';ctx.font='16px Microsoft YaHei';ctx.fillText(`${hierarchical ? '局部两级分叉' : '局部分叉'} · 树龄 ${age.toFixed(2)}`,20,30);
+      ctx.fillStyle='#493824';ctx.font='16px Microsoft YaHei';ctx.fillText(`${rooted ? '局部根颈与枝架' : hierarchical ? '局部两级分叉' : '局部分叉'} · 树龄 ${age.toFixed(2)}`,20,30);
       return {age,minimumArea,triangles:faces.length};
     };
     return {covered,unfinished,sourceEmptySamples,sourceSize:[source.width,source.height],atlasSize:[width,height],vertices:uv.length,triangles:faces.length,
-      fixedUV:true,sourceOpaque:true,scope:'共享局部分叉材质；不含根冠枝牌，不是完整A2样件'};
-  },{poses:metadata.vertexPoseSections.map(values),faces,normals:values('normals'),ages:metadata.poseFrames.map(p=>p.age),photo:`data:image/png;base64,${source.toString('base64')}`,painted,hierarchical});
+      fixedUV:true,sourceOpaque:true,scope:rooted ? '共享根颈及两级枝材质；不含冠层木牌，不是完整A2样件' : '共享局部分叉材质；不含根冠枝牌，不是完整A2样件'};
+  },{poses:metadata.vertexPoseSections.map(values),faces,normals:values('normals'),ages:metadata.poseFrames.map(p=>p.age),photo:`data:image/png;base64,${source.toString('base64')}`,painted,hierarchical,rooted,contacts:metadata.rootContacts ?? []});
   const checks=[];
   for(const [name,age,near=false] of [['young',0],['middle',.5],['mature',1],['close',1,true]]) {
     checks.push(await page.evaluate(([age,near])=>window.renderTransported(age,near),[age,near]));

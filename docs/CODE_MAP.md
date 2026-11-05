@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-05 20:12:03　对应提交：7505627 之后的工作区状态
+> 生成时间：2026-11-05 20:33:14　对应提交：6e3353a 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     249
-  Nodes:     7,013
-  Edges:     25,612
-  DB Size:   30.98 MB
+  Files:     250
+  Nodes:     7,096
+  Edges:     25,710
+  DB Size:   31.11 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,869
-  function        1,729
-  import          932
-  constant        884
-  variable        773
+  function        1,731
+  constant        950
+  import          933
+  variable        786
   class           534
-  file            241
+  file            242
   enum_member     25
   type_alias      18
   enum            6
@@ -34,7 +34,7 @@ Nodes by Kind:
 
 Files by Language:
   dart            116
-  javascript      77
+  javascript      78
   python          28
   kotlin          8
   xml             6
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (249 files):
+Project Structure (250 files):
 
 |-- .agents
 |   `-- skills
@@ -319,6 +319,7 @@ Project Structure (249 files):
 |       |   |-- build-hierarchical-bark-branch.mjs (javascript, 69 symbols)
 |       |   |-- build-native-seedling.mjs (javascript, 43 symbols)
 |       |   |-- build-reference-wood-skin.mjs (javascript, 62 symbols)
+|       |   |-- build-rooted-bark-body.mjs (javascript, 82 symbols)
 |       |   |-- build.mjs (javascript, 10 symbols)
 |       |   |-- canvaskit-path-compat.test.mjs (javascript, 10 symbols)
 |       |   |-- capture-authored-growth.mjs (javascript, 17 symbols)
@@ -337,7 +338,7 @@ Project Structure (249 files):
 |       |   |-- probe-depth-collar.mjs (javascript, 19 symbols)
 |       |   |-- probe-root-collar-asset.mjs (javascript, 21 symbols)
 |       |   |-- probe-root-sections.mjs (javascript, 7 symbols)
-|       |   |-- probe-transported-bark.mjs (javascript, 27 symbols)
+|       |   |-- probe-transported-bark.mjs (javascript, 28 symbols)
 |       |   |-- raster-textured-triangle.mjs (javascript, 2 symbols)
 |       |   |-- render-branch-study.mjs (javascript, 21 symbols)
 |       |   |-- render-reference-composition.mjs (javascript, 13 symbols)

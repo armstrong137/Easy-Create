@@ -1,0 +1,94 @@
+{
+  "sources": [
+    {
+      "path": "tools/tree_scene/scripts/build-rooted-bark-body.mjs",
+      "sha256": "784180e3ad69b03925eda56dfd38d2f353ec241d36c4fd489ce1092c0c7c022c"
+    },
+    {
+      "path": "tools/tree_scene/scripts/probe-transported-bark.mjs",
+      "sha256": "cf80728a50b791335d8a6063217a089261e70437383c0c45c98cc8af8cb32d07"
+    },
+    {
+      "path": "tools/tree_scene/scripts/audit-shared-bark-chart.mjs",
+      "sha256": "929175eadbff9641b0f5871531698f1857a0ad56b6a40a0c8552efd324f9c261"
+    },
+    {
+      "path": "assets/source/magic_tree/textures_source/rooted_bark_field_v1.png",
+      "sha256": "2a758d0fab3ba1ebcfba10eeaecf72ef603b13254a18e4c17ec3016596f3a28f"
+    },
+    {
+      "path": "assets/source/magic_tree/textures_source/rooted_bark_field_v1.prompt.txt",
+      "sha256": "a635886e35988102b08f774cb26f76290e064fb0a8dda7aa7f76458eac805b51"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "docs/Reports/Codex/共享图集根颈接合验证/atlas-audit.json",
+      "sha256": "6adf756a2d3c48d46bf01409a635c85ad3bfb2a25701ba1ff040edd5bdbd6cbd"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集根颈接合验证/atlas.png",
+      "sha256": "835415d7fedfb76165e1f013921a1ee552c6b4e5ce89b8db80de093d5314f7b0"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集根颈接合验证/chart.json",
+      "sha256": "50ab911f6705e2945d28ce11c766bfd3f1249eb6fbcbec2bf7e217cbf8746784"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集根颈接合验证/deformation.webm",
+      "sha256": "ff82cdac35112448a7361160e5e04f4f18b05acceca13ff0c51e0ff5d6791820"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集根颈接合验证/initial-rejected-intervals.json",
+      "sha256": "c478c89b2d3cfaf53bff305b555d348de19c5eabf8c5bd45134fcbdc209da8bb"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集根颈接合验证/interval-audit.json",
+      "sha256": "7fa9a0857c73985e4ff8767ddf29d7959ad044a8fc3db3af2a2d39291b79e86c"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集根颈接合验证/mesh.bin",
+      "sha256": "f350787fdaf1bce46346a4b8b8a23b04699039407b32da801899df22e1752fdf"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集根颈接合验证/mesh.json",
+      "sha256": "27156cf7d647d9ee267b894d9c84a45531f39e7cad323245e0ab54a68055b4db"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集根颈接合验证/negative-controls.json",
+      "sha256": "fcd3a58e811e1ca64837b2dcc7e9d805cc8eeedb2a2b74bd63ac048c13da4e35"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集根颈接合验证/README.md",
+      "sha256": "ae758b62ee3ddff074f579447e162c13c38ef3b3b7729bfcf7b8c511a46e2c4d"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集根颈接合验证/result.json",
+      "sha256": "030b3d10ea75b13628d1ad5511809e4107c94c33f3ad063d546b551b72c14cde"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集根颈接合验证/video-review.json",
+      "sha256": "d321e188e7d8353c460a07a59e0a8266c3a375bf9d55348b53b88136f6570015"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集根颈接合验证/局部中态.png",
+      "sha256": "232b5aa313d548af3f73c4361fb0fbbea1b1227d8e08c7f8f7ff0dbfc5225f9d"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集根颈接合验证/局部成熟态.png",
+      "sha256": "ac783729a09539d7fd33a6baefccf044cd56167769815c054be9310796d32dad"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集根颈接合验证/局部早态.png",
+      "sha256": "4ae14b84764c3cd033bd66dce43f61a197b0f4a1ff696bcf9c4c6f2e3810a28b"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集根颈接合验证/根颈近景.png",
+      "sha256": "c245aeb82502f29ff80f7791723655ea31cf24fccfcdeb6fb60bc3d703481a6f"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集根颈接合验证/视频中段.png",
+      "sha256": "4990e9e802d4628e22bf8ffebc72ec1240027edb64da8502e434044695650c80"
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "bake": {
+    "covered": 1728000,
+    "unfinished": 0,
+    "sourceEmptySamples": 0,
+    "sourceSize": [
+      1145,
+      1374
+    ],
+    "atlasSize": [
+      1200,
+      1440
+    ],
+    "vertices": 1704,
+    "triangles": 3004,
+    "fixedUV": true,
+    "sourceOpaque": true,
+    "scope": "共享根颈及两级枝材质；不含冠层木牌，不是完整A2样件"
+  },
+  "checks": [
+    {
+      "age": 0,
+      "minimumArea": 0.0003855509555616976,
+      "triangles": 3004
+    },
+    {
+      "age": 0.5,
+      "minimumArea": 0.11465760841584405,
+      "triangles": 3004
+    },
+    {
+      "age": 1,
+      "minimumArea": 0.2605731501409275,
+      "triangles": 3004
+    },
+    {
+      "age": 1,
+      "minimumArea": 0.868577167136425,
+      "triangles": 3004
+    }
+  ],
+  "frames": 41,
+  "minimumSampledArea": 0.0003855509555616976,
+  "meshSha256": "f350787fdaf1bce46346a4b8b8a23b04699039407b32da801899df22e1752fdf",
+  "sourcePath": "assets/source/magic_tree/textures_source/rooted_bark_field_v1.png",
+  "sourceSha256": "2a758d0fab3ba1ebcfba10eeaecf72ef603b13254a18e4c17ec3016596f3a28f"
+}

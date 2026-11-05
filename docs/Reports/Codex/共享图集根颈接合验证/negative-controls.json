@@ -1,0 +1,17 @@
+[
+  {
+    "name": "根接错误父域",
+    "rejected": true,
+    "reason": "接头连接了错误的父子域"
+  },
+  {
+    "name": "断开真实根边",
+    "rejected": true,
+    "reason": "实际母子共享接头不匹配"
+  },
+  {
+    "name": "透明材质",
+    "rejected": true,
+    "reason": "共享材质图集含非不透明像素"
+  }
+]

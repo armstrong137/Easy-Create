@@ -1,0 +1,21 @@
+{
+  "atlasSize": [
+    1200,
+    1440
+  ],
+  "opaquePixels": 1728000,
+  "vertices": 1704,
+  "triangles": 3004,
+  "sharedEdges": 40,
+  "domains": [
+    "主干",
+    "一级枝",
+    "二级枝",
+    "左根",
+    "右根",
+    "前根"
+  ],
+  "minimumUvArea": 1.1001977450394715,
+  "sourceEmptySamples": 0,
+  "scope": "实际图集全像素不透明、固定UV界内非退化、原生面/父子接边一致及开放木面连通；不证明造型/根冠/整树或全连续几何安全"
+}
