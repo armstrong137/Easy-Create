@@ -1,0 +1,29 @@
+{
+  "stills": [
+    {
+      "age": 0,
+      "sourceCovered": 59062,
+      "finite": true,
+      "minimumArea": 1.6157363200000068,
+      "triangles": 36400
+    },
+    {
+      "age": 0.5,
+      "sourceCovered": 59062,
+      "finite": true,
+      "minimumArea": 8.315887413333465,
+      "triangles": 36400
+    },
+    {
+      "age": 1,
+      "sourceCovered": 59062,
+      "finite": true,
+      "minimumArea": 16,
+      "triangles": 36400
+    }
+  ],
+  "frames": 41,
+  "minimumArea": 1.6157363200000068,
+  "textureBakes": 1,
+  "fixedUV": true
+}

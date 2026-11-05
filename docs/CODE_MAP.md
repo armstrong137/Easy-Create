@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-05 19:05:35　对应提交：e9c15c6 之后的工作区状态
+> 生成时间：2026-11-05 19:10:54　对应提交：83d5b42 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     244
-  Nodes:     6,865
-  Edges:     25,363
-  DB Size:   30.57 MB
+  Files:     245
+  Nodes:     6,880
+  Edges:     25,391
+  DB Size:   30.63 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,869
   function        1,725
-  import          916
-  constant        777
-  variable        757
+  import          921
+  constant        785
+  variable        758
   class           534
-  file            236
+  file            237
   enum_member     25
   type_alias      18
   enum            6
@@ -34,7 +34,7 @@ Nodes by Kind:
 
 Files by Language:
   dart            116
-  javascript      72
+  javascript      73
   python          28
   kotlin          8
   xml             6
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (244 files):
+Project Structure (245 files):
 
 |-- .agents
 |   `-- skills
@@ -330,6 +330,7 @@ Project Structure (244 files):
 |       |   |-- extract-reference-wood-sections.mjs (javascript, 11 symbols)
 |       |   |-- inspect-illustrated-atlas.mjs (javascript, 31 symbols)
 |       |   |-- probe-bough-deformation.mjs (javascript, 10 symbols)
+|       |   |-- probe-continuous-wood-field.mjs (javascript, 15 symbols)
 |       |   |-- probe-depth-collar.mjs (javascript, 19 symbols)
 |       |   |-- probe-root-collar-asset.mjs (javascript, 21 symbols)
 |       |   |-- probe-root-sections.mjs (javascript, 7 symbols)
