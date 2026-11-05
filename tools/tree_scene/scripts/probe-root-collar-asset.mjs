@@ -112,7 +112,12 @@ try {
             if (area * side <= 0) throw Error('母枝三角朝向错误');
             triangles++;
             minimumArea = Math.min(minimumArea, Math.abs(area));
-            if(raster){window.rasterTexturedTriangle(painted,sourceTexture,destination,source);return;}
+            if(raster){
+              const matrix=ctx.getTransform();
+              const pixels=destination.map(([x,y])=>[matrix.a*x+matrix.c*y+matrix.e,matrix.b*x+matrix.d*y+matrix.f]);
+              window.rasterTexturedTriangle(painted,sourceTexture,pixels,source);
+              return;
+            }
             const m11=((q[0]-p[0])*(c[1]-a[1])-(r[0]-p[0])*(b[1]-a[1]))/determinant;
             const m21=((r[0]-p[0])*(b[0]-a[0])-(q[0]-p[0])*(c[0]-a[0]))/determinant;
             const m12=((q[1]-p[1])*(c[1]-a[1])-(r[1]-p[1])*(b[1]-a[1]))/determinant;
@@ -137,7 +142,13 @@ try {
               drawTriangle(ids.map(i=>points[i]),ids.map(i=>source[i]));
             }
           }
-          if(raster){paintedContext.putImageData(painted,0,0);ctx.drawImage(paintedCanvas,0,0);}
+          if(raster){
+            paintedContext.putImageData(painted,0,0);
+            ctx.save();
+            ctx.setTransform(1,0,0,1,0,0);
+            ctx.drawImage(paintedCanvas,0,0);
+            ctx.restore();
+          }
           ctx.restore();
           crownAt(endX, endY, leafScale * .83, side > 0);
           if (side > 0 && age > .65) {

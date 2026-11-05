@@ -13,9 +13,20 @@ export function rasterTexturedTriangle(target, texture, destination, source) {
     const v=edge(c,a,x+.5,y+.5)/area;
     const w=1-u-v;
     if(Math.min(u,v,w)<-1e-10) continue;
-    const sx=Math.max(0,Math.min(texture.width-1,Math.floor(u*source[0][0]+v*source[1][0]+w*source[2][0])));
-    const sy=Math.max(0,Math.min(texture.height-1,Math.floor(u*source[0][1]+v*source[1][1]+w*source[2][1])));
-    const from=4*(sy*texture.width+sx),to=4*(y*target.width+x);
-    target.data.set(texture.data.subarray(from,from+4),to);
+    const sx=Math.max(0,Math.min(texture.width-1,u*source[0][0]+v*source[1][0]+w*source[2][0]-.5));
+    const sy=Math.max(0,Math.min(texture.height-1,u*source[0][1]+v*source[1][1]+w*source[2][1]-.5));
+    const x0=Math.floor(sx),y0=Math.floor(sy),tx=sx-x0,ty=sy-y0;
+    const colors=[0,0,0];
+    let alpha=0;
+    for(let row=0;row<2;row++) for(let col=0;col<2;col++) {
+      const weight=(col?tx:1-tx)*(row?ty:1-ty);
+      const pixel=4*(Math.min(texture.height-1,y0+row)*texture.width+Math.min(texture.width-1,x0+col));
+      const coverage=texture.data[pixel+3]*weight;
+      alpha+=coverage;
+      for(let channel=0;channel<3;channel++) colors[channel]+=texture.data[pixel+channel]*coverage;
+    }
+    const to=4*(y*target.width+x);
+    for(let channel=0;channel<3;channel++) target.data[to+channel]=alpha?colors[channel]/alpha:0;
+    target.data[to+3]=alpha;
   }
 }
