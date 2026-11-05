@@ -1,0 +1,86 @@
+{
+  "sources": [
+    {
+      "path": "tools/tree_scene/scripts/probe-transported-bark.mjs",
+      "sha256": "d8544027b745614ee7ef2b341c71a2f8e037c762d5aa3ff78977fcbbcd14a438"
+    },
+    {
+      "path": "tools/tree_scene/scripts/audit-shared-bark-chart.mjs",
+      "sha256": "13b55f5bc82488edff2c31689f3cb30ac2cc1bad4b53635aa6dc6d0a112cd871"
+    },
+    {
+      "path": "assets/source/magic_tree/textures_source/shared_fork_bark_field_v1.png",
+      "sha256": "85ef3b17a5078bd07d86c66e667e6e3c705d8b81e0756bbe980059129c83cac5"
+    },
+    {
+      "path": "assets/source/magic_tree/textures_source/shared_fork_bark_field_v1.prompt.txt",
+      "sha256": "57d0701aa4cfd769d123aaaded4c110296e991d76ab502e81687f845e2610b2f"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "docs/Reports/Codex/共享图集分叉材质验证/atlas-audit.json",
+      "sha256": "fa36595fd12cd79cadb898a707e3be8c43860ab3782099b0f36d2ebb01ddba4f"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集分叉材质验证/atlas.png",
+      "sha256": "1205e5b0c202be9ff24333a479f9b019d8398472a2bbaed07dfbdbbc8ae287d3"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集分叉材质验证/chart.json",
+      "sha256": "7aa6cadde1ce927eae3bac56366820fcdd01cb656dcdcfa4520b23b53c55c14f"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集分叉材质验证/deformation.webm",
+      "sha256": "2d5ddedddd615509602b2fc13cace41c9be6157533a683725154042b30914d36"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集分叉材质验证/mesh.bin",
+      "sha256": "0019530cb225794e214c126dff38a665510510bfa4b4338eda6817f4a1810040"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集分叉材质验证/mesh.json",
+      "sha256": "010c02fab46296b4ba1d830c2f877444b8366b09bf99e44eef485964873bd647"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集分叉材质验证/negative-controls.json",
+      "sha256": "80b3f8c3ceb8cad3742edfaba20b8c76337f94baaaba33a085b7b267f1d22866"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集分叉材质验证/README.md",
+      "sha256": "5c6d39e9bcd2aea383846f12b428176418c1ddce317e3ff30b0c7d0235e5a9d3"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集分叉材质验证/result.json",
+      "sha256": "2dfe02baa7a9172d801d78114259bfd1501d94f71f10105d74808bd5fe03faa6"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集分叉材质验证/video-review.json",
+      "sha256": "d321e188e7d8353c460a07a59e0a8266c3a375bf9d55348b53b88136f6570015"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集分叉材质验证/局部中态.png",
+      "sha256": "c3f79b991ef1497fe4c7c99eb8f99b7a544cfaa36aaf7c5b213056017fcc2806"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集分叉材质验证/局部成熟态.png",
+      "sha256": "c269f59c5aabe5484c117ad7a70e9beb40fcfa6b8b1e131c7fd7e43c2740286d"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集分叉材质验证/局部早态.png",
+      "sha256": "873c89b24351b067fb299bc91e5181469987abf45bbcc460d1998cb07e94b7e1"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集分叉材质验证/接头近景.png",
+      "sha256": "4c2dfe3dd3a5e136eae7526baba4b613b2893a2eec39f3371c16ffc6bb4fda8f"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集分叉材质验证/流线反查近景.png",
+      "sha256": "39295aec75bca1b6faa8f8015f9bcca50449d742bf4e389fc2732360fd98e123"
+    },
+    {
+      "path": "docs/Reports/Codex/共享图集分叉材质验证/视频中段.png",
+      "sha256": "a6ea0281452185326422cd186802a25dd4e00f5629a6624649b36658ff522f01"
+    }
+  ]
+}

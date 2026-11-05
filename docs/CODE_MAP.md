@@ -1,7 +1,7 @@
 # 代码地图（CODE MAP）
 
 > ⚠️ 本文件由 `scripts/update_code_map.sh` 自动生成，请勿手工编辑。
-> 生成时间：2026-11-05 19:40:40　对应提交：5affb4a 之后的工作区状态
+> 生成时间：2026-11-05 19:58:36　对应提交：c540fea 之后的工作区状态
 
 ## 一、索引状态
 
@@ -12,21 +12,21 @@ CodeGraph Status
 Project: C:\Users\Armstrong\Desktop\Easy Create
 
 Index Statistics:
-  Files:     246
-  Nodes:     6,887
-  Edges:     25,447
-  DB Size:   30.71 MB
+  Files:     248
+  Nodes:     6,936
+  Edges:     25,519
+  DB Size:   30.83 MB
   Backend:   node:sqlite - built-in (full WAL)
   Journal:   wal
 
 Nodes by Kind:
   method          1,869
-  function        1,726
-  import          922
-  constant        789
-  variable        758
+  function        1,728
+  import          931
+  constant        820
+  variable        763
   class           534
-  file            238
+  file            240
   enum_member     25
   type_alias      18
   enum            6
@@ -34,7 +34,7 @@ Nodes by Kind:
 
 Files by Language:
   dart            116
-  javascript      74
+  javascript      76
   python          28
   kotlin          8
   xml             6
@@ -52,7 +52,7 @@ Files by Language:
 
 ```
 
-Project Structure (246 files):
+Project Structure (248 files):
 
 |-- .agents
 |   `-- skills
@@ -314,6 +314,7 @@ Project Structure (246 files):
 |       |   |-- audit-development-tree.mjs (javascript, 56 symbols)
 |       |   |-- audit-reference-apertures.mjs (javascript, 38 symbols)
 |       |   |-- audit-reference-sources.mjs (javascript, 15 symbols)
+|       |   |-- audit-shared-bark-chart.mjs (javascript, 23 symbols)
 |       |   |-- audit-volume-uv.mjs (javascript, 23 symbols)
 |       |   |-- build-native-seedling.mjs (javascript, 43 symbols)
 |       |   |-- build-reference-wood-skin.mjs (javascript, 62 symbols)
@@ -335,6 +336,7 @@ Project Structure (246 files):
 |       |   |-- probe-depth-collar.mjs (javascript, 19 symbols)
 |       |   |-- probe-root-collar-asset.mjs (javascript, 21 symbols)
 |       |   |-- probe-root-sections.mjs (javascript, 7 symbols)
+|       |   |-- probe-transported-bark.mjs (javascript, 26 symbols)
 |       |   |-- raster-textured-triangle.mjs (javascript, 2 symbols)
 |       |   |-- render-branch-study.mjs (javascript, 21 symbols)
 |       |   |-- render-reference-composition.mjs (javascript, 13 symbols)

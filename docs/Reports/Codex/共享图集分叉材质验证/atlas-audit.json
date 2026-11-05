@@ -1,0 +1,13 @@
+{
+  "atlasSize": [
+    800,
+    1440
+  ],
+  "opaquePixels": 1152000,
+  "vertices": 801,
+  "triangles": 1408,
+  "sharedEdges": 8,
+  "minimumUvArea": 17.031107301670545,
+  "sourceEmptySamples": 0,
+  "scope": "实际图集全像素不透明、固定UV在界内且非退化、原生面与八条共用接边一致；不证明造型/根冠/整树或全连续几何安全"
+}

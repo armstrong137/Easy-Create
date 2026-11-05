@@ -1,0 +1,12 @@
+[
+  {
+    "name": "透明采样",
+    "rejected": true,
+    "reason": "共享材质图集含非不透明像素"
+  },
+  {
+    "name": "UV越界",
+    "rejected": true,
+    "reason": "固定UV越界"
+  }
+]
