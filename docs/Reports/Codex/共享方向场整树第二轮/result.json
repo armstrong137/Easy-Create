@@ -1,0 +1,46 @@
+{
+  "stills": [
+    {
+      "age": 0,
+      "sourceCovered": 46003,
+      "covered": 1932,
+      "finite": true,
+      "emptyMaterialSamples": 466,
+      "minimumArea": null,
+      "triangles": 0
+    },
+    {
+      "age": 0.5,
+      "sourceCovered": 46003,
+      "covered": 14629,
+      "finite": true,
+      "emptyMaterialSamples": 218,
+      "minimumArea": null,
+      "triangles": 0
+    },
+    {
+      "age": 1,
+      "sourceCovered": 46003,
+      "covered": 46003,
+      "finite": true,
+      "emptyMaterialSamples": 0,
+      "minimumArea": null,
+      "triangles": 0
+    },
+    {
+      "age": 1,
+      "sourceCovered": 46003,
+      "covered": 49731,
+      "finite": true,
+      "emptyMaterialSamples": 0,
+      "minimumArea": null,
+      "triangles": 0
+    }
+  ],
+  "frames": 41,
+  "minimumArea": null,
+  "textureBakes": 1,
+  "fixedUV": false,
+  "emptyMaterialSamplesMax": 478,
+  "materialMapping": "按当前枝截面反查同一源木质域；接头混合，附着仍待独立验证"
+}

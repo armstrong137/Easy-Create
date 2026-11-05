@@ -1,0 +1,53 @@
+{
+  "viewport": [
+    560,
+    700
+  ],
+  "frames": 41,
+  "fps": 8,
+  "decodedDuration": 5.125,
+  "sources": [
+    {
+      "path": "tools/tree_scene/scripts/probe-continuous-wood-field.mjs",
+      "sha256": "ea636edfd09c9b46d13410d5617963f765a50041e71d5f1cc686ee2cd2ac0a75"
+    },
+    {
+      "path": "tools/tree_scene/scripts/continuous-tree-layout.mjs",
+      "sha256": "72cf66981bf67848c51b865d906474d52b93ba48e4ddf4f6f16a40b0e928dc98"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "docs/Reports/Codex/共享方向场整树第二轮/README.md",
+      "sha256": "2507dca3ff150d57b3196e32a045205c42ae1e61936459dcea6495161c37427b"
+    },
+    {
+      "path": "docs/Reports/Codex/共享方向场整树第二轮/result.json",
+      "sha256": "480be99c40db0c08eff49cc6570a575cea5719eb83b4db8a8a741a4c9ed3475c"
+    },
+    {
+      "path": "docs/Reports/Codex/共享方向场整树第二轮/中龄.png",
+      "sha256": "1a0c88f1014932bb4e66e1707bbc1bde98d40d17cd2f42bf0703c09c266af841"
+    },
+    {
+      "path": "docs/Reports/Codex/共享方向场整树第二轮/幼苗.png",
+      "sha256": "410a701936370a51c29476c0ad0511247a82e4f09ffac05300b511f8d5629573"
+    },
+    {
+      "path": "docs/Reports/Codex/共享方向场整树第二轮/成熟.png",
+      "sha256": "ac6f7c72b216b8afeee47a2f851bc21cbbbc9fe357ac7d75eac6cb4cf654ecad"
+    },
+    {
+      "path": "docs/Reports/Codex/共享方向场整树第二轮/成长.webm",
+      "sha256": "5781176b793e3f881d4af4ec0d3c302f6b7a093e11b8e00b09908f9b6b5a8c8c"
+    },
+    {
+      "path": "docs/Reports/Codex/共享方向场整树第二轮/枝牌近景.png",
+      "sha256": "a130f97d86eb672feee8245bfbe73653123009f8304d83b96d3dae0b372759ea"
+    },
+    {
+      "path": "docs/Reports/Codex/共享方向场整树第二轮/短片中段.png",
+      "sha256": "82a1a773850ecc4cc34e808d735c7912e4007d850eaaef0a7b1a5dd2297b92f3"
+    }
+  ]
+}

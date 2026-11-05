@@ -7,8 +7,9 @@ import { continuousTreeCurves } from './continuous-tree-layout.mjs';
 
 // 独立二维分叉验证：轮廓、体积明暗和木纹共用连续场，不叠贴侧枝。
 const whole = process.argv.includes('--whole');
+const roundTwo = whole && process.argv.includes('--round-two');
 const bark = whole || process.argv.includes('--bark');
-const output = whole ? 'build/qa/continuous-field-first-review' : bark ? 'build/qa/continuous-wood-bark' : 'build/qa/continuous-wood-field';
+const output = roundTwo ? 'build/qa/continuous-field-second-review' : whole ? 'build/qa/continuous-field-first-review' : bark ? 'build/qa/continuous-wood-bark' : 'build/qa/continuous-wood-field';
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true,
@@ -18,7 +19,7 @@ try {
   await page.setContent(`<body style="margin:0"><canvas width="560" height="${whole ? 700 : 520}"></canvas>`);
   await page.addScriptTag({content:rasterTexturedTriangle.toString()});
   await page.addScriptTag({content:continuousTreeCurves.toString()});
-  await page.evaluate(([bark,whole]) => {
+  await page.evaluate(([bark,whole,roundTwo]) => {
     const canvas = document.querySelector('canvas');
     const ctx = canvas.getContext('2d');
     const width = canvas.width, height = canvas.height, count = width * height;
@@ -37,10 +38,10 @@ try {
         + (data[i+width] * (1-u) + data[i+width+1] * u) * v;
     };
     let referenceSegments;
-    const bakeWoodField = (age,material=null) => {
+    const bakeWoodField = (age,material=null,camera=null) => {
       const segments = [];
       const branchLength = 65 + 115 * age;
-      const curves = whole ? window.continuousTreeCurves(age) : [
+      const curves = whole ? window.continuousTreeCurves(age,roundTwo) : [
         { p: [[280, 510], [257, 330], [290, 160], [275, 15]], r: [43+17*age, 26+11*age] },
         { p: [[273, 344], [317, 326], [320+branchLength*.5, 277], [290+branchLength, 232-35*age]], r: [24+13*age, 6+4*age] },
       ];
@@ -63,9 +64,12 @@ try {
         bottom:Math.max(...curve.p.map(p=>p[1]))+Math.max(...curve.r)+32}));
       const depth = new Float32Array(count), flowX = new Float32Array(count), flowY = new Float32Array(count);
       const uvX=material ? new Float32Array(count) : null,uvY=material ? new Float32Array(count) : null;
-      for (let y=0; y<height; y++) for (let x=0; x<width; x++) {
+      for (let row=0; row<height; row++) for (let col=0; col<width; col++) {
+        const x=camera ? camera.x+(col-width/2)/camera.scale : col;
+        const y=camera ? camera.y+(row-height/2)/camera.scale : row;
+        const i=row*width+col;
         if(material && !bounds.some(b=>x>=b.left && x<=b.right && y>=b.top && y<=b.bottom)) {
-          depth[y*width+x]=-100;flowY[y*width+x]=-1;
+          depth[i]=-100;flowY[i]=-1;
           continue;
         }
         const nearest = [];
@@ -89,7 +93,6 @@ try {
         a={d:b.d*(1-blend)+a.d*blend+join*blend*(1-blend),
           vx:a.vx*blend+b.vx*(1-blend),vy:a.vy*blend+b.vy*(1-blend)};
         }
-        const i = y*width+x;
         if(material && a.d>=-.5) {
           const maxDistance=Math.max(...nearest.map(b=>b.d));
           let sum=0,sx=0,sy=0;
@@ -147,15 +150,17 @@ try {
           plateTone[i]=tone;
         }
       }
-      let covered=0;
+      let covered=0,emptyMaterialSamples=0;
       for (let y=0; y<height; y++) for (let x=0; x<width; x++) {
         const i=y*width+x, pixel=i*4;
         if(depth[i]<-.5) continue;
         if(material) {
+          // 记录实体表面反查到源材质透明区的情况，不用填色掩盖绑定错误。
+          if(depth[i]>.5 && sample(material.alphaChannel,uvX[i],uvY[i])<1) emptyMaterialSamples++;
           const maturity=age**1.5;
           for(let c=0;c<3;c++) image.data[pixel+c]=sample(material.youngChannels[c],uvX[i],uvY[i])*(1-maturity)
             +sample(material.channels[c],uvX[i],uvY[i])*maturity;
-          image.data[pixel+3]=255*Math.max(0,Math.min(1,depth[i]+.5));
+          image.data[pixel+3]=255*Math.max(0,Math.min(1,depth[i]*(camera?.scale ?? 1)+.5));
           covered++;
           continue;
         }
@@ -196,12 +201,13 @@ try {
         }
         covered++;
       }
-      return {image,youngImage,covered,finite:[...depth,...flowX,...flowY].every(Number.isFinite)
+      return {image,youngImage,covered,emptyMaterialSamples,finite:[...depth,...flowX,...flowY].every(Number.isFinite)
         && (!material || (uvX.every(Number.isFinite) && uvY.every(Number.isFinite)))};
     };
     // 只生成一次源材质；局部用固定网格UV，整树按当前枝截面反查。
     const baked = bakeWoodField(1);
     if(whole) {
+      baked.alphaChannel=Float32Array.from({length:count},(_,i)=>baked.image.data[i*4+3]);
       baked.channels=[0,1,2].map(c=>Float32Array.from({length:count},(_,i)=>baked.image.data[i*4+c]));
       baked.youngChannels=[0,1,2].map(c=>Float32Array.from({length:count},(_,i)=>baked.youngImage.data[i*4+c]));
     }
@@ -221,7 +227,7 @@ try {
     window.renderWoodField = (age,near=false) => {
       const trunkScale=(43+17*age)/60;
       const branchScale=(65+115*age)/180;
-      const current=whole ? window.continuousTreeCurves(age) : null;
+      const current=whole ? window.continuousTreeCurves(age,roundTwo) : null;
       const point=(p,t)=>[0,1].map(axis=>(1-t)**3*p[0][axis]+3*(1-t)**2*t*p[1][axis]
         +3*(1-t)*t*t*p[2][axis]+t**3*p[3][axis]);
       const frame=current?.[10];
@@ -229,7 +235,8 @@ try {
         275+(x-275)*trunkScale+w*(x-290)*(branchScale-trunkScale),
         y+w*(344-y)*.16*(1-age),
       ]);
-      const surface=whole ? bakeWoodField(age,baked) : null;
+      const camera=roundTwo && near ? {scale:2.5,x:frame.p[0][0],y:frame.p[0][1]-29} : null;
+      const surface=whole ? bakeWoodField(age,baked,camera) : null;
       const image=surface?.image ?? ctx.createImageData(width,height);
       let texture=baked.image;
       if(bark && !whole) {
@@ -253,13 +260,50 @@ try {
       if(whole) {
         const woodCanvas=new OffscreenCanvas(width,height);
         woodCanvas.getContext('2d').putImageData(image,0,0);
-        if(near) ctx.setTransform(2.5,0,0,2.5,width/2-frame.p[0][0]*2.5,height/2-(frame.p[0][1]-25)*2.5);
+        if(near && !roundTwo) ctx.setTransform(2.5,0,0,2.5,width/2-frame.p[0][0]*2.5,height/2-(frame.p[0][1]-25)*2.5);
         ctx.drawImage(woodCanvas,0,0);
+        if(camera) ctx.setTransform(camera.scale,0,0,camera.scale,width/2-camera.x*camera.scale,height/2-camera.y*camera.scale);
       } else ctx.putImageData(image,0,0);
       const drawCrown=front=>{
         if(!whole) return;
         let seed=59231;
         const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+        if(roundTwo) {
+          for(const [index,branch] of current.entries()) {
+            if(branch.kind!=='branch') continue;
+            const growth=branch.growth,side=index%2 ? 1 : -1;
+            for(const level of [.25,.58,.9]) {
+              const base=point(branch.p,level);
+              const twig=(x,y,length,angle,depth)=>{
+                const bend=(random()-.5)*.4;
+                const end=[x+Math.cos(angle+bend)*length,y+Math.sin(angle+bend)*length];
+                ctx.strokeStyle=depth>1 ? '#645334' : '#75633a';
+                ctx.lineWidth=(.3+growth*.45)*depth;
+                ctx.beginPath();ctx.moveTo(x,y);
+                ctx.quadraticCurveTo(x+Math.cos(angle)*length*.6,y+Math.sin(angle)*length*.6,...end);ctx.stroke();
+                if(depth>1) {
+                  twig(...end,length*(.59+random()*.1),angle-.55-random()*.18,depth-1);
+                  twig(...end,length*(.59+random()*.1),angle+.50+random()*.2,depth-1);
+                }
+                const count=depth===1 ? 7 : 2;
+                for(let n=0;n<count;n++) {
+                  const t=.3+n/count*.7,flip=n%2 ? 1 : -1;
+                  const leafAngle=angle+flip*(.55+random()*.5),light=random(),layer=random()>.42;
+                  const size=1.8+(1.8+random()*1.3)*growth;
+                  const px=x+(end[0]-x)*t,py=y+(end[1]-y)*t;
+                  if(layer!==front) continue;
+                  ctx.save();ctx.translate(px,py);ctx.rotate(leafAngle);
+                  ctx.fillStyle=`rgb(${65+Math.round(light*63)},${65+Math.round(light*48)},${27+Math.round(light*24)})`;
+                  ctx.beginPath();ctx.ellipse(size*.7,0,size,size*.42,0,0,Math.PI*2);ctx.fill();
+                  ctx.strokeStyle='rgba(208,182,95,.32)';ctx.lineWidth=.3;
+                  ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(size*1.6,0);ctx.stroke();ctx.restore();
+                }
+              };
+              twig(...base,5+(32+13*level)*growth,-Math.PI/2+side*(.3+level*.3),5);
+            }
+          }
+          return;
+        }
         for(const [index,branch] of current.entries()) {
           if(branch.kind!=='branch') continue;
           const growth=branch.growth;
@@ -289,14 +333,24 @@ try {
         }
       };
       ctx.globalCompositeOperation='destination-over';
+      if(roundTwo) {
+        const shadow=ctx.createRadialGradient(280,650,3,280,650,135);
+        shadow.addColorStop(0,'rgba(65,48,26,.32)');shadow.addColorStop(1,'rgba(65,48,26,0)');
+        ctx.save();ctx.translate(280,650);ctx.scale(1,.14);ctx.translate(-280,-650);
+        ctx.fillStyle=shadow;ctx.fillRect(140,510,280,280);ctx.restore();
+      }
       drawCrown(false);
       ctx.fillStyle='#f6efdf';ctx.fillRect(0,0,width,height);
       ctx.globalCompositeOperation='source-over';
       drawCrown(true);
       if(whole && frame.growth>.08) {
-        const foot=frame.p[0],high=.6+53*frame.growth,half=.3+17*frame.growth;
+        const foot=frame.p[0],high=.6+(roundTwo ? 62 : 53)*frame.growth,half=.3+(roundTwo ? 21 : 17)*frame.growth;
         ctx.fillStyle='#ead3a3';
         ctx.beginPath();ctx.ellipse(foot[0],foot[1]-high*.5,half*.9,high*.40,0,0,Math.PI*2);ctx.fill();
+        if(roundTwo) {
+          ctx.strokeStyle='#a17c42';ctx.lineWidth=.8;
+          ctx.beginPath();ctx.ellipse(foot[0],foot[1]-high*.5,half*.99,high*.46,0,0,Math.PI*2);ctx.stroke();
+        }
         if(frame.growth>.85) {
           ctx.fillStyle='#372a1b';ctx.font='10px Microsoft YaHei';ctx.textAlign='center';
           ['第','一','节'].forEach((text,i)=>ctx.fillText(text,foot[0],foot[1]-high*.7+i*11));
@@ -310,9 +364,10 @@ try {
       }
       ctx.fillText(whole ? `树龄 ${age.toFixed(2)} · 演示时间 ${(age*5).toFixed(2)} 秒` : `共享木质域 · 年龄 ${age.toFixed(2)}`,20,30);
       return {age,sourceCovered:baked.covered,covered:surface?.covered,finite:surface?.finite ?? baked.finite,
+        emptyMaterialSamples:surface?.emptyMaterialSamples,
         minimumArea:whole ? null : minimumArea,triangles:whole ? 0 : triangles.length};
     };
-  },[bark,whole]);
+  },[bark,whole,roundTwo]);
   const results=[];
   const poses=[['young',0],['middle',.5],['mature',1],...(whole ? [['plaque-close',1,true]] : [])];
   for (const [name,age,near=false] of poses) {
@@ -332,5 +387,6 @@ try {
   if(encode.status!==0) throw Error(encode.error?.message??encode.stderr);
   await writeFile(`${output}/result.json`,JSON.stringify({stills:results,frames:intervals.length,
     minimumArea:whole ? null : Math.min(...intervals.map(x=>x.minimumArea)),textureBakes:1,fixedUV:!whole,
+    emptyMaterialSamplesMax:whole ? Math.max(...intervals.map(x=>x.emptyMaterialSamples)) : null,
     materialMapping:whole ? '按当前枝截面反查同一源木质域；接头混合，附着仍待独立验证' : '固定网格UV'},null,2));
 } finally { await browser.close(); }
