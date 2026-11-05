@@ -5,7 +5,8 @@ import { resolve } from 'node:path';
 import { rasterTexturedTriangle } from './raster-textured-triangle.mjs';
 
 // 独立二维分叉验证：轮廓、体积明暗和木纹共用连续场，不叠贴侧枝。
-const output = 'build/qa/continuous-wood-field';
+const bark = process.argv.includes('--bark');
+const output = bark ? 'build/qa/continuous-wood-bark' : 'build/qa/continuous-wood-field';
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true,
@@ -14,7 +15,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 560, height: 520 } });
   await page.setContent('<body style="margin:0"><canvas width="560" height="520"></canvas>');
   await page.addScriptTag({content:rasterTexturedTriangle.toString()});
-  await page.evaluate(() => {
+  await page.evaluate(bark => {
     const canvas = document.querySelector('canvas');
     const ctx = canvas.getContext('2d');
     const width = canvas.width, height = canvas.height, count = width * height;
@@ -74,6 +75,42 @@ try {
         flowX[i]=vx/length; flowY[i]=vy/length;
       }
       const image = ctx.createImageData(width,height);
+      const youngImage = ctx.createImageData(width,height);
+      const relief = new Float32Array(count), plateTone = new Float32Array(count);
+      if(bark) {
+        // 块面种子只分布一次，方向取自同一木质场，分叉不另起贴图。
+        const cells=[],cellColumns=Math.ceil(width/16)+2;
+        const hash=(x,y)=>{
+          let value=Math.imul(x+173,374761393)^Math.imul(y+419,668265263);
+          value=Math.imul(value^(value>>>13),1274126177);
+          return ((value^(value>>>16))>>>0)/4294967296;
+        };
+        for(let row=-1;row<=Math.ceil(height/16);row++) for(let col=-1;col<=Math.ceil(width/16);col++) {
+          const x=(col+.2+.6*hash(col,row))*16,y=(row+.2+.6*hash(row,col))*16;
+          cells.push({x,y,vx:sample(flowX,x,y),vy:sample(flowY,x,y),tone:hash(col+31,row-17)});
+        }
+        for(let y=0;y<height;y++) for(let x=0;x<width;x++) {
+          const i=y*width+x;
+          if(depth[i]<-.5) continue;
+          const col=Math.floor(x/16),row=Math.floor(y/16);
+          const px=x+(sample(noise,x*.13,y*.13)-.5)*5;
+          const py=y+(sample(noise,100+x*.11,70+y*.11)-.5)*5;
+          let first=Infinity,second=Infinity,tone=0;
+          for(let cy=Math.max(-1,row-3);cy<=Math.min(Math.ceil(height/16),row+3);cy++) {
+            for(let cx=Math.max(-1,col-3);cx<=Math.min(Math.ceil(width/16),col+3);cx++) {
+              const cell=cells[(cy+1)*cellColumns+cx+1];
+              const dx=px-cell.x,dy=py-cell.y;
+              const along=dx*cell.vx+dy*cell.vy,across=dx*cell.vy-dy*cell.vx;
+              const distance=Math.hypot(along*.45,across*1.3);
+              if(distance<first) {second=first;first=distance;tone=cell.tone;}
+              else if(distance<second) second=distance;
+            }
+          }
+          const gap=second-first;
+          relief[i]=(1-Math.exp(-gap*1.2))*(.86+.14*sample(noise,x*.19,y*.19));
+          plateTone[i]=tone;
+        }
+      }
       let covered=0;
       for (let y=0; y<height; y++) for (let x=0; x<width; x++) {
         const i=y*width+x, pixel=i*4;
@@ -95,13 +132,27 @@ try {
         const rim=Math.exp(-Math.max(0,depth[i])/13);
         const light=.78+rim*(-dx*.24-dy*.12-.18);
         const fissure=Math.max(0,(.48-grain)*8);
-        const color=[133,99,61].map((base,c)=>base*light-fissure*[55,45,29][c]+(grain-.5)*90);
+        let color=[133,99,61].map((base,c)=>base*light-fissure*[55,45,29][c]+(grain-.5)*90);
+        if(bark) {
+          const nx=(sample(relief,x+1,y)-sample(relief,x-1,y))*.5;
+          const ny=(sample(relief,x,y+1)-sample(relief,x,y-1))*.5;
+          const facet=.83-nx*.38-ny*.28+(plateTone[i]-.5)*.22;
+          const crack=Math.exp(-relief[i]*5);
+          const barkLight=.60+.28*(1-rim)+rim*(dx*.24-dy*.12);
+          color=[142,115,78].map((base,c)=>base*barkLight*facet-crack*[63,51,33][c]
+            -fissure*[75,58,36][c]+(grain-.5)*120+(noise[i]-.5)*7);
+        }
         const alpha=Math.max(0,Math.min(1,depth[i]+.5));
         for(let c=0;c<3;c++) image.data[pixel+c]=color[c];
         image.data[pixel+3]=255*alpha;
+        if(bark) {
+          const barkLight=.60+.28*(1-rim)+rim*(dx*.24-dy*.12);
+          for(let c=0;c<3;c++) youngImage.data[pixel+c]=[129,112,73][c]*barkLight*.9+(grain-.5)*32;
+          youngImage.data[pixel+3]=image.data[pixel+3];
+        }
         covered++;
       }
-      return {image,covered,finite:[...depth,...flowX,...flowY].every(Number.isFinite)};
+      return {image,youngImage,covered,finite:[...depth,...flowX,...flowY].every(Number.isFinite)};
     };
     // 只生成一次成熟材质；局部发育只改变网格位置，不重新计算木纹。
     const baked = bakeWoodField(1);
@@ -126,6 +177,14 @@ try {
         y+w*(344-y)*.16*(1-age),
       ]);
       const image=ctx.createImageData(width,height);
+      let texture=baked.image;
+      if(bark) {
+        // 仅改变同一UV处裂纹的可见强度，纹理位置及随机种子保持不变。
+        texture=ctx.createImageData(width,height);
+        const maturity=age**1.5;
+        for(let i=0;i<texture.data.length;i++) texture.data[i]=baked.youngImage.data[i]
+          +(baked.image.data[i]-baked.youngImage.data[i])*maturity;
+      }
       let minimumArea=Infinity;
       for(const ids of triangles) {
         const points=ids.map(i=>positions[i]);
@@ -133,7 +192,7 @@ try {
         const area=(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
         if(area<=0) throw Error('共享木质网格发生翻转');
         minimumArea=Math.min(minimumArea,area);
-        window.rasterTexturedTriangle(image,baked.image,points,ids.map(i=>vertices[i].uv));
+        window.rasterTexturedTriangle(image,texture,points,ids.map(i=>vertices[i].uv));
       }
       ctx.clearRect(0,0,width,height);
       ctx.putImageData(image,0,0);
@@ -144,7 +203,7 @@ try {
       ctx.fillText(`共享木质域 · 年龄 ${age.toFixed(2)}`,20,30);
       return {age,sourceCovered:baked.covered,finite:baked.finite,minimumArea,triangles:triangles.length};
     };
-  });
+  },bark);
   const results=[];
   for (const [name,age] of [['young',0],['middle',.5],['mature',1]]) {
     const check=await page.evaluate(age=>window.renderWoodField(age),age);
